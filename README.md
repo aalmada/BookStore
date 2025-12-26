@@ -1,5 +1,8 @@
 # Book Store
 
+[![CI](https://github.com/aalmada/BookStore/actions/workflows/ci.yml/badge.svg)](https://github.com/aalmada/BookStore/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/aalmada/BookStore/actions/workflows/codeql.yml/badge.svg)](https://github.com/aalmada/BookStore/actions/workflows/codeql.yml)
+
 Full-stack online book store application with event-sourced backend API and Blazor frontend, orchestrated by .NET Aspire.
 
 ## Overview
