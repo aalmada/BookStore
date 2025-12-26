@@ -1,0 +1,182 @@
+@page "/book/{id:guid}"
+@using BookStore.Web.Services
+@using BookStore.Web.Services.Models
+@inject IBookStoreApi ApiClient
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>@(book?.Title ?? "Book Details") - Book Store</PageTitle>
+
+<div class="container mt-4">
+    @if (isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-3 text-muted">Loading book details...</p>
+        </div>
+    }
+    else if (errorMessage != null)
+    {
+        <div class="alert alert-danger" role="alert">
+            <i class="bi bi-exclamation-triangle-fill"></i> @errorMessage
+            <button class="btn btn-sm btn-outline-danger ms-3" @onclick="RetryLoad">
+                <i class="bi bi-arrow-clockwise"></i> Retry
+            </button>
+        </div>
+        <div class="mt-3">
+            <a href="/" class="btn btn-primary">
+                <i class="bi bi-arrow-left"></i> Back to Catalog
+            </a>
+        </div>
+    }
+    else if (book != null)
+    {
+        <!-- Breadcrumb -->
+        <nav aria-label="breadcrumb" class="mb-4">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/">Home</a></li>
+                <li class="breadcrumb-item active" aria-current="page">@book.Title</li>
+            </ol>
+        </nav>
+
+        <div class="row">
+            <!-- Book Cover Placeholder -->
+            <div class="col-md-4 mb-4">
+                <div class="card">
+                    <div class="card-body bg-light d-flex align-items-center justify-content-center" style="height: 400px;">
+                        <i class="bi bi-book text-muted" style="font-size: 8rem;"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Book Information -->
+            <div class="col-md-8">
+                <h1 class="display-5 mb-3">@book.Title</h1>
+
+                @if (!string.IsNullOrWhiteSpace(book.AuthorNames))
+                {
+                    <p class="lead text-muted mb-3">
+                        <i class="bi bi-person-fill"></i> by @book.AuthorNames
+                    </p>
+                }
+
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Book Information</h5>
+                        <dl class="row mb-0">
+                            @if (!string.IsNullOrWhiteSpace(book.Isbn))
+                            {
+                                <dt class="col-sm-3">ISBN</dt>
+                                <dd class="col-sm-9">@book.Isbn</dd>
+                            }
+
+                            @if (!string.IsNullOrWhiteSpace(book.PublisherName))
+                            {
+                                <dt class="col-sm-3">Publisher</dt>
+                                <dd class="col-sm-9">
+                                    <i class="bi bi-building"></i> @book.PublisherName
+                                </dd>
+                            }
+
+                            @if (book.PublishedDate.HasValue)
+                            {
+                                <dt class="col-sm-3">Published</dt>
+                                <dd class="col-sm-9">
+                                    <i class="bi bi-calendar"></i> @book.PublishedDate.Value.ToString("MMMM dd, yyyy")
+                                </dd>
+                            }
+                        </dl>
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(book.Description))
+                {
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Description</h5>
+                            <p class="card-text">@book.Description</p>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="mt-4">
+            <a href="/" class="btn btn-primary">
+                <i class="bi bi-arrow-left"></i> Back to Catalog
+            </a>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private BookDto? book;
+    private string? errorMessage;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadBookAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Reload when ID parameter changes
+        if (book?.Id != Id)
+        {
+            await LoadBookAsync();
+        }
+    }
+
+    private async Task LoadBookAsync()
+    {
+        isLoading = true;
+        errorMessage = null;
+        book = null;
+
+        try
+        {
+            book = await ApiClient.GetBookAsync(Id);
+        }
+        catch (Refit.ApiException apiEx) when (apiEx.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            errorMessage = "Book not found. It may have been removed or the ID is incorrect.";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load book details: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task RetryLoad()
+    {
+        await LoadBookAsync();
+    }
+}
+
+<style>
+    .breadcrumb-item a {
+        text-decoration: none;
+    }
+
+    .breadcrumb-item a:hover {
+        text-decoration: underline;
+    }
+
+    dl dt {
+        font-weight: 600;
+    }
+
+    dl dd {
+        margin-bottom: 0.5rem;
+    }
+</style>

@@ -1,0 +1,17 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.1.0">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <UserSecretsId>b89f445a-92c3-4be4-a442-d33d41700777</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.PostgreSQL" Version="13.1.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\BookStore.ApiService\BookStore.ApiService.csproj" />
+    <ProjectReference Include="..\BookStore.Web\BookStore.Web.csproj" />
+  </ItemGroup>
+
+</Project>

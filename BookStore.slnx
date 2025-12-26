@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="src\BookStore.ApiService\BookStore.ApiService.csproj" />
+  <Project Path="src\BookStore.AppHost\BookStore.AppHost.csproj" />
+  <Project Path="src\BookStore.ServiceDefaults\BookStore.ServiceDefaults.csproj" />
+  <Project Path="src\BookStore.Web\BookStore.Web.csproj" />
+  <Project Path="src\BookStore.Tests\BookStore.Tests.csproj" />
+</Solution>

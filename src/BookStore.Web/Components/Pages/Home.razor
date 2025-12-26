@@ -1,0 +1,233 @@
+﻿@page "/"
+@using BookStore.Web.Services
+@using BookStore.Web.Services.Models
+@inject IBookStoreApi ApiClient
+@rendermode InteractiveServer
+
+<PageTitle>Book Store</PageTitle>
+
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="display-4">📚 Book Store</h1>
+            <p class="lead">Discover your next great read</p>
+        </div>
+    </div>
+
+    <!-- Search Bar -->
+    <div class="row mb-4">
+        <div class="col-md-8 mx-auto">
+            <div class="input-group input-group-lg">
+                <input type="text" 
+                       class="form-control" 
+                       placeholder="Search books by title, author, ISBN, or publisher..." 
+                       @bind="searchQuery"
+                       @bind:event="oninput"
+                       @onkeyup="OnSearchKeyUp" />
+                @if (!string.IsNullOrWhiteSpace(searchQuery))
+                {
+                    <button class="btn btn-outline-secondary" type="button" @onclick="ClearSearch">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                }
+                <button class="btn btn-primary" type="button" @onclick="SearchBooks">
+                    <i class="bi bi-search"></i> Search
+                </button>
+            </div>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-3 text-muted">Loading books...</p>
+        </div>
+    }
+    else if (errorMessage != null)
+    {
+        <div class="alert alert-danger" role="alert">
+            <i class="bi bi-exclamation-triangle-fill"></i> @errorMessage
+            <button class="btn btn-sm btn-outline-danger ms-3" @onclick="RetryLoad">
+                <i class="bi bi-arrow-clockwise"></i> Retry
+            </button>
+        </div>
+    }
+    else if (pagedBooks != null)
+    {
+        <!-- Results Info -->
+        <div class="row mb-3">
+            <div class="col">
+                <p class="text-muted">
+                    Showing @pagedBooks.Items.Count of @pagedBooks.TotalItemCount books
+                    @if (!string.IsNullOrWhiteSpace(searchQuery))
+                    {
+                        <span>for "<strong>@searchQuery</strong>"</span>
+                    }
+                </p>
+            </div>
+        </div>
+
+        <!-- Book Grid -->
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 row-cols-xl-4 g-4 mb-4">
+            @foreach (var book in pagedBooks.Items)
+            {
+                <div class="col">
+                    <div class="card h-100 shadow-sm hover-shadow">
+                        <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 250px;">
+                            <i class="bi bi-book text-muted" style="font-size: 4rem;"></i>
+                        </div>
+                        <div class="card-body">
+                            <h5 class="card-title">@book.Title</h5>
+                            <p class="card-text text-muted small">
+                                <i class="bi bi-person"></i> @book.AuthorNames
+                            </p>
+                            @if (!string.IsNullOrWhiteSpace(book.PublisherName))
+                            {
+                                <p class="card-text text-muted small">
+                                    <i class="bi bi-building"></i> @book.PublisherName
+                                </p>
+                            }
+                            @if (book.PublishedDate.HasValue)
+                            {
+                                <p class="card-text text-muted small">
+                                    <i class="bi bi-calendar"></i> @book.PublishedDate.Value.Year
+                                </p>
+                            }
+                        </div>
+                        <div class="card-footer bg-transparent">
+                            <a href="/book/@book.Id" class="btn btn-sm btn-outline-primary w-100">
+                                View Details
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- Pagination -->
+        @if (pagedBooks.PageCount > 1)
+        {
+            <nav aria-label="Book pagination">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item @(!pagedBooks.HasPreviousPage ? "disabled" : "")">
+                        <button class="page-link" @onclick="() => LoadPage(currentPage - 1)" disabled="@(!pagedBooks.HasPreviousPage)">
+                            Previous
+                        </button>
+                    </li>
+                    
+                    @for (int i = 1; i <= pagedBooks.PageCount; i++)
+                    {
+                        var pageNum = i;
+                        <li class="page-item @(pageNum == currentPage ? "active" : "")">
+                            <button class="page-link" @onclick="() => LoadPage(pageNum)">@pageNum</button>
+                        </li>
+                    }
+                    
+                    <li class="page-item @(!pagedBooks.HasNextPage ? "disabled" : "")">
+                        <button class="page-link" @onclick="() => LoadPage(currentPage + 1)" disabled="@(!pagedBooks.HasNextPage)">
+                            Next
+                        </button>
+                    </li>
+                </ul>
+            </nav>
+        }
+    }
+</div>
+
+@code {
+    private PagedListDto<BookDto>? pagedBooks;
+    private string searchQuery = string.Empty;
+    private string? errorMessage;
+    private bool isLoading = true;
+    private int currentPage = 1;
+    private const int pageSize = 20;
+    private System.Threading.Timer? debounceTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadBooksAsync();
+    }
+
+    private async Task LoadBooksAsync()
+    {
+        isLoading = true;
+        errorMessage = null;
+        
+        try
+        {
+            pagedBooks = await ApiClient.SearchBooksAsync(
+                string.IsNullOrWhiteSpace(searchQuery) ? null : searchQuery,
+                currentPage,
+                pageSize);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load books: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void OnSearchKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            SearchBooks();
+            return;
+        }
+
+        // Debounce search
+        debounceTimer?.Dispose();
+        debounceTimer = new System.Threading.Timer(async _ =>
+        {
+            await InvokeAsync(SearchBooks);
+        }, null, 500, Timeout.Infinite);
+    }
+
+    private async Task SearchBooks()
+    {
+        currentPage = 1;
+        await LoadBooksAsync();
+    }
+
+    private void ClearSearch()
+    {
+        searchQuery = string.Empty;
+        SearchBooks();
+    }
+
+    private async Task LoadPage(int page)
+    {
+        currentPage = page;
+        await LoadBooksAsync();
+    }
+
+    private async Task RetryLoad()
+    {
+        await LoadBooksAsync();
+    }
+
+    public void Dispose()
+    {
+        debounceTimer?.Dispose();
+    }
+}
+
+<style>
+    .hover-shadow {
+        transition: box-shadow 0.3s ease-in-out;
+    }
+
+    .hover-shadow:hover {
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+    }
+
+    .card-img-top {
+        border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+    }
+</style>
