@@ -108,6 +108,7 @@ BookStore/
 
 - **[Getting Started](docs/getting-started.md)** - Setup and first steps
 - **[Architecture Overview](docs/architecture.md)** - System design and patterns
+- **[Performance Guide](docs/performance-guide.md)** - GC optimization and performance tuning
 - **[Testing Guide](docs/testing-guide.md)** - Testing with TUnit, assertions, and best practices
 - **[Wolverine Integration](docs/wolverine-guide.md)** - Command/handler pattern with Wolverine
 - **[Time Standards](docs/time-standards.md)** - JSON serialization and UTC standards
