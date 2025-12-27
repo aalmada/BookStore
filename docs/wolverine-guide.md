@@ -131,87 +131,12 @@ public record UpdateBook(
 - Use `init` for optional properties (like ETag)
 - Add XML documentation
 - Keep commands simple (no logic)
-
-### Why Guid.CreateVersion7()?
-
-This project uses **Version 7 GUIDs** (time-ordered) instead of traditional random GUIDs for automatic database performance improvements.
-
-#### Sequential vs Random GUIDs
-
-**Random GUIDs (`Guid.NewGuid()` - Version 4)**:
-```
-f47ac10b-58cc-4372-a567-0e02b2c3d479  ← Created first
-a1b2c3d4-e5f6-4789-a012-3456789abcde  ← Created second
-2c9de4f1-8a3b-4c5d-9e7f-1a2b3c4d5e6f  ← Created third
-```
-- Completely random order
-- Causes database page splits
-- Poor cache locality
-- Scattered across B-tree index
-
-**Time-ordered GUIDs (`Guid.CreateVersion7()` - Version 7)**:
-```
-018d5e4a-7b2c-7000-8000-123456789abc  ← Created first
-018d5e4a-7b2d-7000-8000-234567890def  ← Created second  
-018d5e4a-7b2e-7000-8000-345678901234  ← Created third
-```
-- Naturally sequential (first 48 bits = Unix timestamp)
-- Minimal page splits
-- Better cache locality
-- Appended to end of B-tree index
-
-#### Automatic Performance Benefits
-
-**No configuration required!** PostgreSQL automatically benefits because:
-
-1. **Better Insert Performance**
-   - Sequential inserts at end of B-tree
-   - Fewer page splits (10-30% faster on large tables)
-   - Less write amplification
-
-2. **Smaller Index Size**
-   - Better packing efficiency
-   - Less fragmentation
-   - Reduced storage costs
-
-3. **Improved Query Performance**
-   - Related records stored together
-   - Better cache hit rates
-   - Faster range scans
-
-4. **Temporal Queries**
-   - GUID embeds timestamp
-   - Can filter by ID for time ranges
-   ```csharp
-   // Get books created in the last hour
-   var recentBooks = await session.Query<BookSearchProjection>()
-       .Where(b => b.Id.CompareTo(oneHourAgo) > 0)
-       .ToListAsync();
-   ```
-
-#### Real-World Impact
-
-Inserting 1 million books:
-
-**With Random GUIDs**:
-- Records scattered across 1000s of database pages
-- Constant page splits and reorganization
-- Poor sequential read performance
-
-**With Time-ordered GUIDs**:
-- Records appended sequentially
-- Minimal page splits
-- Excellent sequential read performance
-
-#### Standard Compliance
-
-- Follows **RFC 9562** (UUID Version 7)
-- Native support in **.NET 9+**
-- Backward compatible with standard GUIDs
-- No special database configuration needed
-
+- Use `Guid.CreateVersion7()` for IDs (see [Marten Guide](marten-guide.md#performance-guidcreateversionversion7) for performance benefits)
 
 ## Creating Handlers
+
+> [!NOTE]
+> Handlers use Marten's event sourcing APIs. For details on streams, aggregates, and events, see the [Marten Guide](marten-guide.md).
 
 Handlers are static methods that Wolverine auto-discovers:
 
@@ -661,3 +586,11 @@ The pattern is simple:
 1. **Command** = User intent (immutable record)
 2. **Handler** = Business logic (pure function)
 3. **Endpoint** = HTTP routing (thin layer)
+
+## Next Steps
+
+- **[Event Sourcing Guide](event-sourcing-guide.md)** - Event sourcing concepts and patterns
+- **[Marten Guide](marten-guide.md)** - Event sourcing, streams, aggregates, and projections
+- **[Architecture Overview](architecture.md)** - System design and CQRS patterns
+- **[ETag Guide](etag-guide.md)** - Optimistic concurrency implementation
+- **[Getting Started](getting-started.md)** - Setup and running the application

@@ -67,6 +67,9 @@ The Book Store API is built using **Event Sourcing** and **CQRS** patterns with 
 
 Instead of storing current state, we store all changes as immutable events.
 
+> [!NOTE]
+> For a comprehensive guide to event sourcing concepts, patterns, and best practices, see the [Event Sourcing Guide](event-sourcing-guide.md).
+
 **Benefits**:
 - Complete audit trail
 - Time travel (reconstruct past states)
@@ -94,6 +97,8 @@ public class BookAggregate
     }
 }
 ```
+
+See [Marten Guide](marten-guide.md) for implementation details.
 
 ### CQRS (Command Query Responsibility Segregation)
 
@@ -358,6 +363,7 @@ Example event flow:
 
 ## Next Steps
 
-- **[Event Sourcing Guide](event-sourcing.md)** - Deep dive into event sourcing
-- **[API Reference](api-reference.md)** - Complete endpoint documentation
-- **[Deployment](deployment.md)** - Production deployment guide
+- **[Event Sourcing Guide](event-sourcing-guide.md)** - Event sourcing concepts and patterns
+- **[Marten Guide](marten-guide.md)** - Event sourcing implementation with Marten
+- **[Wolverine Guide](wolverine-guide.md)** - Command/handler pattern
+- **[Getting Started](getting-started.md)** - Setup and running the application
