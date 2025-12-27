@@ -1,4 +1,8 @@
 <Solution>
+  <Folder Name="/src/">
+    <Project Path="src/BookStore.ApiService.Analyzers.Tests/BookStore.ApiService.Analyzers.Tests.csproj" />
+    <Project Path="src/BookStore.ApiService.Analyzers/BookStore.ApiService.Analyzers.csproj" />
+  </Folder>
   <Project Path="src\BookStore.ApiService\BookStore.ApiService.csproj" />
   <Project Path="src\BookStore.AppHost\BookStore.AppHost.csproj" />
   <Project Path="src\BookStore.ServiceDefaults\BookStore.ServiceDefaults.csproj" />

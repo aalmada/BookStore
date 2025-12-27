@@ -52,7 +52,20 @@ The Aspire dashboard opens automatically, providing access to:
 - **Optimistic Concurrency** with ETags
 - **Distributed Tracing** with correlation/causation IDs
 - **API Versioning** (header-based, v1.0)
-- **Soft Deletion** with restore capability
+- **Soft Deletion** - Logical deletes with restore capability
+
+## Architecture Enforcement
+
+The project includes a custom **Roslyn Analyzer** (`BookStore.ApiService.Analyzers`) that enforces Event Sourcing, CQRS, and DDD patterns:
+
+- ✅ Events must be immutable record types
+- ✅ Commands follow CQRS conventions
+- ✅ Aggregates use proper Marten Apply methods
+- ✅ Handlers follow Wolverine conventions
+- ✅ Consistent namespace organization
+
+See [Analyzer Rules Documentation](docs/analyzer-rules.md) for details.
+
 - **Native OpenAPI** with Scalar UI
 - **Structured Logging** with correlation IDs
 

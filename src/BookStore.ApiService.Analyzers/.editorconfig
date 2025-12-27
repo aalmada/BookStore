@@ -1,0 +1,30 @@
+# BookStore.ApiService.Analyzers Configuration
+
+# Event Sourcing Rules (BS1xxx)
+dotnet_diagnostic.BS1001.severity = warning  # Events must be record types
+dotnet_diagnostic.BS1002.severity = warning  # Events must be immutable
+dotnet_diagnostic.BS1003.severity = warning  # Events must be in Events namespace
+
+# CQRS Command Rules (BS2xxx)
+dotnet_diagnostic.BS2001.severity = warning  # Commands must be record types
+dotnet_diagnostic.BS2002.severity = warning  # Commands must be in Commands namespace
+dotnet_diagnostic.BS2003.severity = suggestion  # Command properties should use init
+
+# Aggregate Rules (BS3xxx)
+dotnet_diagnostic.BS3001.severity = error    # Apply methods must return void
+dotnet_diagnostic.BS3002.severity = error    # Apply methods must have one parameter
+dotnet_diagnostic.BS3003.severity = warning  # Apply methods should be private
+dotnet_diagnostic.BS3004.severity = warning  # Aggregate methods should return events
+dotnet_diagnostic.BS3005.severity = warning  # Aggregate properties should not have public setters
+
+# Handler Convention Rules (BS4xxx)
+dotnet_diagnostic.BS4001.severity = suggestion  # Handler methods should be named 'Handle'
+dotnet_diagnostic.BS4002.severity = warning     # Handler methods should be static
+dotnet_diagnostic.BS4003.severity = suggestion  # Handler first param should be command
+
+# Namespace Organization Rules (BS5xxx)
+dotnet_diagnostic.BS5001.severity = warning  # Event types must be in Events namespace
+dotnet_diagnostic.BS5002.severity = warning  # Command types must be in Commands namespace
+dotnet_diagnostic.BS5003.severity = warning  # Aggregate types must be in Aggregates namespace
+dotnet_diagnostic.BS5004.severity = warning  # Handler types must be in Handlers namespace
+dotnet_diagnostic.BS5005.severity = warning  # Projection types must be in Projections namespace
