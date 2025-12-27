@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 
-namespace BookStore.Tests;
+namespace BookStore.Web.Tests;
 
 public class WebTests
 {

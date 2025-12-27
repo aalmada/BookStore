@@ -42,13 +42,17 @@ jobs:
     - name: Build
       run: dotnet build --no-restore --configuration Release
       
-    - name: Run unit tests (fast feedback)
-      run: dotnet test --project src/BookStore.Tests/BookStore.Tests.csproj --configuration Release --no-build --treenode-filter "/**[Category=Unit]" ${{ github.event_name == 'pull_request' && '--fail-fast' || '' }}
+    - name: Run API unit tests (fast feedback)
+      run: dotnet test --project src/ApiService/BookStore.ApiService.Tests/BookStore.ApiService.Tests.csproj --configuration Release --no-build --treenode-filter "/**[Category=Unit]" ${{ github.event_name == 'pull_request' && '--fail-fast' || '' }}
       # TUnit automatically generates GitHub Actions test summary
       # Run fast unit tests first for quick feedback
       
-    - name: Run integration tests
-      run: dotnet test --project src/BookStore.Tests/BookStore.Tests.csproj --configuration Release --no-build --treenode-filter "/**[Category=Integration]"
+    - name: Run analyzer tests
+      run: dotnet test --project src/ApiService/BookStore.ApiService.Analyzers.Tests/BookStore.ApiService.Analyzers.Tests.csproj --configuration Release --no-build --treenode-filter "/**[Category=Unit]"
+      # Verify Roslyn analyzers work correctly
+      
+    - name: Run web integration tests
+      run: dotnet test --project src/Web/BookStore.Web.Tests/BookStore.Web.Tests.csproj --configuration Release --no-build --treenode-filter "/**[Category=Integration]"
       # Integration tests run after unit tests pass
       # Slower tests that require full application stack
         

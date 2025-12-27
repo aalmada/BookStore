@@ -35,12 +35,17 @@ Visit `http://localhost:17161` for the Aspire dashboard and navigate to the API 
 ```
 BookStore/
 ├── src/
-│   ├── BookStore.ApiService/    # Main API with event sourcing
-│   ├── BookStore.AppHost/       # Aspire orchestration
-│   ├── BookStore.ServiceDefaults/ # Shared configuration
-│   ├── BookStore.Web/           # Blazor frontend
-│   └── BookStore.Tests/         # Unit tests
-├── docs/                              # Documentation
+│   ├── ApiService/
+│   │   ├── BookStore.ApiService/           # Main API with event sourcing
+│   │   ├── BookStore.ApiService.Analyzers/ # Roslyn analyzers for code quality
+│   │   ├── BookStore.ApiService.Analyzers.Tests/ # Analyzer tests
+│   │   └── BookStore.ApiService.Tests/     # API unit tests
+│   ├── Web/
+│   │   ├── BookStore.Web/                  # Blazor frontend
+│   │   └── BookStore.Web.Tests/            # Web integration tests
+│   ├── BookStore.AppHost/                  # Aspire orchestration
+│   └── BookStore.ServiceDefaults/          # Shared configuration
+├── docs/                                   # Documentation
 └── README.md
 ```
 

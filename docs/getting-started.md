@@ -297,7 +297,7 @@ await Assert.That(collection).Contains(item);
 
 ### 1. Make Code Changes
 
-Edit files in `src/BookStore.ApiService/`
+Edit files in `src/ApiService/BookStore.ApiService/`
 
 ### 2. Hot Reload
 

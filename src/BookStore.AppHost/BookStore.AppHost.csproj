@@ -10,8 +10,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\BookStore.ApiService\BookStore.ApiService.csproj" />
-    <ProjectReference Include="..\BookStore.Web\BookStore.Web.csproj" />
+    <ProjectReference Include="..\ApiService\BookStore.ApiService\BookStore.ApiService.csproj" />
+    <ProjectReference Include="..\Web\BookStore.Web\BookStore.Web.csproj" />
   </ItemGroup>
 
 </Project>

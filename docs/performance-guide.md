@@ -8,7 +8,7 @@ The API service is configured with optimal garbage collection settings for serve
 
 ### Configuration
 
-See [BookStore.ApiService.csproj](file:///Users/antaoalmada/Projects/BookStore/src/BookStore.ApiService/BookStore.ApiService.csproj):
+See [BookStore.ApiService.csproj](file:///Users/antaoalmada/Projects/BookStore/src/ApiService/BookStore.ApiService/BookStore.ApiService.csproj):
 
 ```xml
 <PropertyGroup>
@@ -355,7 +355,7 @@ The best way to see GC optimizations in action:
 
 ```bash
 # 1. Temporarily disable GC optimizations
-# Comment out the PropertyGroup in src/BookStore.ApiService/BookStore.ApiService.csproj
+# Comment out the PropertyGroup in src/ApiService/BookStore.ApiService/BookStore.ApiService.csproj
 
 # 2. Start Aspire
 aspire run
@@ -381,7 +381,7 @@ wrk -t4 -c100 -d60s http://localhost:5000/api/books/search?query=code
 # 1. Stop the application (Ctrl+C)
 
 # 2. Re-enable GC optimizations
-# Uncomment the PropertyGroup in src/BookStore.ApiService/BookStore.ApiService.csproj
+# Uncomment the PropertyGroup in src/ApiService/BookStore.ApiService/BookStore.ApiService.csproj
 
 # 3. Start Aspire again
 aspire run

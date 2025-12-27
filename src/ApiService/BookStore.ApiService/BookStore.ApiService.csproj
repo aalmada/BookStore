@@ -17,7 +17,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\BookStore.ServiceDefaults\BookStore.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\..\BookStore.ServiceDefaults\BookStore.ServiceDefaults.csproj" />
   </ItemGroup>
 
   <ItemGroup>

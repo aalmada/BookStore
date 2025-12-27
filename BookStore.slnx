@@ -1,11 +1,16 @@
 <Solution>
   <Folder Name="/src/">
-    <Project Path="src/BookStore.ApiService.Analyzers.Tests/BookStore.ApiService.Analyzers.Tests.csproj" />
-    <Project Path="src/BookStore.ApiService.Analyzers/BookStore.ApiService.Analyzers.csproj" />
+    <Folder Name="/ApiService/">
+      <Project Path="src/ApiService/BookStore.ApiService/BookStore.ApiService.csproj" />
+      <Project Path="src/ApiService/BookStore.ApiService.Analyzers/BookStore.ApiService.Analyzers.csproj" />
+      <Project Path="src/ApiService/BookStore.ApiService.Analyzers.Tests/BookStore.ApiService.Analyzers.Tests.csproj" />
+      <Project Path="src/ApiService/BookStore.ApiService.Tests/BookStore.ApiService.Tests.csproj" />
+    </Folder>
+    <Folder Name="/Web/">
+      <Project Path="src/Web/BookStore.Web/BookStore.Web.csproj" />
+      <Project Path="src/Web/BookStore.Web.Tests/BookStore.Web.Tests.csproj" />
+    </Folder>
+    <Project Path="src/BookStore.AppHost/BookStore.AppHost.csproj" />
+    <Project Path="src/BookStore.ServiceDefaults/BookStore.ServiceDefaults.csproj" />
   </Folder>
-  <Project Path="src\BookStore.ApiService\BookStore.ApiService.csproj" />
-  <Project Path="src\BookStore.AppHost\BookStore.AppHost.csproj" />
-  <Project Path="src\BookStore.ServiceDefaults\BookStore.ServiceDefaults.csproj" />
-  <Project Path="src\BookStore.Web\BookStore.Web.csproj" />
-  <Project Path="src\BookStore.Tests\BookStore.Tests.csproj" />
 </Solution>

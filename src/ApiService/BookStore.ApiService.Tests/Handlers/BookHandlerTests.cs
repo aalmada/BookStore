@@ -6,7 +6,7 @@ using Marten;
 using Microsoft.AspNetCore.Http;
 using NSubstitute;
 
-namespace BookStore.Tests.Handlers;
+namespace BookStore.ApiService.Tests.Handlers;
 
 /// <summary>
 /// Unit tests for Book command handlers

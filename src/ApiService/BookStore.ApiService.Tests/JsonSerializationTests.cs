@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace BookStore.Tests;
+namespace BookStore.ApiService.Tests;
 
 /// <summary>
 /// Tests to verify JSON serialization standards:
