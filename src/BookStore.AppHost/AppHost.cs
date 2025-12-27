@@ -10,6 +10,12 @@ var bookStoreDb = postgres.AddDatabase("bookstore");
 var apiService = builder.AddProject<Projects.BookStore_ApiService>("apiservice")
     .WithReference(bookStoreDb)
     .WithHttpHealthCheck("/health")
+    .WithExternalHttpEndpoints()
+    .WithUrlForEndpoint("http", url =>
+    {
+        url.DisplayText = "API Reference";
+        url.Url = url.Url + "/api-reference";
+    })
     .WaitFor(postgres);
 
 builder.AddProject<Projects.BookStore_Web>("webfrontend")

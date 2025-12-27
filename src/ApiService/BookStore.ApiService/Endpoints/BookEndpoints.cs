@@ -42,7 +42,7 @@ public static class BookEndpoints
             // Return all books if no search query - use Marten's native pagination
             var pagedList = await session.Query<BookSearchProjection>()
                 .OrderBy(b => b.Title)
-                .ToPagedListAsync(paging.Page, paging.PageSize);
+                .ToPagedListAsync(paging.Page!.Value, paging.PageSize!.Value);
 
             return TypedResults.Ok(pagedList);
         }
@@ -62,7 +62,7 @@ public static class BookEndpoints
             .OrderBy(b => b.Title);
         
         // Use Marten's native pagination for optimal performance
-        var searchResults = await query.ToPagedListAsync(paging.Page, paging.PageSize);
+        var searchResults = await query.ToPagedListAsync(paging.Page!.Value, paging.PageSize!.Value);
 
         return TypedResults.Ok(searchResults);
     }

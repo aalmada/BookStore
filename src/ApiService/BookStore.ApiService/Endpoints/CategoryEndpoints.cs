@@ -41,7 +41,7 @@ public static class CategoryEndpoints
         // Use Marten's native pagination for optimal performance
         var pagedList = await session.Query<CategoryProjection>()
             .OrderBy(c => c.Name)
-            .ToPagedListAsync(paging.Page, paging.PageSize);
+            .ToPagedListAsync(paging.Page!.Value, paging.PageSize!.Value);
 
         // Return the paged list - localization will be handled by the client or in a response DTO
         // For now, we'll map to localized responses inline

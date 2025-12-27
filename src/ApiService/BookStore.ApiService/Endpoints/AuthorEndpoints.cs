@@ -36,7 +36,7 @@ public static class AuthorEndpoints
         // Use Marten's native pagination for optimal performance
         var pagedList = await session.Query<AuthorProjection>()
             .OrderBy(a => a.Name)
-            .ToPagedListAsync(paging.Page, paging.PageSize);
+            .ToPagedListAsync(paging.Page!.Value, paging.PageSize!.Value);
 
         return TypedResults.Ok(pagedList);
     }

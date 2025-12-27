@@ -13,20 +13,20 @@ public record PagedRequest
     /// <summary>
     /// Page number (1-based)
     /// </summary>
-    public int Page { get; init; } = 1;
+    public int? Page { get; init; }
     
     /// <summary>
     /// Number of items per page
     /// </summary>
-    public int PageSize { get; init; } = 20;
+    public int? PageSize { get; init; }
     
     /// <summary>
     /// Validates and normalizes pagination parameters
     /// </summary>
     public PagedRequest Normalize()
     {
-        var page = int.Max(1, Page);
-        var pageSize = int.Clamp(PageSize, 1, MaxPageSize);
+        var page = int.Max(1, Page ?? 1);
+        var pageSize = int.Clamp(PageSize ?? 20, 1, MaxPageSize);
         
         return this with { Page = page, PageSize = pageSize };
     }
@@ -34,5 +34,5 @@ public record PagedRequest
     /// <summary>
     /// Calculates the number of items to skip
     /// </summary>
-    public int Skip => (Page - 1) * PageSize;
+    public int Skip => ((Page ?? 1) - 1) * (PageSize ?? 20);
 }

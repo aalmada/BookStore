@@ -41,20 +41,7 @@ builder.Services.AddProblemDetails();
 // Configure OpenAPI with metadata
 builder.Services.AddOpenApi(options =>
 {
-    options.AddDocumentTransformer((document, context, cancellationToken) =>
-    {
-        document.Info = new()
-        {
-            Title = "Book Store API",
-            Version = "v1",
-            Description = "Event-sourced book store management system with book search, author, category, and publisher management.",
-            Contact = new()
-            {
-                Name = "Book Store Support"
-            }
-        };
-        return Task.CompletedTask;
-    });
+    options.AddBookStoreApiDocumentation();
 });
 
 // Configure API Versioning (header-based)
@@ -161,13 +148,22 @@ builder.Services.AddMarten(sp =>
     return options;
 })
 .UseLightweightSessions()
-.IntegrateWithWolverine();
+.IntegrateWithWolverine(cfg =>
+{
+    cfg.UseWolverineManagedEventSubscriptionDistribution = true;
+});
 
 // Add Wolverine with command/handler pattern
 builder.Services.AddWolverine(opts =>
 {
     // Auto-discover handlers in this assembly
     opts.Discovery.IncludeAssembly(typeof(Program).Assembly);
+    
+    // Explicitly include static handler classes for discovery
+    opts.Discovery.IncludeType(typeof(BookStore.ApiService.Handlers.Authors.AuthorHandlers));
+    opts.Discovery.IncludeType(typeof(BookStore.ApiService.Handlers.Books.BookHandlers));
+    opts.Discovery.IncludeType(typeof(BookStore.ApiService.Handlers.Categories.CategoryHandlers));
+    opts.Discovery.IncludeType(typeof(BookStore.ApiService.Handlers.Publishers.PublisherHandlers));
 
     // Policies for automatic behavior
     opts.Policies.AutoApplyTransactions();
@@ -197,7 +193,8 @@ app.MapOpenApi();
 
 if (app.Environment.IsDevelopment())
 {
-    app.MapScalarApiReference(options =>
+    app.MapScalarApiReference("/api-reference", 
+    options =>
     {
         options
             .WithTitle("Book Store API")
