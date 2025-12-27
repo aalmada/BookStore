@@ -5,7 +5,6 @@ using BookStore.ApiService.Handlers.Books;
 using Marten;
 using Microsoft.AspNetCore.Http;
 using NSubstitute;
-using Xunit;
 
 namespace BookStore.Tests.Handlers;
 
@@ -15,8 +14,9 @@ namespace BookStore.Tests.Handlers;
 /// </summary>
 public class BookHandlerTests
 {
-    [Fact]
-    public void CreateBookHandler_ShouldStartStreamWithBookAddedEvent()
+    [Test]
+    [Category("Unit")]
+    public async Task CreateBookHandler_ShouldStartStreamWithBookAddedEvent()
     {
         // Arrange
         var command = new CreateBook(
@@ -35,7 +35,7 @@ public class BookHandlerTests
         var result = BookHandlers.Handle(command, session);
         
         // Assert
-        Assert.NotNull(result);
+        await Assert.That(result).IsNotNull();
         session.Events.Received(1).StartStream<BookAggregate>(
             command.Id,
             Arg.Is<BookAdded>(e => 
@@ -43,7 +43,8 @@ public class BookHandlerTests
                 e.Isbn == "978-0132350884"));
     }
     
-    [Fact]
+    [Test]
+    [Category("Unit")]
     public async Task UpdateBookHandler_WithMissingBook_ShouldReturnNotFound()
     {
         // Arrange
@@ -68,6 +69,6 @@ public class BookHandlerTests
         var result = await BookHandlers.Handle(command, session, context);
         
         // Assert
-        Assert.IsType<Microsoft.AspNetCore.Http.HttpResults.NotFound>(result);
+        await Assert.That(result).IsTypeOf<Microsoft.AspNetCore.Http.HttpResults.NotFound>();
     }
 }

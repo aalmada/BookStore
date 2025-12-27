@@ -1,5 +1,4 @@
 using System.Text.Json;
-using Xunit;
 
 namespace BookStore.Tests;
 
@@ -12,20 +11,16 @@ namespace BookStore.Tests;
 /// </summary>
 public class JsonSerializationTests
 {
-    readonly JsonSerializerOptions _options;
-
-    public JsonSerializationTests()
+    // Static lazy initialization for better performance - shared across all tests
+    private static readonly Lazy<JsonSerializerOptions> _options = new(() => new()
     {
-        // Use the same options as the API
-        _options = new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
-        };
-    }
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
+    }, LazyThreadSafetyMode.ExecutionAndPublication);
 
-    [Fact]
-    public void DateTimeOffset_Should_Serialize_As_ISO8601_With_UTC()
+    [Test]
+    [Category("Unit")]
+    public async Task DateTimeOffset_Should_Serialize_As_ISO8601_With_UTC()
     {
         // Arrange
         var testObject = new
@@ -34,54 +29,58 @@ public class JsonSerializationTests
         };
 
         // Act
-        var json = JsonSerializer.Serialize(testObject, _options);
+        var json = JsonSerializer.Serialize(testObject, _options.Value);
 
         // Assert
-        Assert.Contains("\"timestamp\":\"2025-12-26T17:16:09.123+00:00\"", json);
+        await Assert.That(json).Contains("\"timestamp\":\"2025-12-26T17:16:09.123+00:00\"");
     }
 
-    [Fact]
-    public void DateTimeOffset_UtcNow_Should_End_With_Z_Or_UTC_Offset()
+    [Test]
+    [Category("Unit")]
+    public async Task DateTimeOffset_UtcNow_Should_End_With_Z_Or_UTC_Offset()
     {
         // Arrange
         var testObject = new { Timestamp = DateTimeOffset.UtcNow };
 
         // Act
-        var json = JsonSerializer.Serialize(testObject, _options);
+        var json = JsonSerializer.Serialize(testObject, _options.Value);
 
         // Assert - Should match ISO 8601 format with UTC indicator
-        Assert.Matches(@"""timestamp"":""(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(\.\d+)?\+00:00""", json);
+        await Assert.That(json).Matches(@"""timestamp"":""(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(\.\d+)?\+00:00""");
     }
 
-    [Fact]
-    public void DateOnly_Should_Serialize_As_ISO8601_Date()
+    [Test]
+    [Category("Unit")]
+    public async Task DateOnly_Should_Serialize_As_ISO8601_Date()
     {
         // Arrange
         var testObject = new { PublicationDate = new DateOnly(2008, 8, 1) };
 
         // Act
-        var json = JsonSerializer.Serialize(testObject, _options);
+        var json = JsonSerializer.Serialize(testObject, _options.Value);
 
         // Assert
-        Assert.Contains("\"publicationDate\":\"2008-08-01\"", json);
+        await Assert.That(json).Contains("\"publicationDate\":\"2008-08-01\"");
     }
 
-    [Fact]
-    public void Enum_Should_Serialize_As_String_Not_Integer()
+    [Test]
+    [Category("Unit")]
+    public async Task Enum_Should_Serialize_As_String_Not_Integer()
     {
         // Arrange
         var testObject = new { Status = TestStatus.Active };
 
         // Act
-        var json = JsonSerializer.Serialize(testObject, _options);
+        var json = JsonSerializer.Serialize(testObject, _options.Value);
 
         // Assert
-        Assert.Contains("\"status\":\"active\"", json);  // camelCase enum value
-        Assert.DoesNotContain("\"status\":0", json);
+        await Assert.That(json).Contains("\"status\":\"active\"");  // camelCase enum value
+        await Assert.That(json).DoesNotContain("\"status\":0");
     }
 
-    [Fact]
-    public void Properties_Should_Use_CamelCase()
+    [Test]
+    [Category("Unit")]
+    public async Task Properties_Should_Use_CamelCase()
     {
         // Arrange
         var testObject = new TestDto
@@ -93,21 +92,22 @@ public class JsonSerializationTests
         };
 
         // Act
-        var json = JsonSerializer.Serialize(testObject, _options);
+        var json = JsonSerializer.Serialize(testObject, _options.Value);
 
         // Assert
-        Assert.Contains("\"bookId\":", json);
-        Assert.Contains("\"bookTitle\":", json);
-        Assert.Contains("\"publicationDate\":", json);
-        Assert.Contains("\"lastModified\":", json);
+        await Assert.That(json).Contains("\"bookId\":");
+        await Assert.That(json).Contains("\"bookTitle\":");
+        await Assert.That(json).Contains("\"publicationDate\":");
+        await Assert.That(json).Contains("\"lastModified\":");
         
         // Should NOT contain PascalCase
-        Assert.DoesNotContain("\"BookId\":", json);
-        Assert.DoesNotContain("\"BookTitle\":", json);
+        await Assert.That(json).DoesNotContain("\"BookId\":");
+        await Assert.That(json).DoesNotContain("\"BookTitle\":");
     }
 
-    [Fact]
-    public void Complex_Object_Should_Follow_All_Standards()
+    [Test]
+    [Category("Unit")]
+    public async Task Complex_Object_Should_Follow_All_Standards()
     {
         // Arrange
         var testObject = new TestDto
@@ -120,19 +120,19 @@ public class JsonSerializationTests
         };
 
         // Act
-        var json = JsonSerializer.Serialize(testObject, _options);
+        var json = JsonSerializer.Serialize(testObject, _options.Value);
 
         // Assert
         // camelCase properties
-        Assert.Contains("\"bookId\":", json);
-        Assert.Contains("\"bookTitle\":", json);
+        await Assert.That(json).Contains("\"bookId\":");
+        await Assert.That(json).Contains("\"bookTitle\":");
         
         // ISO 8601 dates
-        Assert.Contains("\"publicationDate\":\"2008-08-01\"", json);
-        Assert.Contains("\"lastModified\":\"2025-12-26T17:16:09+00:00\"", json);
+        await Assert.That(json).Contains("\"publicationDate\":\"2008-08-01\"");
+        await Assert.That(json).Contains("\"lastModified\":\"2025-12-26T17:16:09+00:00\"");
         
         // Enum as string
-        Assert.Contains("\"status\":\"active\"", json);
+        await Assert.That(json).Contains("\"status\":\"active\"");
     }
 
     // Test DTOs

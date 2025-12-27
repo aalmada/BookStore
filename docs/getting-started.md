@@ -260,6 +260,39 @@ BookStore/
     └── ...                        # Other guides
 ```
 
+## Testing
+
+The project uses **TUnit**, a modern testing framework for .NET with built-in code coverage and source-generated tests.
+
+### Running Tests
+
+```bash
+# Run all tests
+dotnet test
+
+# Run tests for specific project
+dotnet test --project src/BookStore.Tests/BookStore.Tests.csproj
+
+# Alternative: Run tests directly
+dotnet run --project src/BookStore.Tests/BookStore.Tests.csproj
+```
+
+### Test Structure
+
+- **Handler Tests** - Test Wolverine command handlers with mocked dependencies
+- **JSON Serialization Tests** - Verify API serialization standards (ISO 8601, camelCase, etc.)
+- **Integration Tests** - Test the full application stack with Aspire.Hosting.Testing
+
+All tests use TUnit's fluent assertion syntax:
+```csharp
+await Assert.That(result).IsNotNull();
+await Assert.That(actual).IsEqualTo(expected);
+await Assert.That(collection).Contains(item);
+```
+
+> [!NOTE]
+> TUnit provides built-in code coverage without additional packages. Tests run in parallel by default for improved performance.
+
 ## Development Workflow
 
 ### 1. Make Code Changes
@@ -354,8 +387,8 @@ dotnet build
 ## Next Steps
 
 - **[Architecture Overview](architecture.md)** - Understand the system design
-- **[API Reference](api-reference.md)** - Explore all endpoints
-- **[Event Sourcing Guide](event-sourcing.md)** - Learn about event sourcing
+- **[Testing Guide](testing-guide.md)** - Learn about testing with TUnit
+- **[Event Sourcing Guide](event-sourcing-guide.md)** - Learn about event sourcing
 - **[ETag Support](etag-guide.md)** - Implement optimistic concurrency
 
 ## Getting Help

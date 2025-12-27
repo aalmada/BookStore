@@ -108,6 +108,7 @@ BookStore/
 
 - **[Getting Started](docs/getting-started.md)** - Setup and first steps
 - **[Architecture Overview](docs/architecture.md)** - System design and patterns
+- **[Testing Guide](docs/testing-guide.md)** - Testing with TUnit, assertions, and best practices
 - **[Wolverine Integration](docs/wolverine-guide.md)** - Command/handler pattern with Wolverine
 - **[Time Standards](docs/time-standards.md)** - JSON serialization and UTC standards
 - **[ETag Support](docs/etag-guide.md)** - Optimistic concurrency and caching
@@ -133,6 +134,7 @@ BookStore/
 - **OpenTelemetry** - Distributed tracing and metrics
 - **Scalar** - API documentation UI
 - **Docker** - Container runtime
+- **TUnit** - Modern testing framework with built-in code coverage
 - **Roslynator.Analyzers 4.15.0** - Enhanced code analysis
 
 ## 📊 API Endpoints
@@ -224,13 +226,21 @@ curl -X PUT http://localhost:5000/api/admin/books/{id} \
 
 ## 🧪 Testing
 
+The project uses **TUnit**, a modern testing framework with built-in code coverage and parallel execution.
+
 ```bash
-# Run tests
+# Run all tests
 dotnet test
 
-# View test coverage
-dotnet test /p:CollectCoverage=true
+# Run tests for specific project
+dotnet test --project src/BookStore.Tests/BookStore.Tests.csproj
+
+# Alternative: Run tests directly
+dotnet run --project src/BookStore.Tests/BookStore.Tests.csproj
 ```
+
+> [!NOTE]
+> TUnit uses Microsoft.Testing.Platform on .NET 10+. The `global.json` file configures the test runner automatically.
 
 ## 📝 License
 

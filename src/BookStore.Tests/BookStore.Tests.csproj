@@ -3,22 +3,15 @@
   <PropertyGroup>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
+    <EnableMicrosoftTestingPlatform>true</EnableMicrosoftTestingPlatform>
   </PropertyGroup>
 
 
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.Testing" Version="13.1.0" />
-    <PackageReference Include="coverlet.collector" Version="6.0.4">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
     <PackageReference Include="NSubstitute" Version="5.3.0" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
-    <PackageReference Include="xunit.v3" Version="3.2.1" />
+    <PackageReference Include="TUnit" Version="1.6.28" />
+    <PackageReference Include="TUnit.Assertions" Version="1.6.28" />
   </ItemGroup>
 
   <ItemGroup>
@@ -31,7 +24,8 @@
     <Using Include="Microsoft.Extensions.DependencyInjection" />
     <Using Include="Aspire.Hosting.ApplicationModel" />
     <Using Include="Aspire.Hosting.Testing" />
-    <Using Include="Xunit" />
+    <Using Include="TUnit.Core" />
+    <Using Include="TUnit.Assertions" />
   </ItemGroup>
 
 </Project>
