@@ -15,14 +15,14 @@ public static class BookEndpoints
 {
     public static RouteGroupBuilder MapBookEndpoints(this RouteGroupBuilder group)
     {
-        group.MapGet("/search", SearchBooks)
-            .WithName("SearchBooks")
-            .WithSummary("Search books using ngram matching across title, description, publisher, and authors")
+        group.MapGet("/", SearchBooks)
+            .WithName("GetBooks")
+            .WithSummary("Get all books")
             .CacheOutput(policy => policy.Expire(TimeSpan.FromMinutes(2)));
 
         group.MapGet("/{id:guid}", GetBook)
             .WithName("GetBook")
-            .WithSummary("Get book by ID. Returns ETag header and supports If-None-Match for caching.")
+            .WithSummary("Get book by ID")
             .CacheOutput(policy => policy
                 .Expire(TimeSpan.FromMinutes(5))
                 .SetVaryByHeader("If-None-Match"));

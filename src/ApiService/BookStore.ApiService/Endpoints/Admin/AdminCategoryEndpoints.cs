@@ -21,19 +21,19 @@ public static class AdminCategoryEndpoints
     {
         group.MapPost("/", CreateCategory)
             .WithName("CreateCategory")
-            .WithSummary("Create a new category with optional translations using Wolverine");
+            .WithSummary("Create a new category");
 
         group.MapPut("/{id:guid}", UpdateCategory)
             .WithName("UpdateCategory")
-            .WithSummary("Update a category and its translations");
+            .WithSummary("Update a category");
 
         group.MapDelete("/{id:guid}", SoftDeleteCategory)
             .WithName("SoftDeleteCategory")
-            .WithSummary("Soft delete a category");
+            .WithSummary("Delete a category");
 
         group.MapPost("/{id:guid}/restore", RestoreCategory)
             .WithName("RestoreCategory")
-            .WithSummary("Restore a soft deleted category");
+            .WithSummary("Restore a deleted category");
 
         return group;
     }

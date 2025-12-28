@@ -16,7 +16,7 @@ public static class AuthorEndpoints
     {
         group.MapGet("/", GetAuthors)
             .WithName("GetAuthors")
-            .WithSummary("Get all active authors")
+            .WithSummary("Get all authors")
             .CacheOutput(policy => policy.Expire(TimeSpan.FromMinutes(5)));
 
         group.MapGet("/{id:guid}", GetAuthor)

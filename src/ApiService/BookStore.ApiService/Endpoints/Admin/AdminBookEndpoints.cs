@@ -29,23 +29,23 @@ public static class AdminBookEndpoints
     {
         group.MapPost("/", CreateBook)
             .WithName("CreateBook")
-            .WithSummary("Create a new book using Wolverine command/handler pattern");
+            .WithSummary("Create a new book");
 
         group.MapPut("/{id:guid}", UpdateBook)
             .WithName("UpdateBook")
-            .WithSummary("Update a book. Supports optimistic concurrency with If-Match header.");
+            .WithSummary("Update a book");
 
         group.MapDelete("/{id:guid}", SoftDeleteBook)
             .WithName("SoftDeleteBook")
-            .WithSummary("Soft delete a book. Supports optimistic concurrency with If-Match header.");
+            .WithSummary("Delete a book");
 
         group.MapPost("/{id:guid}/restore", RestoreBook)
             .WithName("RestoreBook")
-            .WithSummary("Restore a soft deleted book. Supports optimistic concurrency with If-Match header.");
+            .WithSummary("Restore a deleted book");
 
         group.MapGet("/", GetAllBooks)
             .WithName("GetAllBooksAdmin")
-            .WithSummary("Get all books including soft deleted");
+            .WithSummary("Get all books");
 
         return group;
     }

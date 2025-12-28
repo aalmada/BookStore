@@ -9,10 +9,10 @@ namespace BookStore.Web.Services;
 public interface IBookStoreApi
 {
     /// <summary>
-    /// Search books with optional query and pagination
+    /// Get all books with optional search query and pagination
     /// </summary>
-    [Get("/api/books/search")]
-    Task<PagedListDto<BookDto>> SearchBooksAsync(
+    [Get("/api/books")]
+    Task<PagedListDto<BookDto>> GetBooksAsync(
         [Query] string? q = null,
         [Query] int page = 1,
         [Query] int pageSize = 20,

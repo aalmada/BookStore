@@ -14,7 +14,7 @@ public static class AdminPublisherEndpoints
     {
         group.MapPost("/", CreatePublisher)
             .WithName("CreatePublisher")
-            .WithSummary("Create a new publisher using Wolverine command/handler pattern");
+            .WithSummary("Create a new publisher");
 
         group.MapPut("/{id:guid}", UpdatePublisher)
             .WithName("UpdatePublisher")
@@ -22,11 +22,11 @@ public static class AdminPublisherEndpoints
 
         group.MapDelete("/{id:guid}", SoftDeletePublisher)
             .WithName("SoftDeletePublisher")
-            .WithSummary("Soft delete a publisher");
+            .WithSummary("Delete a publisher");
 
         group.MapPost("/{id:guid}/restore", RestorePublisher)
             .WithName("RestorePublisher")
-            .WithSummary("Restore a soft deleted publisher");
+            .WithSummary("Restore a deleted publisher");
 
         return group;
     }

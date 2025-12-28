@@ -19,12 +19,12 @@ public static class CategoryEndpoints
     {
         group.MapGet("/", GetCategories)
             .WithName("GetCategories")
-            .WithSummary("Get all active categories (localized based on Accept-Language header)")
+            .WithSummary("Get all categories")
             .CacheOutput(policy => policy.Expire(TimeSpan.FromMinutes(5)));
 
         group.MapGet("/{id:guid}", GetCategory)
             .WithName("GetCategory")
-            .WithSummary("Get category by ID (localized based on Accept-Language header)")
+            .WithSummary("Get category by ID")
             .CacheOutput(policy => policy.Expire(TimeSpan.FromMinutes(5)));
 
         return group;

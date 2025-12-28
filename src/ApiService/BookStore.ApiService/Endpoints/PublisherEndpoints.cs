@@ -16,7 +16,7 @@ public static class PublisherEndpoints
     {
         group.MapGet("/", GetPublishers)
             .WithName("GetPublishers")
-            .WithSummary("Get all active publishers")
+            .WithSummary("Get all publishers")
             .CacheOutput(policy => policy.Expire(TimeSpan.FromMinutes(5)));
 
         group.MapGet("/{id:guid}", GetPublisher)

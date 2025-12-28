@@ -158,7 +158,7 @@
         
         try
         {
-            pagedBooks = await ApiClient.SearchBooksAsync(
+            pagedBooks = await ApiClient.GetBooksAsync(
                 string.IsNullOrWhiteSpace(searchQuery) ? null : searchQuery,
                 currentPage,
                 pageSize);

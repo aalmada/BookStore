@@ -42,7 +42,7 @@ public static class OpenApiTransformerExtensions
                 Name = "api-version",
                 In = ParameterLocation.Header,
                 Required = false,
-                Description = "API version to use. Defaults to 1.0 if not specified. Example: `1.0`"
+                Description = "API version. Example: `1.0`"
             });
 
             // Add localization header
@@ -51,7 +51,7 @@ public static class OpenApiTransformerExtensions
                 Name = "Accept-Language",
                 In = ParameterLocation.Header,
                 Required = false,
-                Description = "Preferred language for response content and error messages. Supported values: `en` (English, default), `pt` (Portuguese), `es` (Spanish), `fr` (French), `de` (German)"
+                Description = "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
             });
 
             // Add correlation ID header
@@ -60,7 +60,7 @@ public static class OpenApiTransformerExtensions
                 Name = "X-Correlation-ID",
                 In = ParameterLocation.Header,
                 Required = false,
-                Description = "Correlation ID for distributed tracing. Tracks the entire business transaction across services. If not provided, one will be generated and returned in the response. Example: `01234567-89ab-cdef-0123-456789abcdef`"
+                Description = "Correlation ID for tracking requests across the system"
             });
 
             // Add causation ID header
@@ -69,7 +69,7 @@ public static class OpenApiTransformerExtensions
                 Name = "X-Causation-ID",
                 In = ParameterLocation.Header,
                 Required = false,
-                Description = "Causation ID for distributed tracing. Tracks the immediate cause of this request (e.g., ID of the previous event or command). Use the `X-Event-ID` from a previous response. Example: `01234567-89ab-cdef-0123-456789abcdef`"
+                Description = "Causation ID linking this request to its trigger"
             });
 
             return Task.CompletedTask;
@@ -81,35 +81,12 @@ public static class OpenApiTransformerExtensions
     static string BuildApiDescription()
     {
         return """
-            Event-sourced book store management system with book search, author, category, and publisher management.
+            Book store management system with search, authors, categories, and publishers.
 
-            ## API Versioning
-            This API uses header-based versioning. Include the `api-version` header in your requests:
-            - **Current Version**: 1.0
-            - **Default Behavior**: If no version is specified, v1.0 is assumed
-            - **Version Header**: `api-version: 1.0`
-
-            ## Localization
-            The API supports multiple languages for content and error messages:
-            - **Supported Languages**: English (en), Portuguese (pt), Spanish (es), French (fr), German (de)
-            - **Default Language**: English (en)
-            - **Language Header**: `Accept-Language: pt` (use ISO 639-1 language codes)
-
-            ## Distributed Tracing
-            The API implements correlation and causation tracking for distributed tracing:
-
-            ### Request Headers
-            - **X-Correlation-ID**: Tracks the entire business transaction across services. If not provided, one will be generated.
-            - **X-Causation-ID**: Tracks the immediate cause of this request (e.g., the ID of the command or event that triggered this call).
-
-            ### Response Headers
-            - **X-Correlation-ID**: Returns the correlation ID used for this request (either provided or generated).
-            - **X-Event-ID**: Returns the unique ID of any event created by this request (for POST, PUT, DELETE operations).
-
-            ### Best Practices
-            - Always include `X-Correlation-ID` when making related API calls to track the full transaction flow
-            - Use the previous response's `X-Event-ID` as the `X-Causation-ID` for subsequent related requests
-            - Store correlation IDs in your logs to enable end-to-end tracing
+            ## Features
+            - Multi-language support (English, Portuguese, Spanish, French, German)
+            - Request tracking with correlation IDs
+            - Optimistic concurrency control for updates
             """;
     }
 }

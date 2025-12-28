@@ -10,11 +10,11 @@ public static class ProjectionEndpoints
     {
         group.MapPost("/rebuild", RebuildProjections)
             .WithName("RebuildProjections")
-            .WithSummary("Rebuild all async projections from event store");
+            .WithSummary("Rebuild all projections");
 
         group.MapGet("/status", GetProjectionStatus)
             .WithName("GetProjectionStatus")
-            .WithSummary("Get async daemon projection status");
+            .WithSummary("Get projection status");
 
         return group;
     }
