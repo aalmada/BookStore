@@ -56,7 +56,7 @@ public static class ETagHelper
     /// <summary>
     /// Create a 304 Not Modified response with ETag
     /// </summary>
-    public static IResult NotModified(string etag) => Results.StatusCode(304);
+    public static IResult NotModified(string _) => Results.StatusCode(304);
 
     /// <summary>
     /// Create a 412 Precondition Failed response

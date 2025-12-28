@@ -24,9 +24,9 @@ public class AuthorAggregate
         Biography = @event.Biography;
     }
 
-    void Apply(AuthorSoftDeleted @event) => IsDeleted = true;
+    void Apply(AuthorSoftDeleted _) => IsDeleted = true;
 
-    void Apply(AuthorRestored @event) => IsDeleted = false;
+    void Apply(AuthorRestored _) => IsDeleted = false;
 
     // Command methods
     public static AuthorAdded Create(Guid id, string name, string? biography)

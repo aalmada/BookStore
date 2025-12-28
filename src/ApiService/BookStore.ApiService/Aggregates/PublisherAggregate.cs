@@ -18,9 +18,9 @@ public class PublisherAggregate
 
     void Apply(PublisherUpdated @event) => Name = @event.Name;
 
-    void Apply(PublisherSoftDeleted @event) => IsDeleted = true;
+    void Apply(PublisherSoftDeleted _) => IsDeleted = true;
 
-    void Apply(PublisherRestored @event) => IsDeleted = false;
+    void Apply(PublisherRestored _) => IsDeleted = false;
 
     // Command methods
     public static PublisherAdded Create(Guid id, string name)

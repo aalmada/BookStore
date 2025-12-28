@@ -34,7 +34,7 @@ public class PublisherStatisticsProjectionBuilder : MultiStreamProjection<Publis
     };
 
     // When a book is added, increment count if it uses this publisher
-    public async Task Apply(BookAdded @event, PublisherStatistics projection, IQuerySession session)
+    public async Task Apply(BookAdded @event, PublisherStatistics projection, IQuerySession _)
     {
         if (@event.PublisherId == projection.Id)
         {

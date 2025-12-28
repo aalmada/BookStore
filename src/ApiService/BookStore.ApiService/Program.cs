@@ -171,7 +171,6 @@ builder.Services.AddWolverine(opts =>
         _ = x.ToSignalR();
     });
 
-
     // Policies for automatic behavior
     opts.Policies.AutoApplyTransactions();
 });

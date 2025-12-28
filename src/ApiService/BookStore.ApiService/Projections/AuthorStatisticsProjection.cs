@@ -34,7 +34,7 @@ public class AuthorStatisticsProjectionBuilder : MultiStreamProjection<AuthorSta
     };
 
     // When a book is added, increment count for each author
-    public async Task Apply(BookAdded @event, AuthorStatistics projection, IQuerySession session)
+    public async Task Apply(BookAdded @event, AuthorStatistics projection, IQuerySession _)
     {
         // Check if this author is in the book's author list
         if (@event.AuthorIds.Contains(projection.Id))

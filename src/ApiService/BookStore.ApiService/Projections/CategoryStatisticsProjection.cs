@@ -34,7 +34,7 @@ public class CategoryStatisticsProjectionBuilder : MultiStreamProjection<Categor
     };
 
     // When a book is added, increment count for each category
-    public async Task Apply(BookAdded @event, CategoryStatistics projection, IQuerySession session)
+    public async Task Apply(BookAdded @event, CategoryStatistics projection, IQuerySession _)
     {
         if (@event.CategoryIds.Contains(projection.Id))
         {

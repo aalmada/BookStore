@@ -40,9 +40,9 @@ public class BookAggregate
         CategoryIds = @event.CategoryIds;
     }
 
-    void Apply(BookSoftDeleted @event) => IsDeleted = true;
+    void Apply(BookSoftDeleted _) => IsDeleted = true;
 
-    void Apply(BookRestored @event) => IsDeleted = false;
+    void Apply(BookRestored _) => IsDeleted = false;
 
     // Command methods
     public static BookAdded Create(

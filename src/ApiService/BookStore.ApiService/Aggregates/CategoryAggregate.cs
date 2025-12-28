@@ -27,9 +27,9 @@ public class CategoryAggregate
         Translations = @event.Translations ?? [];
     }
 
-    void Apply(CategorySoftDeleted @event) => IsDeleted = true;
+    void Apply(CategorySoftDeleted _) => IsDeleted = true;
 
-    void Apply(CategoryRestored @event) => IsDeleted = false;
+    void Apply(CategoryRestored _) => IsDeleted = false;
 
     // Command methods
     public static CategoryAdded Create(Guid id, string name, string? description, Dictionary<string, CategoryTranslation>? translations = null)
