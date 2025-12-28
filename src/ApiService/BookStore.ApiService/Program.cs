@@ -196,6 +196,23 @@ builder.Services.AddOutputCache();
 
 var app = builder.Build();
 
+// Seed database in development
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    var store = scope.ServiceProvider.GetRequiredService<IDocumentStore>();
+    
+    // Apply schema to create PostgreSQL extensions (pg_trgm, unaccent)
+    await store.Storage.ApplyAllConfiguredChangesToDatabaseAsync();
+    
+    var seeder = new DatabaseSeeder(store);
+    await seeder.SeedAsync();
+    
+    // Give async projections time to process the seeded events
+    // In production, projections run continuously in the background
+    await Task.Delay(TimeSpan.FromSeconds(2));
+}
+
 // Configure the HTTP request pipeline.
 app.UseExceptionHandler();
 

@@ -13,7 +13,7 @@ public interface IBookStoreApi
     /// </summary>
     [Get("/api/books")]
     Task<PagedListDto<BookDto>> GetBooksAsync(
-        [Query] string? q = null,
+        [Query] string? search = null,
         [Query] int page = 1,
         [Query] int pageSize = 20,
         CancellationToken cancellationToken = default);

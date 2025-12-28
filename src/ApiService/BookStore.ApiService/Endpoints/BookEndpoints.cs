@@ -30,11 +30,11 @@ public static class BookEndpoints
     static async Task<Ok<PagedListDto<BookSearchProjection>>> SearchBooks(
         [FromServices] IQuerySession session,
         [AsParameters] PagedRequest request,
-        [FromQuery] string? q = null)
+        [FromQuery] string? search = null)
     {
         var paging = request.Normalize();
 
-        if (string.IsNullOrWhiteSpace(q))
+        if (string.IsNullOrWhiteSpace(search))
         {
             // Return all books if no search query - use Marten's native pagination
             var pagedList = await session.Query<BookSearchProjection>()
@@ -46,7 +46,7 @@ public static class BookEndpoints
 
         // Use NGram search for fuzzy, accent-insensitive matching
         // This leverages the pg_trgm indexes we configured
-        var searchQuery = q.Trim();
+        var searchQuery = search.Trim();
 
         var query = session.Query<BookSearchProjection>()
             .Where(b =>
