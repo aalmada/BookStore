@@ -26,7 +26,7 @@ public static class Extensions
 
         _ = builder.Services.AddServiceDiscovery();
 
-        builder.Services.ConfigureHttpClientDefaults(http =>
+        _ = builder.Services.ConfigureHttpClientDefaults(http =>
         {
             // Turn on resilience by default
             _ = http.AddStandardResilienceHandler();
@@ -54,12 +54,9 @@ public static class Extensions
         });
 
         // Configure console logging for better structured output
-        _ = builder.Logging.AddConsole(options =>
-        {
-            options.FormatterName = builder.Environment.IsDevelopment() 
-                ? "simple"  // Human-readable for development
-                : "json";   // JSON for production/structured logging
-        });
+        _ = builder.Logging.AddConsole(options => options.FormatterName = builder.Environment.IsDevelopment() 
+            ? "simple"  // Human-readable for development
+            : "json");  // JSON for production/structured logging
 
         // Configure simple console formatter for development
         if (builder.Environment.IsDevelopment())
@@ -75,7 +72,7 @@ public static class Extensions
         else
         {
             // Configure JSON console formatter for production
-            builder.Logging.AddJsonConsole(options =>
+            _ = builder.Logging.AddJsonConsole(options =>
             {
                 options.IncludeScopes = true;
                 options.TimestampFormat = "yyyy-MM-ddTHH:mm:ss.fffZ";
@@ -83,16 +80,16 @@ public static class Extensions
             });
         }
 
-        builder.Services.AddOpenTelemetry()
+        _ = builder.Services.AddOpenTelemetry()
             .WithMetrics(metrics =>
             {
-                metrics.AddAspNetCoreInstrumentation()
+                _ = metrics.AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation()
                     .AddRuntimeInstrumentation();
             })
             .WithTracing(tracing =>
             {
-                tracing.AddSource(builder.Environment.ApplicationName)
+                _ = tracing.AddSource(builder.Environment.ApplicationName)
                     .AddAspNetCoreInstrumentation(tracing =>
                         // Exclude health check requests from tracing
                         tracing.Filter = context =>
@@ -104,7 +101,7 @@ public static class Extensions
                     .AddHttpClientInstrumentation();
             });
 
-        builder.AddOpenTelemetryExporters();
+        _ = builder.AddOpenTelemetryExporters();
 
         return builder;
     }
@@ -144,10 +141,10 @@ public static class Extensions
         if (app.Environment.IsDevelopment())
         {
             // All health checks must pass for app to be considered ready to accept traffic after starting
-            app.MapHealthChecks(HealthEndpointPath);
+            _ = app.MapHealthChecks(HealthEndpointPath);
 
             // Only health checks tagged with the "live" tag must pass for app to be considered alive
-            app.MapHealthChecks(AlivenessEndpointPath, new HealthCheckOptions
+            _ = app.MapHealthChecks(AlivenessEndpointPath, new HealthCheckOptions
             {
                 Predicate = r => r.Tags.Contains("live")
             });
