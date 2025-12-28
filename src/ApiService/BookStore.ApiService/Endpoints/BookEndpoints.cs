@@ -27,7 +27,7 @@ public static class BookEndpoints
         return group;
     }
 
-    static async Task<Ok<IPagedList<BookSearchProjection>>> SearchBooks(
+    static async Task<Ok<PagedListDto<BookSearchProjection>>> SearchBooks(
         [FromServices] IQuerySession session,
         [AsParameters] PagedRequest request,
         [FromQuery] string? q = null)
@@ -41,7 +41,7 @@ public static class BookEndpoints
                 .OrderBy(b => b.Title)
                 .ToPagedListAsync(paging.Page!.Value, paging.PageSize!.Value);
 
-            return TypedResults.Ok(pagedList);
+            return TypedResults.Ok(PagedListDto<BookSearchProjection>.FromPagedList(pagedList));
         }
 
         // Use NGram search for fuzzy, accent-insensitive matching
@@ -61,7 +61,7 @@ public static class BookEndpoints
         // Use Marten's native pagination for optimal performance
         var searchResults = await query.ToPagedListAsync(paging.Page!.Value, paging.PageSize!.Value);
 
-        return TypedResults.Ok(searchResults);
+        return TypedResults.Ok(PagedListDto<BookSearchProjection>.FromPagedList(searchResults));
     }
 
     static async Task<IResult> GetBook(
