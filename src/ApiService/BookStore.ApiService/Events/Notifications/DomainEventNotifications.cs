@@ -74,3 +74,14 @@ public record PublisherCreatedNotification(
 {
     public string EventType => "PublisherCreated";
 }
+
+/// <summary>
+/// Notification when a book cover is updated
+/// </summary>
+public record BookCoverUpdatedNotification(
+    Guid EntityId,
+    string CoverUrl) : IDomainEventNotification
+{
+    public string EventType => "BookCoverUpdated";
+    public DateTimeOffset Timestamp { get; } = DateTimeOffset.UtcNow;
+}

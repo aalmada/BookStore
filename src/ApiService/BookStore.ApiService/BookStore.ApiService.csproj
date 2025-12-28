@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <PackageReference Include="Asp.Versioning.Http" Version="8.1.0" />
+    <PackageReference Include="Aspire.Azure.Storage.Blobs" Version="13.1.0" />
     <PackageReference Include="AspNetCore.HealthChecks.NpgSql" Version="9.0.0" />
     <PackageReference Include="Marten" Version="8.17.0" />
     <PackageReference Include="Marten.AspNetCore" Version="8.17.0" />

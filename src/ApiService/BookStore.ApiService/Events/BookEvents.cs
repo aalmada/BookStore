@@ -24,3 +24,5 @@ public record BookUpdated(
 public record BookSoftDeleted(Guid Id);
 
 public record BookRestored(Guid Id);
+
+public record BookCoverUpdated(Guid Id, string CoverImageUrl);

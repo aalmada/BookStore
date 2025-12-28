@@ -19,6 +19,9 @@ var builder = WebApplication.CreateBuilder(args);
 // Add service defaults & Aspire client integrations.
 builder.AddServiceDefaults();
 
+// Add Azure Blob Storage client (Azurite locally, Azure in production)
+builder.AddAzureBlobServiceClient("blobs");
+
 // Configure JSON serialization for consistent API responses
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
@@ -88,6 +91,7 @@ builder.Services.AddMarten(sp =>
     _ = options.Events.AddEventType<BookStore.ApiService.Events.BookUpdated>();
     _ = options.Events.AddEventType<BookStore.ApiService.Events.BookSoftDeleted>();
     _ = options.Events.AddEventType<BookStore.ApiService.Events.BookRestored>();
+    _ = options.Events.AddEventType<BookStore.ApiService.Events.BookCoverUpdated>();
 
     _ = options.Events.AddEventType<BookStore.ApiService.Events.AuthorAdded>();
     _ = options.Events.AddEventType<BookStore.ApiService.Events.AuthorUpdated>();
@@ -158,6 +162,7 @@ builder.Services.AddWolverine(opts =>
     // Explicitly include static handler classes for discovery
     _ = opts.Discovery.IncludeType(typeof(BookStore.ApiService.Handlers.Authors.AuthorHandlers));
     _ = opts.Discovery.IncludeType(typeof(BookStore.ApiService.Handlers.Books.BookHandlers));
+    _ = opts.Discovery.IncludeType(typeof(BookStore.ApiService.Handlers.Books.BookCoverHandlers));
     _ = opts.Discovery.IncludeType(typeof(BookStore.ApiService.Handlers.Categories.CategoryHandlers));
     _ = opts.Discovery.IncludeType(typeof(BookStore.ApiService.Handlers.Publishers.PublisherHandlers));
 
@@ -177,6 +182,9 @@ builder.Services.AddWolverine(opts =>
 
 // Add SignalR for real-time notifications
 builder.Services.AddSignalR();
+
+// Add Blob Storage service
+builder.Services.AddSingleton<BookStore.ApiService.Services.BlobStorageService>();
 
 // Add Marten health checks
 builder.Services.AddHealthChecks()

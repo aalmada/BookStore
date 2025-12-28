@@ -58,3 +58,17 @@ public record RestoreBook(Guid Id)
     /// </summary>
     public string? ETag { get; init; }
 }
+
+/// <summary>
+/// Command to update a book's cover image
+/// </summary>
+public record UpdateBookCover(
+    Guid BookId,
+    Stream ImageStream,
+    string ContentType)
+{
+    /// <summary>
+    /// ETag for optimistic concurrency control
+    /// </summary>
+    public string? ETag { get; init; }
+}

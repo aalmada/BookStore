@@ -14,6 +14,7 @@ public class BookAggregate
     public List<Guid> AuthorIds { get; private set; } = [];
     public List<Guid> CategoryIds { get; private set; } = [];
     public bool IsDeleted { get; private set; }
+    public string? CoverImageUrl { get; private set; }
 
     // Marten uses this for rehydration
     void Apply(BookAdded @event)
@@ -43,6 +44,8 @@ public class BookAggregate
     void Apply(BookSoftDeleted _) => IsDeleted = true;
 
     void Apply(BookRestored _) => IsDeleted = false;
+
+    void Apply(BookCoverUpdated @event) => CoverImageUrl = @event.CoverImageUrl;
 
     // Command methods
     public static BookAdded Create(
@@ -169,5 +172,20 @@ public class BookAggregate
         }
 
         return new BookRestored(Id);
+    }
+
+    public BookCoverUpdated UpdateCoverImage(string coverImageUrl)
+    {
+        if (IsDeleted)
+        {
+            throw new InvalidOperationException("Cannot update cover for a deleted book");
+        }
+
+        if (string.IsNullOrWhiteSpace(coverImageUrl))
+        {
+            throw new ArgumentException("Cover image URL is required", nameof(coverImageUrl));
+        }
+
+        return new BookCoverUpdated(Id, coverImageUrl);
     }
 }
