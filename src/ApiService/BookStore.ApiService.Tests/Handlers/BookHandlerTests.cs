@@ -29,14 +29,14 @@ public class BookHandlerTests
             [Guid.CreateVersion7()]);
         
         var session = Substitute.For<IDocumentSession>();
-        session.CorrelationId.Returns("test-correlation-id");
+        _ = session.CorrelationId.Returns("test-correlation-id");
         
         // Act
         var result = BookHandlers.Handle(command, session);
         
         // Assert
-        await Assert.That(result.Item1).IsNotNull();
-        session.Events.Received(1).StartStream<BookAggregate>(
+        _ = await Assert.That(result.Item1).IsNotNull();
+        _ = session.Events.Received(1).StartStream<BookAggregate>(
             command.Id,
             Arg.Is<BookAdded>(e => 
                 e.Title == "Clean Code" && 
@@ -62,13 +62,13 @@ public class BookHandlerTests
         var context = new DefaultHttpContext();
         
         // Stream doesn't exist
-        session.Events.FetchStreamStateAsync(command.Id)
+        _ = session.Events.FetchStreamStateAsync(command.Id)
             .Returns(Task.FromResult<Marten.Events.StreamState?>(null));
         
         // Act
         var result = await BookHandlers.Handle(command, session, context);
         
         // Assert
-        await Assert.That(result).IsTypeOf<Microsoft.AspNetCore.Http.HttpResults.NotFound>();
+        _ = await Assert.That(result).IsTypeOf<Microsoft.AspNetCore.Http.HttpResults.NotFound>();
     }
 }
