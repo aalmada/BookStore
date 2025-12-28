@@ -15,8 +15,7 @@ public static class CSharpAnalyzerVerifier<TAnalyzer>
     /// <summary>
     /// Verifies that the given source code produces no diagnostics
     /// </summary>
-    public static async Task VerifyAnalyzerAsync(string source) =>
-        await VerifyAnalyzerAsync(source, []);
+    public static async Task VerifyAnalyzerAsync(string source) => await VerifyAnalyzerAsync(source, []);
 
     /// <summary>
     /// Verifies that the given source code produces the expected diagnostics
@@ -35,13 +34,10 @@ public static class CSharpAnalyzerVerifier<TAnalyzer>
     /// <summary>
     /// Helper to create a DiagnosticResult for a specific location
     /// </summary>
-    public static DiagnosticResult Diagnostic(string diagnosticId) =>
-        new(diagnosticId, DiagnosticSeverity.Warning);
+    public static DiagnosticResult Diagnostic(string diagnosticId) => new(diagnosticId, DiagnosticSeverity.Warning);
 
     class Test : CSharpAnalyzerTest<TAnalyzer, DefaultVerifier>
     {
-        public Test() =>
-            // Use the latest C# language version
-            ReferenceAssemblies = ReferenceAssemblies.Net.Net90;
+        public Test() => ReferenceAssemblies = ReferenceAssemblies.Net.Net90; // Use the latest C# language version
     }
 }
