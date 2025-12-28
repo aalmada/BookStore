@@ -7,164 +7,169 @@
 @implements IAsyncDisposable
 @rendermode InteractiveServer
 
-<PageTitle>Book Store</PageTitle>
+<PageTitle>BookStore - Discover Your Next Great Read</PageTitle>
 
-<div class="container mt-4">
-    <div class="row mb-4">
-        <div class="col">
-            <h1 class="display-4">📚 Book Store</h1>
-            <p class="lead">Discover your next great read</p>
-        </div>
-    </div>
+<MudContainer MaxWidth="MaxWidth.ExtraExtraLarge" Class="mt-6">
+    @* Hero Section *@
+    <MudPaper Elevation="0" Class="pa-6 mb-6" Style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px;">
+        <MudText Typo="Typo.h3" Color="Color.Surface" Class="mb-2">
+            <MudIcon Icon="@Icons.Material.Filled.MenuBook" Size="Size.Large" /> BookStore
+        </MudText>
+        <MudText Typo="Typo.h6" Color="Color.Surface" Style="opacity: 0.9;">
+            Discover your next great read from our curated collection
+        </MudText>
+    </MudPaper>
 
-    <!-- Search Bar -->
-    <div class="row mb-4">
-        <div class="col-md-8 mx-auto">
-            <div class="input-group input-group-lg">
-                <input type="text" 
-                       class="form-control" 
-                       placeholder="Search books by title, author, ISBN, or publisher..." 
-                       @bind="searchQuery"
-                       @bind:event="oninput"
-                       @onkeyup="OnSearchKeyUp" />
-                @if (!string.IsNullOrWhiteSpace(searchQuery))
-                {
-                    <button class="btn btn-outline-secondary" type="button" @onclick="ClearSearch">
-                        <i class="bi bi-x-lg"></i>
-                    </button>
-                }
-                <button class="btn btn-primary" type="button" @onclick="SearchBooks">
-                    <i class="bi bi-search"></i> Search
-                </button>
-            </div>
-        </div>
-    </div>
+    @* Search Bar *@
+    <MudPaper Elevation="2" Class="pa-4 mb-6" Style="border-radius: 12px;">
+        <MudTextField @bind-Value="searchQuery"
+                      Label="Search books"
+                      Placeholder="Search by title, author, ISBN, or publisher..."
+                      Variant="Variant.Outlined"
+                      Adornment="Adornment.End"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      AdornmentColor="Color.Primary"
+                      OnAdornmentClick="SearchBooks"
+                      OnKeyUp="OnSearchKeyUp"
+                      Clearable="true"
+                      OnClearButtonClick="ClearSearch"
+                      Immediate="true"
+                      FullWidth="true"
+                      Class="mud-text-field-large" />
+    </MudPaper>
 
     @if (isLoading)
     {
-        <div class="text-center py-5">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-            <p class="mt-3 text-muted">Loading books...</p>
-        </div>
+        <MudGrid>
+            @for (int i = 0; i < 8; i++)
+            {
+                <MudItem xs="12" sm="6" md="4" lg="3">
+                    <MudCard Elevation="2">
+                        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="200px" />
+                        <MudCardContent>
+                            <MudSkeleton Width="80%" />
+                            <MudSkeleton Width="60%" Class="mt-2" />
+                            <MudSkeleton Width="40%" Class="mt-2" />
+                        </MudCardContent>
+                    </MudCard>
+                </MudItem>
+            }
+        </MudGrid>
     }
     else if (errorMessage != null)
     {
-        <div class="alert alert-danger" role="alert">
-            <i class="bi bi-exclamation-triangle-fill"></i> @errorMessage
-            <button class="btn btn-sm btn-outline-danger ms-3" @onclick="RetryLoad">
-                <i class="bi bi-arrow-clockwise"></i> Retry
-            </button>
-        </div>
+        <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+            <MudText>@errorMessage</MudText>
+            <MudButton OnClick="RetryLoad" Color="Color.Surface" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Refresh" Class="mt-2">
+                Retry
+            </MudButton>
+        </MudAlert>
     }
     else if (pagedBooks != null)
     {
-        <!-- Results Info -->
-        <div class="row mb-3">
-            <div class="col">
-                <p class="text-muted">
-                    Showing @pagedBooks.Items.Count of @pagedBooks.TotalItemCount books
-                    @if (!string.IsNullOrWhiteSpace(searchQuery))
-                    {
-                        <span>for "<strong>@searchQuery</strong>"</span>
-                    }
-                </p>
-            </div>
-        </div>
+        @* Results Info *@
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+            Showing @pagedBooks.Items.Count of @pagedBooks.TotalItemCount books
+            @if (!string.IsNullOrWhiteSpace(searchQuery))
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Class="ml-2">@searchQuery</MudChip>
+            }
+        </MudText>
 
-        <!-- Book Grid -->
-        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 row-cols-xl-4 g-4 mb-4">
-            @* Show optimistic books first with visual indicator *@
+        @* Book Grid *@
+        <MudGrid Spacing="4" Class="mb-6">
+            @* Optimistic books (being saved) *@
             @foreach (var optimisticBook in OptimisticService.GetOptimisticBooks())
             {
-                <div class="col">
-                    <div class="card h-100 shadow-sm hover-shadow optimistic-book">
-                        <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 250px;">
-                            <i class="bi bi-book text-muted" style="font-size: 4rem;"></i>
-                        </div>
-                        <div class="card-body">
-                            <h5 class="card-title">@optimisticBook.Title</h5>
-                            <p class="card-text text-muted small">
-                                <i class="bi bi-person"></i> @optimisticBook.AuthorNames
-                            </p>
+                <MudItem xs="12" sm="6" md="4" lg="3">
+                    <MudCard Elevation="4" Class="optimistic-card" Style="height: 100%; border-radius: 12px;">
+                        <MudPaper Elevation="0" Height="200px" Style="background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); display: flex; align-items: center; justify-content: center;">
+                            <MudIcon Icon="@Icons.Material.Filled.MenuBook" Size="Size.Large" Color="Color.Secondary" Style="font-size: 4rem;" />
+                        </MudPaper>
+                        <MudCardContent>
+                            <MudText Typo="Typo.h6" Class="mb-2">@optimisticBook.Title</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-1">
+                                <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" /> @optimisticBook.AuthorNames
+                            </MudText>
                             @if (!string.IsNullOrWhiteSpace(optimisticBook.PublisherName))
                             {
-                                <p class="card-text text-muted small">
-                                    <i class="bi bi-building"></i> @optimisticBook.PublisherName
-                                </p>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                    <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" /> @optimisticBook.PublisherName
+                                </MudText>
                             }
-                            <span class="badge bg-info"><i class="bi bi-clock-history"></i> Saving...</span>
-                        </div>
-                    </div>
-                </div>
+                        </MudCardContent>
+                        <MudCardActions>
+                            <MudChip T="string" Size="Size.Small" Color="Color.Info" Icon="@Icons.Material.Filled.CloudUpload">Saving...</MudChip>
+                        </MudCardActions>
+                    </MudCard>
+                </MudItem>
             }
-            
-            @* Show actual books from server *@
+
+            @* Actual books from server *@
             @foreach (var book in pagedBooks.Items)
             {
-                <div class="col">
-                    <div class="card h-100 shadow-sm hover-shadow">
-                        <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 250px;">
-                            <i class="bi bi-book text-muted" style="font-size: 4rem;"></i>
-                        </div>
-                        <div class="card-body">
-                            <h5 class="card-title">@book.Title</h5>
-                            <p class="card-text text-muted small">
-                                <i class="bi bi-person"></i> @book.AuthorNames
-                            </p>
+                <MudItem xs="12" sm="6" md="4" lg="3">
+                    <MudCard Elevation="2" Class="book-card" Style="height: 100%; border-radius: 12px; transition: all 0.3s ease;">
+                        <MudPaper Elevation="0" Height="200px" Style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center;">
+                            <MudIcon Icon="@Icons.Material.Filled.MenuBook" Size="Size.Large" Color="Color.Surface" Style="font-size: 4rem;" />
+                        </MudPaper>
+                        <MudCardContent>
+                            <MudText Typo="Typo.h6" Class="mb-2" Style="min-height: 3rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                                @book.Title
+                            </MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-1">
+                                <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" /> @book.AuthorNames
+                            </MudText>
                             @if (!string.IsNullOrWhiteSpace(book.PublisherName))
                             {
-                                <p class="card-text text-muted small">
-                                    <i class="bi bi-building"></i> @book.PublisherName
-                                </p>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-1">
+                                    <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" /> @book.PublisherName
+                                </MudText>
                             }
                             @if (book.PublishedDate.HasValue)
                             {
-                                <p class="card-text text-muted small">
-                                    <i class="bi bi-calendar"></i> @book.PublishedDate.Value.Year
-                                </p>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                    <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" /> @book.PublishedDate.Value.Year
+                                </MudText>
                             }
-                        </div>
-                        <div class="card-footer bg-transparent">
-                            <a href="/book/@book.Id" class="btn btn-sm btn-outline-primary w-100">
+                        </MudCardContent>
+                        <MudCardActions>
+                            <MudButton Href="@($"/book/{book.Id}")" Variant="Variant.Text" Color="Color.Primary" FullWidth="true" StartIcon="@Icons.Material.Filled.Visibility">
                                 View Details
-                            </a>
-                        </div>
-                    </div>
-                </div>
+                            </MudButton>
+                        </MudCardActions>
+                    </MudCard>
+                </MudItem>
             }
-        </div>
+        </MudGrid>
 
-        <!-- Pagination -->
+        @* Pagination *@
         @if (pagedBooks.PageCount > 1)
         {
-            <nav aria-label="Book pagination">
-                <ul class="pagination justify-content-center">
-                    <li class="page-item @(!pagedBooks.HasPreviousPage ? "disabled" : "")">
-                        <button class="page-link" @onclick="() => LoadPage(currentPage - 1)" disabled="@(!pagedBooks.HasPreviousPage)">
-                            Previous
-                        </button>
-                    </li>
-                    
-                    @for (int i = 1; i <= pagedBooks.PageCount; i++)
-                    {
-                        var pageNum = i;
-                        <li class="page-item @(pageNum == currentPage ? "active" : "")">
-                            <button class="page-link" @onclick="() => LoadPage(pageNum)">@pageNum</button>
-                        </li>
-                    }
-                    
-                    <li class="page-item @(!pagedBooks.HasNextPage ? "disabled" : "")">
-                        <button class="page-link" @onclick="() => LoadPage(currentPage + 1)" disabled="@(!pagedBooks.HasNextPage)">
-                            Next
-                        </button>
-                    </li>
-                </ul>
-            </nav>
+            <MudPaper Elevation="0" Class="d-flex justify-center pa-4">
+                <MudPagination Count="@((int)pagedBooks.PageCount)" 
+                              Selected="@currentPage" 
+                              SelectedChanged="LoadPage"
+                              Color="Color.Primary"
+                              Variant="Variant.Filled"
+                              ShowFirstButton="true"
+                              ShowLastButton="true" />
+            </MudPaper>
+        }
+
+        @* Empty State *@
+        @if (pagedBooks.Items.Count == 0 && !string.IsNullOrWhiteSpace(searchQuery))
+        {
+            <MudPaper Elevation="0" Class="pa-8 text-center">
+                <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="Size.Large" Color="Color.Secondary" Style="font-size: 6rem;" />
+                <MudText Typo="Typo.h5" Class="mt-4 mb-2">No books found</MudText>
+                <MudText Typo="Typo.body1" Color="Color.Secondary">
+                    Try adjusting your search terms or <MudLink OnClick="ClearSearch" Color="Color.Primary">browse all books</MudLink>
+                </MudText>
+            </MudPaper>
         }
     }
-</div>
+</MudContainer>
 
 @code {
     private PagedListDto<BookDto>? pagedBooks;
@@ -302,30 +307,26 @@
 }
 
 <style>
-    .hover-shadow {
-        transition: box-shadow 0.3s ease-in-out;
+    .book-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2) !important;
     }
 
-    .hover-shadow:hover {
-        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
-    }
-
-    .card-img-top {
-        border-bottom: 1px solid rgba(0, 0, 0, 0.125);
-    }
-    
-    /* Optimistic book styling with pulse animation */
-    .optimistic-book {
-        opacity: 0.85;
+    .optimistic-card {
         animation: pulse 2s ease-in-out infinite;
+        opacity: 0.9;
     }
-    
+
     @@keyframes pulse {
         0%, 100% {
-            opacity: 0.85;
+            opacity: 0.9;
         }
         50% {
             opacity: 1;
         }
+    }
+
+    .mud-text-field-large .mud-input {
+        font-size: 1.1rem;
     }
 </style>

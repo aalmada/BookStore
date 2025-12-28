@@ -1,6 +1,7 @@
 using BookStore.Web;
 using BookStore.Web.Components;
 using BookStore.Web.Services;
+using MudBlazor.Services;
 using Polly;
 using Polly.Extensions.Http;
 using Refit;
@@ -13,6 +14,9 @@ builder.AddServiceDefaults();
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+// Add MudBlazor services
+builder.Services.AddMudServices();
 
 // Configure Polly policies for resilience
 var retryPolicy = HttpPolicyExtensions
@@ -45,11 +49,6 @@ builder.Services.AddSingleton<BookStoreHubService>();
 builder.Services.AddSingleton<OptimisticUpdateService>();
 
 builder.Services.AddOutputCache();
-
-_ = builder.Services.AddHttpClient<WeatherApiClient>(client =>
-    // This URL uses "https+http://" to indicate HTTPS is preferred over HTTP.
-    // Learn more about service discovery scheme resolution at https://aka.ms/dotnet/sdschemes.
-    client.BaseAddress = new("https+http://apiservice"));
 
 var app = builder.Build();
 

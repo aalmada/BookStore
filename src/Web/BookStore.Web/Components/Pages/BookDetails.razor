@@ -5,111 +5,115 @@
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 
-<PageTitle>@(book?.Title ?? "Book Details") - Book Store</PageTitle>
+<PageTitle>@(book?.Title ?? "Book Details") - BookStore</PageTitle>
 
-<div class="container mt-4">
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-6">
     @if (isLoading)
     {
-        <div class="text-center py-5">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-            <p class="mt-3 text-muted">Loading book details...</p>
-        </div>
+        <MudPaper Elevation="2" Class="pa-6" Style="border-radius: 12px;">
+            <MudGrid>
+                <MudItem xs="12" md="4">
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="400px" />
+                </MudItem>
+                <MudItem xs="12" md="8">
+                    <MudSkeleton Width="60%" Height="60px" Class="mb-4" />
+                    <MudSkeleton Width="40%" Class="mb-6" />
+                    <MudSkeleton Width="100%" Height="200px" />
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
     }
     else if (errorMessage != null)
     {
-        <div class="alert alert-danger" role="alert">
-            <i class="bi bi-exclamation-triangle-fill"></i> @errorMessage
-            <button class="btn btn-sm btn-outline-danger ms-3" @onclick="RetryLoad">
-                <i class="bi bi-arrow-clockwise"></i> Retry
-            </button>
-        </div>
-        <div class="mt-3">
-            <a href="/" class="btn btn-primary">
-                <i class="bi bi-arrow-left"></i> Back to Catalog
-            </a>
-        </div>
+        <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+            <MudText Typo="Typo.h6" Class="mb-2">@errorMessage</MudText>
+            <MudButton OnClick="RetryLoad" Color="Color.Surface" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Refresh">
+                Retry
+            </MudButton>
+        </MudAlert>
+        <MudButton Href="/" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.ArrowBack">
+            Back to Catalog
+        </MudButton>
     }
     else if (book != null)
     {
-        <!-- Breadcrumb -->
-        <nav aria-label="breadcrumb" class="mb-4">
-            <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a href="/">Home</a></li>
-                <li class="breadcrumb-item active" aria-current="page">@book.Title</li>
-            </ol>
-        </nav>
+        @* Breadcrumbs *@
+        <MudBreadcrumbs Items="_breadcrumbItems" Class="mb-4" />
 
-        <div class="row">
-            <!-- Book Cover Placeholder -->
-            <div class="col-md-4 mb-4">
-                <div class="card">
-                    <div class="card-body bg-light d-flex align-items-center justify-content-center" style="height: 400px;">
-                        <i class="bi bi-book text-muted" style="font-size: 8rem;"></i>
-                    </div>
-                </div>
-            </div>
+        <MudPaper Elevation="2" Class="pa-6" Style="border-radius: 12px;">
+            <MudGrid>
+                @* Book Cover *@
+                <MudItem xs="12" md="4">
+                    <MudPaper Elevation="4" Style="border-radius: 12px; overflow: hidden; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); height: 500px; display: flex; align-items: center; justify-content: center;">
+                        <MudIcon Icon="@Icons.Material.Filled.MenuBook" Size="Size.Large" Color="Color.Surface" Style="font-size: 10rem;" />
+                    </MudPaper>
+                </MudItem>
 
-            <!-- Book Information -->
-            <div class="col-md-8">
-                <h1 class="display-5 mb-3">@book.Title</h1>
+                @* Book Information *@
+                <MudItem xs="12" md="8">
+                    <MudText Typo="Typo.h3" Class="mb-3">@book.Title</MudText>
 
-                @if (!string.IsNullOrWhiteSpace(book.AuthorNames))
-                {
-                    <p class="lead text-muted mb-3">
-                        <i class="bi bi-person-fill"></i> by @book.AuthorNames
-                    </p>
-                }
+                    @if (!string.IsNullOrWhiteSpace(book.AuthorNames))
+                    {
+                        <MudText Typo="Typo.h6" Color="Color.Secondary" Class="mb-4">
+                            <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" /> by @book.AuthorNames
+                        </MudText>
+                    }
 
-                <div class="card mb-4">
-                    <div class="card-body">
-                        <h5 class="card-title">Book Information</h5>
-                        <dl class="row mb-0">
-                            @if (!string.IsNullOrWhiteSpace(book.Isbn))
-                            {
-                                <dt class="col-sm-3">ISBN</dt>
-                                <dd class="col-sm-9">@book.Isbn</dd>
-                            }
+                    @* Book Details Card *@
+                    <MudCard Elevation="0" Class="mb-4" Style="background-color: rgba(0,0,0,0.02);">
+                        <MudCardContent>
+                            <MudText Typo="Typo.h6" Class="mb-3">Book Information</MudText>
+                            <MudStack Spacing="2">
+                                @if (!string.IsNullOrWhiteSpace(book.Isbn))
+                                {
+                                    <MudStack Row="true" AlignItems="AlignItems.Center">
+                                        <MudIcon Icon="@Icons.Material.Filled.QrCode" Size="Size.Small" Color="Color.Secondary" />
+                                        <MudText Typo="Typo.body2"><strong>ISBN:</strong> @book.Isbn</MudText>
+                                    </MudStack>
+                                }
 
-                            @if (!string.IsNullOrWhiteSpace(book.PublisherName))
-                            {
-                                <dt class="col-sm-3">Publisher</dt>
-                                <dd class="col-sm-9">
-                                    <i class="bi bi-building"></i> @book.PublisherName
-                                </dd>
-                            }
+                                @if (!string.IsNullOrWhiteSpace(book.PublisherName))
+                                {
+                                    <MudStack Row="true" AlignItems="AlignItems.Center">
+                                        <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" Color="Color.Secondary" />
+                                        <MudText Typo="Typo.body2"><strong>Publisher:</strong> @book.PublisherName</MudText>
+                                    </MudStack>
+                                }
 
-                            @if (book.PublishedDate.HasValue)
-                            {
-                                <dt class="col-sm-3">Published</dt>
-                                <dd class="col-sm-9">
-                                    <i class="bi bi-calendar"></i> @book.PublishedDate.Value.ToString("MMMM dd, yyyy")
-                                </dd>
-                            }
-                        </dl>
-                    </div>
-                </div>
+                                @if (book.PublishedDate.HasValue)
+                                {
+                                    <MudStack Row="true" AlignItems="AlignItems.Center">
+                                        <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" Color="Color.Secondary" />
+                                        <MudText Typo="Typo.body2"><strong>Published:</strong> @book.PublishedDate.Value.ToString("MMMM dd, yyyy")</MudText>
+                                    </MudStack>
+                                }
+                            </MudStack>
+                        </MudCardContent>
+                    </MudCard>
 
-                @if (!string.IsNullOrWhiteSpace(book.Description))
-                {
-                    <div class="card">
-                        <div class="card-body">
-                            <h5 class="card-title">Description</h5>
-                            <p class="card-text">@book.Description</p>
-                        </div>
-                    </div>
-                }
-            </div>
-        </div>
+                    @* Description *@
+                    @if (!string.IsNullOrWhiteSpace(book.Description))
+                    {
+                        <MudCard Elevation="0" Style="background-color: rgba(0,0,0,0.02);">
+                            <MudCardContent>
+                                <MudText Typo="Typo.h6" Class="mb-3">Description</MudText>
+                                <MudText Typo="Typo.body1">@book.Description</MudText>
+                            </MudCardContent>
+                        </MudCard>
+                    }
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
 
-        <div class="mt-4">
-            <a href="/" class="btn btn-primary">
-                <i class="bi bi-arrow-left"></i> Back to Catalog
-            </a>
-        </div>
+        @* Actions *@
+        <MudStack Row="true" Class="mt-6" Spacing="2">
+            <MudButton Href="/" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.ArrowBack">
+                Back to Catalog
+            </MudButton>
+        </MudStack>
     }
-</div>
+</MudContainer>
 
 @code {
     [Parameter]
@@ -118,6 +122,7 @@
     private BookDto? book;
     private string? errorMessage;
     private bool isLoading = true;
+    private List<BreadcrumbItem> _breadcrumbItems = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -142,6 +147,13 @@
         try
         {
             book = await ApiClient.GetBookAsync(Id);
+            
+            // Update breadcrumbs
+            _breadcrumbItems = new List<BreadcrumbItem>
+            {
+                new BreadcrumbItem("Home", href: "/", icon: Icons.Material.Filled.Home),
+                new BreadcrumbItem(book.Title, href: null, disabled: true)
+            };
         }
         catch (Refit.ApiException apiEx) when (apiEx.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
@@ -162,21 +174,3 @@
         await LoadBookAsync();
     }
 }
-
-<style>
-    .breadcrumb-item a {
-        text-decoration: none;
-    }
-
-    .breadcrumb-item a:hover {
-        text-decoration: underline;
-    }
-
-    dl dt {
-        font-weight: 600;
-    }
-
-    dl dd {
-        margin-bottom: 0.5rem;
-    }
-</style>
