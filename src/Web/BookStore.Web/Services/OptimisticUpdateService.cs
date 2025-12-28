@@ -7,8 +7,8 @@ namespace BookStore.Web.Services;
 /// </summary>
 public class OptimisticUpdateService
 {
-    private readonly Dictionary<Guid, OptimisticBook> _optimisticBooks = new();
-    private readonly object _lock = new();
+    readonly Dictionary<Guid, OptimisticBook> _optimisticBooks = [];
+    readonly object _lock = new();
 
     public event Action? OnBooksChanged;
 

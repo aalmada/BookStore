@@ -219,7 +219,7 @@
     {
         if (e.Key == "Enter")
         {
-            SearchBooks();
+            _ = SearchBooks();
             return;
         }
 
@@ -240,7 +240,7 @@
     private void ClearSearch()
     {
         searchQuery = string.Empty;
-        SearchBooks();
+        _ = SearchBooks();
     }
 
     private async Task LoadPage(int page)
@@ -320,7 +320,7 @@
         animation: pulse 2s ease-in-out infinite;
     }
     
-    @keyframes pulse {
+    @@keyframes pulse {
         0%, 100% {
             opacity: 0.85;
         }

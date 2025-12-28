@@ -7,8 +7,8 @@ namespace BookStore.Web.Services;
 /// </summary>
 public class BookStoreHubService : IAsyncDisposable
 {
-    private readonly HubConnection _connection;
-    private readonly ILogger<BookStoreHubService> _logger;
+    readonly HubConnection _connection;
+    readonly ILogger<BookStoreHubService> _logger;
 
     public event Action<BookNotification>? OnBookCreated;
     public event Action<BookNotification>? OnBookUpdated;
