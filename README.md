@@ -40,6 +40,8 @@ The Aspire dashboard opens automatically, providing access to:
 ### Frontend (Blazor Web)
 - **Book Catalog** with search and filtering
 - **Book Details** with comprehensive information
+- **Real-time Updates** with SignalR notifications
+- **Optimistic UI** for instant feedback with eventual consistency
 - **Responsive Design** for desktop and mobile
 - **Type-safe API Client** with Refit
 - **Resilience** with Polly (retry and circuit breaker)
@@ -47,6 +49,7 @@ The Aspire dashboard opens automatically, providing access to:
 ### Backend API
 - **Event Sourcing** with Marten and PostgreSQL
 - **CQRS** with async projections for optimized reads
+- **Real-time Notifications** with SignalR (Wolverine integration)
 - **Multi-language Support** for categories (en, pt, es, fr, de)
 - **Full-text Search** with PostgreSQL trigrams and unaccent
 - **Optimistic Concurrency** with ETags
@@ -127,12 +130,14 @@ BookStore/
 - **[Time Standards](docs/time-standards.md)** - JSON serialization and UTC standards
 - **[ETag Support](docs/etag-guide.md)** - Optimistic concurrency and caching
 - **[Correlation & Causation IDs](docs/correlation-causation-guide.md)** - Distributed tracing
+- **[Real-time Notifications](docs/signalr-guide.md)** - SignalR integration and optimistic updates
 - **[Contributing Guidelines](CONTRIBUTING.md)** - How to contribute to this project
 
 ## 🔧 Technology Stack
 
 ### Frontend
-- **Blazor Web** - Interactive web UI
+- **Blazor Web** - Interactive web UI with Server rendering
+- **SignalR Client** - Real-time notifications
 - **Refit** - Type-safe HTTP client
 - **Polly** - Resilience and transient fault handling
 
@@ -140,7 +145,7 @@ BookStore/
 - **ASP.NET Core 10** - Minimal APIs
 - **C# 14** - Latest language features (collection expressions, primary constructors, etc.)
 - **Marten 8.17** - Event store and document DB
-- **Wolverine 5.9** - Mediator and message bus
+- **Wolverine 5.9** - Mediator, message bus, and SignalR integration
 - **PostgreSQL 16** - Database with pg_trgm and unaccent extensions
 
 ### Infrastructure

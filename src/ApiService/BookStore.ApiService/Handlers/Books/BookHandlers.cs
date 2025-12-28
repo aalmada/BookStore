@@ -15,8 +15,9 @@ public static class BookHandlers
     /// <summary>
     /// Handle CreateBook command
     /// Wolverine automatically manages the Marten session and commits the transaction
+    /// Returns a notification that will be published to SignalR
     /// </summary>
-    public static IResult Handle(CreateBook command, IDocumentSession session)
+    public static (IResult, BookStore.ApiService.Events.Notifications.BookCreatedNotification) Handle(CreateBook command, IDocumentSession session)
     {
         var @event = BookAggregate.Create(
             command.Id,
@@ -30,10 +31,16 @@ public static class BookHandlers
         
         session.Events.StartStream<BookAggregate>(command.Id, @event);
         
-        // Wolverine automatically calls SaveChangesAsync after this handler completes
-        return Results.Created(
+        // Create notification for SignalR (will be published as cascading message)
+        var notification = new BookStore.ApiService.Events.Notifications.BookCreatedNotification(
+            command.Id,
+            command.Title,
+            DateTimeOffset.UtcNow);
+        
+        // Wolverine automatically calls SaveChangesAsync and publishes the notification
+        return (Results.Created(
             $"/api/admin/books/{command.Id}",
-            new { id = command.Id, correlationId = session.CorrelationId });
+            new { id = command.Id, correlationId = session.CorrelationId }), notification);
     }
     
     /// <summary>

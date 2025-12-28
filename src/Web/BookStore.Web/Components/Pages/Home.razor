@@ -2,6 +2,9 @@
 @using BookStore.Web.Services
 @using BookStore.Web.Services.Models
 @inject IBookStoreApi ApiClient
+@inject BookStoreHubService HubService
+@inject OptimisticUpdateService OptimisticService
+@implements IAsyncDisposable
 @rendermode InteractiveServer
 
 <PageTitle>Book Store</PageTitle>
@@ -72,6 +75,32 @@
 
         <!-- Book Grid -->
         <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 row-cols-xl-4 g-4 mb-4">
+            @* Show optimistic books first with visual indicator *@
+            @foreach (var optimisticBook in OptimisticService.GetOptimisticBooks())
+            {
+                <div class="col">
+                    <div class="card h-100 shadow-sm hover-shadow optimistic-book">
+                        <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 250px;">
+                            <i class="bi bi-book text-muted" style="font-size: 4rem;"></i>
+                        </div>
+                        <div class="card-body">
+                            <h5 class="card-title">@optimisticBook.Title</h5>
+                            <p class="card-text text-muted small">
+                                <i class="bi bi-person"></i> @optimisticBook.AuthorNames
+                            </p>
+                            @if (!string.IsNullOrWhiteSpace(optimisticBook.PublisherName))
+                            {
+                                <p class="card-text text-muted small">
+                                    <i class="bi bi-building"></i> @optimisticBook.PublisherName
+                                </p>
+                            }
+                            <span class="badge bg-info"><i class="bi bi-clock-history"></i> Saving...</span>
+                        </div>
+                    </div>
+                </div>
+            }
+            
+            @* Show actual books from server *@
             @foreach (var book in pagedBooks.Items)
             {
                 <div class="col">
@@ -148,7 +177,20 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // Subscribe to real-time book notifications
+        HubService.OnBookCreated += HandleBookCreated;
+        
+        // Subscribe to optimistic update changes
+        OptimisticService.OnBooksChanged += HandleOptimisticBooksChanged;
+        
+        // Start SignalR connection
+        await HubService.StartAsync();
+        
+        // Load initial books
         await LoadBooksAsync();
+        
+        // Start cleanup timer for stale optimistic books
+        StartCleanupTimer();
     }
 
     private async Task LoadBooksAsync()
@@ -216,6 +258,47 @@
     {
         debounceTimer?.Dispose();
     }
+    
+    private void HandleBookCreated(BookNotification notification)
+    {
+        // Confirm optimistic book (remove from optimistic list)
+        OptimisticService.ConfirmBook(notification.EntityId);
+        
+        // Refresh book list to show actual server data
+        InvokeAsync(async () =>
+        {
+            await LoadBooksAsync();
+            StateHasChanged();
+        });
+    }
+    
+    private void HandleOptimisticBooksChanged()
+    {
+        // Refresh UI when optimistic books change
+        InvokeAsync(StateHasChanged);
+    }
+    
+    private System.Threading.Timer? cleanupTimer;
+    
+    private void StartCleanupTimer()
+    {
+        // Clean up stale optimistic books every 5 seconds
+        cleanupTimer = new System.Threading.Timer(_ =>
+        {
+            OptimisticService.CleanupStaleBooks();
+        }, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+    }
+    
+    public async ValueTask DisposeAsync()
+    {
+        // Unsubscribe from events
+        HubService.OnBookCreated -= HandleBookCreated;
+        OptimisticService.OnBooksChanged -= HandleOptimisticBooksChanged;
+        
+        // Dispose timers
+        debounceTimer?.Dispose();
+        cleanupTimer?.Dispose();
+    }
 }
 
 <style>
@@ -229,5 +312,20 @@
 
     .card-img-top {
         border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+    }
+    
+    /* Optimistic book styling with pulse animation */
+    .optimistic-book {
+        opacity: 0.85;
+        animation: pulse 2s ease-in-out infinite;
+    }
+    
+    @keyframes pulse {
+        0%, 100% {
+            opacity: 0.85;
+        }
+        50% {
+            opacity: 1;
+        }
     }
 </style>

@@ -11,6 +11,7 @@ using Scalar.AspNetCore;
 using Weasel.Core;
 using Wolverine;
 using Wolverine.Marten;
+using Wolverine.SignalR;
 using JasperFx.Events.Projections;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -165,9 +166,22 @@ builder.Services.AddWolverine(opts =>
     opts.Discovery.IncludeType(typeof(BookStore.ApiService.Handlers.Categories.CategoryHandlers));
     opts.Discovery.IncludeType(typeof(BookStore.ApiService.Handlers.Publishers.PublisherHandlers));
 
+    // Enable SignalR transport for real-time notifications
+    opts.UseSignalR();
+    
+    // Route domain event notifications to SignalR
+    opts.Publish(x =>
+    {
+        x.MessagesImplementing<BookStore.ApiService.Events.Notifications.IDomainEventNotification>();
+        x.ToSignalR();
+    });
+
     // Policies for automatic behavior
     opts.Policies.AutoApplyTransactions();
 });
+
+// Add SignalR for real-time notifications
+builder.Services.AddSignalR();
 
 // Add Marten health checks
 builder.Services.AddHealthChecks()
@@ -261,5 +275,8 @@ adminApi.MapGroup("/projections")
     .WithTags("Admin - System");
 
 app.MapDefaultEndpoints();
+
+// Map SignalR hub for real-time notifications
+app.MapHub<Wolverine.SignalR.WolverineHub>("/hub/bookstore");
 
 app.Run();

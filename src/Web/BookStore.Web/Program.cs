@@ -38,6 +38,12 @@ builder.Services
     .AddPolicyHandler(retryPolicy)
     .AddPolicyHandler(circuitBreakerPolicy);
 
+// Register SignalR hub service for real-time notifications
+builder.Services.AddSingleton<BookStoreHubService>();
+
+// Register optimistic update service for eventual consistency
+builder.Services.AddSingleton<OptimisticUpdateService>();
+
 builder.Services.AddOutputCache();
 
 builder.Services.AddHttpClient<WeatherApiClient>(client =>
