@@ -4,7 +4,7 @@ namespace BookStore.Web.Tests;
 
 public class WebTests
 {
-    static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(30);
+    static readonly TimeSpan DefaultTimeout = TimeSpan.FromMinutes(2); // Aspire startup can take time in CI
 
     [Test]
     [Category("Integration")]

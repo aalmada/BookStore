@@ -53,8 +53,9 @@ jobs:
     - name: Run web integration tests
       run: dotnet test --configuration Release --treenode-filter "/**[Category=Integration]"
       working-directory: src/Web/BookStore.Web.Tests
+      timeout-minutes: 10
       # Integration tests run after unit tests pass
-      # Slower tests that require full application stack
+      # Slower tests that require full application stack (Aspire startup takes time)
         
   code-quality:
     runs-on: ubuntu-latest
