@@ -1,6 +1,6 @@
 using System;
 
-namespace BS1001.NoDiagnostic;
+namespace BS1001.NoDiagnostic.Events;
 
 // This is a valid event - it's a record type
 public record BookAdded(

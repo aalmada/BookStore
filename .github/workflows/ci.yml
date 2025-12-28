@@ -46,7 +46,7 @@ jobs:
       # Run fast unit tests first for quick feedback
       
     - name: Run analyzer tests
-      run: dotnet test --configuration Release --treenode-filter "/**[Category=Unit]"
+      run: dotnet test --configuration Release
       working-directory: src/ApiService/BookStore.ApiService.Analyzers.Tests
       # Verify Roslyn analyzers work correctly
       
