@@ -1,11 +1,8 @@
-using Marten;
 using BookStore.ApiService.Models;
-
-using Microsoft.AspNetCore.Http.HttpResults;
-using Marten.Pagination;
-
-
 using BookStore.ApiService.Projections;
+using Marten;
+using Marten.Pagination;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Npgsql;
 
@@ -15,12 +12,12 @@ public static class BookEndpoints
 {
     public static RouteGroupBuilder MapBookEndpoints(this RouteGroupBuilder group)
     {
-        group.MapGet("/", SearchBooks)
+        _ = group.MapGet("/", SearchBooks)
             .WithName("GetBooks")
             .WithSummary("Get all books")
             .CacheOutput(policy => policy.Expire(TimeSpan.FromMinutes(2)));
 
-        group.MapGet("/{id:guid}", GetBook)
+        _ = group.MapGet("/{id:guid}", GetBook)
             .WithName("GetBook")
             .WithSummary("Get book by ID")
             .CacheOutput(policy => policy
@@ -50,17 +47,17 @@ public static class BookEndpoints
         // Use NGram search for fuzzy, accent-insensitive matching
         // This leverages the pg_trgm indexes we configured
         var searchQuery = q.Trim();
-        
+
         var query = session.Query<BookSearchProjection>()
-            .Where(b => 
+            .Where(b =>
                 b.Title.NgramSearch(searchQuery) ||
                 (b.Description != null && b.Description.NgramSearch(searchQuery)) ||
                 (b.Isbn != null && b.Isbn.Contains(searchQuery)) ||  // Exact match for ISBN
                 (b.PublisherName != null && b.PublisherName.NgramSearch(searchQuery)) ||
                 b.AuthorNames.NgramSearch(searchQuery))
-                // Note: CategoryNames excluded - use filtering instead of text search
+            // Note: CategoryNames excluded - use filtering instead of text search
             .OrderBy(b => b.Title);
-        
+
         // Use Marten's native pagination for optimal performance
         var searchResults = await query.ToPagedListAsync(paging.Page!.Value, paging.PageSize!.Value);
 
@@ -73,22 +70,24 @@ public static class BookEndpoints
         HttpContext context)
     {
         var book = await session.LoadAsync<BookSearchProjection>(id);
-        
+
         if (book == null)
+        {
             return TypedResults.NotFound();
+        }
 
         // Get stream state for ETag
         var streamState = await session.Events.FetchStreamStateAsync(id);
         if (streamState != null)
         {
             var etag = Infrastructure.ETagHelper.GenerateETag(streamState.Version);
-            
+
             // Check If-None-Match for caching
             if (Infrastructure.ETagHelper.CheckIfNoneMatch(context, etag))
             {
                 return Infrastructure.ETagHelper.NotModified(etag);
             }
-            
+
             Infrastructure.ETagHelper.AddETagHeader(context, etag);
         }
 

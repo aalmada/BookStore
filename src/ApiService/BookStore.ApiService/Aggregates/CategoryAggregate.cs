@@ -27,21 +27,17 @@ public class CategoryAggregate
         Translations = @event.Translations ?? [];
     }
 
-    void Apply(CategorySoftDeleted @event)
-    {
-        IsDeleted = true;
-    }
+    void Apply(CategorySoftDeleted @event) => IsDeleted = true;
 
-    void Apply(CategoryRestored @event)
-    {
-        IsDeleted = false;
-    }
+    void Apply(CategoryRestored @event) => IsDeleted = false;
 
     // Command methods
     public static CategoryAdded Create(Guid id, string name, string? description, Dictionary<string, CategoryTranslation>? translations = null)
     {
         if (string.IsNullOrWhiteSpace(name))
+        {
             throw new ArgumentException("Name is required", nameof(name));
+        }
 
         return new CategoryAdded(id, name, description, translations ?? [], DateTimeOffset.UtcNow);
     }
@@ -49,10 +45,14 @@ public class CategoryAggregate
     public CategoryUpdated Update(string name, string? description, Dictionary<string, CategoryTranslation>? translations = null)
     {
         if (IsDeleted)
+        {
             throw new InvalidOperationException("Cannot update a deleted category");
+        }
 
         if (string.IsNullOrWhiteSpace(name))
+        {
             throw new ArgumentException("Name is required", nameof(name));
+        }
 
         return new CategoryUpdated(Id, name, description, translations ?? [], DateTimeOffset.UtcNow);
     }
@@ -60,7 +60,9 @@ public class CategoryAggregate
     public CategorySoftDeleted SoftDelete()
     {
         if (IsDeleted)
+        {
             throw new InvalidOperationException("Category is already deleted");
+        }
 
         return new CategorySoftDeleted(Id, DateTimeOffset.UtcNow);
     }
@@ -68,7 +70,9 @@ public class CategoryAggregate
     public CategoryRestored Restore()
     {
         if (!IsDeleted)
+        {
             throw new InvalidOperationException("Category is not deleted");
+        }
 
         return new CategoryRestored(Id, DateTimeOffset.UtcNow);
     }

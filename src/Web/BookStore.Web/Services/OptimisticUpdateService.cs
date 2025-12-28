@@ -29,7 +29,7 @@ public class OptimisticUpdateService
                 AddedAt = DateTimeOffset.UtcNow
             };
         }
-        
+
         OnBooksChanged?.Invoke();
     }
 
@@ -42,7 +42,7 @@ public class OptimisticUpdateService
         {
             if (_optimisticBooks.ContainsKey(id))
             {
-                _optimisticBooks.Remove(id);
+                _ = _optimisticBooks.Remove(id);
                 OnBooksChanged?.Invoke();
             }
         }
@@ -55,7 +55,7 @@ public class OptimisticUpdateService
     {
         lock (_lock)
         {
-            return _optimisticBooks.Values.ToList();
+            return [.. _optimisticBooks.Values];
         }
     }
 
@@ -73,7 +73,7 @@ public class OptimisticUpdateService
 
             foreach (var id in staleBooks)
             {
-                _optimisticBooks.Remove(id);
+                _ = _optimisticBooks.Remove(id);
             }
 
             if (staleBooks.Any())

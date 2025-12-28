@@ -13,14 +13,14 @@ public static class AuthorHandlers
             command.Id,
             command.Name,
             command.Biography);
-        
-        session.Events.StartStream<AuthorAggregate>(command.Id, @event);
-        
+
+        _ = session.Events.StartStream<AuthorAggregate>(command.Id, @event);
+
         return Results.Created(
             $"/api/admin/authors/{command.Id}",
             new { id = command.Id, correlationId = session.CorrelationId });
     }
-    
+
     public static async Task<IResult> Handle(
         UpdateAuthor command,
         IDocumentSession session,
@@ -28,10 +28,12 @@ public static class AuthorHandlers
     {
         var streamState = await session.Events.FetchStreamStateAsync(command.Id);
         if (streamState == null)
+        {
             return Results.NotFound();
+        }
 
         var currentETag = ETagHelper.GenerateETag(streamState.Version);
-        if (!string.IsNullOrEmpty(command.ETag) && 
+        if (!string.IsNullOrEmpty(command.ETag) &&
             !ETagHelper.CheckIfMatch(context, currentETag))
         {
             return ETagHelper.PreconditionFailed();
@@ -39,10 +41,12 @@ public static class AuthorHandlers
 
         var aggregate = await session.Events.AggregateStreamAsync<AuthorAggregate>(command.Id);
         if (aggregate == null)
+        {
             return Results.NotFound();
+        }
 
         var @event = aggregate.Update(command.Name, command.Biography);
-        session.Events.Append(command.Id, @event);
+        _ = session.Events.Append(command.Id, @event);
 
         var newStreamState = await session.Events.FetchStreamStateAsync(command.Id);
         var newETag = ETagHelper.GenerateETag(newStreamState!.Version);
@@ -50,7 +54,7 @@ public static class AuthorHandlers
 
         return Results.NoContent();
     }
-    
+
     public static async Task<IResult> Handle(
         SoftDeleteAuthor command,
         IDocumentSession session,
@@ -58,10 +62,12 @@ public static class AuthorHandlers
     {
         var streamState = await session.Events.FetchStreamStateAsync(command.Id);
         if (streamState == null)
+        {
             return Results.NotFound();
+        }
 
         var currentETag = ETagHelper.GenerateETag(streamState.Version);
-        if (!string.IsNullOrEmpty(command.ETag) && 
+        if (!string.IsNullOrEmpty(command.ETag) &&
             !ETagHelper.CheckIfMatch(context, currentETag))
         {
             return ETagHelper.PreconditionFailed();
@@ -69,10 +75,12 @@ public static class AuthorHandlers
 
         var aggregate = await session.Events.AggregateStreamAsync<AuthorAggregate>(command.Id);
         if (aggregate == null)
+        {
             return Results.NotFound();
+        }
 
         var @event = aggregate.SoftDelete();
-        session.Events.Append(command.Id, @event);
+        _ = session.Events.Append(command.Id, @event);
 
         var newStreamState = await session.Events.FetchStreamStateAsync(command.Id);
         var newETag = ETagHelper.GenerateETag(newStreamState!.Version);
@@ -80,7 +88,7 @@ public static class AuthorHandlers
 
         return Results.NoContent();
     }
-    
+
     public static async Task<IResult> Handle(
         RestoreAuthor command,
         IDocumentSession session,
@@ -88,10 +96,12 @@ public static class AuthorHandlers
     {
         var streamState = await session.Events.FetchStreamStateAsync(command.Id);
         if (streamState == null)
+        {
             return Results.NotFound();
+        }
 
         var currentETag = ETagHelper.GenerateETag(streamState.Version);
-        if (!string.IsNullOrEmpty(command.ETag) && 
+        if (!string.IsNullOrEmpty(command.ETag) &&
             !ETagHelper.CheckIfMatch(context, currentETag))
         {
             return ETagHelper.PreconditionFailed();
@@ -99,10 +109,12 @@ public static class AuthorHandlers
 
         var aggregate = await session.Events.AggregateStreamAsync<AuthorAggregate>(command.Id);
         if (aggregate == null)
+        {
             return Results.NotFound();
+        }
 
         var @event = aggregate.Restore();
-        session.Events.Append(command.Id, @event);
+        _ = session.Events.Append(command.Id, @event);
 
         var newStreamState = await session.Events.FetchStreamStateAsync(command.Id);
         var newETag = ETagHelper.GenerateETag(newStreamState!.Version);

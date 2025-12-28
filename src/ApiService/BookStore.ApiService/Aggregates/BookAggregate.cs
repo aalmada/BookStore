@@ -40,15 +40,9 @@ public class BookAggregate
         CategoryIds = @event.CategoryIds;
     }
 
-    void Apply(BookSoftDeleted @event)
-    {
-        IsDeleted = true;
-    }
+    void Apply(BookSoftDeleted @event) => IsDeleted = true;
 
-    void Apply(BookRestored @event)
-    {
-        IsDeleted = false;
-    }
+    void Apply(BookRestored @event) => IsDeleted = false;
 
     // Command methods
     public static BookAdded Create(
@@ -89,7 +83,9 @@ public class BookAggregate
     {
         // Business rule: cannot update deleted book
         if (IsDeleted)
+        {
             throw new InvalidOperationException("Cannot update a deleted book");
+        }
 
         // Validate all inputs before creating event
         ValidateTitle(title);
@@ -112,41 +108,55 @@ public class BookAggregate
     static void ValidateTitle(string title)
     {
         if (string.IsNullOrWhiteSpace(title))
+        {
             throw new ArgumentException("Title is required", nameof(title));
+        }
 
         if (title.Length > 500)
+        {
             throw new ArgumentException("Title cannot exceed 500 characters", nameof(title));
+        }
     }
 
     static void ValidateIsbn(string? isbn)
     {
         if (string.IsNullOrWhiteSpace(isbn))
+        {
             return; // ISBN is optional
+        }
 
         // Remove hyphens and spaces for validation
-        var cleanIsbn = new string(isbn.Where(char.IsDigit).ToArray());
+        var cleanIsbn = new string([.. isbn.Where(char.IsDigit)]);
 
         // ISBN-10 or ISBN-13
-        if (cleanIsbn.Length != 10 && cleanIsbn.Length != 13)
+        if (cleanIsbn.Length is not 10 and not 13)
+        {
             throw new ArgumentException("ISBN must be 10 or 13 digits", nameof(isbn));
+        }
     }
 
     static void ValidateDescription(string? description)
     {
         if (description != null && description.Length > 5000)
+        {
             throw new ArgumentException("Description cannot exceed 5000 characters", nameof(description));
+        }
     }
 
     static void ValidatePublicationDate(DateOnly? publicationDate)
     {
         if (publicationDate.HasValue && publicationDate.Value > DateOnly.FromDateTime(DateTime.UtcNow))
+        {
             throw new ArgumentException("Publication date cannot be in the future", nameof(publicationDate));
+        }
     }
 
     public BookSoftDeleted SoftDelete()
     {
         if (IsDeleted)
+        {
             throw new InvalidOperationException("Book is already deleted");
+        }
 
         return new BookSoftDeleted(Id);
     }
@@ -154,7 +164,9 @@ public class BookAggregate
     public BookRestored Restore()
     {
         if (!IsDeleted)
+        {
             throw new InvalidOperationException("Book is not deleted");
+        }
 
         return new BookRestored(Id);
     }

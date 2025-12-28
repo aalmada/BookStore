@@ -1,9 +1,9 @@
+using System.Collections.Immutable;
+using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
-using System.Collections.Immutable;
-using System.Linq;
 
 namespace BookStore.ApiService.Analyzers.Analyzers;
 
@@ -40,8 +40,8 @@ public class HandlerConventionAnalyzer : DiagnosticAnalyzer
         isEnabledByDefault: true,
         description: "Wolverine routes messages based on the first parameter type.");
 
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-        ImmutableArray.Create(ShouldBeNamedHandleRule, ShouldBeStaticRule, FirstParameterShouldBeCommandRule);
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics
+        => [ShouldBeNamedHandleRule, ShouldBeStaticRule, FirstParameterShouldBeCommandRule];
 
     public override void Initialize(AnalysisContext context)
     {
@@ -56,15 +56,21 @@ public class HandlerConventionAnalyzer : DiagnosticAnalyzer
         var methodSymbol = context.SemanticModel.GetDeclaredSymbol(methodDeclaration);
 
         if (methodSymbol == null)
+        {
             return;
+        }
 
         // Only analyze methods in Handlers namespace
         if (!IsInHandlersNamespace(methodSymbol.ContainingType))
+        {
             return;
+        }
 
         // Only analyze public methods
         if (methodSymbol.DeclaredAccessibility != Accessibility.Public)
+        {
             return;
+        }
 
         var methodName = methodSymbol.Name;
 
@@ -80,7 +86,9 @@ public class HandlerConventionAnalyzer : DiagnosticAnalyzer
 
         // Only check the following rules for methods named "Handle"
         if (methodName != "Handle")
+        {
             return;
+        }
 
         // BS4002: Check if method is static
         if (!methodSymbol.IsStatic)
@@ -120,9 +128,7 @@ public class HandlerConventionAnalyzer : DiagnosticAnalyzer
     }
 
     static bool LooksLikeHandler(IMethodSymbol method)
-    {
         // A method looks like a handler if it has at least one parameter
         // and returns a result type (IResult, Task<IResult>, etc.)
-        return method.Parameters.Length > 0;
-    }
+        => method.Parameters.Length > 0;
 }

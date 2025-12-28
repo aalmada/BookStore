@@ -14,7 +14,7 @@ var apiService = builder.AddProject<Projects.BookStore_ApiService>("apiservice")
     .WithUrlForEndpoint("http", url =>
     {
         url.DisplayText = "API Reference";
-        url.Url = url.Url + "/api-reference";
+        url.Url += "/api-reference";
     })
     .WaitFor(postgres);
 

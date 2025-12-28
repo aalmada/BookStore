@@ -14,20 +14,15 @@ public class AuthorProjection
 public class AuthorProjectionBuilder : SingleStreamProjection<AuthorProjection, Guid>
 {
     public AuthorProjectionBuilder()
-    {
         // Delete projection when author is soft-deleted
-        DeleteEvent<AuthorSoftDeleted>();
-    }
-    public AuthorProjection Create(AuthorAdded @event)
+        => DeleteEvent<AuthorSoftDeleted>();
+    public AuthorProjection Create(AuthorAdded @event) => new()
     {
-        return new AuthorProjection
-        {
-            Id = @event.Id,
-            Name = @event.Name,
-            Biography = @event.Biography,
-            LastModified = @event.Timestamp
-        };
-    }
+        Id = @event.Id,
+        Name = @event.Name,
+        Biography = @event.Biography,
+        LastModified = @event.Timestamp
+    };
 
     void Apply(AuthorUpdated @event, AuthorProjection projection)
     {

@@ -16,20 +16,11 @@ public class PublisherAggregate
         IsDeleted = false;
     }
 
-    void Apply(PublisherUpdated @event)
-    {
-        Name = @event.Name;
-    }
+    void Apply(PublisherUpdated @event) => Name = @event.Name;
 
-    void Apply(PublisherSoftDeleted @event)
-    {
-        IsDeleted = true;
-    }
+    void Apply(PublisherSoftDeleted @event) => IsDeleted = true;
 
-    void Apply(PublisherRestored @event)
-    {
-        IsDeleted = false;
-    }
+    void Apply(PublisherRestored @event) => IsDeleted = false;
 
     // Command methods
     public static PublisherAdded Create(Guid id, string name)
@@ -43,7 +34,9 @@ public class PublisherAggregate
     {
         // Business rule: cannot update deleted publisher
         if (IsDeleted)
+        {
             throw new InvalidOperationException("Cannot update a deleted publisher");
+        }
 
         ValidateName(name);
 
@@ -54,16 +47,22 @@ public class PublisherAggregate
     static void ValidateName(string name)
     {
         if (string.IsNullOrWhiteSpace(name))
+        {
             throw new ArgumentException("Name is required", nameof(name));
+        }
 
         if (name.Length > 200)
+        {
             throw new ArgumentException("Name cannot exceed 200 characters", nameof(name));
+        }
     }
 
     public PublisherSoftDeleted SoftDelete()
     {
         if (IsDeleted)
+        {
             throw new InvalidOperationException("Publisher is already deleted");
+        }
 
         return new PublisherSoftDeleted(Id, DateTimeOffset.UtcNow);
     }
@@ -71,7 +70,9 @@ public class PublisherAggregate
     public PublisherRestored Restore()
     {
         if (!IsDeleted)
+        {
             throw new InvalidOperationException("Publisher is not deleted");
+        }
 
         return new PublisherRestored(Id, DateTimeOffset.UtcNow);
     }

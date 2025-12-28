@@ -1,8 +1,8 @@
+using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
-using System.Collections.Immutable;
 
 namespace BookStore.ApiService.Analyzers.Analyzers;
 
@@ -40,8 +40,8 @@ public class AggregateApplyMethodAnalyzer : DiagnosticAnalyzer
         isEnabledByDefault: true,
         description: "Apply methods are called by Marten during rehydration and should not be public.");
 
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-        ImmutableArray.Create(ReturnVoidRule, OneParameterRule, ShouldBePrivateRule);
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics
+        => [ReturnVoidRule, OneParameterRule, ShouldBePrivateRule];
 
     public override void Initialize(AnalysisContext context)
     {
@@ -56,15 +56,21 @@ public class AggregateApplyMethodAnalyzer : DiagnosticAnalyzer
         var methodSymbol = context.SemanticModel.GetDeclaredSymbol(methodDeclaration);
 
         if (methodSymbol == null)
+        {
             return;
+        }
 
         // Only analyze methods named "Apply"
         if (methodSymbol.Name != "Apply")
+        {
             return;
+        }
 
         // Only analyze methods in Aggregates namespace
         if (!IsInAggregatesNamespace(methodSymbol.ContainingType))
+        {
             return;
+        }
 
         var aggregateName = methodSymbol.ContainingType.Name;
 

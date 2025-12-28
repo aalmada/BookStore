@@ -29,23 +29,23 @@ namespace BookStore.ApiService.Endpoints.Admin
     {
         public static RouteGroupBuilder MapAdminBookEndpoints(this RouteGroupBuilder group)
         {
-            group.MapPost("/", CreateBook)
+            _ = group.MapPost("/", CreateBook)
                 .WithName("CreateBook")
                 .WithSummary("Create a new book");
 
-            group.MapPut("/{id:guid}", UpdateBook)
+            _ = group.MapPut("/{id:guid}", UpdateBook)
                 .WithName("UpdateBook")
                 .WithSummary("Update a book");
 
-            group.MapDelete("/{id:guid}", SoftDeleteBook)
+            _ = group.MapDelete("/{id:guid}", SoftDeleteBook)
                 .WithName("SoftDeleteBook")
                 .WithSummary("Delete a book");
 
-            group.MapPost("/{id:guid}/restore", RestoreBook)
+            _ = group.MapPost("/{id:guid}/restore", RestoreBook)
                 .WithName("RestoreBook")
                 .WithSummary("Restore a deleted book");
 
-            group.MapGet("/", GetAllBooks)
+            _ = group.MapGet("/", GetAllBooks)
                 .WithName("GetAllBooksAdmin")
                 .WithSummary("Get all books");
 
@@ -65,7 +65,7 @@ namespace BookStore.ApiService.Endpoints.Admin
                 request.PublisherId,
                 request.AuthorIds ?? [],
                 request.CategoryIds ?? []);
-            
+
             // Wolverine invokes the handler, manages transaction, and returns result
             return bus.InvokeAsync<IResult>(command);
         }
@@ -78,7 +78,7 @@ namespace BookStore.ApiService.Endpoints.Admin
         {
             // Extract ETag from If-Match header
             var etag = context.Request.Headers["If-Match"].FirstOrDefault();
-            
+
             var command = new Commands.UpdateBook(
                 id,
                 request.Title,
@@ -91,7 +91,7 @@ namespace BookStore.ApiService.Endpoints.Admin
             {
                 ETag = etag
             };
-            
+
             return bus.InvokeAsync<IResult>(command);
         }
 
@@ -101,12 +101,12 @@ namespace BookStore.ApiService.Endpoints.Admin
             HttpContext context)
         {
             var etag = context.Request.Headers["If-Match"].FirstOrDefault();
-            
+
             var command = new Commands.SoftDeleteBook(id)
             {
                 ETag = etag
             };
-            
+
             return bus.InvokeAsync<IResult>(command);
         }
 
@@ -116,12 +116,12 @@ namespace BookStore.ApiService.Endpoints.Admin
             HttpContext context)
         {
             var etag = context.Request.Headers["If-Match"].FirstOrDefault();
-            
+
             var command = new Commands.RestoreBook(id)
             {
                 ETag = etag
             };
-            
+
             return bus.InvokeAsync<IResult>(command);
         }
 

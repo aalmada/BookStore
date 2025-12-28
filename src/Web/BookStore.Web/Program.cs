@@ -17,7 +17,7 @@ builder.Services.AddRazorComponents()
 // Configure Polly policies for resilience
 var retryPolicy = HttpPolicyExtensions
     .HandleTransientHttpError()
-    .WaitAndRetryAsync(3, retryAttempt => 
+    .WaitAndRetryAsync(3, retryAttempt =>
         TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
 
 var circuitBreakerPolicy = HttpPolicyExtensions
@@ -30,7 +30,7 @@ builder.Services
     .ConfigureHttpClient(c =>
     {
         // Get API base URL from service discovery (Aspire)
-        var apiServiceUrl = builder.Configuration["services:apiservice:https:0"] 
+        var apiServiceUrl = builder.Configuration["services:apiservice:https:0"]
             ?? builder.Configuration["services:apiservice:http:0"]
             ?? "http://localhost:5000";
         c.BaseAddress = new Uri(apiServiceUrl);
@@ -46,20 +46,18 @@ builder.Services.AddSingleton<OptimisticUpdateService>();
 
 builder.Services.AddOutputCache();
 
-builder.Services.AddHttpClient<WeatherApiClient>(client =>
-    {
-        // This URL uses "https+http://" to indicate HTTPS is preferred over HTTP.
-        // Learn more about service discovery scheme resolution at https://aka.ms/dotnet/sdschemes.
-        client.BaseAddress = new("https+http://apiservice");
-    });
+_ = builder.Services.AddHttpClient<WeatherApiClient>(client =>
+    // This URL uses "https+http://" to indicate HTTPS is preferred over HTTP.
+    // Learn more about service discovery scheme resolution at https://aka.ms/dotnet/sdschemes.
+    client.BaseAddress = new("https+http://apiservice"));
 
 var app = builder.Build();
 
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Error", createScopeForErrors: true);
+    _ = app.UseExceptionHandler("/Error", createScopeForErrors: true);
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-    app.UseHsts();
+    _ = app.UseHsts();
 }
 
 app.UseHttpsRedirection();

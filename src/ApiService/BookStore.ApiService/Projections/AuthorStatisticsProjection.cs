@@ -21,20 +21,17 @@ public class AuthorStatisticsProjectionBuilder : MultiStreamProjection<AuthorSta
         Identity<BookUpdated>(x => x.Id);
         Identity<BookSoftDeleted>(x => x.Id);
         Identity<BookRestored>(x => x.Id);
-        
+
         // Also listen to author creation to initialize stats
         Identity<AuthorAdded>(x => x.Id);
     }
 
     // Initialize stats when author is created
-    public AuthorStatistics Create(AuthorAdded @event)
+    public AuthorStatistics Create(AuthorAdded @event) => new()
     {
-        return new AuthorStatistics
-        {
-            Id = @event.Id,
-            BookCount = 0
-        };
-    }
+        Id = @event.Id,
+        BookCount = 0
+    };
 
     // When a book is added, increment count for each author
     public async Task Apply(BookAdded @event, AuthorStatistics projection, IQuerySession session)
@@ -51,11 +48,14 @@ public class AuthorStatisticsProjectionBuilder : MultiStreamProjection<AuthorSta
     {
         // Load the book to check previous state
         var book = await session.LoadAsync<BookSearchProjection>(@event.Id);
-        if (book == null) return;
+        if (book == null)
+        {
+            return;
+        }
 
         // Check if this author was added or removed
-        bool wasInBook = book.AuthorIds.Contains(projection.Id);
-        bool isInBook = @event.AuthorIds.Contains(projection.Id);
+        var wasInBook = book.AuthorIds.Contains(projection.Id);
+        var isInBook = @event.AuthorIds.Contains(projection.Id);
 
         if (!wasInBook && isInBook)
         {
@@ -73,7 +73,10 @@ public class AuthorStatisticsProjectionBuilder : MultiStreamProjection<AuthorSta
     public async Task Apply(BookSoftDeleted @event, AuthorStatistics projection, IQuerySession session)
     {
         var book = await session.LoadAsync<BookSearchProjection>(@event.Id);
-        if (book == null) return;
+        if (book == null)
+        {
+            return;
+        }
 
         if (book.AuthorIds.Contains(projection.Id))
         {
@@ -85,7 +88,10 @@ public class AuthorStatisticsProjectionBuilder : MultiStreamProjection<AuthorSta
     public async Task Apply(BookRestored @event, AuthorStatistics projection, IQuerySession session)
     {
         var book = await session.LoadAsync<BookSearchProjection>(@event.Id);
-        if (book == null) return;
+        if (book == null)
+        {
+            return;
+        }
 
         if (book.AuthorIds.Contains(projection.Id))
         {

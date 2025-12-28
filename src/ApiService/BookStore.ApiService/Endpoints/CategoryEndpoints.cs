@@ -1,13 +1,10 @@
-using Marten;
-using BookStore.ApiService.Models;
-
-using Microsoft.AspNetCore.Http.HttpResults;
-using Marten.Pagination;
-
-
-using BookStore.ApiService.Projections;
-using Microsoft.AspNetCore.Mvc;
 using System.Globalization;
+using BookStore.ApiService.Models;
+using BookStore.ApiService.Projections;
+using Marten;
+using Marten.Pagination;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 
 namespace BookStore.ApiService.Endpoints;
 
@@ -17,12 +14,12 @@ public static class CategoryEndpoints
 
     public static RouteGroupBuilder MapCategoryEndpoints(this RouteGroupBuilder group)
     {
-        group.MapGet("/", GetCategories)
+        _ = group.MapGet("/", GetCategories)
             .WithName("GetCategories")
             .WithSummary("Get all categories")
             .CacheOutput(policy => policy.Expire(TimeSpan.FromMinutes(5)));
 
-        group.MapGet("/{id:guid}", GetCategory)
+        _ = group.MapGet("/{id:guid}", GetCategory)
             .WithName("GetCategory")
             .WithSummary("Get category by ID")
             .CacheOutput(policy => policy.Expire(TimeSpan.FromMinutes(5)));
@@ -37,7 +34,7 @@ public static class CategoryEndpoints
     {
         var paging = request.Normalize();
         var language = GetPreferredLanguage(context);
-        
+
         // Use Marten's native pagination for optimal performance
         var pagedList = await session.Query<CategoryProjection>()
             .OrderBy(c => c.Name)
@@ -45,7 +42,7 @@ public static class CategoryEndpoints
 
         // Return the paged list - localization will be handled by the client or in a response DTO
         // For now, we'll map to localized responses inline
-        var localizedResponse = new 
+        var localizedResponse = new
         {
             Items = pagedList.Select(c => LocalizeCategory(c, language)).ToList(),
             pagedList.PageNumber,
@@ -55,7 +52,7 @@ public static class CategoryEndpoints
             pagedList.HasPreviousPage,
             pagedList.HasNextPage
         };
-        
+
         return TypedResults.Ok(localizedResponse);
     }
 
@@ -67,7 +64,9 @@ public static class CategoryEndpoints
         var language = GetPreferredLanguage(context);
         var category = await session.LoadAsync<CategoryProjection>(id);
         if (category == null)
+        {
             return TypedResults.NotFound();
+        }
 
         var response = LocalizeCategory(category, language);
         return TypedResults.Ok(response);
@@ -77,9 +76,11 @@ public static class CategoryEndpoints
     {
         // Get Accept-Language header
         var acceptLanguage = context.Request.Headers.AcceptLanguage.ToString();
-        
+
         if (string.IsNullOrWhiteSpace(acceptLanguage))
+        {
             return "en"; // Default to English
+        }
 
         // Parse the first language from Accept-Language header
         // Format: "en-US,en;q=0.9,pt;q=0.8"

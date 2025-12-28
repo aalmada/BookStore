@@ -1,18 +1,18 @@
-using Marten;
-using Marten.Events.Daemon;
-using Marten.Events.Projections;
-using JasperFx.Events;
 using BookStore.ApiService.Aggregates;
-using BookStore.ApiService.Projections;
 using BookStore.ApiService.Endpoints;
 using BookStore.ApiService.Endpoints.Admin;
 using BookStore.ApiService.Infrastructure;
+using BookStore.ApiService.Projections;
+using JasperFx.Events;
+using JasperFx.Events.Projections;
+using Marten;
+using Marten.Events.Daemon;
+using Marten.Events.Projections;
 using Scalar.AspNetCore;
 using Weasel.Core;
 using Wolverine;
 using Wolverine.Marten;
 using Wolverine.SignalR;
-using JasperFx.Events.Projections;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,14 +24,14 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 {
     // Use web defaults (camelCase properties)
     options.SerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
-    
+
     // Serialize enums as strings (not integers) for better readability and API evolution
     options.SerializerOptions.Converters.Add(
         new System.Text.Json.Serialization.JsonStringEnumConverter(System.Text.Json.JsonNamingPolicy.CamelCase));
-    
+
     // Pretty print in development for easier debugging
     options.SerializerOptions.WriteIndented = builder.Environment.IsDevelopment();
-    
+
     // ISO 8601 date/time format is default in System.Text.Json
     // DateTimeOffset automatically serializes as: "2025-12-26T17:16:09.123Z"
 });
@@ -40,10 +40,7 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 builder.Services.AddProblemDetails();
 
 // Configure OpenAPI with metadata
-builder.Services.AddOpenApi(options =>
-{
-    options.AddBookStoreApiDocumentation();
-});
+builder.Services.AddOpenApi(options => options.AddBookStoreApiDocumentation());
 
 // Configure API Versioning (header-based)
 builder.Services.AddApiVersioning(options =>
@@ -59,7 +56,7 @@ builder.Services.AddLocalization();
 builder.Services.Configure<RequestLocalizationOptions>(options =>
 {
     var supportedCultures = new[] { "en", "pt", "es", "fr", "de" };
-    options.SetDefaultCulture("en")
+    _ = options.SetDefaultCulture("en")
         .AddSupportedCultures(supportedCultures)
         .AddSupportedUICultures(supportedCultures);
 });
@@ -87,25 +84,25 @@ builder.Services.AddMarten(sp =>
     options.Advanced.UseNGramSearchWithUnaccent = true;
 
     // Register event types
-    options.Events.AddEventType<BookStore.ApiService.Events.BookAdded>();
-    options.Events.AddEventType<BookStore.ApiService.Events.BookUpdated>();
-    options.Events.AddEventType<BookStore.ApiService.Events.BookSoftDeleted>();
-    options.Events.AddEventType<BookStore.ApiService.Events.BookRestored>();
+    _ = options.Events.AddEventType<BookStore.ApiService.Events.BookAdded>();
+    _ = options.Events.AddEventType<BookStore.ApiService.Events.BookUpdated>();
+    _ = options.Events.AddEventType<BookStore.ApiService.Events.BookSoftDeleted>();
+    _ = options.Events.AddEventType<BookStore.ApiService.Events.BookRestored>();
 
-    options.Events.AddEventType<BookStore.ApiService.Events.AuthorAdded>();
-    options.Events.AddEventType<BookStore.ApiService.Events.AuthorUpdated>();
-    options.Events.AddEventType<BookStore.ApiService.Events.AuthorSoftDeleted>();
-    options.Events.AddEventType<BookStore.ApiService.Events.AuthorRestored>();
+    _ = options.Events.AddEventType<BookStore.ApiService.Events.AuthorAdded>();
+    _ = options.Events.AddEventType<BookStore.ApiService.Events.AuthorUpdated>();
+    _ = options.Events.AddEventType<BookStore.ApiService.Events.AuthorSoftDeleted>();
+    _ = options.Events.AddEventType<BookStore.ApiService.Events.AuthorRestored>();
 
-    options.Events.AddEventType<BookStore.ApiService.Events.CategoryAdded>();
-    options.Events.AddEventType<BookStore.ApiService.Events.CategoryUpdated>();
-    options.Events.AddEventType<BookStore.ApiService.Events.CategorySoftDeleted>();
-    options.Events.AddEventType<BookStore.ApiService.Events.CategoryRestored>();
+    _ = options.Events.AddEventType<BookStore.ApiService.Events.CategoryAdded>();
+    _ = options.Events.AddEventType<BookStore.ApiService.Events.CategoryUpdated>();
+    _ = options.Events.AddEventType<BookStore.ApiService.Events.CategorySoftDeleted>();
+    _ = options.Events.AddEventType<BookStore.ApiService.Events.CategoryRestored>();
 
-    options.Events.AddEventType<BookStore.ApiService.Events.PublisherAdded>();
-    options.Events.AddEventType<BookStore.ApiService.Events.PublisherUpdated>();
-    options.Events.AddEventType<BookStore.ApiService.Events.PublisherSoftDeleted>();
-    options.Events.AddEventType<BookStore.ApiService.Events.PublisherRestored>();
+    _ = options.Events.AddEventType<BookStore.ApiService.Events.PublisherAdded>();
+    _ = options.Events.AddEventType<BookStore.ApiService.Events.PublisherUpdated>();
+    _ = options.Events.AddEventType<BookStore.ApiService.Events.PublisherSoftDeleted>();
+    _ = options.Events.AddEventType<BookStore.ApiService.Events.PublisherRestored>();
 
     // Configure projections - using AddAsync for async projections managed by Wolverine
     // Register projection builders explicitly with async lifecycle
@@ -116,65 +113,64 @@ builder.Services.AddMarten(sp =>
 
     // Configure indexes for search performance
     // Note: Trigram indexes for fuzzy search will be created via SQL migration
-    options.Schema.For<BookSearchProjection>()
+    _ = options.Schema.For<BookSearchProjection>()
         .Index(x => x.PublisherId)  // Standard B-tree index for exact matches
         .Index(x => x.Title)        // B-tree index for sorting
         .GinIndexJsonData();        // GIN index for JSON fields
 
     // Indexes for AuthorProjection
-    options.Schema.For<AuthorProjection>()
+    _ = options.Schema.For<AuthorProjection>()
         .Index(x => x.Name);         // B-tree index for sorting
 
     // Indexes for CategoryProjection
-    options.Schema.For<CategoryProjection>()
+    _ = options.Schema.For<CategoryProjection>()
         .Index(x => x.Name);         // B-tree index for sorting
 
     // Indexes for PublisherProjection
-    options.Schema.For<PublisherProjection>()
+    _ = options.Schema.For<PublisherProjection>()
         .Index(x => x.Name);         // B-tree index for sorting
 
     // Configure NGram indexes for text search (accent-insensitive)
-    options.Schema.For<BookSearchProjection>()
+    _ = options.Schema.For<BookSearchProjection>()
         .NgramIndex(x => x.Title)           // NGram search on title
         .NgramIndex(x => x.AuthorNames);    // NGram search on authors
 
-    options.Schema.For<AuthorProjection>()
+    _ = options.Schema.For<AuthorProjection>()
         .NgramIndex(x => x.Name);           // NGram search on author name
 
-    options.Schema.For<CategoryProjection>()
+    _ = options.Schema.For<CategoryProjection>()
         .NgramIndex(x => x.Name);           // NGram search on category name
 
-    options.Schema.For<PublisherProjection>()
+    _ = options.Schema.For<PublisherProjection>()
         .NgramIndex(x => x.Name);           // NGram search on publisher name
+
     return options;
 })
 .UseLightweightSessions()
-.IntegrateWithWolverine(cfg =>
-{
-    cfg.UseWolverineManagedEventSubscriptionDistribution = true;
-});
+.IntegrateWithWolverine(cfg => cfg.UseWolverineManagedEventSubscriptionDistribution = true);
 
 // Add Wolverine with command/handler pattern
 builder.Services.AddWolverine(opts =>
 {
     // Auto-discover handlers in this assembly
-    opts.Discovery.IncludeAssembly(typeof(Program).Assembly);
-    
+    _ = opts.Discovery.IncludeAssembly(typeof(Program).Assembly);
+
     // Explicitly include static handler classes for discovery
-    opts.Discovery.IncludeType(typeof(BookStore.ApiService.Handlers.Authors.AuthorHandlers));
-    opts.Discovery.IncludeType(typeof(BookStore.ApiService.Handlers.Books.BookHandlers));
-    opts.Discovery.IncludeType(typeof(BookStore.ApiService.Handlers.Categories.CategoryHandlers));
-    opts.Discovery.IncludeType(typeof(BookStore.ApiService.Handlers.Publishers.PublisherHandlers));
+    _ = opts.Discovery.IncludeType(typeof(BookStore.ApiService.Handlers.Authors.AuthorHandlers));
+    _ = opts.Discovery.IncludeType(typeof(BookStore.ApiService.Handlers.Books.BookHandlers));
+    _ = opts.Discovery.IncludeType(typeof(BookStore.ApiService.Handlers.Categories.CategoryHandlers));
+    _ = opts.Discovery.IncludeType(typeof(BookStore.ApiService.Handlers.Publishers.PublisherHandlers));
 
     // Enable SignalR transport for real-time notifications
-    opts.UseSignalR();
-    
+    _ = opts.UseSignalR();
+
     // Route domain event notifications to SignalR
     opts.Publish(x =>
     {
         x.MessagesImplementing<BookStore.ApiService.Events.Notifications.IDomainEventNotification>();
-        x.ToSignalR();
+        _ = x.ToSignalR();
     });
+
 
     // Policies for automatic behavior
     opts.Policies.AutoApplyTransactions();
@@ -207,14 +203,11 @@ app.MapOpenApi();
 
 if (app.Environment.IsDevelopment())
 {
-    app.MapScalarApiReference("/api-reference", 
-    options =>
-    {
-        options
+    _ = app.MapScalarApiReference("/api-reference",
+    options => options
             .WithTitle("Book Store API")
             .WithTheme(ScalarTheme.Purple)
-            .WithDefaultHttpClient(ScalarTarget.CSharp, ScalarClient.HttpClient);
-    });
+            .WithDefaultHttpClient(ScalarTarget.CSharp, ScalarClient.HttpClient));
 }
 
 app.UseResponseCaching();

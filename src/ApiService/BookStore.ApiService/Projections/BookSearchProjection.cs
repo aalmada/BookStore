@@ -13,14 +13,14 @@ public class BookSearchProjection
     public string? Isbn { get; set; }
     public string? Description { get; set; }
     public DateOnly? PublicationDate { get; set; }
-    
+
     // Denormalized fields for performance
     public Guid? PublisherId { get; set; }
     public string? PublisherName { get; set; }
     public List<Guid> AuthorIds { get; set; } = [];
     public string AuthorNames { get; set; } = string.Empty; // Concatenated for search
     public List<Guid> CategoryIds { get; set; } = []; // For filtering by ID only (categories are localizable)
-    
+
     // Computed search text for ngram matching
     public string SearchText { get; set; } = string.Empty;
 }
@@ -35,14 +35,14 @@ public class BookSearchProjectionBuilder : MultiStreamProjection<BookSearchProje
         Identity<BookUpdated>(x => x.Id);
         Identity<BookSoftDeleted>(x => x.Id);
         Identity<BookRestored>(x => x.Id);
-        
+
         // Delete projection when book is soft-deleted
-        DeleteEvent<BookSoftDeleted>();
-        
+        _ = DeleteEvent<BookSoftDeleted>();
+
         // Also listen to publisher events to update denormalized data
         Identity<PublisherUpdated>(x => x.Id);
         Identity<PublisherSoftDeleted>(x => x.Id);
-        
+
         // And author events
         Identity<AuthorUpdated>(x => x.Id);
         Identity<AuthorSoftDeleted>(x => x.Id);
@@ -80,7 +80,7 @@ public class BookSearchProjectionBuilder : MultiStreamProjection<BookSearchProje
 
         // Compute SearchText
         UpdateSearchText(projection);
-        
+
         return projection;
     }
 
@@ -93,7 +93,7 @@ public class BookSearchProjectionBuilder : MultiStreamProjection<BookSearchProje
         projection.PublisherId = @event.PublisherId;
         projection.AuthorIds = @event.AuthorIds;
         projection.CategoryIds = @event.CategoryIds;
-        
+
         // Re-populate publisher name (may have changed)
         if (projection.PublisherId.HasValue)
         {
@@ -141,29 +141,25 @@ public class BookSearchProjectionBuilder : MultiStreamProjection<BookSearchProje
                 .Where(a => projection.AuthorIds.Contains(a.Id))
                 .ToListAsync();
             projection.AuthorNames = string.Join(", ", authors.Select(a => a.Name));
-            
+
             // Update SearchText (author names changed)
             UpdateSearchText(projection);
         }
     }
 
-
-
     // Helper method to compute SearchText from all searchable fields
     void UpdateSearchText(BookSearchProjection projection)
-    {
         // Use string interpolation to avoid List<string> allocation
-        projection.SearchText = 
+        => projection.SearchText =
             $"{projection.Title} " +
             $"{projection.Description ?? string.Empty} " +
             $"{projection.Isbn ?? string.Empty} " +
             $"{projection.PublisherName ?? string.Empty} " +
             $"{projection.AuthorNames}".Trim();
-    }
 
     // Projection will be deleted on BookSoftDeleted (configured in constructor)
     // Projection will be recreated on BookRestored by replaying the stream
-    
+
     // Note: Publisher/Author/Category updates would require querying the database
     // to update denormalized fields. This will be handled in the Program.cs configuration
     // using custom projection logic or separate projections.

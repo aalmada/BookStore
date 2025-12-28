@@ -1,11 +1,8 @@
-using Marten;
 using BookStore.ApiService.Models;
-
-using Microsoft.AspNetCore.Http.HttpResults;
-using Marten.Pagination;
-
-
 using BookStore.ApiService.Projections;
+using Marten;
+using Marten.Pagination;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BookStore.ApiService.Endpoints;
@@ -14,12 +11,12 @@ public static class AuthorEndpoints
 {
     public static RouteGroupBuilder MapAuthorEndpoints(this RouteGroupBuilder group)
     {
-        group.MapGet("/", GetAuthors)
+        _ = group.MapGet("/", GetAuthors)
             .WithName("GetAuthors")
             .WithSummary("Get all authors")
             .CacheOutput(policy => policy.Expire(TimeSpan.FromMinutes(5)));
 
-        group.MapGet("/{id:guid}", GetAuthor)
+        _ = group.MapGet("/{id:guid}", GetAuthor)
             .WithName("GetAuthor")
             .WithSummary("Get author by ID")
             .CacheOutput(policy => policy.Expire(TimeSpan.FromMinutes(5)));
@@ -32,7 +29,7 @@ public static class AuthorEndpoints
         [AsParameters] PagedRequest request)
     {
         var paging = request.Normalize();
-        
+
         // Use Marten's native pagination for optimal performance
         var pagedList = await session.Query<AuthorProjection>()
             .OrderBy(a => a.Name)
@@ -47,7 +44,9 @@ public static class AuthorEndpoints
     {
         var author = await session.LoadAsync<AuthorProjection>(id);
         if (author == null)
+        {
             return TypedResults.NotFound();
+        }
 
         return TypedResults.Ok(author);
     }

@@ -10,10 +10,7 @@ public static class ETagHelper
     /// <summary>
     /// Generate an ETag from a version number
     /// </summary>
-    public static string GenerateETag(long version)
-    {
-        return $"\"{version}\"";
-    }
+    public static string GenerateETag(long version) => $"\"{version}\"";
 
     /// <summary>
     /// Check if the If-Match header matches the current ETag
@@ -22,10 +19,12 @@ public static class ETagHelper
     public static bool CheckIfMatch(HttpContext context, string currentETag)
     {
         var ifMatch = context.Request.Headers["If-Match"].FirstOrDefault();
-        
+
         // If no If-Match header, precondition is satisfied
         if (string.IsNullOrEmpty(ifMatch))
+        {
             return true;
+        }
 
         // Check if the provided ETag matches the current one
         return ifMatch == currentETag || ifMatch == "*";
@@ -38,10 +37,12 @@ public static class ETagHelper
     public static bool CheckIfNoneMatch(HttpContext context, string currentETag)
     {
         var ifNoneMatch = context.Request.Headers["If-None-Match"].FirstOrDefault();
-        
+
         // If no If-None-Match header, content should be returned
         if (string.IsNullOrEmpty(ifNoneMatch))
+        {
             return false;
+        }
 
         // If ETags match, content has not been modified
         return ifNoneMatch == currentETag || ifNoneMatch == "*";
@@ -50,29 +51,20 @@ public static class ETagHelper
     /// <summary>
     /// Add ETag header to response
     /// </summary>
-    public static void AddETagHeader(HttpContext context, string etag)
-    {
-        context.Response.Headers["ETag"] = etag;
-    }
+    public static void AddETagHeader(HttpContext context, string etag) => context.Response.Headers["ETag"] = etag;
 
     /// <summary>
     /// Create a 304 Not Modified response with ETag
     /// </summary>
-    public static IResult NotModified(string etag)
-    {
-        return Results.StatusCode(304);
-    }
+    public static IResult NotModified(string etag) => Results.StatusCode(304);
 
     /// <summary>
     /// Create a 412 Precondition Failed response
     /// </summary>
-    public static IResult PreconditionFailed()
-    {
-        return Results.Problem(
+    public static IResult PreconditionFailed() => Results.Problem(
             title: "Precondition Failed",
             detail: "The resource has been modified since you last retrieved it. Please refresh and try again.",
             statusCode: 412);
-    }
 }
 
 /// <summary>

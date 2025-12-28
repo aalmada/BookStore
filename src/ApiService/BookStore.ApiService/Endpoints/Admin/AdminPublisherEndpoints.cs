@@ -14,19 +14,19 @@ namespace BookStore.ApiService.Endpoints.Admin
     {
         public static RouteGroupBuilder MapAdminPublisherEndpoints(this RouteGroupBuilder group)
         {
-            group.MapPost("/", CreatePublisher)
+            _ = group.MapPost("/", CreatePublisher)
                 .WithName("CreatePublisher")
                 .WithSummary("Create a new publisher");
 
-            group.MapPut("/{id:guid}", UpdatePublisher)
+            _ = group.MapPut("/{id:guid}", UpdatePublisher)
                 .WithName("UpdatePublisher")
                 .WithSummary("Update a publisher");
 
-            group.MapDelete("/{id:guid}", SoftDeletePublisher)
+            _ = group.MapDelete("/{id:guid}", SoftDeletePublisher)
                 .WithName("SoftDeletePublisher")
                 .WithSummary("Delete a publisher");
 
-            group.MapPost("/{id:guid}/restore", RestorePublisher)
+            _ = group.MapPost("/{id:guid}/restore", RestorePublisher)
                 .WithName("RestorePublisher")
                 .WithSummary("Restore a deleted publisher");
 

@@ -60,8 +60,5 @@ public class LoggingEnricherMiddleware
 
 public static class LoggingEnricherMiddlewareExtensions
 {
-    public static IApplicationBuilder UseLoggingEnricher(this IApplicationBuilder builder)
-    {
-        return builder.UseMiddleware<LoggingEnricherMiddleware>();
-    }
+    public static IApplicationBuilder UseLoggingEnricher(this IApplicationBuilder builder) => builder.UseMiddleware<LoggingEnricherMiddleware>();
 }

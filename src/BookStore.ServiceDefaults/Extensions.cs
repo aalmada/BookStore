@@ -54,7 +54,7 @@ public static class Extensions
         });
 
         // Configure console logging for better structured output
-        _ = builder.Logging.AddConsole(options => options.FormatterName = builder.Environment.IsDevelopment() 
+        _ = builder.Logging.AddConsole(options => options.FormatterName = builder.Environment.IsDevelopment()
             ? "simple"  // Human-readable for development
             : "json");  // JSON for production/structured logging
 

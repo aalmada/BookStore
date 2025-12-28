@@ -13,19 +13,14 @@ public class PublisherProjection
 public class PublisherProjectionBuilder : SingleStreamProjection<PublisherProjection, Guid>
 {
     public PublisherProjectionBuilder()
-    {
         // Delete projection when publisher is soft-deleted
-        DeleteEvent<PublisherSoftDeleted>();
-    }
-    public PublisherProjection Create(PublisherAdded @event)
+        => DeleteEvent<PublisherSoftDeleted>();
+    public PublisherProjection Create(PublisherAdded @event) => new()
     {
-        return new PublisherProjection
-        {
-            Id = @event.Id,
-            Name = @event.Name,
-            LastModified = @event.Timestamp
-        };
-    }
+        Id = @event.Id,
+        Name = @event.Name,
+        LastModified = @event.Timestamp
+    };
 
     void Apply(PublisherUpdated @event, PublisherProjection projection)
     {

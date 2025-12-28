@@ -1,9 +1,9 @@
+using System.Collections.Immutable;
+using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
-using System.Collections.Immutable;
-using System.Linq;
 
 namespace BookStore.ApiService.Analyzers.Analyzers;
 
@@ -31,8 +31,8 @@ public class AggregateRulesAnalyzer : DiagnosticAnalyzer
         isEnabledByDefault: true,
         description: "Aggregate state changes should only occur through Apply methods, not direct property setters.");
 
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-        ImmutableArray.Create(ShouldReturnEventRule, ShouldNotHavePublicSetterRule);
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics
+        => [ShouldReturnEventRule, ShouldNotHavePublicSetterRule];
 
     public override void Initialize(AnalysisContext context)
     {
@@ -47,7 +47,9 @@ public class AggregateRulesAnalyzer : DiagnosticAnalyzer
         var symbol = context.SemanticModel.GetDeclaredSymbol(classDeclaration);
 
         if (symbol == null || !IsInAggregatesNamespace(symbol))
+        {
             return;
+        }
 
         // BS3005: Check for properties with public setters
         foreach (var member in symbol.GetMembers().OfType<IPropertySymbol>())

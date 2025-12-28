@@ -17,8 +17,8 @@ public class BookStoreHubService : IAsyncDisposable
     public BookStoreHubService(IConfiguration config, ILogger<BookStoreHubService> logger)
     {
         _logger = logger;
-        
-        var apiBaseUrl = config["services:apiservice:https:0"] 
+
+        var apiBaseUrl = config["services:apiservice:https:0"]
             ?? config["services:apiservice:http:0"]
             ?? "https://localhost:7001";
 
@@ -28,23 +28,23 @@ public class BookStoreHubService : IAsyncDisposable
             .Build();
 
         // Subscribe to book notifications
-        _connection.On<BookNotification>("BookCreatedNotification", notification =>
+        _ = _connection.On<BookNotification>("BookCreatedNotification", notification =>
         {
-            _logger.LogInformation("Received BookCreated notification for {BookId}: {Title}", 
+            _logger.LogInformation("Received BookCreated notification for {BookId}: {Title}",
                 notification.EntityId, notification.Title);
             OnBookCreated?.Invoke(notification);
         });
 
-        _connection.On<BookNotification>("BookUpdatedNotification", notification =>
+        _ = _connection.On<BookNotification>("BookUpdatedNotification", notification =>
         {
-            _logger.LogInformation("Received BookUpdated notification for {BookId}: {Title}", 
+            _logger.LogInformation("Received BookUpdated notification for {BookId}: {Title}",
                 notification.EntityId, notification.Title);
             OnBookUpdated?.Invoke(notification);
         });
 
-        _connection.On<BookDeletedNotification>("BookDeletedNotification", notification =>
+        _ = _connection.On<BookDeletedNotification>("BookDeletedNotification", notification =>
         {
-            _logger.LogInformation("Received BookDeleted notification for {BookId}", 
+            _logger.LogInformation("Received BookDeleted notification for {BookId}",
                 notification.EntityId);
             OnBookDeleted?.Invoke(notification.EntityId);
         });

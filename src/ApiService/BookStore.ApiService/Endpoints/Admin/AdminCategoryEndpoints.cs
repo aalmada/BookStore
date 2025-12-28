@@ -5,12 +5,12 @@ using Wolverine;
 namespace BookStore.ApiService.Commands
 {
     public record CreateCategoryRequest(
-        string Name, 
+        string Name,
         string? Description,
         Dictionary<string, CategoryTranslationDto>? Translations);
 
     public record UpdateCategoryRequest(
-        string Name, 
+        string Name,
         string? Description,
         Dictionary<string, CategoryTranslationDto>? Translations);
 }
@@ -21,19 +21,19 @@ namespace BookStore.ApiService.Endpoints.Admin
     {
         public static RouteGroupBuilder MapAdminCategoryEndpoints(this RouteGroupBuilder group)
         {
-            group.MapPost("/", CreateCategory)
+            _ = group.MapPost("/", CreateCategory)
                 .WithName("CreateCategory")
                 .WithSummary("Create a new category");
 
-            group.MapPut("/{id:guid}", UpdateCategory)
+            _ = group.MapPut("/{id:guid}", UpdateCategory)
                 .WithName("UpdateCategory")
                 .WithSummary("Update a category");
 
-            group.MapDelete("/{id:guid}", SoftDeleteCategory)
+            _ = group.MapDelete("/{id:guid}", SoftDeleteCategory)
                 .WithName("SoftDeleteCategory")
                 .WithSummary("Delete a category");
 
-            group.MapPost("/{id:guid}/restore", RestoreCategory)
+            _ = group.MapPost("/{id:guid}/restore", RestoreCategory)
                 .WithName("RestoreCategory")
                 .WithSummary("Restore a deleted category");
 

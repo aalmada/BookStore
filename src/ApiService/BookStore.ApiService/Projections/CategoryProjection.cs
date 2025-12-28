@@ -14,20 +14,15 @@ public class CategoryProjection
 public class CategoryProjectionBuilder : SingleStreamProjection<CategoryProjection, Guid>
 {
     public CategoryProjectionBuilder()
-    {
         // Delete projection when category is soft-deleted
-        DeleteEvent<CategorySoftDeleted>();
-    }
-    public CategoryProjection Create(CategoryAdded @event)
+        => DeleteEvent<CategorySoftDeleted>();
+    public CategoryProjection Create(CategoryAdded @event) => new()
     {
-        return new CategoryProjection
-        {
-            Id = @event.Id,
-            Name = @event.Name,
-            Translations = @event.Translations,
-            LastModified = @event.Timestamp
-        };
-    }
+        Id = @event.Id,
+        Name = @event.Name,
+        Translations = @event.Translations,
+        LastModified = @event.Timestamp
+    };
 
     void Apply(CategoryUpdated @event, CategoryProjection projection)
     {

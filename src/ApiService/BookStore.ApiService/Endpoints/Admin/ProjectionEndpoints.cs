@@ -8,11 +8,11 @@ public static class ProjectionEndpoints
 {
     public static RouteGroupBuilder MapProjectionEndpoints(this RouteGroupBuilder group)
     {
-        group.MapPost("/rebuild", RebuildProjections)
+        _ = group.MapPost("/rebuild", RebuildProjections)
             .WithName("RebuildProjections")
             .WithSummary("Rebuild all projections");
 
-        group.MapGet("/status", GetProjectionStatus)
+        _ = group.MapGet("/status", GetProjectionStatus)
             .WithName("GetProjectionStatus")
             .WithSummary("Get projection status");
 
@@ -38,18 +38,18 @@ public static class ProjectionEndpoints
         try
         {
             var daemon = await store.BuildProjectionDaemonAsync();
-            
+
             // Return basic daemon status
-            return Results.Ok(new 
-            { 
+            return Results.Ok(new
+            {
                 status = "running",
                 message = "Projection daemon is active. Use rebuild endpoint to refresh projections."
             });
         }
         catch (Exception ex)
         {
-            return Results.Ok(new 
-            { 
+            return Results.Ok(new
+            {
                 status = "error",
                 message = ex.Message
             });

@@ -1,5 +1,5 @@
-using Microsoft.AspNetCore.Http;
 using System.Diagnostics;
+using Microsoft.AspNetCore.Http;
 
 namespace BookStore.ApiService.Infrastructure;
 
@@ -61,8 +61,5 @@ public class MartenMetadataMiddleware
 
 public static class MartenMetadataMiddlewareExtensions
 {
-    public static IApplicationBuilder UseMartenMetadata(this IApplicationBuilder builder)
-    {
-        return builder.UseMiddleware<MartenMetadataMiddleware>();
-    }
+    public static IApplicationBuilder UseMartenMetadata(this IApplicationBuilder builder) => builder.UseMiddleware<MartenMetadataMiddleware>();
 }

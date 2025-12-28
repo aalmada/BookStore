@@ -13,7 +13,7 @@ public static class OpenApiTransformerExtensions
     /// </summary>
     public static OpenApiOptions AddBookStoreApiDocumentation(this OpenApiOptions options)
     {
-        options.AddDocumentTransformer((document, context, cancellationToken) =>
+        _ = options.AddDocumentTransformer((document, context, cancellationToken) =>
         {
             // Configure API information
             document.Info = new()
@@ -31,11 +31,11 @@ public static class OpenApiTransformerExtensions
         });
 
         // Add operation transformer to add global headers to all operations
-        options.AddOperationTransformer((operation, context, cancellationToken) =>
+        _ = options.AddOperationTransformer((operation, context, cancellationToken) =>
         {
             // Initialize Parameters collection if null
             operation.Parameters ??= [];
-            
+
             // Add API versioning header
             operation.Parameters.Add(new OpenApiParameter
             {
@@ -78,9 +78,7 @@ public static class OpenApiTransformerExtensions
         return options;
     }
 
-    static string BuildApiDescription()
-    {
-        return """
+    static string BuildApiDescription() => """
             Book store management system with search, authors, categories, and publishers.
 
             ## Features
@@ -143,5 +141,4 @@ public static class OpenApiTransformerExtensions
 
             For more details, see the [SignalR Guide](https://github.com/yourusername/bookstore/blob/main/docs/signalr-guide.md).
             """;
-    }
 }

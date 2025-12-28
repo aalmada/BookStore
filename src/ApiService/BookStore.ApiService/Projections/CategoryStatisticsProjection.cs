@@ -21,20 +21,17 @@ public class CategoryStatisticsProjectionBuilder : MultiStreamProjection<Categor
         Identity<BookUpdated>(x => x.Id);
         Identity<BookSoftDeleted>(x => x.Id);
         Identity<BookRestored>(x => x.Id);
-        
+
         // Also listen to category creation to initialize stats
         Identity<CategoryAdded>(x => x.Id);
     }
 
     // Initialize stats when category is created
-    public CategoryStatistics Create(CategoryAdded @event)
+    public CategoryStatistics Create(CategoryAdded @event) => new()
     {
-        return new CategoryStatistics
-        {
-            Id = @event.Id,
-            BookCount = 0
-        };
-    }
+        Id = @event.Id,
+        BookCount = 0
+    };
 
     // When a book is added, increment count for each category
     public async Task Apply(BookAdded @event, CategoryStatistics projection, IQuerySession session)
@@ -49,10 +46,13 @@ public class CategoryStatisticsProjectionBuilder : MultiStreamProjection<Categor
     public async Task Apply(BookUpdated @event, CategoryStatistics projection, IQuerySession session)
     {
         var book = await session.LoadAsync<BookSearchProjection>(@event.Id);
-        if (book == null) return;
+        if (book == null)
+        {
+            return;
+        }
 
-        bool wasInBook = book.CategoryIds.Contains(projection.Id);
-        bool isInBook = @event.CategoryIds.Contains(projection.Id);
+        var wasInBook = book.CategoryIds.Contains(projection.Id);
+        var isInBook = @event.CategoryIds.Contains(projection.Id);
 
         if (!wasInBook && isInBook)
         {
@@ -68,7 +68,10 @@ public class CategoryStatisticsProjectionBuilder : MultiStreamProjection<Categor
     public async Task Apply(BookSoftDeleted @event, CategoryStatistics projection, IQuerySession session)
     {
         var book = await session.LoadAsync<BookSearchProjection>(@event.Id);
-        if (book == null) return;
+        if (book == null)
+        {
+            return;
+        }
 
         if (book.CategoryIds.Contains(projection.Id))
         {
@@ -80,7 +83,10 @@ public class CategoryStatisticsProjectionBuilder : MultiStreamProjection<Categor
     public async Task Apply(BookRestored @event, CategoryStatistics projection, IQuerySession session)
     {
         var book = await session.LoadAsync<BookSearchProjection>(@event.Id);
-        if (book == null) return;
+        if (book == null)
+        {
+            return;
+        }
 
         if (book.CategoryIds.Contains(projection.Id))
         {

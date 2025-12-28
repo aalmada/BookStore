@@ -28,21 +28,21 @@ public static class BookHandlers
             command.PublisherId,
             command.AuthorIds,
             command.CategoryIds);
-        
-        session.Events.StartStream<BookAggregate>(command.Id, @event);
-        
+
+        _ = session.Events.StartStream<BookAggregate>(command.Id, @event);
+
         // Create notification for SignalR (will be published as cascading message)
         var notification = new BookStore.ApiService.Events.Notifications.BookCreatedNotification(
             command.Id,
             command.Title,
             DateTimeOffset.UtcNow);
-        
+
         // Wolverine automatically calls SaveChangesAsync and publishes the notification
         return (Results.Created(
             $"/api/admin/books/{command.Id}",
             new { id = command.Id, correlationId = session.CorrelationId }), notification);
     }
-    
+
     /// <summary>
     /// Handle UpdateBook command with ETag validation
     /// </summary>
@@ -54,12 +54,14 @@ public static class BookHandlers
         // Get current stream state for ETag validation
         var streamState = await session.Events.FetchStreamStateAsync(command.Id);
         if (streamState == null)
+        {
             return Results.NotFound();
+        }
 
         var currentETag = ETagHelper.GenerateETag(streamState.Version);
 
         // Check If-Match header for optimistic concurrency
-        if (!string.IsNullOrEmpty(command.ETag) && 
+        if (!string.IsNullOrEmpty(command.ETag) &&
             !ETagHelper.CheckIfMatch(context, currentETag))
         {
             return ETagHelper.PreconditionFailed();
@@ -67,7 +69,9 @@ public static class BookHandlers
 
         var aggregate = await session.Events.AggregateStreamAsync<BookAggregate>(command.Id);
         if (aggregate == null)
+        {
             return Results.NotFound();
+        }
 
         var @event = aggregate.Update(
             command.Title,
@@ -77,8 +81,8 @@ public static class BookHandlers
             command.PublisherId,
             command.AuthorIds,
             command.CategoryIds);
-        
-        session.Events.Append(command.Id, @event);
+
+        _ = session.Events.Append(command.Id, @event);
 
         // Get new stream state and return new ETag
         var newStreamState = await session.Events.FetchStreamStateAsync(command.Id);
@@ -87,7 +91,7 @@ public static class BookHandlers
 
         return Results.NoContent();
     }
-    
+
     /// <summary>
     /// Handle SoftDeleteBook command with ETag validation
     /// </summary>
@@ -99,12 +103,14 @@ public static class BookHandlers
         // Get current stream state for ETag validation
         var streamState = await session.Events.FetchStreamStateAsync(command.Id);
         if (streamState == null)
+        {
             return Results.NotFound();
+        }
 
         var currentETag = ETagHelper.GenerateETag(streamState.Version);
 
         // Check If-Match header for optimistic concurrency
-        if (!string.IsNullOrEmpty(command.ETag) && 
+        if (!string.IsNullOrEmpty(command.ETag) &&
             !ETagHelper.CheckIfMatch(context, currentETag))
         {
             return ETagHelper.PreconditionFailed();
@@ -112,10 +118,12 @@ public static class BookHandlers
 
         var aggregate = await session.Events.AggregateStreamAsync<BookAggregate>(command.Id);
         if (aggregate == null)
+        {
             return Results.NotFound();
+        }
 
         var @event = aggregate.SoftDelete();
-        session.Events.Append(command.Id, @event);
+        _ = session.Events.Append(command.Id, @event);
 
         // Get new stream state and return new ETag
         var newStreamState = await session.Events.FetchStreamStateAsync(command.Id);
@@ -124,7 +132,7 @@ public static class BookHandlers
 
         return Results.NoContent();
     }
-    
+
     /// <summary>
     /// Handle RestoreBook command with ETag validation
     /// </summary>
@@ -136,12 +144,14 @@ public static class BookHandlers
         // Get current stream state for ETag validation
         var streamState = await session.Events.FetchStreamStateAsync(command.Id);
         if (streamState == null)
+        {
             return Results.NotFound();
+        }
 
         var currentETag = ETagHelper.GenerateETag(streamState.Version);
 
         // Check If-Match header for optimistic concurrency
-        if (!string.IsNullOrEmpty(command.ETag) && 
+        if (!string.IsNullOrEmpty(command.ETag) &&
             !ETagHelper.CheckIfMatch(context, currentETag))
         {
             return ETagHelper.PreconditionFailed();
@@ -149,10 +159,12 @@ public static class BookHandlers
 
         var aggregate = await session.Events.AggregateStreamAsync<BookAggregate>(command.Id);
         if (aggregate == null)
+        {
             return Results.NotFound();
+        }
 
         var @event = aggregate.Restore();
-        session.Events.Append(command.Id, @event);
+        _ = session.Events.Append(command.Id, @event);
 
         // Get new stream state and return new ETag
         var newStreamState = await session.Events.FetchStreamStateAsync(command.Id);

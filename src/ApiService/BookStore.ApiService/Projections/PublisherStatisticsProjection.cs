@@ -21,20 +21,17 @@ public class PublisherStatisticsProjectionBuilder : MultiStreamProjection<Publis
         Identity<BookUpdated>(x => x.Id);
         Identity<BookSoftDeleted>(x => x.Id);
         Identity<BookRestored>(x => x.Id);
-        
+
         // Also listen to publisher creation to initialize stats
         Identity<PublisherAdded>(x => x.Id);
     }
 
     // Initialize stats when publisher is created
-    public PublisherStatistics Create(PublisherAdded @event)
+    public PublisherStatistics Create(PublisherAdded @event) => new()
     {
-        return new PublisherStatistics
-        {
-            Id = @event.Id,
-            BookCount = 0
-        };
-    }
+        Id = @event.Id,
+        BookCount = 0
+    };
 
     // When a book is added, increment count if it uses this publisher
     public async Task Apply(BookAdded @event, PublisherStatistics projection, IQuerySession session)
@@ -49,10 +46,13 @@ public class PublisherStatisticsProjectionBuilder : MultiStreamProjection<Publis
     public async Task Apply(BookUpdated @event, PublisherStatistics projection, IQuerySession session)
     {
         var book = await session.LoadAsync<BookSearchProjection>(@event.Id);
-        if (book == null) return;
+        if (book == null)
+        {
+            return;
+        }
 
-        bool wasPublisher = book.PublisherId == projection.Id;
-        bool isPublisher = @event.PublisherId == projection.Id;
+        var wasPublisher = book.PublisherId == projection.Id;
+        var isPublisher = @event.PublisherId == projection.Id;
 
         if (!wasPublisher && isPublisher)
         {
@@ -68,7 +68,10 @@ public class PublisherStatisticsProjectionBuilder : MultiStreamProjection<Publis
     public async Task Apply(BookSoftDeleted @event, PublisherStatistics projection, IQuerySession session)
     {
         var book = await session.LoadAsync<BookSearchProjection>(@event.Id);
-        if (book == null) return;
+        if (book == null)
+        {
+            return;
+        }
 
         if (book.PublisherId == projection.Id)
         {
@@ -80,7 +83,10 @@ public class PublisherStatisticsProjectionBuilder : MultiStreamProjection<Publis
     public async Task Apply(BookRestored @event, PublisherStatistics projection, IQuerySession session)
     {
         var book = await session.LoadAsync<BookSearchProjection>(@event.Id);
-        if (book == null) return;
+        if (book == null)
+        {
+            return;
+        }
 
         if (book.PublisherId == projection.Id)
         {

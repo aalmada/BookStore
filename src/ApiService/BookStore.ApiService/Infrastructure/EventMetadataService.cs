@@ -40,15 +40,12 @@ public class EventMetadataService
 {
     readonly IHttpContextAccessor _httpContextAccessor;
 
-    public EventMetadataService(IHttpContextAccessor httpContextAccessor)
-    {
-        _httpContextAccessor = httpContextAccessor;
-    }
+    public EventMetadataService(IHttpContextAccessor httpContextAccessor) => _httpContextAccessor = httpContextAccessor;
 
     public EventMetadata CreateMetadata()
     {
         var context = _httpContextAccessor.HttpContext;
-        
+
         // Get or create correlation ID from header
         var correlationId = context?.Request.Headers["X-Correlation-ID"].FirstOrDefault()
             ?? Guid.CreateVersion7().ToString();

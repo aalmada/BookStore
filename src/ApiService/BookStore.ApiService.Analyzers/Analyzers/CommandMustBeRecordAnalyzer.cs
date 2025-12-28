@@ -1,9 +1,9 @@
+using System.Collections.Immutable;
+using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
-using System.Collections.Immutable;
-using System.Linq;
 
 namespace BookStore.ApiService.Analyzers.Analyzers;
 
@@ -40,8 +40,8 @@ public class CommandMustBeRecordAnalyzer : DiagnosticAnalyzer
         isEnabledByDefault: true,
         description: "Command properties should use init-only setters to ensure immutability after construction.");
 
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-        ImmutableArray.Create(MustBeRecordRule, MustBeInCommandsNamespaceRule, ShouldUseInitRule);
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics
+        => [MustBeRecordRule, MustBeInCommandsNamespaceRule, ShouldUseInitRule];
 
     public override void Initialize(AnalysisContext context)
     {
@@ -56,7 +56,9 @@ public class CommandMustBeRecordAnalyzer : DiagnosticAnalyzer
         var symbol = context.SemanticModel.GetDeclaredSymbol(typeDeclaration);
 
         if (symbol == null)
+        {
             return;
+        }
 
         var isCommandType = IsCommandType(symbol.Name);
         var isInCommandsNamespace = IsInCommandsNamespace(symbol);
@@ -109,13 +111,10 @@ public class CommandMustBeRecordAnalyzer : DiagnosticAnalyzer
         return namespaceName != null && namespaceName.EndsWith(".Commands");
     }
 
-    static bool IsCommandType(string typeName)
-    {
-        return typeName.StartsWith("Create") ||
+    static bool IsCommandType(string typeName) => typeName.StartsWith("Create") ||
                typeName.StartsWith("Update") ||
                typeName.StartsWith("Delete") ||
                typeName.StartsWith("Restore") ||
                typeName.StartsWith("Remove") ||
                typeName.EndsWith("Command");
-    }
 }

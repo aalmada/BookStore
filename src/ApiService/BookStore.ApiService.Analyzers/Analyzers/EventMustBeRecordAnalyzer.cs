@@ -1,9 +1,9 @@
+using System.Collections.Immutable;
+using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
-using System.Collections.Immutable;
-using System.Linq;
 
 namespace BookStore.ApiService.Analyzers.Analyzers;
 
@@ -40,8 +40,8 @@ public class EventMustBeRecordAnalyzer : DiagnosticAnalyzer
         isEnabledByDefault: true,
         description: "Events should be organized in namespaces ending with '.Events' for consistency.");
 
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => 
-        ImmutableArray.Create(MustBeRecordRule, MustBeImmutableRule, MustBeInEventsNamespaceRule);
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics
+        => [MustBeRecordRule, MustBeImmutableRule, MustBeInEventsNamespaceRule];
 
     public override void Initialize(AnalysisContext context)
     {
@@ -57,7 +57,9 @@ public class EventMustBeRecordAnalyzer : DiagnosticAnalyzer
         var symbol = context.SemanticModel.GetDeclaredSymbol(classDeclaration);
 
         if (symbol == null)
+        {
             return;
+        }
 
         // BS1001: Check if class in Events namespace should be a record
         if (IsInEventsNamespace(symbol) && IsEventType(symbol.Name))
@@ -80,7 +82,9 @@ public class EventMustBeRecordAnalyzer : DiagnosticAnalyzer
         var symbol = context.SemanticModel.GetDeclaredSymbol(recordDeclaration);
 
         if (symbol == null)
+        {
             return;
+        }
 
         // BS1003: Check if event record is in correct namespace
         if (!IsInEventsNamespace(symbol) && IsEventType(symbol.Name))
@@ -96,7 +100,7 @@ public class EventMustBeRecordAnalyzer : DiagnosticAnalyzer
             foreach (var member in symbol.GetMembers().OfType<IPropertySymbol>())
             {
                 // Check if property has a public setter (not init-only)
-                if (member.SetMethod != null && 
+                if (member.SetMethod != null &&
                     member.SetMethod.DeclaredAccessibility == Accessibility.Public &&
                     !member.SetMethod.IsInitOnly)
                 {
@@ -107,9 +111,9 @@ public class EventMustBeRecordAnalyzer : DiagnosticAnalyzer
                     if (propertySyntax != null)
                     {
                         var diagnostic = Diagnostic.Create(
-                            MustBeImmutableRule, 
-                            propertySyntax.Identifier.GetLocation(), 
-                            member.Name, 
+                            MustBeImmutableRule,
+                            propertySyntax.Identifier.GetLocation(),
+                            member.Name,
                             symbol.Name);
                         context.ReportDiagnostic(diagnostic);
                     }
@@ -124,9 +128,7 @@ public class EventMustBeRecordAnalyzer : DiagnosticAnalyzer
         return namespaceName != null && namespaceName.EndsWith(".Events");
     }
 
-    static bool IsEventType(string typeName)
-    {
-        return typeName.EndsWith("Added") ||
+    static bool IsEventType(string typeName) => typeName.EndsWith("Added") ||
                typeName.EndsWith("Updated") ||
                typeName.EndsWith("Deleted") ||
                typeName.EndsWith("Restored") ||
@@ -134,5 +136,4 @@ public class EventMustBeRecordAnalyzer : DiagnosticAnalyzer
                typeName.EndsWith("Created") ||
                typeName.EndsWith("Removed") ||
                typeName.EndsWith("Event");
-    }
 }
