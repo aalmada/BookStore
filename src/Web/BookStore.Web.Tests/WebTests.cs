@@ -4,7 +4,7 @@ namespace BookStore.Web.Tests;
 
 public class WebTests
 {
-    private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(30);
+    static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(30);
 
     [Test]
     [Category("Integration")]

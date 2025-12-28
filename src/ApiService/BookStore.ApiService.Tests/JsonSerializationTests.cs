@@ -12,7 +12,7 @@ namespace BookStore.ApiService.Tests;
 public class JsonSerializationTests
 {
     // Static lazy initialization for better performance - shared across all tests
-    private static readonly Lazy<JsonSerializerOptions> _options = new(() => new()
+    static readonly Lazy<JsonSerializerOptions> _options = new(() => new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }

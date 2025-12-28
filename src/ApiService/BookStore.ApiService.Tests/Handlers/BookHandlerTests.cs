@@ -1,5 +1,5 @@
 using BookStore.ApiService.Aggregates;
-using BookStore.ApiService.Commands.Books;
+using BookStore.ApiService.Commands;
 using BookStore.ApiService.Events;
 using BookStore.ApiService.Handlers.Books;
 using Marten;
@@ -35,7 +35,7 @@ public class BookHandlerTests
         var result = BookHandlers.Handle(command, session);
         
         // Assert
-        await Assert.That(result).IsNotNull();
+        await Assert.That(result.Item1).IsNotNull();
         session.Events.Received(1).StartStream<BookAggregate>(
             command.Id,
             Arg.Is<BookAdded>(e => 
