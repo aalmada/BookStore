@@ -1,5 +1,5 @@
 using BookStore.ApiService.Aggregates;
-using BookStore.ApiService.Commands.Books;
+using BookStore.ApiService.Commands;
 using BookStore.ApiService.Infrastructure;
 using Marten;
 using Microsoft.AspNetCore.Http.HttpResults;

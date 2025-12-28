@@ -1,81 +1,84 @@
 using Marten;
-using BookStore.ApiService.Commands.Categories;
 using Microsoft.AspNetCore.Mvc;
 using Wolverine;
 
-namespace BookStore.ApiService.Endpoints.Admin;
-
-public static class AdminCategoryEndpoints
+namespace BookStore.ApiService.Commands
 {
     public record CreateCategoryRequest(
         string Name, 
         string? Description,
         Dictionary<string, CategoryTranslationDto>? Translations);
-    
+
     public record UpdateCategoryRequest(
         string Name, 
         string? Description,
         Dictionary<string, CategoryTranslationDto>? Translations);
+}
 
-    public static RouteGroupBuilder MapAdminCategoryEndpoints(this RouteGroupBuilder group)
+namespace BookStore.ApiService.Endpoints.Admin
+{
+    public static class AdminCategoryEndpoints
     {
-        group.MapPost("/", CreateCategory)
-            .WithName("CreateCategory")
-            .WithSummary("Create a new category");
+        public static RouteGroupBuilder MapAdminCategoryEndpoints(this RouteGroupBuilder group)
+        {
+            group.MapPost("/", CreateCategory)
+                .WithName("CreateCategory")
+                .WithSummary("Create a new category");
 
-        group.MapPut("/{id:guid}", UpdateCategory)
-            .WithName("UpdateCategory")
-            .WithSummary("Update a category");
+            group.MapPut("/{id:guid}", UpdateCategory)
+                .WithName("UpdateCategory")
+                .WithSummary("Update a category");
 
-        group.MapDelete("/{id:guid}", SoftDeleteCategory)
-            .WithName("SoftDeleteCategory")
-            .WithSummary("Delete a category");
+            group.MapDelete("/{id:guid}", SoftDeleteCategory)
+                .WithName("SoftDeleteCategory")
+                .WithSummary("Delete a category");
 
-        group.MapPost("/{id:guid}/restore", RestoreCategory)
-            .WithName("RestoreCategory")
-            .WithSummary("Restore a deleted category");
+            group.MapPost("/{id:guid}/restore", RestoreCategory)
+                .WithName("RestoreCategory")
+                .WithSummary("Restore a deleted category");
 
-        return group;
-    }
+            return group;
+        }
 
-    static Task<IResult> CreateCategory(
-        [FromBody] CreateCategoryRequest request,
-        [FromServices] IMessageBus bus)
-    {
-        var translations = request.Translations ?? [];
-        var command = new CreateCategory(request.Name, request.Description, translations);
-        return bus.InvokeAsync<IResult>(command);
-    }
+        static Task<IResult> CreateCategory(
+            [FromBody] Commands.CreateCategoryRequest request,
+            [FromServices] IMessageBus bus)
+        {
+            var translations = request.Translations ?? [];
+            var command = new Commands.CreateCategory(request.Name, request.Description, translations);
+            return bus.InvokeAsync<IResult>(command);
+        }
 
-    static Task<IResult> UpdateCategory(
-        Guid id,
-        [FromBody] UpdateCategoryRequest request,
-        [FromServices] IMessageBus bus,
-        HttpContext context)
-    {
-        var etag = context.Request.Headers["If-Match"].FirstOrDefault();
-        var translations = request.Translations ?? [];
-        var command = new UpdateCategory(id, request.Name, request.Description, translations) { ETag = etag };
-        return bus.InvokeAsync<IResult>(command);
-    }
+        static Task<IResult> UpdateCategory(
+            Guid id,
+            [FromBody] Commands.UpdateCategoryRequest request,
+            [FromServices] IMessageBus bus,
+            HttpContext context)
+        {
+            var etag = context.Request.Headers["If-Match"].FirstOrDefault();
+            var translations = request.Translations ?? [];
+            var command = new Commands.UpdateCategory(id, request.Name, request.Description, translations) { ETag = etag };
+            return bus.InvokeAsync<IResult>(command);
+        }
 
-    static Task<IResult> SoftDeleteCategory(
-        Guid id,
-        [FromServices] IMessageBus bus,
-        HttpContext context)
-    {
-        var etag = context.Request.Headers["If-Match"].FirstOrDefault();
-        var command = new SoftDeleteCategory(id) { ETag = etag };
-        return bus.InvokeAsync<IResult>(command);
-    }
+        static Task<IResult> SoftDeleteCategory(
+            Guid id,
+            [FromServices] IMessageBus bus,
+            HttpContext context)
+        {
+            var etag = context.Request.Headers["If-Match"].FirstOrDefault();
+            var command = new Commands.SoftDeleteCategory(id) { ETag = etag };
+            return bus.InvokeAsync<IResult>(command);
+        }
 
-    static Task<IResult> RestoreCategory(
-        Guid id,
-        [FromServices] IMessageBus bus,
-        HttpContext context)
-    {
-        var etag = context.Request.Headers["If-Match"].FirstOrDefault();
-        var command = new RestoreCategory(id) { ETag = etag };
-        return bus.InvokeAsync<IResult>(command);
+        static Task<IResult> RestoreCategory(
+            Guid id,
+            [FromServices] IMessageBus bus,
+            HttpContext context)
+        {
+            var etag = context.Request.Headers["If-Match"].FirstOrDefault();
+            var command = new Commands.RestoreCategory(id) { ETag = etag };
+            return bus.InvokeAsync<IResult>(command);
+        }
     }
 }

@@ -1,5 +1,5 @@
 using BookStore.ApiService.Aggregates;
-using BookStore.ApiService.Commands.Categories;
+using BookStore.ApiService.Commands;
 using BookStore.ApiService.Events;
 using BookStore.ApiService.Infrastructure;
 using Marten;

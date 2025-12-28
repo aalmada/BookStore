@@ -4,11 +4,11 @@ namespace BookStore.ApiService.Aggregates;
 
 public class CategoryAggregate
 {
-    public Guid Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string? Description { get; set; }
-    public Dictionary<string, CategoryTranslation> Translations { get; set; } = [];
-    public bool IsDeleted { get; set; }
+    public Guid Id { get; private set; }
+    public string Name { get; private set; } = string.Empty;
+    public string? Description { get; private set; }
+    public Dictionary<string, CategoryTranslation> Translations { get; private set; } = [];
+    public bool IsDeleted { get; private set; }
 
     // Marten uses this for rehydration
     void Apply(CategoryAdded @event)

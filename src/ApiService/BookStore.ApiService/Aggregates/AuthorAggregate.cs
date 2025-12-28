@@ -4,10 +4,10 @@ namespace BookStore.ApiService.Aggregates;
 
 public class AuthorAggregate
 {
-    public Guid Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string? Biography { get; set; }
-    public bool IsDeleted { get; set; }
+    public Guid Id { get; private set; }
+    public string Name { get; private set; } = string.Empty;
+    public string? Biography { get; private set; }
+    public bool IsDeleted { get; private set; }
 
     // Marten uses this for rehydration
     void Apply(AuthorAdded @event)

@@ -5,15 +5,15 @@ namespace BookStore.ApiService.Aggregates;
 
 public class BookAggregate
 {
-    public Guid Id { get; set; }
-    public string Title { get; set; } = string.Empty;
-    public string? Isbn { get; set; }
-    public string? Description { get; set; }
-    public DateOnly? PublicationDate { get; set; }
-    public Guid? PublisherId { get; set; }
-    public List<Guid> AuthorIds { get; set; } = [];
-    public List<Guid> CategoryIds { get; set; } = [];
-    public bool IsDeleted { get; set; }
+    public Guid Id { get; private set; }
+    public string Title { get; private set; } = string.Empty;
+    public string? Isbn { get; private set; }
+    public string? Description { get; private set; }
+    public DateOnly? PublicationDate { get; private set; }
+    public Guid? PublisherId { get; private set; }
+    public List<Guid> AuthorIds { get; private set; } = [];
+    public List<Guid> CategoryIds { get; private set; } = [];
+    public bool IsDeleted { get; private set; }
 
     // Marten uses this for rehydration
     void Apply(BookAdded @event)

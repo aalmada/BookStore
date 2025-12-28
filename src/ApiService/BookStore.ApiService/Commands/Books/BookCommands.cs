@@ -1,4 +1,4 @@
-namespace BookStore.ApiService.Commands.Books;
+namespace BookStore.ApiService.Commands;
 
 /// <summary>
 /// Command to create a new book
