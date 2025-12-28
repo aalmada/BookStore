@@ -25,9 +25,6 @@ jobs:
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
         
-    - name: Install Aspire workload
-      run: dotnet workload install aspire
-      
     - name: Cache NuGet packages
       uses: actions/cache@v4
       with:
@@ -43,16 +40,19 @@ jobs:
       run: dotnet build --no-restore --configuration Release
       
     - name: Run API unit tests (fast feedback)
-      run: dotnet test --project src/ApiService/BookStore.ApiService.Tests/BookStore.ApiService.Tests.csproj --configuration Release --no-build --treenode-filter "/**[Category=Unit]" ${{ github.event_name == 'pull_request' && '--fail-fast' || '' }}
+      run: dotnet test --configuration Release --no-build --treenode-filter "/**[Category=Unit]" ${{ github.event_name == 'pull_request' && '--fail-fast' || '' }}
+      working-directory: src/ApiService/BookStore.ApiService.Tests
       # TUnit automatically generates GitHub Actions test summary
       # Run fast unit tests first for quick feedback
       
     - name: Run analyzer tests
-      run: dotnet test --project src/ApiService/BookStore.ApiService.Analyzers.Tests/BookStore.ApiService.Analyzers.Tests.csproj --configuration Release --no-build --treenode-filter "/**[Category=Unit]"
+      run: dotnet test --configuration Release --no-build --treenode-filter "/**[Category=Unit]"
+      working-directory: src/ApiService/BookStore.ApiService.Analyzers.Tests
       # Verify Roslyn analyzers work correctly
       
     - name: Run web integration tests
-      run: dotnet test --project src/Web/BookStore.Web.Tests/BookStore.Web.Tests.csproj --configuration Release --no-build --treenode-filter "/**[Category=Integration]"
+      run: dotnet test --configuration Release --no-build --treenode-filter "/**[Category=Integration]"
+      working-directory: src/Web/BookStore.Web.Tests
       # Integration tests run after unit tests pass
       # Slower tests that require full application stack
         

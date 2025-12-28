@@ -16,6 +16,10 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
+    # Ignore patch updates for stable packages to reduce noise
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-patch"]
     groups:
       aspire:
         patterns:
@@ -26,10 +30,28 @@ updates:
       microsoft:
         patterns:
           - "Microsoft.*"
+      opentelemetry:
+        patterns:
+          - "OpenTelemetry.*"
+      wolverine:
+        patterns:
+          - "WolverineFx*"
+      npgsql:
+        patterns:
+          - "Npgsql.*"
+          - "AspNetCore.HealthChecks.NpgSql"
       testing:
         patterns:
-          - "xunit*"
+          - "TUnit*"
           - "NSubstitute"
+      roslyn-analyzers:
+        patterns:
+          - "Microsoft.CodeAnalysis.*"
+      api-tooling:
+        patterns:
+          - "Scalar.*"
+          - "Refit.*"
+          - "Asp.Versioning.*"
 
   # Enable version updates for GitHub Actions
   - package-ecosystem: "github-actions"
