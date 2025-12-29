@@ -27,9 +27,8 @@ public class LoggingEnricherMiddleware
         var traceId = Activity.Current?.TraceId.ToString();
         var spanId = Activity.Current?.SpanId.ToString();
 
-        // Get user information
+        // Get user information (excluding email for privacy)
         var userId = context.User?.Identity?.Name ?? "anonymous";
-        var userEmail = context.User?.Claims.FirstOrDefault(c => c.Type == "email")?.Value;
 
         // Get request information
         var requestPath = context.Request.Path.Value;
@@ -37,14 +36,13 @@ public class LoggingEnricherMiddleware
         var userAgent = context.Request.Headers["User-Agent"].FirstOrDefault();
         var remoteIp = context.Connection.RemoteIpAddress?.ToString();
 
-        // Create a log scope with all metadata
+        // Create a log scope with all metadata (excluding PII like email)
         using (_logger.BeginScope(new Dictionary<string, object>
         {
             ["CorrelationId"] = correlationId,
             ["TraceId"] = traceId ?? "none",
             ["SpanId"] = spanId ?? "none",
             ["UserId"] = userId,
-            ["UserEmail"] = userEmail ?? "none",
             ["RequestPath"] = requestPath ?? "/",
             ["RequestMethod"] = requestMethod,
             ["UserAgent"] = userAgent ?? "unknown",
