@@ -45,7 +45,7 @@ public sealed class ValidCultureAttribute : ValidationAttribute
             return ValidationResult.Success;
         }
 
-        if (value is string[] cultures)
+        if (value is IEnumerable<string> cultures)
         {
             var invalidCodes = CultureCache.GetInvalidCodes(cultures);
 
@@ -60,7 +60,7 @@ public sealed class ValidCultureAttribute : ValidationAttribute
         }
 
         return new ValidationResult(
-            $"The value must be a string or string array, but was {value.GetType().Name}",
+            $"The value must be a string or IEnumerable<string>, but was {value.GetType().Name}",
             [validationContext.MemberName!]);
     }
 }
