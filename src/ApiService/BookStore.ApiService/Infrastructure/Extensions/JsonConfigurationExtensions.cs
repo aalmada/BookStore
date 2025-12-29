@@ -1,4 +1,4 @@
-using BookStore.ApiService.Infrastructure.Json;
+using BookStore.Shared.Infrastructure.Json;
 
 namespace BookStore.ApiService.Infrastructure.Extensions;
 

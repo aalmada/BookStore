@@ -6,6 +6,7 @@ using Marten.Events.Daemon;
 using Marten.Events.Projections;
 using Weasel.Core;
 using Wolverine.Marten;
+using BookStore.Shared.Infrastructure.Json;
 
 namespace BookStore.ApiService.Infrastructure.Extensions;
 
@@ -60,7 +61,7 @@ public static class MartenConfigurationExtensions
             Casing.CamelCase,
             configure: settings =>
                 // Add custom converter for PartialDate to handle nullable values properly
-                settings.Converters.Add(new Json.PartialDateJsonConverter()));
+                settings.Converters.Add(new PartialDateJsonConverter()));
 
         // Enable NGram search with unaccent for multilingual text search
         // This automatically enables pg_trgm and unaccent extensions

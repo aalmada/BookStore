@@ -1,8 +1,8 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using BookStore.Web.Services.Models;
+using BookStore.Shared.Models;
 
-namespace BookStore.Web.Services.Infrastructure.Json;
+namespace BookStore.Shared.Infrastructure.Json;
 
 /// <summary>
 /// Custom JSON converter for PartialDate that properly handles nullable values

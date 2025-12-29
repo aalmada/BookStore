@@ -13,4 +13,16 @@
     <Project Path="src/BookStore.AppHost/BookStore.AppHost.csproj" />
     <Project Path="src/BookStore.ServiceDefaults/BookStore.ServiceDefaults.csproj" />
   </Folder>
+  <Folder Name="/src/ApiService/">
+    <Project Path="src/ApiService/BookStore.ApiService.Analyzers/BookStore.ApiService.Analyzers.csproj" />
+    <Project Path="src/ApiService/BookStore.ApiService.Tests/BookStore.ApiService.Tests.csproj" />
+    <Project Path="src/ApiService/BookStore.ApiService/BookStore.ApiService.csproj" />
+  </Folder>
+  <Folder Name="/src/Shared/">
+    <Project Path="src/Shared/BookStore.Shared.Tests/BookStore.Shared.Tests.csproj" />
+    <Project Path="src/Shared/BookStore.Shared/BookStore.Shared.csproj" />
+  </Folder>
+  <Folder Name="/src/Web/">
+    <Project Path="src/Web/BookStore.Web/BookStore.Web.csproj" />
+  </Folder>
 </Solution>

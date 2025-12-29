@@ -1,4 +1,4 @@
-namespace BookStore.ApiService.Models;
+namespace BookStore.Shared.Models;
 
 /// <summary>
 /// Represents a partial date that can be year-only, year-month, or a complete date.
@@ -104,6 +104,27 @@ public readonly record struct PartialDate : IComparable<PartialDate>
         }
 
         return $"{Year:D4}";
+    }
+
+    /// <summary>
+    /// Returns a user-friendly string representation (e.g. "January 2024" or "2024")
+    /// </summary>
+    public string ToDisplayString()
+    {
+        if (Day.HasValue && Month.HasValue)
+        {
+            // Full date: "January 15, 2024"
+            return new DateOnly(Year, Month.Value, Day.Value).ToString("MMMM dd, yyyy");
+        }
+
+        if (Month.HasValue)
+        {
+            // Year and Month: "January 2024"
+            return $"{System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(Month.Value)} {Year}";
+        }
+
+        // Year only
+        return Year.ToString();
     }
 
     /// <summary>

@@ -29,7 +29,7 @@ public static class BookEndpoints
         return group;
     }
 
-    static async Task<Ok<PagedListDto<Models.BookDto>>> SearchBooks(
+    static async Task<Ok<PagedListDto<BookDto>>> SearchBooks(
         [FromServices] IQuerySession session,
         [FromServices] IOptions<PaginationOptions> paginationOptions,
         [AsParameters] PagedRequest request,
@@ -79,7 +79,7 @@ public static class BookEndpoints
         }
 
         // Map to DTOs with localized categories, descriptions, and biographies
-        var bookDtos = pagedList.Select(book => new Models.BookDto(
+        var bookDtos = pagedList.Select(book => new BookDto(
             book.Id,
             book.Title,
             book.Isbn,
@@ -89,23 +89,23 @@ public static class BookEndpoints
             book.PublicationDate,
             Helpers.BookHelpers.IsPreRelease(book.PublicationDate),
             book.PublisherId.HasValue && publishers.TryGetValue(book.PublisherId.Value, out var pub)
-                ? new Models.PublisherDto(pub.Id, pub.Name)
+                ? new PublisherDto(pub.Id, pub.Name)
                 : null,
             [.. book.AuthorIds
                 .Select(id => authors.TryGetValue(id, out var author)
-                    ? new Models.AuthorDto(author.Id, author.Name, LocalizeBiography(author, language))
+                    ? new AuthorDto(author.Id, author.Name, LocalizeBiography(author, language))
                     : null)
                 .Where(a => a != null)
-                .Cast<Models.AuthorDto>()],
+                .Cast<AuthorDto>()],
             [.. book.CategoryIds
                 .Select(id => categories.TryGetValue(id, out var cat)
                     ? LocalizeCategory(cat, language)
                     : null)
                 .Where(c => c != null)
-                .Cast<Models.CategoryDto>()]
+                .Cast<CategoryDto>()]
         )).ToList();
 
-        return TypedResults.Ok(new PagedListDto<Models.BookDto>(
+        return TypedResults.Ok(new PagedListDto<BookDto>(
             bookDtos,
             pagedList.PageNumber,
             pagedList.PageSize,
@@ -156,7 +156,7 @@ public static class BookEndpoints
         }
 
         // Map to DTO with localized categories, description, and biographies
-        var bookDto = new Models.BookDto(
+        var bookDto = new BookDto(
             book.Id,
             book.Title,
             book.Isbn,
@@ -166,31 +166,31 @@ public static class BookEndpoints
             book.PublicationDate,
             Helpers.BookHelpers.IsPreRelease(book.PublicationDate),
             book.PublisherId.HasValue && publishers.TryGetValue(book.PublisherId.Value, out var pub)
-                ? new Models.PublisherDto(pub.Id, pub.Name)
+                ? new PublisherDto(pub.Id, pub.Name)
                 : null,
             [.. book.AuthorIds
                 .Select(id => authors.TryGetValue(id, out var author)
-                    ? new Models.AuthorDto(author.Id, author.Name, LocalizeBiography(author, language))
+                    ? new AuthorDto(author.Id, author.Name, LocalizeBiography(author, language))
                     : null)
                 .Where(a => a != null)
-                .Cast<Models.AuthorDto>()],
+                .Cast<AuthorDto>()],
             [.. book.CategoryIds
                 .Select(catId => categories.TryGetValue(catId, out var cat)
                     ? LocalizeCategory(cat, language)
                     : null)
                 .Where(c => c != null)
-                .Cast<Models.CategoryDto>()]);
+                .Cast<CategoryDto>()]);
 
         return TypedResults.Ok(bookDto);
     }
 
     // Helper method for category localization with fallback strategy
-    static Models.CategoryDto LocalizeCategory(CategoryProjection category, string language)
+    static CategoryDto LocalizeCategory(CategoryProjection category, string language)
     {
         // Try full culture code first (e.g., "pt-PT")
         if (category.Translations.TryGetValue(language, out var localized))
         {
-            return new Models.CategoryDto(category.Id, localized.Name);
+            return new CategoryDto(category.Id, localized.Name);
         }
 
         // Fallback to two-letter ISO language code (e.g., "pt" from "pt-PT")
@@ -201,7 +201,7 @@ public static class BookEndpoints
 
             if (category.Translations.TryGetValue(twoLetterCode, out var twoLetterLocalized))
             {
-                return new Models.CategoryDto(category.Id, twoLetterLocalized.Name);
+                return new CategoryDto(category.Id, twoLetterLocalized.Name);
             }
         }
         catch (System.Globalization.CultureNotFoundException)
@@ -212,12 +212,12 @@ public static class BookEndpoints
         // Fallback to English
         if (category.Translations.TryGetValue("en", out var englishName))
         {
-            return new Models.CategoryDto(category.Id, englishName.Name);
+            return new CategoryDto(category.Id, englishName.Name);
         }
 
         // Last resort: use first available localization
         var firstName = category.Translations.Values.FirstOrDefault();
-        return new Models.CategoryDto(category.Id, firstName?.Name ?? "Unknown");
+        return new CategoryDto(category.Id, firstName?.Name ?? "Unknown");
     }
 
     // Helper method for book description localization with fallback strategy

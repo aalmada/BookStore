@@ -1,7 +1,7 @@
 using BookStore.Web;
 using BookStore.Web.Components;
 using BookStore.Web.Services;
-using BookStore.Web.Services.Infrastructure.Json;
+using BookStore.Shared.Infrastructure.Json;
 using System.Text.Json;
 using MudBlazor.Services;
 using Polly;

@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\BookStore.ServiceDefaults\BookStore.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\..\Shared\BookStore.Shared\BookStore.Shared.csproj" />
   </ItemGroup>
 
   <ItemGroup>

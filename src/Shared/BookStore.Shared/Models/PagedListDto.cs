@@ -1,6 +1,4 @@
-using Marten.Pagination;
-
-namespace BookStore.ApiService.Models;
+namespace BookStore.Shared.Models;
 
 /// <summary>
 /// Represents a paginated list response for API clients
@@ -29,18 +27,4 @@ public class PagedListDto<T>
         HasPreviousPage = pageNumber > 1;
         HasNextPage = pageNumber < PageCount;
     }
-
-    /// <summary>
-    /// Creates a PagedListDto from Marten's IPagedList
-    /// </summary>
-    public static PagedListDto<T> FromPagedList(IPagedList<T> pagedList) => new()
-    {
-        Items = [.. pagedList],
-        PageNumber = pagedList.PageNumber,
-        PageSize = pagedList.PageSize,
-        TotalItemCount = pagedList.TotalItemCount,
-        PageCount = pagedList.PageCount,
-        HasPreviousPage = pagedList.HasPreviousPage,
-        HasNextPage = pagedList.HasNextPage
-    };
 }

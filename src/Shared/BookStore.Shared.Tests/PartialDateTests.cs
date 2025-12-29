@@ -1,8 +1,8 @@
 using System.Text.Json;
-using BookStore.ApiService.Infrastructure.Json;
-using BookStore.ApiService.Models;
+using BookStore.Shared.Infrastructure.Json;
+using BookStore.Shared.Models;
 
-namespace BookStore.ApiService.Tests;
+namespace BookStore.Shared.Tests;
 
 public class PartialDateTests
 {

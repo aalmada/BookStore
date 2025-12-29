@@ -1,4 +1,3 @@
-using BookStore.Web.Services.Models;
 using Refit;
 
 namespace BookStore.Web.Services;
