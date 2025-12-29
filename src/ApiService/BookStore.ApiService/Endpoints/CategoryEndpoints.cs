@@ -38,8 +38,9 @@ public static class CategoryEndpoints
         var language = GetPreferredLanguage(context);
 
         // Use Marten's native pagination for optimal performance
+        // Note: We can't sort by localized name directly in the query, so we sort by ID
         var pagedList = await session.Query<CategoryProjection>()
-            .OrderBy(c => c.Name)
+            .OrderBy(c => c.Id)
             .ToPagedListAsync(paging.Page!.Value, paging.PageSize!.Value);
 
         // Return the paged list - localization will be handled by the client or in a response DTO
@@ -97,17 +98,20 @@ public static class CategoryEndpoints
 
     static CategoryResponse LocalizeCategory(CategoryProjection category, string language)
     {
-        // Try to get translation for the requested language
-        if (category.Translations.TryGetValue(language, out var translation))
+        // Try full culture code first
+        if (category.Translations.TryGetValue(language, out var localized))
         {
-            return new CategoryResponse(
-                category.Id,
-                translation.Name);
+            return new CategoryResponse(category.Id, localized.Name);
         }
 
-        // Fallback to default (English or original)
-        return new CategoryResponse(
-            category.Id,
-            category.Name);
+        // Fallback to English
+        if (category.Translations.TryGetValue("en", out var englishName))
+        {
+            return new CategoryResponse(category.Id, englishName.Name);
+        }
+
+        // Last resort: first available
+        var firstName = category.Translations.Values.FirstOrDefault();
+        return new CategoryResponse(category.Id, firstName?.Name ?? "Unknown");
     }
 }

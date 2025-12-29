@@ -8,6 +8,7 @@ using JasperFx.Events.Projections;
 using Marten;
 using Marten.Events.Daemon;
 using Marten.Events.Projections;
+using Microsoft.Extensions.Options;
 using Scalar.AspNetCore;
 using Weasel.Core;
 using Wolverine;
@@ -58,15 +59,22 @@ builder.Services.AddApiVersioning(options =>
     options.ApiVersionReader = new Asp.Versioning.HeaderApiVersionReader("api-version");
 });
 
-// Add localization services
+
+// Configure localization from appsettings.json
+builder.Services.Configure<BookStore.ApiService.Models.LocalizationOptions>(
+    builder.Configuration.GetSection(BookStore.ApiService.Models.LocalizationOptions.SectionName));
+
 builder.Services.AddLocalization();
-builder.Services.Configure<RequestLocalizationOptions>(options =>
-{
-    var supportedCultures = new[] { "en", "pt", "es", "fr", "de" };
-    _ = options.SetDefaultCulture("en")
-        .AddSupportedCultures(supportedCultures)
-        .AddSupportedUICultures(supportedCultures);
-});
+builder.Services.AddOptions<RequestLocalizationOptions>()
+    .Configure<IOptions<BookStore.ApiService.Models.LocalizationOptions>>((options, localizationOptions) =>
+    {
+        var localization = localizationOptions.Value;
+        
+        _ = options.SetDefaultCulture(localization.DefaultCulture)
+            .AddSupportedCultures(localization.SupportedCultures)
+            .AddSupportedUICultures(localization.SupportedCultures);
+    });
+
 
 // Configure Marten for event sourcing
 builder.Services.AddMarten(sp =>
@@ -130,9 +138,9 @@ builder.Services.AddMarten(sp =>
     _ = options.Schema.For<AuthorProjection>()
         .Index(x => x.Name);         // B-tree index for sorting
 
-    // Indexes for CategoryProjection
-    _ = options.Schema.For<CategoryProjection>()
-        .Index(x => x.Name);         // B-tree index for sorting
+    // Note: CategoryProjection no longer has a Name field - uses CategoryTranslation dictionary
+    // _ = options.Schema.For<CategoryProjection>()
+    //     .Index(x => x.Name);
 
     // Indexes for PublisherProjection
     _ = options.Schema.For<PublisherProjection>()
@@ -146,8 +154,9 @@ builder.Services.AddMarten(sp =>
     _ = options.Schema.For<AuthorProjection>()
         .NgramIndex(x => x.Name);           // NGram search on author name
 
-    _ = options.Schema.For<CategoryProjection>()
-        .NgramIndex(x => x.Name);           // NGram search on category name
+    // Note: CategoryProjection no longer has a Name field - uses CategoryTranslation dictionary
+    // _ = options.Schema.For<CategoryProjection>()
+    //     .NgramIndex(x => x.Name);
 
     _ = options.Schema.For<PublisherProjection>()
         .NgramIndex(x => x.Name);           // NGram search on publisher name
@@ -219,6 +228,9 @@ if (app.Environment.IsDevelopment())
 
 // Configure the HTTP request pipeline.
 app.UseExceptionHandler();
+
+// Add request localization middleware
+app.UseRequestLocalization();
 
 // Add Marten metadata middleware to set correlation/causation IDs
 app.UseMartenMetadata();

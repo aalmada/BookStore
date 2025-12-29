@@ -15,6 +15,22 @@ public class PagedListDto<T>
     public bool HasPreviousPage { get; set; }
     public bool HasNextPage { get; set; }
 
+    public PagedListDto()
+    {
+    }
+
+    public PagedListDto(List<T> items, long pageNumber, long pageSize, long totalItemCount)
+    {
+        Items = items;
+        PageNumber = pageNumber;
+        PageSize = pageSize;
+        TotalItemCount = totalItemCount;
+        PageCount = (long)Math.Ceiling(totalItemCount / (double)pageSize);
+        HasPreviousPage = pageNumber > 1;
+        HasNextPage = pageNumber < PageCount;
+    }
+
+
     /// <summary>
     /// Creates a PagedListDto from Marten's IPagedList
     /// </summary>

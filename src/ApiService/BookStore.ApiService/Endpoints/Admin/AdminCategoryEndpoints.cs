@@ -5,13 +5,9 @@ using Wolverine;
 namespace BookStore.ApiService.Commands
 {
     public record CreateCategoryRequest(
-        string Name,
-        string? Description,
         Dictionary<string, CategoryTranslationDto>? Translations);
 
     public record UpdateCategoryRequest(
-        string Name,
-        string? Description,
         Dictionary<string, CategoryTranslationDto>? Translations);
 }
 
@@ -45,7 +41,7 @@ namespace BookStore.ApiService.Endpoints.Admin
             [FromServices] IMessageBus bus)
         {
             var translations = request.Translations ?? [];
-            var command = new Commands.CreateCategory(request.Name, request.Description, translations);
+            var command = new Commands.CreateCategory(translations);
             return bus.InvokeAsync<IResult>(command);
         }
 
@@ -57,7 +53,7 @@ namespace BookStore.ApiService.Endpoints.Admin
         {
             var etag = context.Request.Headers["If-Match"].FirstOrDefault();
             var translations = request.Translations ?? [];
-            var command = new Commands.UpdateCategory(id, request.Name, request.Description, translations) { ETag = etag };
+            var command = new Commands.UpdateCategory(id, translations) { ETag = etag };
             return bus.InvokeAsync<IResult>(command);
         }
 

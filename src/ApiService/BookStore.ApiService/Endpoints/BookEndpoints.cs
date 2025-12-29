@@ -28,7 +28,7 @@ public static class BookEndpoints
         return group;
     }
 
-    static async Task<Ok<PagedListDto<BookSearchProjection>>> SearchBooks(
+    static async Task<Ok<PagedListDto<Models.BookDto>>> SearchBooks(
         [FromServices] IQuerySession session,
         [FromServices] IOptions<PaginationOptions> paginationOptions,
         [AsParameters] PagedRequest request,
@@ -36,42 +36,103 @@ public static class BookEndpoints
     {
         var paging = request.Normalize(paginationOptions.Value);
 
+        // Get current culture set by RequestLocalizationMiddleware
+        var language = System.Globalization.CultureInfo.CurrentCulture.TwoLetterISOLanguageName;
+
+        // Dictionaries to hold included documents
+        var publishers = new Dictionary<Guid, PublisherProjection>();
+        var authors = new Dictionary<Guid, AuthorProjection>();
+        var categories = new Dictionary<Guid, CategoryProjection>();
+
+        IPagedList<BookSearchProjection> pagedList;
+
         if (string.IsNullOrWhiteSpace(search))
         {
-            // Return all books if no search query - use Marten's native pagination
-            var pagedList = await session.Query<BookSearchProjection>()
+            // Return all books if no search query - use Marten's native pagination with Include()
+#pragma warning disable CS8603 // Possible null reference return - false positive from Marten's Include API
+            pagedList = await session.Query<BookSearchProjection>()
+                .Include(publishers).On(x => x.PublisherId)!
+                .Include(authors).On(x => x.AuthorIds)!
+                .Include(categories).On(x => x.CategoryIds)!
                 .OrderBy(b => b.Title)
                 .ToPagedListAsync(paging.Page!.Value, paging.PageSize!.Value);
+#pragma warning restore CS8603
+        }
+        else
+        {
+            // Use NGram search for fuzzy, accent-insensitive matching
+            var searchQuery = search.Trim();
 
-            return TypedResults.Ok(PagedListDto<BookSearchProjection>.FromPagedList(pagedList));
+#pragma warning disable CS8603 // Possible null reference return - false positive from Marten's Include API
+            pagedList = await session.Query<BookSearchProjection>()
+                .Include(publishers).On(x => x.PublisherId)!
+                .Include(authors).On(x => x.AuthorIds)!
+                .Include(categories).On(x => x.CategoryIds)!
+                .Where(b =>
+                    b.Title.NgramSearch(searchQuery) ||
+                    (b.Description != null && b.Description.NgramSearch(searchQuery)) ||
+                    (b.Isbn != null && b.Isbn.Contains(searchQuery)))
+                .OrderBy(b => b.Title)
+                .ToPagedListAsync(paging.Page!.Value, paging.PageSize!.Value);
+#pragma warning restore CS8603
         }
 
-        // Use NGram search for fuzzy, accent-insensitive matching
-        // This leverages the pg_trgm indexes we configured
-        var searchQuery = search.Trim();
+        // Map to DTOs with localized categories
+        var bookDtos = pagedList.Select(book => new Models.BookDto(
+            book.Id,
+            book.Title,
+            book.Isbn,
+            book.Description,
+            book.PublicationDate,
+            book.PublisherId.HasValue && publishers.TryGetValue(book.PublisherId.Value, out var pub)
+                ? new Models.PublisherDto(pub.Id, pub.Name)
+                : null,
+            book.AuthorIds
+                .Select(id => authors.TryGetValue(id, out var author)
+                    ? new Models.AuthorDto(author.Id, author.Name, author.Biography)
+                    : null)
+                .Where(a => a != null)
+                .Cast<Models.AuthorDto>()
+                .ToList(),
+            book.CategoryIds
+                .Select(id => categories.TryGetValue(id, out var cat)
+                    ? LocalizeCategory(cat, language)
+                    : null)
+                .Where(c => c != null)
+                .Cast<Models.CategoryDto>()
+                .ToList()
+        )).ToList();
 
-        var query = session.Query<BookSearchProjection>()
-            .Where(b =>
-                b.Title.NgramSearch(searchQuery) ||
-                (b.Description != null && b.Description.NgramSearch(searchQuery)) ||
-                (b.Isbn != null && b.Isbn.Contains(searchQuery)) ||  // Exact match for ISBN
-                (b.PublisherName != null && b.PublisherName.NgramSearch(searchQuery)) ||
-                b.AuthorNames.NgramSearch(searchQuery))
-            // Note: CategoryNames excluded - use filtering instead of text search
-            .OrderBy(b => b.Title);
-
-        // Use Marten's native pagination for optimal performance
-        var searchResults = await query.ToPagedListAsync(paging.Page!.Value, paging.PageSize!.Value);
-
-        return TypedResults.Ok(PagedListDto<BookSearchProjection>.FromPagedList(searchResults));
+        return TypedResults.Ok(new PagedListDto<Models.BookDto>(
+            bookDtos,
+            pagedList.PageNumber,
+            pagedList.PageSize,
+            pagedList.TotalItemCount));
     }
+
 
     static async Task<IResult> GetBook(
         Guid id,
         [FromServices] IQuerySession session,
         HttpContext context)
     {
-        var book = await session.LoadAsync<BookSearchProjection>(id);
+        // Get current culture set by RequestLocalizationMiddleware
+        var language = System.Globalization.CultureInfo.CurrentCulture.TwoLetterISOLanguageName;
+
+        // Dictionaries to hold included documents
+        var publishers = new Dictionary<Guid, PublisherProjection>();
+        var authors = new Dictionary<Guid, AuthorProjection>();
+        var categories = new Dictionary<Guid, CategoryProjection>();
+
+        // Load book with Include() for related entities
+#pragma warning disable CS8603 // Possible null reference return - false positive from Marten's Include API
+        var book = await session.Query<BookSearchProjection>()
+            .Include(publishers).On(x => x.PublisherId)!
+            .Include(authors).On(x => x.AuthorIds)!
+            .Include(categories).On(x => x.CategoryIds)!
+            .Where(b => b.Id == id)
+            .SingleOrDefaultAsync();
+#pragma warning restore CS8603
 
         if (book == null)
         {
@@ -93,6 +154,67 @@ public static class BookEndpoints
             Infrastructure.ETagHelper.AddETagHeader(context, etag);
         }
 
-        return TypedResults.Ok(book);
+        // Map to DTO with localized categories
+        var bookDto = new Models.BookDto(
+            book.Id,
+            book.Title,
+            book.Isbn,
+            book.Description,
+            book.PublicationDate,
+            book.PublisherId.HasValue && publishers.TryGetValue(book.PublisherId.Value, out var pub)
+                ? new Models.PublisherDto(pub.Id, pub.Name)
+                : null,
+            book.AuthorIds
+                .Select(id => authors.TryGetValue(id, out var author)
+                    ? new Models.AuthorDto(author.Id, author.Name, author.Biography)
+                    : null)
+                .Where(a => a != null)
+                .Cast<Models.AuthorDto>()
+                .ToList(),
+            book.CategoryIds
+                .Select(catId => categories.TryGetValue(catId, out var cat)
+                    ? LocalizeCategory(cat, language)
+                    : null)
+                .Where(c => c != null)
+                .Cast<Models.CategoryDto>()
+                .ToList());
+
+        return TypedResults.Ok(bookDto);
+    }
+
+    // Helper method for category localization with fallback strategy
+    static Models.CategoryDto LocalizeCategory(CategoryProjection category, string language)
+    {
+        // Try full culture code first (e.g., "pt-PT")
+        if (category.Translations.TryGetValue(language, out var localized))
+        {
+            return new Models.CategoryDto(category.Id, localized.Name);
+        }
+
+        // Fallback to two-letter ISO language code (e.g., "pt" from "pt-PT")
+        try
+        {
+            var culture = new System.Globalization.CultureInfo(language);
+            var twoLetterCode = culture.TwoLetterISOLanguageName;
+            
+            if (category.Translations.TryGetValue(twoLetterCode, out var twoLetterLocalized))
+            {
+                return new Models.CategoryDto(category.Id, twoLetterLocalized.Name);
+            }
+        }
+        catch (System.Globalization.CultureNotFoundException)
+        {
+            // Invalid culture code - fall through to default
+        }
+
+        // Fallback to English
+        if (category.Translations.TryGetValue("en", out var englishName))
+        {
+            return new Models.CategoryDto(category.Id, englishName.Name);
+        }
+
+        // Last resort: use first available localization
+        var firstName = category.Translations.Values.FirstOrDefault();
+        return new Models.CategoryDto(category.Id, firstName?.Name ?? "Unknown");
     }
 }

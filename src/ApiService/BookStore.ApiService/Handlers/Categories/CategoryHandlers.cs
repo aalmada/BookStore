@@ -10,6 +10,17 @@ public static class CategoryHandlers
 {
     public static IResult Handle(CreateCategory command, IDocumentSession session)
     {
+        // Validate language codes in CategoryTranslation
+        if (!CultureValidator.ValidateTranslations(command.Translations, out var invalidCodes))
+        {
+            return Results.BadRequest(new
+            {
+                error = "Invalid language codes in CategoryTranslation",
+                invalidCodes,
+                message = $"The following language codes are not valid: {string.Join(", ", invalidCodes)}"
+            });
+        }
+
         // Convert DTOs to domain objects
         var translations = command.Translations.ToDictionary(
             kvp => kvp.Key,
@@ -17,8 +28,6 @@ public static class CategoryHandlers
 
         var @event = CategoryAggregate.Create(
             command.Id,
-            command.Name,
-            command.Description,
             translations);
 
         _ = session.Events.StartStream<CategoryAggregate>(command.Id, @event);
@@ -33,6 +42,17 @@ public static class CategoryHandlers
         IDocumentSession session,
         HttpContext context)
     {
+        // Validate language codes in CategoryTranslation
+        if (!CultureValidator.ValidateTranslations(command.Translations, out var invalidCodes))
+        {
+            return Results.BadRequest(new
+            {
+                error = "Invalid language codes in CategoryTranslation",
+                invalidCodes,
+                message = $"The following language codes are not valid: {string.Join(", ", invalidCodes)}"
+            });
+        }
+
         var streamState = await session.Events.FetchStreamStateAsync(command.Id);
         if (streamState == null)
         {
@@ -56,7 +76,7 @@ public static class CategoryHandlers
             kvp => kvp.Key,
             kvp => new CategoryTranslation(kvp.Value.Name, kvp.Value.Description));
 
-        var @event = aggregate.Update(command.Name, command.Description, translations);
+        var @event = aggregate.Update(translations);
         _ = session.Events.Append(command.Id, @event);
 
         var newStreamState = await session.Events.FetchStreamStateAsync(command.Id);

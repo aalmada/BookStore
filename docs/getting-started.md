@@ -184,7 +184,7 @@ curl "http://localhost:5000/api/books/search?q=patterns"
 ### 6. Get Categories in Portuguese
 
 ```bash
-curl -H "Accept-Language: pt-BR" http://localhost:5000/api/categories
+curl -H "Accept-Language: pt-PT" http://localhost:5000/api/categories
 ```
 
 ## Exploring the Event Store

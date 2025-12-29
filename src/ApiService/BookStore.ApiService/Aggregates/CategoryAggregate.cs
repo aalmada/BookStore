@@ -5,8 +5,6 @@ namespace BookStore.ApiService.Aggregates;
 public class CategoryAggregate
 {
     public Guid Id { get; private set; }
-    public string Name { get; private set; } = string.Empty;
-    public string? Description { get; private set; }
     public Dictionary<string, CategoryTranslation> Translations { get; private set; } = [];
     public bool IsDeleted { get; private set; }
 
@@ -14,16 +12,12 @@ public class CategoryAggregate
     void Apply(CategoryAdded @event)
     {
         Id = @event.Id;
-        Name = @event.Name;
-        Description = @event.Description;
         Translations = @event.Translations ?? [];
         IsDeleted = false;
     }
 
     void Apply(CategoryUpdated @event)
     {
-        Name = @event.Name;
-        Description = @event.Description;
         Translations = @event.Translations ?? [];
     }
 
@@ -32,29 +26,29 @@ public class CategoryAggregate
     void Apply(CategoryRestored _) => IsDeleted = false;
 
     // Command methods
-    public static CategoryAdded Create(Guid id, string name, string? description, Dictionary<string, CategoryTranslation>? translations = null)
+    public static CategoryAdded Create(Guid id, Dictionary<string, CategoryTranslation> translations)
     {
-        if (string.IsNullOrWhiteSpace(name))
+        if (translations.Count == 0)
         {
-            throw new ArgumentException("Name is required", nameof(name));
+            throw new ArgumentException("At least one localized name is required", nameof(translations));
         }
 
-        return new CategoryAdded(id, name, description, translations ?? [], DateTimeOffset.UtcNow);
+        return new CategoryAdded(id, translations, DateTimeOffset.UtcNow);
     }
 
-    public CategoryUpdated Update(string name, string? description, Dictionary<string, CategoryTranslation>? translations = null)
+    public CategoryUpdated Update(Dictionary<string, CategoryTranslation> translations)
     {
         if (IsDeleted)
         {
             throw new InvalidOperationException("Cannot update a deleted category");
         }
 
-        if (string.IsNullOrWhiteSpace(name))
+        if (translations.Count == 0)
         {
-            throw new ArgumentException("Name is required", nameof(name));
+            throw new ArgumentException("At least one localized name is required", nameof(translations));
         }
 
-        return new CategoryUpdated(Id, name, description, translations ?? [], DateTimeOffset.UtcNow);
+        return new CategoryUpdated(Id, translations, DateTimeOffset.UtcNow);
     }
 
     public CategorySoftDeleted SoftDelete()

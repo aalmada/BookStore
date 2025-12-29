@@ -95,14 +95,12 @@ public class DatabaseSeeder(IDocumentStore store)
 
         foreach (var (key, (id, names)) in categories)
         {
-            // Use English name as primary, create translations for other languages
-            var translations = names
-                .Where(kvp => kvp.Key != "en")
-                .ToDictionary(
-                    kvp => kvp.Key,
-                    kvp => new CategoryTranslation(kvp.Value, null));
+            // Create CategoryTranslation dictionary with all language variants
+            var translations = names.ToDictionary(
+                kvp => kvp.Key,
+                kvp => new CategoryTranslation(kvp.Value, null));
             
-            var @event = CategoryAggregate.Create(id, names["en"], null, translations);
+            var @event = CategoryAggregate.Create(id, translations);
             session.Events.StartStream<CategoryAggregate>(id, @event);
             result[key] = id;
         }

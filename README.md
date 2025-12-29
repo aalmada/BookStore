@@ -179,7 +179,7 @@ BookStore/
 
 ```bash
 # Get categories in Portuguese
-curl -H "Accept-Language: pt-BR" http://localhost:5000/api/categories
+curl -H "Accept-Language: pt-PT" http://localhost:5000/api/categories
 
 # Create category with translations
 curl -X POST http://localhost:5000/api/admin/categories \

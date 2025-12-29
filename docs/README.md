@@ -75,7 +75,7 @@ BookStore/
 - **[API Reference](api-reference.md)** - All available endpoints
 - **[ETag Support](etag-guide.md)** - Optimistic concurrency and caching
 - **[Correlation & Causation IDs](correlation-causation-guide.md)** - Distributed tracing
-- **[Localization](localization.md)** - Multi-language support
+- **[Localization Guide](localization-guide.md)** - Multi-language support and configuration
 
 ### For Operations
 
