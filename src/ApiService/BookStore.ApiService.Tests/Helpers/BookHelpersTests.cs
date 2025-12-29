@@ -5,8 +5,8 @@ namespace BookStore.ApiService.Tests.Helpers;
 
 public class BookHelpersTests
 {
-    [Fact]
-    public void IsPreRelease_WithNullPublicationDate_ReturnsFalse()
+    [Test]
+    public async Task IsPreRelease_WithNullPublicationDate_ReturnsFalse()
     {
         // Arrange
         PartialDate? publicationDate = null;
@@ -15,11 +15,11 @@ public class BookHelpersTests
         var result = BookHelpers.IsPreRelease(publicationDate);
 
         // Assert
-        Assert.False(result);
+        _ = await Assert.That(result).IsFalse();
     }
 
-    [Fact]
-    public void IsPreRelease_WithPastCompleteDate_ReturnsFalse()
+    [Test]
+    public async Task IsPreRelease_WithPastCompleteDate_ReturnsFalse()
     {
         // Arrange
         var publicationDate = new PartialDate(2020, 1, 15);
@@ -28,11 +28,11 @@ public class BookHelpersTests
         var result = BookHelpers.IsPreRelease(publicationDate);
 
         // Assert
-        Assert.False(result);
+        _ = await Assert.That(result).IsFalse();
     }
 
-    [Fact]
-    public void IsPreRelease_WithFutureCompleteDate_ReturnsTrue()
+    [Test]
+    public async Task IsPreRelease_WithFutureCompleteDate_ReturnsTrue()
     {
         // Arrange
         var futureYear = DateTimeOffset.UtcNow.Year + 2;
@@ -42,11 +42,11 @@ public class BookHelpersTests
         var result = BookHelpers.IsPreRelease(publicationDate);
 
         // Assert
-        Assert.True(result);
+        _ = await Assert.That(result).IsTrue();
     }
 
-    [Fact]
-    public void IsPreRelease_WithPastYearOnly_ReturnsFalse()
+    [Test]
+    public async Task IsPreRelease_WithPastYearOnly_ReturnsFalse()
     {
         // Arrange
         var publicationDate = new PartialDate(2020);
@@ -55,11 +55,11 @@ public class BookHelpersTests
         var result = BookHelpers.IsPreRelease(publicationDate);
 
         // Assert
-        Assert.False(result);
+        _ = await Assert.That(result).IsFalse();
     }
 
-    [Fact]
-    public void IsPreRelease_WithFutureYearOnly_ReturnsTrue()
+    [Test]
+    public async Task IsPreRelease_WithFutureYearOnly_ReturnsTrue()
     {
         // Arrange
         var futureYear = DateTimeOffset.UtcNow.Year + 1;
@@ -69,11 +69,11 @@ public class BookHelpersTests
         var result = BookHelpers.IsPreRelease(publicationDate);
 
         // Assert
-        Assert.True(result);
+        _ = await Assert.That(result).IsTrue();
     }
 
-    [Fact]
-    public void IsPreRelease_WithPastYearMonth_ReturnsFalse()
+    [Test]
+    public async Task IsPreRelease_WithPastYearMonth_ReturnsFalse()
     {
         // Arrange
         var publicationDate = new PartialDate(2020, 6);
@@ -82,11 +82,11 @@ public class BookHelpersTests
         var result = BookHelpers.IsPreRelease(publicationDate);
 
         // Assert
-        Assert.False(result);
+        _ = await Assert.That(result).IsFalse();
     }
 
-    [Fact]
-    public void IsPreRelease_WithFutureYearMonth_ReturnsTrue()
+    [Test]
+    public async Task IsPreRelease_WithFutureYearMonth_ReturnsTrue()
     {
         // Arrange
         var futureYear = DateTimeOffset.UtcNow.Year + 1;
@@ -96,11 +96,11 @@ public class BookHelpersTests
         var result = BookHelpers.IsPreRelease(publicationDate);
 
         // Assert
-        Assert.True(result);
+        _ = await Assert.That(result).IsTrue();
     }
 
-    [Fact]
-    public void IsPreRelease_WithCurrentYearButFutureMonth_ReturnsTrue()
+    [Test]
+    public async Task IsPreRelease_WithCurrentYearButFutureMonth_ReturnsTrue()
     {
         // Arrange
         var currentYear = DateTimeOffset.UtcNow.Year;
@@ -119,11 +119,11 @@ public class BookHelpersTests
         var result = BookHelpers.IsPreRelease(publicationDate);
 
         // Assert
-        Assert.True(result);
+        _ = await Assert.That(result).IsTrue();
     }
 
-    [Fact]
-    public void IsPreRelease_WithCurrentYearButPastMonth_ReturnsFalse()
+    [Test]
+    public async Task IsPreRelease_WithCurrentYearButPastMonth_ReturnsFalse()
     {
         // Arrange
         var currentYear = DateTimeOffset.UtcNow.Year;
@@ -142,11 +142,11 @@ public class BookHelpersTests
         var result = BookHelpers.IsPreRelease(publicationDate);
 
         // Assert
-        Assert.False(result);
+        _ = await Assert.That(result).IsFalse();
     }
 
-    [Fact]
-    public void IsPreRelease_WithTodayDate_ReturnsFalse()
+    [Test]
+    public async Task IsPreRelease_WithTodayDate_ReturnsFalse()
     {
         // Arrange
         var today = DateOnly.FromDateTime(DateTimeOffset.UtcNow.DateTime);
@@ -156,11 +156,11 @@ public class BookHelpersTests
         var result = BookHelpers.IsPreRelease(publicationDate);
 
         // Assert
-        Assert.False(result);
+        _ = await Assert.That(result).IsFalse();
     }
 
-    [Fact]
-    public void IsPreRelease_WithTomorrowDate_ReturnsTrue()
+    [Test]
+    public async Task IsPreRelease_WithTomorrowDate_ReturnsTrue()
     {
         // Arrange
         var tomorrow = DateOnly.FromDateTime(DateTimeOffset.UtcNow.DateTime).AddDays(1);
@@ -170,11 +170,11 @@ public class BookHelpersTests
         var result = BookHelpers.IsPreRelease(publicationDate);
 
         // Assert
-        Assert.True(result);
+        _ = await Assert.That(result).IsTrue();
     }
 
-    [Fact]
-    public void IsPreRelease_WithYesterdayDate_ReturnsFalse()
+    [Test]
+    public async Task IsPreRelease_WithYesterdayDate_ReturnsFalse()
     {
         // Arrange
         var yesterday = DateOnly.FromDateTime(DateTimeOffset.UtcNow.DateTime).AddDays(-1);
@@ -184,6 +184,6 @@ public class BookHelpersTests
         var result = BookHelpers.IsPreRelease(publicationDate);
 
         // Assert
-        Assert.False(result);
+        _ = await Assert.That(result).IsFalse();
     }
 }

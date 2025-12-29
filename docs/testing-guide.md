@@ -67,7 +67,7 @@ public class BookHandlerTests
         var result = BookHandlers.Handle(command, session);
         
         // Assert
-        await Assert.That(result).IsNotNull();
+        _ = await Assert.That(result).IsNotNull();
         session.Events.Received(1).StartStream<BookAggregate>(...);
     }
 }
@@ -81,50 +81,50 @@ TUnit uses a fluent, async-first assertion syntax:
 
 ```csharp
 // Equality
-await Assert.That(actual).IsEqualTo(expected);
-await Assert.That(actual).IsNotEqualTo(unexpected);
+_ = await Assert.That(actual).IsEqualTo(expected);
+_ = await Assert.That(actual).IsNotEqualTo(unexpected);
 
 // Null checks
-await Assert.That(value).IsNotNull();
-await Assert.That(value).IsNull();
+_ = await Assert.That(value).IsNotNull();
+_ = await Assert.That(value).IsNull();
 
 // Boolean
-await Assert.That(condition).IsTrue();
-await Assert.That(condition).IsFalse();
+_ = await Assert.That(condition).IsTrue();
+_ = await Assert.That(condition).IsFalse();
 
 // Type checks
-await Assert.That(result).IsTypeOf<ExpectedType>();
-await Assert.That(result).IsNotTypeOf<UnexpectedType>();
+_ = await Assert.That(result).IsTypeOf<ExpectedType>();
+_ = await Assert.That(result).IsNotTypeOf<UnexpectedType>();
 ```
 
 ### Collection Assertions
 
 ```csharp
 // Contains
-await Assert.That(collection).Contains(item);
-await Assert.That(collection).DoesNotContain(item);
+_ = await Assert.That(collection).Contains(item);
+_ = await Assert.That(collection).DoesNotContain(item);
 
 // Empty/Not Empty
-await Assert.That(collection).IsEmpty();
-await Assert.That(collection).IsNotEmpty();
+_ = await Assert.That(collection).IsEmpty();
+_ = await Assert.That(collection).IsNotEmpty();
 
 // Count
-await Assert.That(collection).Count().IsEqualTo(3);
+_ = await Assert.That(collection).Count().IsEqualTo(3);
 ```
 
 ### String Assertions
 
 ```csharp
 // Contains
-await Assert.That(text).Contains("substring");
-await Assert.That(text).DoesNotContain("missing");
+_ = await Assert.That(text).Contains("substring");
+_ = await Assert.That(text).DoesNotContain("missing");
 
 // Starts/Ends With
-await Assert.That(text).StartsWith("prefix");
-await Assert.That(text).EndsWith("suffix");
+_ = await Assert.That(text).StartsWith("prefix");
+_ = await Assert.That(text).EndsWith("suffix");
 
 // Regex
-await Assert.That(text).Matches(@"pattern");
+_ = await Assert.That(text).Matches(@"pattern");
 ```
 
 ### Exception Assertions
@@ -163,7 +163,7 @@ public async Task UpdateBookHandler_WithMissingBook_ShouldReturnNotFound()
     var result = await BookHandlers.Handle(command, session, context);
     
     // Assert
-    await Assert.That(result).IsTypeOf<NotFound>();
+    _ = await Assert.That(result).IsTypeOf<NotFound>();
 }
 ```
 
@@ -180,7 +180,7 @@ public async Task DateTimeOffset_Should_Serialize_As_ISO8601_With_UTC()
     var testObject = new { Timestamp = new DateTimeOffset(2025, 12, 26, 17, 16, 9, 123, TimeSpan.Zero) };
     var json = JsonSerializer.Serialize(testObject, _options);
     
-    await Assert.That(json).Contains("\"timestamp\":\"2025-12-26T17:16:09.123+00:00\"");
+    _ = await Assert.That(json).Contains("\"timestamp\":\"2025-12-26T17:16:09.123+00:00\"");
 }
 ```
 
@@ -203,7 +203,7 @@ public async Task GetWebResourceRootReturnsOkStatusCode(CancellationToken cancel
     var httpClient = app.CreateHttpClient("webfrontend");
     var response = await httpClient.GetAsync("/", cancellationToken);
     
-    await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+    _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 }
 ```
 
@@ -378,7 +378,7 @@ All TUnit assertions are async, so tests should be `async Task`:
 [Test]
 public async Task MyTest()  // ✓ Correct
 {
-    await Assert.That(result).IsNotNull();
+    _ = await Assert.That(result).IsNotNull();
 }
 
 [Test]
@@ -394,7 +394,7 @@ TUnit's fluent syntax is more readable:
 
 ```csharp
 // ✓ TUnit style
-await Assert.That(result).IsEqualTo(expected);
+_ = await Assert.That(result).IsEqualTo(expected);
 
 // ✗ Old xUnit style (don't use)
 Assert.Equal(expected, result);
@@ -442,7 +442,7 @@ public async Task Updates_configuration_file()
 {
     await ConfigurationManager.SetAsync("key", "value");
     var result = await ConfigurationManager.GetAsync("key");
-    await Assert.That(result).IsEqualTo("value");
+    _ = await Assert.That(result).IsEqualTo("value");
 }
 ```
 
@@ -547,7 +547,7 @@ public class BadTests
     public async Task Test1()
     {
         counter++;
-        await Assert.That(counter).IsEqualTo(1); // May fail if tests run in parallel
+        _ = await Assert.That(counter).IsEqualTo(1); // May fail if tests run in parallel
     }
 }
 
@@ -559,7 +559,7 @@ public class GoodTests
     {
         var counter = 0; // Local state
         counter++;
-        await Assert.That(counter).IsEqualTo(1);
+        _ = await Assert.That(counter).IsEqualTo(1);
     }
 }
 ```
@@ -582,7 +582,7 @@ public async Task CreateBook_PersistsBookToDatabase()
 {
     var book = await bookService.CreateBook(...);
     var retrieved = await bookService.GetBook(book.Id);
-    await Assert.That(retrieved).IsNotNull();
+    _ = await Assert.That(retrieved).IsNotNull();
 }
 ```
 
@@ -789,13 +789,13 @@ public void StoreResult()
 
 ```csharp
 // ✗ Bad: Expensive operation in assertion
-await Assert.That(await GetAllUsersFromDatabase())
+_ = await Assert.That(await GetAllUsersFromDatabase())
     .Count()
     .IsEqualTo(1000);
 
 // ✓ Good: Use efficient queries
 var userCount = await GetUserCountFromDatabase();
-await Assert.That(userCount).IsEqualTo(1000);
+_ = await Assert.That(userCount).IsEqualTo(1000);
 ```
 
 ### CI/CD Performance
@@ -853,10 +853,10 @@ If you're familiar with xUnit, here are the key differences:
 | `[Fact]` | `[Test]` |
 | `[Theory]` | `[Test]` |
 | `[InlineData(...)]` | `[Arguments(...)]` |
-| `Assert.Equal(expected, actual)` | `await Assert.That(actual).IsEqualTo(expected)` |
-| `Assert.NotNull(value)` | `await Assert.That(value).IsNotNull()` |
-| `Assert.True(condition)` | `await Assert.That(condition).IsTrue()` |
-| `Assert.Contains(item, collection)` | `await Assert.That(collection).Contains(item)` |
+| `Assert.Equal(expected, actual)` | `_ = await Assert.That(actual).IsEqualTo(expected)` |
+| `Assert.NotNull(value)` | `_ = await Assert.That(value).IsNotNull()` |
+| `Assert.True(condition)` | `_ = await Assert.That(condition).IsTrue()` |
+| `Assert.Contains(item, collection)` | `_ = await Assert.That(collection).Contains(item)` |
 
 See the [TUnit migration guide](https://tunit.dev/docs/migration/xunit/) for more details.
 

@@ -285,9 +285,9 @@ dotnet run --project src/BookStore.Tests/BookStore.Tests.csproj
 
 All tests use TUnit's fluent assertion syntax:
 ```csharp
-await Assert.That(result).IsNotNull();
-await Assert.That(actual).IsEqualTo(expected);
-await Assert.That(collection).Contains(item);
+_ = await Assert.That(result).IsNotNull();
+_ = await Assert.That(actual).IsEqualTo(expected);
+_ = await Assert.That(collection).Contains(item);
 ```
 
 > [!NOTE]

@@ -41,7 +41,7 @@ public class ConfigurationValidationTests
         var results = ValidateModel(options);
 
         // Assert
-        using var scope = Assert.Multiple();
+        using var _ = Assert.Multiple();
         _ = await Assert.That(results).Count().IsEqualTo(1);
         _ = await Assert.That(results[0].ErrorMessage).Contains("DefaultPageSize must be between 1 and 1000");
     }
@@ -61,7 +61,7 @@ public class ConfigurationValidationTests
         var results = ValidateModel(options);
 
         // Assert
-        using var scope = Assert.Multiple();
+        using var _ = Assert.Multiple();
         _ = await Assert.That(results).Count().IsEqualTo(1);
         _ = await Assert.That(results[0].ErrorMessage).Contains("DefaultPageSize must be between 1 and 1000");
     }
@@ -81,7 +81,7 @@ public class ConfigurationValidationTests
         var results = ValidateModel(options);
 
         // Assert
-        using var scope = Assert.Multiple();
+        using var _ = Assert.Multiple();
         _ = await Assert.That(results).Count().IsGreaterThanOrEqualTo(1);
         _ = await Assert.That(results.Any(r => r.ErrorMessage!.Contains("DefaultPageSize must be between 1 and 1000"))).IsTrue();
     }
@@ -101,7 +101,7 @@ public class ConfigurationValidationTests
         var results = ValidateModel(options);
 
         // Assert
-        using var scope = Assert.Multiple();
+        using var _ = Assert.Multiple();
         _ = await Assert.That(results).Count().IsEqualTo(1);
         _ = await Assert.That(results[0].ErrorMessage).Contains("MaxPageSize must be between 1 and 1000");
     }
@@ -121,7 +121,7 @@ public class ConfigurationValidationTests
         var results = ValidateModel(options);
 
         // Assert
-        using var scope = Assert.Multiple();
+        using var _ = Assert.Multiple();
         _ = await Assert.That(results).Count().IsEqualTo(1);
         _ = await Assert.That(results[0].ErrorMessage).Contains("MaxPageSize must be between 1 and 1000");
     }
@@ -141,7 +141,7 @@ public class ConfigurationValidationTests
         var results = ValidateModel(options);
 
         // Assert
-        using var scope = Assert.Multiple();
+        using var _ = Assert.Multiple();
         _ = await Assert.That(results).Count().IsEqualTo(1);
         _ = await Assert.That(results[0].ErrorMessage).Contains("DefaultPageSize (100) cannot be greater than MaxPageSize (50)");
     }
@@ -179,7 +179,7 @@ public class ConfigurationValidationTests
         var results = ValidateModel(options);
 
         // Assert
-        using var scope = Assert.Multiple();
+        using var _ = Assert.Multiple();
         _ = await Assert.That(results).IsNotEmpty();
         _ = await Assert.That(results.Any(r => r.ErrorMessage!.Contains("DefaultCulture"))).IsTrue();
     }
@@ -199,7 +199,7 @@ public class ConfigurationValidationTests
         var results = ValidateModel(options);
 
         // Assert
-        using var scope = Assert.Multiple();
+        using var _ = Assert.Multiple();
         _ = await Assert.That(results).IsNotEmpty();
         _ = await Assert.That(results.Any(r => r.ErrorMessage!.Contains("At least one supported culture"))).IsTrue();
     }
@@ -219,7 +219,7 @@ public class ConfigurationValidationTests
         var results = ValidateModel(options);
 
         // Assert
-        using var scope = Assert.Multiple();
+        using var _ = Assert.Multiple();
         _ = await Assert.That(results).Count().IsEqualTo(1);
         _ = await Assert.That(results[0].ErrorMessage).Contains("DefaultCulture 'en-US' must be included in SupportedCultures");
     }

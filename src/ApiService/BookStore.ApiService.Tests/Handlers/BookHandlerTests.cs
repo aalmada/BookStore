@@ -2,6 +2,7 @@ using BookStore.ApiService.Aggregates;
 using BookStore.ApiService.Commands;
 using BookStore.ApiService.Events;
 using BookStore.ApiService.Handlers.Books;
+using BookStore.ApiService.Models;
 using Marten;
 using Microsoft.AspNetCore.Http;
 using NSubstitute;
@@ -22,11 +23,13 @@ public class BookHandlerTests
         var command = new CreateBook(
             "Clean Code",
             "978-0132350884",
-            "A Handbook of Agile Software Craftsmanship",
-            new DateOnly(2008, 8, 1),
-            Guid.CreateVersion7(),
-            [Guid.CreateVersion7()],
-            [Guid.CreateVersion7()]);
+            "en",
+            [], // Translations
+            new PartialDate(2008, 8, 1),
+            Guid.CreateVersion7(), // PublisherId
+            [Guid.CreateVersion7()], // AuthorIds
+            [Guid.CreateVersion7()]  // CategoryIds
+        );
         
         var session = Substitute.For<IDocumentSession>();
         _ = session.CorrelationId.Returns("test-correlation-id");
@@ -52,11 +55,13 @@ public class BookHandlerTests
             Guid.CreateVersion7(),
             "Updated Title",
             null,
-            null,
-            null,
-            null,
-            [],
-            []);
+            "en", // Language (non-nullable)
+            null, // Translations
+            null, // PartialDate
+            null, // PublisherId
+            [],   // AuthorIds
+            []    // CategoryIds
+        );
         
         var session = Substitute.For<IDocumentSession>();
         var context = new DefaultHttpContext();

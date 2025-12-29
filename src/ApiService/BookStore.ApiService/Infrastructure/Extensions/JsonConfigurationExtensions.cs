@@ -1,3 +1,5 @@
+using BookStore.ApiService.Infrastructure.Json;
+
 namespace BookStore.ApiService.Infrastructure.Extensions;
 
 /// <summary>
@@ -20,6 +22,9 @@ public static class JsonConfigurationExtensions
             // Serialize enums as strings (not integers) for better readability and API evolution
             options.SerializerOptions.Converters.Add(
                 new System.Text.Json.Serialization.JsonStringEnumConverter(System.Text.Json.JsonNamingPolicy.CamelCase));
+
+            // Add custom converter for PartialDate to handle nullable values properly
+            options.SerializerOptions.Converters.Add(new PartialDateJsonConverter());
 
             // Pretty print in development for easier debugging
             options.SerializerOptions.WriteIndented = environment.IsDevelopment();

@@ -55,7 +55,12 @@ public static class MartenConfigurationExtensions
     {
         // Configure JSON serialization for Marten (database storage)
         // Enums stored as strings for readability and camelCase for JSON properties
-        options.UseSystemTextJsonForSerialization(EnumStorage.AsString, Casing.CamelCase);
+        options.UseSystemTextJsonForSerialization(
+            EnumStorage.AsString,
+            Casing.CamelCase,
+            configure: settings =>
+                // Add custom converter for PartialDate to handle nullable values properly
+                settings.Converters.Add(new Json.PartialDateJsonConverter()));
 
         // Enable NGram search with unaccent for multilingual text search
         // This automatically enables pg_trgm and unaccent extensions

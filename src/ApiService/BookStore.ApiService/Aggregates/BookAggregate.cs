@@ -189,7 +189,6 @@ public class BookAggregate
         }
     }
 
-
     public BookSoftDeleted SoftDelete()
     {
         if (IsDeleted)

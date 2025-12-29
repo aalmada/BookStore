@@ -41,7 +41,7 @@ if (app.Environment.IsDevelopment())
 static async Task WaitForProjectionsAsync(IDocumentStore store, ILogger logger)
 {
     logger.LogInformation("Waiting for async projections to complete...");
-    
+
     var timeout = TimeSpan.FromSeconds(30);
     var checkInterval = TimeSpan.FromMilliseconds(100);
     var stopwatch = System.Diagnostics.Stopwatch.StartNew();
@@ -49,7 +49,7 @@ static async Task WaitForProjectionsAsync(IDocumentStore store, ILogger logger)
     while (stopwatch.Elapsed < timeout)
     {
         await using var session = store.QuerySession();
-        
+
         // Check if projections have data by querying the projection tables
         var bookCount = await session.Query<BookSearchProjection>().CountAsync();
         var authorCount = await session.Query<AuthorProjection>().CountAsync();
