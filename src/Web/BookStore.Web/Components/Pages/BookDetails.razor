@@ -53,10 +53,10 @@
                 <MudItem xs="12" md="8">
                     <MudText Typo="Typo.h3" Class="mb-3">@book.Title</MudText>
 
-                    @if (!string.IsNullOrWhiteSpace(book.AuthorNames))
+                    @if (book.Authors.Count > 0)
                     {
                         <MudText Typo="Typo.h6" Color="Color.Secondary" Class="mb-4">
-                            <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" /> by @book.AuthorNames
+                            <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" /> by @string.Join(", ", book.Authors.Select(a => a.Name))
                         </MudText>
                     }
 
@@ -73,19 +73,27 @@
                                     </MudStack>
                                 }
 
-                                @if (!string.IsNullOrWhiteSpace(book.PublisherName))
+                                @if (book.Publisher != null)
                                 {
                                     <MudStack Row="true" AlignItems="AlignItems.Center">
                                         <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" Color="Color.Secondary" />
-                                        <MudText Typo="Typo.body2"><strong>Publisher:</strong> @book.PublisherName</MudText>
+                                        <MudText Typo="Typo.body2"><strong>Publisher:</strong> @book.Publisher.Name</MudText>
                                     </MudStack>
                                 }
 
-                                @if (book.PublishedDate.HasValue)
+                                @if (!string.IsNullOrWhiteSpace(book.LanguageName))
+                                {
+                                    <MudStack Row="true" AlignItems="AlignItems.Center">
+                                        <MudIcon Icon="@Icons.Material.Filled.Language" Size="Size.Small" Color="Color.Secondary" />
+                                        <MudText Typo="Typo.body2"><strong>Language:</strong> @book.LanguageName</MudText>
+                                    </MudStack>
+                                }
+
+                                @if (book.PublicationDate.HasValue)
                                 {
                                     <MudStack Row="true" AlignItems="AlignItems.Center">
                                         <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" Color="Color.Secondary" />
-                                        <MudText Typo="Typo.body2"><strong>Published:</strong> @book.PublishedDate.Value.ToString("MMMM dd, yyyy")</MudText>
+                                        <MudText Typo="Typo.body2"><strong>Published:</strong> @book.PublicationDate.Value.ToDisplayString()</MudText>
                                     </MudStack>
                                 }
                             </MudStack>

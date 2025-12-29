@@ -9,6 +9,7 @@ public class BookStoreHubService : IAsyncDisposable
 {
     readonly HubConnection _connection;
     readonly ILogger<BookStoreHubService> _logger;
+    readonly SemaphoreSlim _lock = new(1, 1);
 
     public event Action<BookNotification>? OnBookCreated;
     public event Action<BookNotification>? OnBookUpdated;
@@ -52,14 +53,23 @@ public class BookStoreHubService : IAsyncDisposable
 
     public async Task StartAsync()
     {
+        // Prevent concurrent start attempts
+        await _lock.WaitAsync();
         try
         {
-            await _connection.StartAsync();
-            _logger.LogInformation("SignalR connection started successfully");
+            if (_connection.State == HubConnectionState.Disconnected)
+            {
+                await _connection.StartAsync();
+                _logger.LogInformation("SignalR connection started successfully");
+            }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error starting SignalR connection");
+        }
+        finally
+        {
+            _lock.Release();
         }
     }
 
@@ -69,6 +79,8 @@ public class BookStoreHubService : IAsyncDisposable
         {
             await _connection.DisposeAsync();
         }
+        
+        _lock.Dispose();
     }
 }
 

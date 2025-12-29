@@ -1,6 +1,8 @@
 using BookStore.Web;
 using BookStore.Web.Components;
 using BookStore.Web.Services;
+using BookStore.Web.Services.Infrastructure.Json;
+using System.Text.Json;
 using MudBlazor.Services;
 using Polly;
 using Polly.Extensions.Http;
@@ -30,7 +32,14 @@ var circuitBreakerPolicy = HttpPolicyExtensions
 
 // Register Refit API client with Polly policies
 builder.Services
-    .AddRefitClient<IBookStoreApi>()
+    .AddRefitClient<IBookStoreApi>(new RefitSettings
+    {
+        ContentSerializer = new SystemTextJsonContentSerializer(new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            Converters = { new PartialDateJsonConverter() }
+        })
+    })
     .ConfigureHttpClient(c =>
     {
         // Get API base URL from service discovery (Aspire)

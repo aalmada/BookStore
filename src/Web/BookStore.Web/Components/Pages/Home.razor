@@ -118,18 +118,18 @@
                                 @book.Title
                             </MudText>
                             <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-1">
-                                <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" /> @book.AuthorNames
+                                <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" /> @string.Join(", ", book.Authors.Select(a => a.Name))
                             </MudText>
-                            @if (!string.IsNullOrWhiteSpace(book.PublisherName))
+                            @if (book.Publisher != null)
                             {
                                 <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-1">
-                                    <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" /> @book.PublisherName
+                                    <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" /> @book.Publisher.Name
                                 </MudText>
                             }
-                            @if (book.PublishedDate.HasValue)
+                            @if (book.PublicationDate.HasValue)
                             {
                                 <MudText Typo="Typo.body2" Color="Color.Secondary">
-                                    <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" /> @book.PublishedDate.Value.Year
+                                    <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" /> @book.PublicationDate.Value.Year
                                 </MudText>
                             }
                         </MudCardContent>
