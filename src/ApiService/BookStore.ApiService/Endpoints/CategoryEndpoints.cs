@@ -5,6 +5,7 @@ using Marten;
 using Marten.Pagination;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace BookStore.ApiService.Endpoints;
 
@@ -29,10 +30,11 @@ public static class CategoryEndpoints
 
     static async Task<IResult> GetCategories(
         [FromServices] IQuerySession session,
+        [FromServices] IOptions<PaginationOptions> paginationOptions,
         [AsParameters] PagedRequest request,
         HttpContext context)
     {
-        var paging = request.Normalize();
+        var paging = request.Normalize(paginationOptions.Value);
         var language = GetPreferredLanguage(context);
 
         // Use Marten's native pagination for optimal performance

@@ -4,6 +4,7 @@ using Marten;
 using Marten.Pagination;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using Npgsql;
 
 namespace BookStore.ApiService.Endpoints;
@@ -29,10 +30,11 @@ public static class BookEndpoints
 
     static async Task<Ok<PagedListDto<BookSearchProjection>>> SearchBooks(
         [FromServices] IQuerySession session,
+        [FromServices] IOptions<PaginationOptions> paginationOptions,
         [AsParameters] PagedRequest request,
         [FromQuery] string? search = null)
     {
-        var paging = request.Normalize();
+        var paging = request.Normalize(paginationOptions.Value);
 
         if (string.IsNullOrWhiteSpace(search))
         {

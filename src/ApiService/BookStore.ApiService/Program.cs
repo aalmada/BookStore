@@ -42,6 +42,10 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 // Add services to the container.
 builder.Services.AddProblemDetails();
 
+// Configure pagination options
+builder.Services.Configure<BookStore.ApiService.Models.PaginationOptions>(
+    builder.Configuration.GetSection(BookStore.ApiService.Models.PaginationOptions.SectionName));
+
 // Configure OpenAPI with metadata
 builder.Services.AddOpenApi(options => options.AddBookStoreApiDocumentation());
 

@@ -4,6 +4,7 @@ using Marten;
 using Marten.Pagination;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace BookStore.ApiService.Endpoints;
 
@@ -26,9 +27,10 @@ public static class PublisherEndpoints
 
     static async Task<Ok<IPagedList<PublisherProjection>>> GetPublishers(
         [FromServices] IQuerySession session,
+        [FromServices] IOptions<PaginationOptions> paginationOptions,
         [AsParameters] PagedRequest request)
     {
-        var paging = request.Normalize();
+        var paging = request.Normalize(paginationOptions.Value);
 
         // Use Marten's native pagination for optimal performance
         var pagedList = await session.Query<PublisherProjection>()
