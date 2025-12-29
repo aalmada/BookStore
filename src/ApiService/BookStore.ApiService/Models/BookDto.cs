@@ -7,8 +7,10 @@ public record BookDto(
     Guid Id,
     string Title,
     string? Isbn,
+    string Language,
     string? Description,
-    DateOnly? PublicationDate,
+    PartialDate? PublicationDate,
+    bool IsPreRelease,
     PublisherDto? Publisher,
     List<AuthorDto> Authors,
     List<CategoryDto> Categories);

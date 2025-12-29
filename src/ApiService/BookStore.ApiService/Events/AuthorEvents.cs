@@ -4,13 +4,13 @@ namespace BookStore.ApiService.Events;
 public record AuthorAdded(
     Guid Id,
     string Name,
-    string? Biography,
+    Dictionary<string, AuthorTranslation>? Translations,
     DateTimeOffset Timestamp);
 
 public record AuthorUpdated(
     Guid Id,
     string Name,
-    string? Biography,
+    Dictionary<string, AuthorTranslation>? Translations,
     DateTimeOffset Timestamp);
 
 public record AuthorSoftDeleted(
@@ -20,3 +20,6 @@ public record AuthorSoftDeleted(
 public record AuthorRestored(
     Guid Id,
     DateTimeOffset Timestamp);
+
+// Localization model for author biographies
+public record AuthorTranslation(string Biography);

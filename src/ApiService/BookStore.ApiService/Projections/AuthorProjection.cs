@@ -7,7 +7,7 @@ public class AuthorProjection
 {
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;
-    public string? Biography { get; set; }
+    public Dictionary<string, AuthorTranslation> Translations { get; set; } = [];
     public DateTimeOffset LastModified { get; set; }
 }
 
@@ -20,14 +20,14 @@ public class AuthorProjectionBuilder : SingleStreamProjection<AuthorProjection, 
     {
         Id = @event.Id,
         Name = @event.Name,
-        Biography = @event.Biography,
+        Translations = @event.Translations ?? [],
         LastModified = @event.Timestamp
     };
 
     void Apply(AuthorUpdated @event, AuthorProjection projection)
     {
         projection.Name = @event.Name;
-        projection.Biography = @event.Biography;
+        projection.Translations = @event.Translations ?? [];
         projection.LastModified = @event.Timestamp;
     }
 

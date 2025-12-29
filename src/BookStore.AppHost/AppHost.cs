@@ -2,8 +2,8 @@ var builder = DistributedApplication.CreateBuilder(args);
 
 // Add PostgreSQL with pg_trgm extension for ngram search
 var postgres = builder.AddPostgres("postgres")
-    .WithPgAdmin()
-    .WithDataVolume();
+    .WithPgAdmin();
+// .WithDataVolume();
 
 var bookStoreDb = postgres.AddDatabase("bookstore");
 

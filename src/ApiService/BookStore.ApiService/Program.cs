@@ -56,7 +56,7 @@ if (app.Environment.IsDevelopment())
     _ = app.MapScalarApiReference("/api-reference",
         options => options
             .WithTitle("Book Store API")
-            .WithTheme(ScalarTheme.Purple)
+            // .WithTheme(ScalarTheme.Purple)
             .WithDefaultHttpClient(ScalarTarget.CSharp, ScalarClient.HttpClient));
 }
 

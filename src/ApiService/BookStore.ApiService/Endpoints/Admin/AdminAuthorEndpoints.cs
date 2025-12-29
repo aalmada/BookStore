@@ -4,8 +4,8 @@ using Wolverine;
 
 namespace BookStore.ApiService.Commands
 {
-    public record CreateAuthorRequest(string Name, string? Biography);
-    public record UpdateAuthorRequest(string Name, string? Biography);
+    public record CreateAuthorRequest(string Name, Dictionary<string, AuthorTranslationDto>? Translations);
+    public record UpdateAuthorRequest(string Name, Dictionary<string, AuthorTranslationDto>? Translations);
 }
 
 namespace BookStore.ApiService.Endpoints.Admin
@@ -37,7 +37,7 @@ namespace BookStore.ApiService.Endpoints.Admin
             [FromBody] Commands.CreateAuthorRequest request,
             [FromServices] IMessageBus bus)
         {
-            var command = new Commands.CreateAuthor(request.Name, request.Biography);
+            var command = new Commands.CreateAuthor(request.Name, request.Translations);
             return bus.InvokeAsync<IResult>(command);
         }
 
@@ -48,7 +48,7 @@ namespace BookStore.ApiService.Endpoints.Admin
             HttpContext context)
         {
             var etag = context.Request.Headers["If-Match"].FirstOrDefault();
-            var command = new Commands.UpdateAuthor(id, request.Name, request.Biography) { ETag = etag };
+            var command = new Commands.UpdateAuthor(id, request.Name, request.Translations) { ETag = etag };
             return bus.InvokeAsync<IResult>(command);
         }
 

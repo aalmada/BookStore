@@ -1,3 +1,5 @@
+using BookStore.ApiService.Models;
+
 namespace BookStore.ApiService.Commands;
 
 /// <summary>
@@ -6,8 +8,9 @@ namespace BookStore.ApiService.Commands;
 public record CreateBook(
     string Title,
     string? Isbn,
-    string? Description,
-    DateOnly? PublicationDate,
+    string Language,
+    Dictionary<string, BookTranslationDto>? Translations,
+    PartialDate? PublicationDate,
     Guid? PublisherId,
     List<Guid> AuthorIds,
     List<Guid> CategoryIds)
@@ -19,14 +22,20 @@ public record CreateBook(
 }
 
 /// <summary>
+/// DTO for localized book descriptions
+/// </summary>
+public record BookTranslationDto(string Description);
+
+/// <summary>
 /// Command to update an existing book
 /// </summary>
 public record UpdateBook(
     Guid Id,
     string Title,
     string? Isbn,
-    string? Description,
-    DateOnly? PublicationDate,
+    string Language,
+    Dictionary<string, BookTranslationDto>? Translations,
+    PartialDate? PublicationDate,
     Guid? PublisherId,
     List<Guid> AuthorIds,
     List<Guid> CategoryIds)

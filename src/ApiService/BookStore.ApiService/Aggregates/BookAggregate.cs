@@ -1,4 +1,6 @@
 using BookStore.ApiService.Events;
+using BookStore.ApiService.Infrastructure;
+using BookStore.ApiService.Models;
 using Marten;
 
 namespace BookStore.ApiService.Aggregates;
@@ -8,8 +10,9 @@ public class BookAggregate
     public Guid Id { get; private set; }
     public string Title { get; private set; } = string.Empty;
     public string? Isbn { get; private set; }
-    public string? Description { get; private set; }
-    public DateOnly? PublicationDate { get; private set; }
+    public string Language { get; private set; } = string.Empty;
+    public Dictionary<string, BookTranslation> Translations { get; private set; } = [];
+    public PartialDate? PublicationDate { get; private set; }
     public Guid? PublisherId { get; private set; }
     public List<Guid> AuthorIds { get; private set; } = [];
     public List<Guid> CategoryIds { get; private set; } = [];
@@ -22,7 +25,8 @@ public class BookAggregate
         Id = @event.Id;
         Title = @event.Title;
         Isbn = @event.Isbn;
-        Description = @event.Description;
+        Language = @event.Language;
+        Translations = @event.Translations ?? [];
         PublicationDate = @event.PublicationDate;
         PublisherId = @event.PublisherId;
         AuthorIds = @event.AuthorIds;
@@ -34,7 +38,8 @@ public class BookAggregate
     {
         Title = @event.Title;
         Isbn = @event.Isbn;
-        Description = @event.Description;
+        Language = @event.Language;
+        Translations = @event.Translations ?? [];
         PublicationDate = @event.PublicationDate;
         PublisherId = @event.PublisherId;
         AuthorIds = @event.AuthorIds;
@@ -52,8 +57,9 @@ public class BookAggregate
         Guid id,
         string title,
         string? isbn,
-        string? description,
-        DateOnly? publicationDate,
+        string language,
+        Dictionary<string, BookTranslation>? translations,
+        PartialDate? publicationDate,
         Guid? publisherId,
         List<Guid> authorIds,
         List<Guid> categoryIds)
@@ -61,14 +67,15 @@ public class BookAggregate
         // Validate all inputs before creating event
         ValidateTitle(title);
         ValidateIsbn(isbn);
-        ValidateDescription(description);
-        ValidatePublicationDate(publicationDate);
+        ValidateLanguage(language);
+        ValidateTranslations(translations);
 
         return new BookAdded(
             id,
             title,
             isbn,
-            description,
+            language,
+            translations,
             publicationDate,
             publisherId,
             authorIds,
@@ -78,8 +85,9 @@ public class BookAggregate
     public BookUpdated Update(
         string title,
         string? isbn,
-        string? description,
-        DateOnly? publicationDate,
+        string language,
+        Dictionary<string, BookTranslation>? translations,
+        PartialDate? publicationDate,
         Guid? publisherId,
         List<Guid> authorIds,
         List<Guid> categoryIds)
@@ -93,14 +101,15 @@ public class BookAggregate
         // Validate all inputs before creating event
         ValidateTitle(title);
         ValidateIsbn(isbn);
-        ValidateDescription(description);
-        ValidatePublicationDate(publicationDate);
+        ValidateLanguage(language);
+        ValidateTranslations(translations);
 
         return new BookUpdated(
             Id,
             title,
             isbn,
-            description,
+            language,
+            translations,
             publicationDate,
             publisherId,
             authorIds,
@@ -138,21 +147,48 @@ public class BookAggregate
         }
     }
 
-    static void ValidateDescription(string? description)
+    static void ValidateLanguage(string language)
     {
-        if (description != null && description.Length > 5000)
+        if (string.IsNullOrWhiteSpace(language))
         {
-            throw new ArgumentException("Description cannot exceed 5000 characters", nameof(description));
+            throw new ArgumentException("Language is required", nameof(language));
+        }
+
+        if (!CultureValidator.IsValidCultureCode(language))
+        {
+            throw new ArgumentException(
+                $"Invalid language code: '{language}'. Must be a valid ISO 639-1 (e.g., 'en'), ISO 639-3 (e.g., 'fil'), or culture code (e.g., 'en-US')",
+                nameof(language));
         }
     }
 
-    static void ValidatePublicationDate(DateOnly? publicationDate)
+    static void ValidateTranslations(Dictionary<string, BookTranslation>? translations)
     {
-        if (publicationDate.HasValue && publicationDate.Value > DateOnly.FromDateTime(DateTimeOffset.UtcNow.DateTime))
+        if (translations == null || translations.Count == 0)
         {
-            throw new ArgumentException("Publication date cannot be in the future", nameof(publicationDate));
+            return; // Translations are optional
+        }
+
+        // Validate language codes
+        if (!CultureValidator.ValidateTranslations(translations, out var invalidCodes))
+        {
+            throw new ArgumentException(
+                $"Invalid language codes in descriptions: {string.Join(", ", invalidCodes)}",
+                nameof(translations));
+        }
+
+        // Validate description length for each translation
+        foreach (var (languageCode, translation) in translations)
+        {
+            if (translation.Description.Length > 5000)
+            {
+                throw new ArgumentException(
+                    $"Description for language '{languageCode}' cannot exceed 5000 characters",
+                    nameof(translations));
+            }
         }
     }
+
 
     public BookSoftDeleted SoftDelete()
     {

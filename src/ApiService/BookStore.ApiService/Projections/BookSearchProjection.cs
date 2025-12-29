@@ -1,4 +1,5 @@
 using BookStore.ApiService.Events;
+using BookStore.ApiService.Models;
 using Marten;
 using Marten.Events.Aggregation;
 using Marten.Events.Projections;
@@ -11,8 +12,9 @@ public class BookSearchProjection
     public Guid Id { get; set; }
     public string Title { get; set; } = string.Empty;
     public string? Isbn { get; set; }
-    public string? Description { get; set; }
-    public DateOnly? PublicationDate { get; set; }
+    public string Language { get; set; } = string.Empty;
+    public Dictionary<string, BookTranslation> Translations { get; set; } = [];
+    public PartialDate? PublicationDate { get; set; }
 
     // Denormalized fields for performance
     public Guid? PublisherId { get; set; }
@@ -55,7 +57,8 @@ public class BookSearchProjectionBuilder : MultiStreamProjection<BookSearchProje
             Id = @event.Id,
             Title = @event.Title,
             Isbn = @event.Isbn,
-            Description = @event.Description,
+            Language = @event.Language,
+            Translations = @event.Translations ?? [],
             PublicationDate = @event.PublicationDate,
             PublisherId = @event.PublisherId,
             AuthorIds = @event.AuthorIds,
@@ -88,7 +91,8 @@ public class BookSearchProjectionBuilder : MultiStreamProjection<BookSearchProje
     {
         projection.Title = @event.Title;
         projection.Isbn = @event.Isbn;
-        projection.Description = @event.Description;
+        projection.Language = @event.Language;
+        projection.Translations = @event.Translations ?? [];
         projection.PublicationDate = @event.PublicationDate;
         projection.PublisherId = @event.PublisherId;
         projection.AuthorIds = @event.AuthorIds;
@@ -149,13 +153,21 @@ public class BookSearchProjectionBuilder : MultiStreamProjection<BookSearchProje
 
     // Helper method to compute SearchText from all searchable fields
     static void UpdateSearchText(BookSearchProjection projection)
+    {
+        // Concatenate all description translations for search
+        var allDescriptions = projection.Translations.Count > 0
+            ? string.Join(" ", projection.Translations.Values.Select(t => t.Description))
+            : string.Empty;
+
         // Use string interpolation to avoid List<string> allocation
-        => projection.SearchText =
+        projection.SearchText =
             $"{projection.Title} " +
-            $"{projection.Description ?? string.Empty} " +
+            $"{allDescriptions} " +
             $"{projection.Isbn ?? string.Empty} " +
+            $"{projection.Language} " +
             $"{projection.PublisherName ?? string.Empty} " +
             $"{projection.AuthorNames}".Trim();
+    }
 
     // Projection will be deleted on BookSoftDeleted (configured in constructor)
     // Projection will be recreated on BookRestored by replaying the stream

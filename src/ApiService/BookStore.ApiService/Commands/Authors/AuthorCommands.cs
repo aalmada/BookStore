@@ -5,10 +5,15 @@ namespace BookStore.ApiService.Commands;
 /// </summary>
 public record CreateAuthor(
     string Name,
-    string? Biography)
+    Dictionary<string, AuthorTranslationDto>? Translations)
 {
     public Guid Id { get; init; } = Guid.CreateVersion7();
 }
+
+/// <summary>
+/// DTO for localized author biographies
+/// </summary>
+public record AuthorTranslationDto(string Biography);
 
 /// <summary>
 /// Command to update an existing author
@@ -16,7 +21,7 @@ public record CreateAuthor(
 public record UpdateAuthor(
     Guid Id,
     string Name,
-    string? Biography)
+    Dictionary<string, AuthorTranslationDto>? Translations)
 {
     public string? ETag { get; init; }
 }

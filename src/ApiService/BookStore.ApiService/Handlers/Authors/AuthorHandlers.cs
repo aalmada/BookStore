@@ -1,5 +1,6 @@
 using BookStore.ApiService.Aggregates;
 using BookStore.ApiService.Commands;
+using BookStore.ApiService.Events;
 using BookStore.ApiService.Infrastructure;
 using Marten;
 
@@ -9,10 +10,29 @@ public static class AuthorHandlers
 {
     public static IResult Handle(CreateAuthor command, IDocumentSession session)
     {
+        // Validate language codes in biographies if provided
+        if (command.Translations?.Count > 0)
+        {
+            if (!CultureValidator.ValidateTranslations(command.Translations, out var invalidCodes))
+            {
+                return Results.BadRequest(new
+                {
+                    error = "Invalid language codes in biographies",
+                    invalidCodes,
+                    message = $"The following language codes are not valid: {string.Join(", ", invalidCodes)}"
+                });
+            }
+        }
+
+        // Convert DTOs to domain objects
+        var biographies = command.Translations?.ToDictionary(
+            kvp => kvp.Key,
+            kvp => new AuthorTranslation(kvp.Value.Biography));
+
         var @event = AuthorAggregate.Create(
             command.Id,
             command.Name,
-            command.Biography);
+            biographies);
 
         _ = session.Events.StartStream<AuthorAggregate>(command.Id, @event);
 
@@ -26,6 +46,20 @@ public static class AuthorHandlers
         IDocumentSession session,
         HttpContext context)
     {
+        // Validate language codes in biographies if provided
+        if (command.Translations?.Count > 0)
+        {
+            if (!CultureValidator.ValidateTranslations(command.Translations, out var invalidCodes))
+            {
+                return Results.BadRequest(new
+                {
+                    error = "Invalid language codes in biographies",
+                    invalidCodes,
+                    message = $"The following language codes are not valid: {string.Join(", ", invalidCodes)}"
+                });
+            }
+        }
+
         var streamState = await session.Events.FetchStreamStateAsync(command.Id);
         if (streamState == null)
         {
@@ -45,7 +79,12 @@ public static class AuthorHandlers
             return Results.NotFound();
         }
 
-        var @event = aggregate.Update(command.Name, command.Biography);
+        // Convert DTOs to domain objects
+        var biographies = command.Translations?.ToDictionary(
+            kvp => kvp.Key,
+            kvp => new AuthorTranslation(kvp.Value.Biography));
+
+        var @event = aggregate.Update(command.Name, biographies);
         _ = session.Events.Append(command.Id, @event);
 
         var newStreamState = await session.Events.FetchStreamStateAsync(command.Id);

@@ -70,26 +70,28 @@ public static class BookEndpoints
                 .Include(categories).On(x => x.CategoryIds)!
                 .Where(b =>
                     b.Title.NgramSearch(searchQuery) ||
-                    (b.Description != null && b.Description.NgramSearch(searchQuery)) ||
+                    b.SearchText.NgramSearch(searchQuery) ||
                     (b.Isbn != null && b.Isbn.Contains(searchQuery)))
                 .OrderBy(b => b.Title)
                 .ToPagedListAsync(paging.Page!.Value, paging.PageSize!.Value);
 #pragma warning restore CS8603
         }
 
-        // Map to DTOs with localized categories
+        // Map to DTOs with localized categories, descriptions, and biographies
         var bookDtos = pagedList.Select(book => new Models.BookDto(
             book.Id,
             book.Title,
             book.Isbn,
-            book.Description,
+            book.Language,
+            LocalizeDescription(book, language),
             book.PublicationDate,
+            Helpers.BookHelpers.IsPreRelease(book.PublicationDate),
             book.PublisherId.HasValue && publishers.TryGetValue(book.PublisherId.Value, out var pub)
                 ? new Models.PublisherDto(pub.Id, pub.Name)
                 : null,
             [.. book.AuthorIds
                 .Select(id => authors.TryGetValue(id, out var author)
-                    ? new Models.AuthorDto(author.Id, author.Name, author.Biography)
+                    ? new Models.AuthorDto(author.Id, author.Name, LocalizeBiography(author, language))
                     : null)
                 .Where(a => a != null)
                 .Cast<Models.AuthorDto>()],
@@ -151,19 +153,21 @@ public static class BookEndpoints
             Infrastructure.ETagHelper.AddETagHeader(context, etag);
         }
 
-        // Map to DTO with localized categories
+        // Map to DTO with localized categories, description, and biographies
         var bookDto = new Models.BookDto(
             book.Id,
             book.Title,
             book.Isbn,
-            book.Description,
+            book.Language,
+            LocalizeDescription(book, language),
             book.PublicationDate,
+            Helpers.BookHelpers.IsPreRelease(book.PublicationDate),
             book.PublisherId.HasValue && publishers.TryGetValue(book.PublisherId.Value, out var pub)
                 ? new Models.PublisherDto(pub.Id, pub.Name)
                 : null,
             [.. book.AuthorIds
                 .Select(id => authors.TryGetValue(id, out var author)
-                    ? new Models.AuthorDto(author.Id, author.Name, author.Biography)
+                    ? new Models.AuthorDto(author.Id, author.Name, LocalizeBiography(author, language))
                     : null)
                 .Where(a => a != null)
                 .Cast<Models.AuthorDto>()],
@@ -211,5 +215,85 @@ public static class BookEndpoints
         // Last resort: use first available localization
         var firstName = category.Translations.Values.FirstOrDefault();
         return new Models.CategoryDto(category.Id, firstName?.Name ?? "Unknown");
+    }
+
+    // Helper method for book description localization with fallback strategy
+    static string? LocalizeDescription(BookSearchProjection book, string language)
+    {
+        if (book.Translations.Count == 0)
+        {
+            return null;
+        }
+
+        // Try exact language match
+        if (book.Translations.TryGetValue(language, out var description))
+        {
+            return description.Description;
+        }
+
+        // Fallback to two-letter ISO language code
+        try
+        {
+            var culture = new System.Globalization.CultureInfo(language);
+            var twoLetterCode = culture.TwoLetterISOLanguageName;
+
+            if (book.Translations.TryGetValue(twoLetterCode, out var twoLetterDescription))
+            {
+                return twoLetterDescription.Description;
+            }
+        }
+        catch (System.Globalization.CultureNotFoundException)
+        {
+            // Invalid culture code - fall through to default
+        }
+
+        // Fallback to English
+        if (book.Translations.TryGetValue("en", out var englishDescription))
+        {
+            return englishDescription.Description;
+        }
+
+        // Last resort: use first available description
+        return book.Translations.Values.FirstOrDefault()?.Description;
+    }
+
+    // Helper method for author biography localization with fallback strategy
+    static string? LocalizeBiography(AuthorProjection author, string language)
+    {
+        if (author.Translations.Count == 0)
+        {
+            return null;
+        }
+
+        // Try exact language match
+        if (author.Translations.TryGetValue(language, out var biography))
+        {
+            return biography.Biography;
+        }
+
+        // Fallback to two-letter ISO language code
+        try
+        {
+            var culture = new System.Globalization.CultureInfo(language);
+            var twoLetterCode = culture.TwoLetterISOLanguageName;
+
+            if (author.Translations.TryGetValue(twoLetterCode, out var twoLetterBiography))
+            {
+                return twoLetterBiography.Biography;
+            }
+        }
+        catch (System.Globalization.CultureNotFoundException)
+        {
+            // Invalid culture code - fall through to default
+        }
+
+        // Fallback to English
+        if (author.Translations.TryGetValue("en", out var englishBiography))
+        {
+            return englishBiography.Biography;
+        }
+
+        // Last resort: use first available biography
+        return author.Translations.Values.FirstOrDefault()?.Biography;
     }
 }

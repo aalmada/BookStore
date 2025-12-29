@@ -1,5 +1,6 @@
 using BookStore.ApiService.Aggregates;
 using BookStore.ApiService.Commands;
+using BookStore.ApiService.Events;
 using BookStore.ApiService.Infrastructure;
 using Marten;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -19,11 +20,42 @@ public static class BookHandlers
     /// </summary>
     public static (IResult, BookStore.ApiService.Events.Notifications.BookCreatedNotification) Handle(CreateBook command, IDocumentSession session)
     {
+        // Validate language code
+        if (!CultureValidator.IsValidCultureCode(command.Language))
+        {
+            return (Results.BadRequest(new
+            {
+                error = "Invalid language code",
+                languageCode = command.Language,
+                message = $"The language code '{command.Language}' is not valid. Must be a valid ISO 639-1 (e.g., 'en'), ISO 639-3 (e.g., 'fil'), or culture code (e.g., 'en-US')"
+            }), null!);
+        }
+
+        // Validate language codes in descriptions if provided
+        if (command.Translations?.Count > 0)
+        {
+            if (!CultureValidator.ValidateTranslations(command.Translations, out var invalidCodes))
+            {
+                return (Results.BadRequest(new
+                {
+                    error = "Invalid language codes in descriptions",
+                    invalidCodes,
+                    message = $"The following language codes are not valid: {string.Join(", ", invalidCodes)}"
+                }), null!);
+            }
+        }
+
+        // Convert DTOs to domain objects
+        var descriptions = command.Translations?.ToDictionary(
+            kvp => kvp.Key,
+            kvp => new BookTranslation(kvp.Value.Description));
+
         var @event = BookAggregate.Create(
             command.Id,
             command.Title,
             command.Isbn,
-            command.Description,
+            command.Language,
+            descriptions,
             command.PublicationDate,
             command.PublisherId,
             command.AuthorIds,
@@ -51,6 +83,31 @@ public static class BookHandlers
         IDocumentSession session,
         HttpContext context)
     {
+        // Validate language code
+        if (!CultureValidator.IsValidCultureCode(command.Language))
+        {
+            return Results.BadRequest(new
+            {
+                error = "Invalid language code",
+                languageCode = command.Language,
+                message = $"The language code '{command.Language}' is not valid. Must be a valid ISO 639-1 (e.g., 'en'), ISO 639-3 (e.g., 'fil'), or culture code (e.g., 'en-US')"
+            });
+        }
+
+        // Validate language codes in descriptions if provided
+        if (command.Translations?.Count > 0)
+        {
+            if (!CultureValidator.ValidateTranslations(command.Translations, out var invalidCodes))
+            {
+                return Results.BadRequest(new
+                {
+                    error = "Invalid language codes in descriptions",
+                    invalidCodes,
+                    message = $"The following language codes are not valid: {string.Join(", ", invalidCodes)}"
+                });
+            }
+        }
+
         // Get current stream state for ETag validation
         var streamState = await session.Events.FetchStreamStateAsync(command.Id);
         if (streamState == null)
@@ -73,10 +130,16 @@ public static class BookHandlers
             return Results.NotFound();
         }
 
+        // Convert DTOs to domain objects
+        var descriptions = command.Translations?.ToDictionary(
+            kvp => kvp.Key,
+            kvp => new BookTranslation(kvp.Value.Description));
+
         var @event = aggregate.Update(
             command.Title,
             command.Isbn,
-            command.Description,
+            command.Language,
+            descriptions,
             command.PublicationDate,
             command.PublisherId,
             command.AuthorIds,

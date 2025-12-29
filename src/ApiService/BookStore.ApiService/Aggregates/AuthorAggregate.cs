@@ -1,4 +1,5 @@
 using BookStore.ApiService.Events;
+using BookStore.ApiService.Infrastructure;
 
 namespace BookStore.ApiService.Aggregates;
 
@@ -6,7 +7,7 @@ public class AuthorAggregate
 {
     public Guid Id { get; private set; }
     public string Name { get; private set; } = string.Empty;
-    public string? Biography { get; private set; }
+    public Dictionary<string, AuthorTranslation> Translations { get; private set; } = [];
     public bool IsDeleted { get; private set; }
 
     // Marten uses this for rehydration
@@ -14,14 +15,14 @@ public class AuthorAggregate
     {
         Id = @event.Id;
         Name = @event.Name;
-        Biography = @event.Biography;
+        Translations = @event.Translations ?? [];
         IsDeleted = false;
     }
 
     void Apply(AuthorUpdated @event)
     {
         Name = @event.Name;
-        Biography = @event.Biography;
+        Translations = @event.Translations ?? [];
     }
 
     void Apply(AuthorSoftDeleted _) => IsDeleted = true;
@@ -29,15 +30,15 @@ public class AuthorAggregate
     void Apply(AuthorRestored _) => IsDeleted = false;
 
     // Command methods
-    public static AuthorAdded Create(Guid id, string name, string? biography)
+    public static AuthorAdded Create(Guid id, string name, Dictionary<string, AuthorTranslation>? translations)
     {
         ValidateName(name);
-        ValidateBiography(biography);
+        ValidateTranslations(translations);
 
-        return new AuthorAdded(id, name, biography, DateTimeOffset.UtcNow);
+        return new AuthorAdded(id, name, translations, DateTimeOffset.UtcNow);
     }
 
-    public AuthorUpdated Update(string name, string? biography)
+    public AuthorUpdated Update(string name, Dictionary<string, AuthorTranslation>? translations)
     {
         // Business rule: cannot update deleted author
         if (IsDeleted)
@@ -46,9 +47,9 @@ public class AuthorAggregate
         }
 
         ValidateName(name);
-        ValidateBiography(biography);
+        ValidateTranslations(translations);
 
-        return new AuthorUpdated(Id, name, biography, DateTimeOffset.UtcNow);
+        return new AuthorUpdated(Id, name, translations, DateTimeOffset.UtcNow);
     }
 
     // Validation helper methods
@@ -65,11 +66,30 @@ public class AuthorAggregate
         }
     }
 
-    static void ValidateBiography(string? biography)
+    static void ValidateTranslations(Dictionary<string, AuthorTranslation>? translations)
     {
-        if (biography != null && biography.Length > 5000)
+        if (translations == null || translations.Count == 0)
         {
-            throw new ArgumentException("Biography cannot exceed 5000 characters", nameof(biography));
+            return; // Translations are optional
+        }
+
+        // Validate language codes
+        if (!CultureValidator.ValidateTranslations(translations, out var invalidCodes))
+        {
+            throw new ArgumentException(
+                $"Invalid language codes in biographies: {string.Join(", ", invalidCodes)}",
+                nameof(translations));
+        }
+
+        // Validate biography length for each translation
+        foreach (var (languageCode, translation) in translations)
+        {
+            if (translation.Biography.Length > 5000)
+            {
+                throw new ArgumentException(
+                    $"Biography for language '{languageCode}' cannot exceed 5000 characters",
+                    nameof(translations));
+            }
         }
     }
 

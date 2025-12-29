@@ -1,3 +1,4 @@
+using BookStore.ApiService.Models;
 using Marten;
 using Microsoft.AspNetCore.Mvc;
 using Wolverine;
@@ -7,8 +8,9 @@ namespace BookStore.ApiService.Commands
     public record CreateBookRequest(
         string Title,
         string? Isbn,
-        string? Description,
-        DateOnly? PublicationDate,
+        string Language,
+        Dictionary<string, BookTranslationDto>? Translations,
+        PartialDate? PublicationDate,
         Guid? PublisherId,
         List<Guid> AuthorIds,
         List<Guid> CategoryIds);
@@ -16,8 +18,9 @@ namespace BookStore.ApiService.Commands
     public record UpdateBookRequest(
         string Title,
         string? Isbn,
-        string? Description,
-        DateOnly? PublicationDate,
+        string Language,
+        Dictionary<string, BookTranslationDto>? Translations,
+        PartialDate? PublicationDate,
         Guid? PublisherId,
         List<Guid> AuthorIds,
         List<Guid> CategoryIds);
@@ -66,7 +69,8 @@ namespace BookStore.ApiService.Endpoints.Admin
             var command = new Commands.CreateBook(
                 request.Title,
                 request.Isbn,
-                request.Description,
+                request.Language,
+                request.Translations,
                 request.PublicationDate,
                 request.PublisherId,
                 request.AuthorIds ?? [],
@@ -89,7 +93,8 @@ namespace BookStore.ApiService.Endpoints.Admin
                 id,
                 request.Title,
                 request.Isbn,
-                request.Description,
+                request.Language,
+                request.Translations,
                 request.PublicationDate,
                 request.PublisherId,
                 request.AuthorIds ?? [],
