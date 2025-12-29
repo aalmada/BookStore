@@ -1,5 +1,3 @@
-using System.Globalization;
-
 namespace BookStore.ApiService.Infrastructure;
 
 /// <summary>
@@ -7,9 +5,6 @@ namespace BookStore.ApiService.Infrastructure;
 /// </summary>
 public static class CultureValidator
 {
-    // Cache all cultures to avoid repeated allocations
-    static readonly CultureInfo[] AllCultures = CultureInfo.GetCultures(CultureTypes.AllCultures);
-
     /// <summary>
     /// Validates if a language code is a valid culture identifier or ISO language code
     /// </summary>
@@ -21,25 +16,8 @@ public static class CultureValidator
     /// - Two-letter ISO 639-1 codes (e.g., "en", "pt", "fr") - no hyphen, 2 letters
     /// - Three-letter ISO 639-3 codes (e.g., "fil" for Filipino) - no hyphen, 3 letters
     /// </remarks>
-    public static bool IsValidCultureCode(string languageCode)
-    {
-        if (string.IsNullOrWhiteSpace(languageCode))
-        {
-            return false;
-        }
-
-        // Full culture codes contain a hyphen (e.g., "pt-PT", "en-US")
-        if (languageCode.Contains('-'))
-        {
-            // Check if any culture has this exact name (avoids allocation and exception)
-            return AllCultures.Any(c => c.Name.Equals(languageCode, StringComparison.OrdinalIgnoreCase));
-        }
-
-        // ISO language codes without hyphen (2 or 3 letters)
-        // ISO 639-1: 2 letters (e.g., "en", "pt")
-        // ISO 639-3: 3 letters (e.g., "fil" for Filipino)
-        return AllCultures.Any(c => c.TwoLetterISOLanguageName.Equals(languageCode, StringComparison.OrdinalIgnoreCase));
-    }
+    public static bool IsValidCultureCode(string languageCode) =>
+        CultureCache.IsValidCultureCode(languageCode);
 
     /// <summary>
     /// Validates a dictionary of translations, ensuring all keys are valid culture codes or ISO language codes
@@ -51,16 +29,8 @@ public static class CultureValidator
         Dictionary<string, T> translations,
         out List<string> invalidCodes)
     {
-        invalidCodes = [];
-
-        foreach (var key in translations.Keys)
-        {
-            if (!IsValidCultureCode(key))
-            {
-                invalidCodes.Add(key);
-            }
-        }
-
+        var invalid = CultureCache.GetInvalidCodes(translations.Keys);
+        invalidCodes = invalid.ToList();
         return invalidCodes.Count == 0;
     }
 }

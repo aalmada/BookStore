@@ -18,9 +18,11 @@ public static class ApplicationServicesExtensions
         // Problem details for error handling
         services.AddProblemDetails();
 
-        // Configure pagination options
-        services.Configure<Models.PaginationOptions>(
-            configuration.GetSection(Models.PaginationOptions.SectionName));
+        // Configure pagination options with validation
+        services.AddOptions<Models.PaginationOptions>()
+            .Bind(configuration.GetSection(Models.PaginationOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
 
         // Configure OpenAPI with metadata
         services.AddOpenApi(options => options.AddBookStoreApiDocumentation());
@@ -61,9 +63,11 @@ public static class ApplicationServicesExtensions
 
     static void AddLocalization(IServiceCollection services, IConfiguration configuration)
     {
-        // Configure localization from appsettings.json
-        services.Configure<Models.LocalizationOptions>(
-            configuration.GetSection(Models.LocalizationOptions.SectionName));
+        // Configure localization from appsettings.json with validation
+        services.AddOptions<Models.LocalizationOptions>()
+            .Bind(configuration.GetSection(Models.LocalizationOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
 
         services.AddLocalization();
         services.AddOptions<RequestLocalizationOptions>()

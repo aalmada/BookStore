@@ -148,7 +148,7 @@ public class BookAggregate
 
     static void ValidatePublicationDate(DateOnly? publicationDate)
     {
-        if (publicationDate.HasValue && publicationDate.Value > DateOnly.FromDateTime(DateTime.UtcNow))
+        if (publicationDate.HasValue && publicationDate.Value > DateOnly.FromDateTime(DateTimeOffset.UtcNow.DateTime))
         {
             throw new ArgumentException("Publication date cannot be in the future", nameof(publicationDate));
         }
