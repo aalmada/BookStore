@@ -69,7 +69,7 @@ public class BookStoreHubService : IAsyncDisposable
         }
         finally
         {
-            _lock.Release();
+            _ = _lock.Release();
         }
     }
 

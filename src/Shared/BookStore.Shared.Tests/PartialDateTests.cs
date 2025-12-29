@@ -43,13 +43,13 @@ public class PartialDateTests
     [Category("Unit")]
     public async Task ValidateYear_ThrowsException_ForInvalidYear()
     {
-        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => 
+        _ = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => 
         {
             _ = new PartialDate(0);
             return Task.CompletedTask;
         });
         
-        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => 
+        _ = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => 
         {
             _ = new PartialDate(10000);
             return Task.CompletedTask;
@@ -60,13 +60,13 @@ public class PartialDateTests
     [Category("Unit")]
     public async Task ValidateMonth_ThrowsException_ForInvalidMonth()
     {
-        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => 
+        _ = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => 
         {
             _ = new PartialDate(2023, 0);
             return Task.CompletedTask;
         });
         
-        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => 
+        _ = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => 
         {
             _ = new PartialDate(2023, 13);
             return Task.CompletedTask;
@@ -175,7 +175,7 @@ public class PartialDateTests
     public async Task Deserialization_InvalidJson_ThrowsException()
     {
          var json = """{"year": "invalid"}""";
-         await Assert.ThrowsAsync<JsonException>(() => 
+         _ = await Assert.ThrowsAsync<JsonException>(() => 
          {
              _ = Deserialize(json);
              return Task.CompletedTask;
