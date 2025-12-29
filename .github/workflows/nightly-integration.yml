@@ -13,20 +13,7 @@ env:
 jobs:
   integration-tests:
     runs-on: ubuntu-latest
-    
-    services:
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: bookstore
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+    timeout-minutes: 30
     
     steps:
     - name: Checkout code
@@ -36,6 +23,11 @@ jobs:
       uses: actions/setup-dotnet@v5
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
+    
+    - name: Verify Docker availability
+      run: |
+        docker --version
+        docker compose version
         
     - name: Cache NuGet packages
       uses: actions/cache@v4
@@ -44,17 +36,19 @@ jobs:
         key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
         restore-keys: |
           ${{ runner.os }}-nuget-
-      
+        
     - name: Restore dependencies
       run: dotnet restore
       
     - name: Build
       run: dotnet build --no-restore --configuration Release
       
-    - name: Run all integration tests
-      run: dotnet test --configuration Release --treenode-filter "/**[Category=Integration]"
+    - name: Run Aspire integration tests
+      run: dotnet test --configuration Release --treenode-filter "/**[Category=Integration]" --verbosity detailed
       working-directory: src/Web/BookStore.Web.Tests
       timeout-minutes: 10
+      # Aspire will start its own containers (PostgreSQL, Azurite, PgAdmin)
+      # Extended timeout allows for container image downloads and startup
       
     - name: Upload test results
       if: always()

@@ -16,20 +16,6 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
     
-    services:
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: bookstore
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    
     steps:
     - name: Checkout code
       uses: actions/checkout@v6
@@ -64,13 +50,6 @@ jobs:
       working-directory: src/ApiService/BookStore.ApiService.Analyzers.Tests
       # Verify Roslyn analyzers work correctly
       
-    - name: Run web integration tests
-      run: dotnet test --configuration Release --treenode-filter "/**[Category=Integration]"
-      working-directory: src/Web/BookStore.Web.Tests
-      timeout-minutes: 5
-      # Integration tests run after unit tests pass
-      # PostgreSQL service pre-started to reduce Aspire startup time
-        
   code-quality:
     runs-on: ubuntu-latest
     
