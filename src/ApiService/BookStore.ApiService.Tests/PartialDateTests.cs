@@ -11,7 +11,7 @@ public class PartialDateTests
     public async Task Constructor_WithYearOnly_SetsProperties()
     {
         var date = new PartialDate(2023);
-        using var _ = Assert.Multiple();
+        using var scope = Assert.Multiple();
         _ = await Assert.That(date.Year).IsEqualTo(2023);
         _ = await Assert.That(date.Month).IsNull();
         _ = await Assert.That(date.Day).IsNull();
@@ -22,7 +22,7 @@ public class PartialDateTests
     public async Task Constructor_WithYearMonth_SetsProperties()
     {
         var date = new PartialDate(2023, 5);
-        using var _ = Assert.Multiple();
+        using var scope = Assert.Multiple();
         _ = await Assert.That(date.Year).IsEqualTo(2023);
         _ = await Assert.That(date.Month).IsEqualTo(5);
         _ = await Assert.That(date.Day).IsNull();
@@ -33,7 +33,7 @@ public class PartialDateTests
     public async Task Constructor_WithFullDate_SetsProperties()
     {
         var date = new PartialDate(2023, 5, 15);
-        using var _ = Assert.Multiple();
+        using var scope = Assert.Multiple();
         _ = await Assert.That(date.Year).IsEqualTo(2023);
         _ = await Assert.That(date.Month).IsEqualTo(5);
         _ = await Assert.That(date.Day).IsEqualTo(15);
@@ -77,7 +77,7 @@ public class PartialDateTests
     [Category("Unit")]
     public async Task ToString_ReturnsCorrectFormat()
     {
-        using var _ = Assert.Multiple();
+        using var scope = Assert.Multiple();
         _ = await Assert.That(new PartialDate(2023).ToString()).IsEqualTo("2023");
         _ = await Assert.That(new PartialDate(2023, 5).ToString()).IsEqualTo("2023-05");
         _ = await Assert.That(new PartialDate(2023, 5, 15).ToString()).IsEqualTo("2023-05-15");
@@ -93,7 +93,7 @@ public class PartialDateTests
         using var document = JsonDocument.Parse(json);
         var root = document.RootElement;
         
-        using var _ = Assert.Multiple();
+        using var scope = Assert.Multiple();
         _ = await Assert.That(root.GetProperty("year").GetInt32()).IsEqualTo(2023);
         _ = await Assert.That(root.TryGetProperty("month", out var unusedMonth)).IsFalse();
         _ = await Assert.That(root.TryGetProperty("day", out var unusedDay)).IsFalse();
@@ -109,7 +109,7 @@ public class PartialDateTests
         using var document = JsonDocument.Parse(json);
         var root = document.RootElement;
         
-        using var _ = Assert.Multiple();
+        using var scope = Assert.Multiple();
         _ = await Assert.That(root.GetProperty("year").GetInt32()).IsEqualTo(2023);
         _ = await Assert.That(root.GetProperty("month").GetInt32()).IsEqualTo(5);
         _ = await Assert.That(root.GetProperty("day").GetInt32()).IsEqualTo(15);
@@ -141,7 +141,7 @@ public class PartialDateTests
         var date = Deserialize(json);
         
         _ = await Assert.That(date).IsNotNull();
-        using var _ = Assert.Multiple();
+        using var scope = Assert.Multiple();
         _ = await Assert.That(date!.Value.Year).IsEqualTo(2023);
         _ = await Assert.That(date!.Value.Month).IsNull();
         _ = await Assert.That(date!.Value.Day).IsNull();
@@ -155,7 +155,7 @@ public class PartialDateTests
         var date = Deserialize(json);
         
         _ = await Assert.That(date).IsNotNull();
-        using var _ = Assert.Multiple();
+        using var scope = Assert.Multiple();
         _ = await Assert.That(date!.Value.Year).IsEqualTo(2023);
         _ = await Assert.That(date!.Value.Month).IsEqualTo(5);
         _ = await Assert.That(date!.Value.Day).IsEqualTo(15);
