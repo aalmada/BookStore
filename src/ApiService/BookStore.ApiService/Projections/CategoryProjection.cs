@@ -15,7 +15,7 @@ public class CategoryProjectionBuilder : SingleStreamProjection<CategoryProjecti
     public CategoryProjectionBuilder()
         // Delete projection when category is soft-deleted
         => DeleteEvent<CategorySoftDeleted>();
-        
+
     public CategoryProjection Create(CategoryAdded @event) => new()
     {
         Id = @event.Id,

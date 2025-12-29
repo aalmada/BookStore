@@ -16,8 +16,8 @@ public static class CultureValidator
     /// - Two-letter ISO 639-1 codes (e.g., "en", "pt", "fr") - no hyphen, 2 letters
     /// - Three-letter ISO 639-3 codes (e.g., "fil" for Filipino) - no hyphen, 3 letters
     /// </remarks>
-    public static bool IsValidCultureCode(string languageCode) =>
-        CultureCache.IsValidCultureCode(languageCode);
+    public static bool IsValidCultureCode(string languageCode)
+        => CultureCache.IsValidCultureCode(languageCode);
 
     /// <summary>
     /// Validates a dictionary of translations, ensuring all keys are valid culture codes or ISO language codes
@@ -30,7 +30,7 @@ public static class CultureValidator
         out List<string> invalidCodes)
     {
         var invalid = CultureCache.GetInvalidCodes(translations.Keys);
-        invalidCodes = invalid.ToList();
+        invalidCodes = [.. invalid];
         return invalidCodes.Count == 0;
     }
 }

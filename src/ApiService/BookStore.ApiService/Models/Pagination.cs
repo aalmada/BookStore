@@ -34,6 +34,6 @@ public record PagedRequest
     /// <summary>
     /// Calculates the number of items to skip using configuration options
     /// </summary>
-    public int GetSkip(PaginationOptions options) => 
-        ((Page ?? DefaultPage) - 1) * (PageSize ?? options.DefaultPageSize);
+    public int GetSkip(PaginationOptions options)
+        => ((Page ?? DefaultPage) - 1) * (PageSize ?? options.DefaultPageSize);
 }

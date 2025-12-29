@@ -16,16 +16,16 @@ public static class ApplicationServicesExtensions
         IHostEnvironment environment)
     {
         // Problem details for error handling
-        services.AddProblemDetails();
+        _ = services.AddProblemDetails();
 
         // Configure pagination options with validation
-        services.AddOptions<Models.PaginationOptions>()
+        _ = services.AddOptions<Models.PaginationOptions>()
             .Bind(configuration.GetSection(Models.PaginationOptions.SectionName))
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
         // Configure OpenAPI with metadata
-        services.AddOpenApi(options => options.AddBookStoreApiDocumentation());
+        _ = services.AddOpenApi(options => options.AddBookStoreApiDocumentation());
 
         // Configure API Versioning (header-based)
         AddApiVersioning(services);
@@ -34,43 +34,40 @@ public static class ApplicationServicesExtensions
         AddLocalization(services, configuration);
 
         // Add SignalR for real-time notifications
-        services.AddSignalR();
+        _ = services.AddSignalR();
 
         // Add Blob Storage service
-        services.AddSingleton<Services.BlobStorageService>();
+        _ = services.AddSingleton<Services.BlobStorageService>();
 
         // Add Marten health checks
-        services.AddHealthChecks()
+        _ = services.AddHealthChecks()
             .AddNpgSql(configuration.GetConnectionString("bookstore")!);
 
         // Add response caching for performance
-        services.AddResponseCaching();
-        services.AddOutputCache();
+        _ = services.AddResponseCaching();
+        _ = services.AddOutputCache();
 
         return services;
     }
 
-    static void AddApiVersioning(IServiceCollection services)
-    {
-        services.AddApiVersioning(options =>
-        {
-            options.DefaultApiVersion = new Asp.Versioning.ApiVersion(1, 0);
-            options.AssumeDefaultVersionWhenUnspecified = true;
-            options.ReportApiVersions = true;
-            options.ApiVersionReader = new Asp.Versioning.HeaderApiVersionReader("api-version");
-        });
-    }
+    static void AddApiVersioning(IServiceCollection services) => services.AddApiVersioning(options =>
+                                                                      {
+                                                                          options.DefaultApiVersion = new Asp.Versioning.ApiVersion(1, 0);
+                                                                          options.AssumeDefaultVersionWhenUnspecified = true;
+                                                                          options.ReportApiVersions = true;
+                                                                          options.ApiVersionReader = new Asp.Versioning.HeaderApiVersionReader("api-version");
+                                                                      });
 
     static void AddLocalization(IServiceCollection services, IConfiguration configuration)
     {
         // Configure localization from appsettings.json with validation
-        services.AddOptions<Models.LocalizationOptions>()
+        _ = services.AddOptions<Models.LocalizationOptions>()
             .Bind(configuration.GetSection(Models.LocalizationOptions.SectionName))
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
-        services.AddLocalization();
-        services.AddOptions<RequestLocalizationOptions>()
+        _ = services.AddLocalization();
+        _ = services.AddOptions<RequestLocalizationOptions>()
             .Configure<IOptions<Models.LocalizationOptions>>((options, localizationOptions) =>
             {
                 var localization = localizationOptions.Value;

@@ -30,21 +30,17 @@ public class PagedListDto<T>
         HasNextPage = pageNumber < PageCount;
     }
 
-
     /// <summary>
     /// Creates a PagedListDto from Marten's IPagedList
     /// </summary>
-    public static PagedListDto<T> FromPagedList(IPagedList<T> pagedList)
+    public static PagedListDto<T> FromPagedList(IPagedList<T> pagedList) => new()
     {
-        return new PagedListDto<T>
-        {
-            Items = pagedList.ToList(),
-            PageNumber = pagedList.PageNumber,
-            PageSize = pagedList.PageSize,
-            TotalItemCount = pagedList.TotalItemCount,
-            PageCount = pagedList.PageCount,
-            HasPreviousPage = pagedList.HasPreviousPage,
-            HasNextPage = pagedList.HasNextPage
-        };
-    }
+        Items = [.. pagedList],
+        PageNumber = pagedList.PageNumber,
+        PageSize = pagedList.PageSize,
+        TotalItemCount = pagedList.TotalItemCount,
+        PageCount = pagedList.PageCount,
+        HasPreviousPage = pagedList.HasPreviousPage,
+        HasNextPage = pagedList.HasNextPage
+    };
 }

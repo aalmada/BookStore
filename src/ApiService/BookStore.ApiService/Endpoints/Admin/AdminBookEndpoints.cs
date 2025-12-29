@@ -150,14 +150,20 @@ namespace BookStore.ApiService.Endpoints.Admin
         {
             // Validate file
             if (file.Length == 0)
+            {
                 return Results.BadRequest("No file uploaded");
+            }
 
             if (file.Length > 5 * 1024 * 1024) // 5MB limit
+            {
                 return Results.BadRequest("File too large (max 5MB)");
+            }
 
             var allowedTypes = new[] { "image/jpeg", "image/png", "image/webp" };
             if (!allowedTypes.Contains(file.ContentType))
+            {
                 return Results.BadRequest("Invalid file type (only JPEG, PNG, WebP allowed)");
+            }
 
             var etag = context.Request.Headers["If-Match"].FirstOrDefault();
 

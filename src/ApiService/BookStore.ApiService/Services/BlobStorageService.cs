@@ -15,7 +15,7 @@ public class BlobStorageService(BlobServiceClient blobServiceClient)
         CancellationToken cancellationToken = default)
     {
         var container = await GetContainerAsync(cancellationToken);
-        
+
         // Determine file extension from content type
         var extension = contentType switch
         {
@@ -24,11 +24,11 @@ public class BlobStorageService(BlobServiceClient blobServiceClient)
             "image/webp" => "webp",
             _ => "jpg" // Default to jpg for safety
         };
-        
+
         var blobName = $"{bookId}.{extension}";
         var blob = container.GetBlobClient(blobName);
 
-        await blob.UploadAsync(
+        _ = await blob.UploadAsync(
             imageStream,
             new BlobHttpHeaders { ContentType = contentType },
             cancellationToken: cancellationToken);
@@ -41,7 +41,7 @@ public class BlobStorageService(BlobServiceClient blobServiceClient)
         CancellationToken cancellationToken = default)
     {
         var container = await GetContainerAsync(cancellationToken);
-        
+
         // Try to find the blob with any supported extension
         foreach (var ext in SupportedExtensions)
         {
@@ -51,7 +51,7 @@ public class BlobStorageService(BlobServiceClient blobServiceClient)
                 return await blob.DownloadContentAsync(cancellationToken);
             }
         }
-        
+
         throw new FileNotFoundException($"Book cover not found for book {bookId}");
     }
 
@@ -60,12 +60,12 @@ public class BlobStorageService(BlobServiceClient blobServiceClient)
         CancellationToken cancellationToken = default)
     {
         var container = await GetContainerAsync(cancellationToken);
-        
+
         // Delete blob with any supported extension
         foreach (var ext in SupportedExtensions)
         {
             var blob = container.GetBlobClient($"{bookId}.{ext}");
-            await blob.DeleteIfExistsAsync(cancellationToken: cancellationToken);
+            _ = await blob.DeleteIfExistsAsync(cancellationToken: cancellationToken);
         }
     }
 
@@ -73,7 +73,7 @@ public class BlobStorageService(BlobServiceClient blobServiceClient)
         CancellationToken cancellationToken = default)
     {
         var container = blobServiceClient.GetBlobContainerClient(ContainerName);
-        await container.CreateIfNotExistsAsync(
+        _ = await container.CreateIfNotExistsAsync(
             PublicAccessType.Blob,
             cancellationToken: cancellationToken);
         return container;

@@ -25,7 +25,7 @@ public class LocalizationOptions : IValidatableObject
     /// Configuration section name in appsettings.json
     /// </summary>
     public const string SectionName = "Localization";
-    
+
     /// <summary>
     /// Default culture to use when client's preferred language is not supported.
     /// </summary>
@@ -37,7 +37,7 @@ public class LocalizationOptions : IValidatableObject
     [MinLength(2, ErrorMessage = "DefaultCulture must be at least 2 characters")]
     [ValidCulture]
     public string DefaultCulture { get; set; } = "en-US";
-    
+
     /// <summary>
     /// Array of supported culture identifiers that the API can respond in.
     /// </summary>

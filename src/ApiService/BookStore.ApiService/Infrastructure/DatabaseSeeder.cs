@@ -46,7 +46,7 @@ public class DatabaseSeeder(IDocumentStore store)
         foreach (var (key, (id, name, website)) in publishers)
         {
             var @event = PublisherAggregate.Create(id, name);
-            session.Events.StartStream<PublisherAggregate>(id, @event);
+            _ = session.Events.StartStream<PublisherAggregate>(id, @event);
             result[key] = id;
         }
 
@@ -72,7 +72,7 @@ public class DatabaseSeeder(IDocumentStore store)
         foreach (var (key, (id, name, bio)) in authors)
         {
             var @event = AuthorAggregate.Create(id, name, bio);
-            session.Events.StartStream<AuthorAggregate>(id, @event);
+            _ = session.Events.StartStream<AuthorAggregate>(id, @event);
             result[key] = id;
         }
 
@@ -99,9 +99,9 @@ public class DatabaseSeeder(IDocumentStore store)
             var translations = names.ToDictionary(
                 kvp => kvp.Key,
                 kvp => new CategoryTranslation(kvp.Value, null));
-            
+
             var @event = CategoryAggregate.Create(id, translations);
-            session.Events.StartStream<CategoryAggregate>(id, @event);
+            _ = session.Events.StartStream<CategoryAggregate>(id, @event);
             result[key] = id;
         }
 
@@ -208,11 +208,11 @@ public class DatabaseSeeder(IDocumentStore store)
                 book.Description,
                 book.PublicationDate,
                 publisherIds[book.Publisher],
-                book.Authors.Select(a => authorIds[a]).ToList(),
-                book.Categories.Select(c => categoryIds[c]).ToList()
+                [.. book.Authors.Select(a => authorIds[a])],
+                [.. book.Categories.Select(c => categoryIds[c])]
             );
 
-            session.Events.StartStream<BookAggregate>(bookId, @event);
+            _ = session.Events.StartStream<BookAggregate>(bookId, @event);
         }
     }
 }

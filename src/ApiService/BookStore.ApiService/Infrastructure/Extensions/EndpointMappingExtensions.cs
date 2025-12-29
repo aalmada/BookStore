@@ -29,10 +29,10 @@ public static class EndpointMappingExtensions
         MapAdminEndpoints(app, apiVersionSet);
 
         // Map default endpoints (health checks, metrics, etc.)
-        app.MapDefaultEndpoints();
+        _ = app.MapDefaultEndpoints();
 
         // Map SignalR hub for real-time notifications
-        app.MapHub<Wolverine.SignalR.WolverineHub>("/hub/bookstore");
+        _ = app.MapHub<Wolverine.SignalR.WolverineHub>("/hub/bookstore");
 
         return app;
     }

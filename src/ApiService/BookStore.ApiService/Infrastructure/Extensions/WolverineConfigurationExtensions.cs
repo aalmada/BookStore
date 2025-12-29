@@ -43,12 +43,9 @@ public static class WolverineConfigurationExtensions
         _ = opts.Discovery.IncludeType(typeof(Handlers.Publishers.PublisherHandlers));
     }
 
-    static void ConfigureEventPublishing(WolverineOptions opts)
-    {
-        opts.Publish(x =>
-        {
-            x.MessagesImplementing<Events.Notifications.IDomainEventNotification>();
-            _ = x.ToSignalR();
-        });
-    }
+    static void ConfigureEventPublishing(WolverineOptions opts) => opts.Publish(x =>
+                                                                        {
+                                                                            x.MessagesImplementing<Events.Notifications.IDomainEventNotification>();
+                                                                            _ = x.ToSignalR();
+                                                                        });
 }

@@ -87,20 +87,18 @@ public static class BookEndpoints
             book.PublisherId.HasValue && publishers.TryGetValue(book.PublisherId.Value, out var pub)
                 ? new Models.PublisherDto(pub.Id, pub.Name)
                 : null,
-            book.AuthorIds
+            [.. book.AuthorIds
                 .Select(id => authors.TryGetValue(id, out var author)
                     ? new Models.AuthorDto(author.Id, author.Name, author.Biography)
                     : null)
                 .Where(a => a != null)
-                .Cast<Models.AuthorDto>()
-                .ToList(),
-            book.CategoryIds
+                .Cast<Models.AuthorDto>()],
+            [.. book.CategoryIds
                 .Select(id => categories.TryGetValue(id, out var cat)
                     ? LocalizeCategory(cat, language)
                     : null)
                 .Where(c => c != null)
-                .Cast<Models.CategoryDto>()
-                .ToList()
+                .Cast<Models.CategoryDto>()]
         )).ToList();
 
         return TypedResults.Ok(new PagedListDto<Models.BookDto>(
@@ -109,7 +107,6 @@ public static class BookEndpoints
             pagedList.PageSize,
             pagedList.TotalItemCount));
     }
-
 
     static async Task<IResult> GetBook(
         Guid id,
@@ -164,20 +161,18 @@ public static class BookEndpoints
             book.PublisherId.HasValue && publishers.TryGetValue(book.PublisherId.Value, out var pub)
                 ? new Models.PublisherDto(pub.Id, pub.Name)
                 : null,
-            book.AuthorIds
+            [.. book.AuthorIds
                 .Select(id => authors.TryGetValue(id, out var author)
                     ? new Models.AuthorDto(author.Id, author.Name, author.Biography)
                     : null)
                 .Where(a => a != null)
-                .Cast<Models.AuthorDto>()
-                .ToList(),
-            book.CategoryIds
+                .Cast<Models.AuthorDto>()],
+            [.. book.CategoryIds
                 .Select(catId => categories.TryGetValue(catId, out var cat)
                     ? LocalizeCategory(cat, language)
                     : null)
                 .Where(c => c != null)
-                .Cast<Models.CategoryDto>()
-                .ToList());
+                .Cast<Models.CategoryDto>()]);
 
         return TypedResults.Ok(bookDto);
     }
@@ -196,7 +191,7 @@ public static class BookEndpoints
         {
             var culture = new System.Globalization.CultureInfo(language);
             var twoLetterCode = culture.TwoLetterISOLanguageName;
-            
+
             if (category.Translations.TryGetValue(twoLetterCode, out var twoLetterLocalized))
             {
                 return new Models.CategoryDto(category.Id, twoLetterLocalized.Name);

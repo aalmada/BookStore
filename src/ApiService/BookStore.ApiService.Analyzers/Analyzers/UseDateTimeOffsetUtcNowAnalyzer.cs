@@ -36,7 +36,7 @@ public class UseDateTimeOffsetUtcNowAnalyzer : DiagnosticAnalyzer
 
         // Check if this is accessing Now or UtcNow
         var memberName = memberAccess.Name.Identifier.Text;
-        if (memberName != "Now" && memberName != "UtcNow")
+        if (memberName is not "Now" and not "UtcNow")
         {
             return;
         }

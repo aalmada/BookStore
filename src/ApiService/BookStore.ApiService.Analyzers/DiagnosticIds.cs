@@ -11,7 +11,7 @@ public static class DiagnosticIds
     public const string EventMustBeRecord = "BS1001";
     public const string EventMustBeImmutable = "BS1002";
     public const string EventMustBeInEventsNamespace = "BS1003";
-    
+
     // Best Practices (BS1xxx continued)
     public const string UseCreateVersion7 = "BS1006";
     public const string UseDateTimeOffsetUtcNow = "BS1007";

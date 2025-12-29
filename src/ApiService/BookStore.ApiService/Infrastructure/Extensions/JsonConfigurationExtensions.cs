@@ -12,7 +12,7 @@ public static class JsonConfigurationExtensions
         this IServiceCollection services,
         IHostEnvironment environment)
     {
-        services.ConfigureHttpJsonOptions(options =>
+        _ = services.ConfigureHttpJsonOptions(options =>
         {
             // Use web defaults (camelCase properties)
             options.SerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;

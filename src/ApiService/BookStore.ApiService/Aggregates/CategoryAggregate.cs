@@ -16,10 +16,7 @@ public class CategoryAggregate
         IsDeleted = false;
     }
 
-    void Apply(CategoryUpdated @event)
-    {
-        Translations = @event.Translations ?? [];
-    }
+    void Apply(CategoryUpdated @event) => Translations = @event.Translations ?? [];
 
     void Apply(CategorySoftDeleted _) => IsDeleted = true;
 
