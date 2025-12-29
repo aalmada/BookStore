@@ -184,7 +184,7 @@ public class ConfigurationValidationTests
         _ = await Assert.That(results.Any(r => r.ErrorMessage!.Contains("DefaultCulture"))).IsTrue();
     }
 
-[Test]
+    [Test]
     [Category("Unit")]
     public async Task LocalizationOptions_SupportedCulturesEmpty_FailsValidation()
     {
@@ -204,7 +204,7 @@ public class ConfigurationValidationTests
         _ = await Assert.That(results.Any(r => r.ErrorMessage!.Contains("At least one supported culture"))).IsTrue();
     }
 
-[Test]
+    [Test]
     [Category("Unit")]
     public async Task LocalizationOptions_DefaultCultureNotInSupportedCultures_FailsValidation()
     {

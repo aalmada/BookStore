@@ -43,13 +43,13 @@ public class PartialDateTests
     [Category("Unit")]
     public async Task ValidateYear_ThrowsException_ForInvalidYear()
     {
-        _ = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => 
+        _ = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
         {
             _ = new PartialDate(0);
             return Task.CompletedTask;
         });
-        
-        _ = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => 
+
+        _ = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
         {
             _ = new PartialDate(10000);
             return Task.CompletedTask;
@@ -60,13 +60,13 @@ public class PartialDateTests
     [Category("Unit")]
     public async Task ValidateMonth_ThrowsException_ForInvalidMonth()
     {
-        _ = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => 
+        _ = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
         {
             _ = new PartialDate(2023, 0);
             return Task.CompletedTask;
         });
-        
-        _ = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => 
+
+        _ = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
         {
             _ = new PartialDate(2023, 13);
             return Task.CompletedTask;
@@ -89,10 +89,10 @@ public class PartialDateTests
     {
         var date = new PartialDate(2023);
         var json = Serialize(date);
-        
+
         using var document = JsonDocument.Parse(json);
         var root = document.RootElement;
-        
+
         using var scope = Assert.Multiple();
         _ = await Assert.That(root.GetProperty("year").GetInt32()).IsEqualTo(2023);
         _ = await Assert.That(root.TryGetProperty("month", out var unusedMonth)).IsFalse();
@@ -105,10 +105,10 @@ public class PartialDateTests
     {
         var date = new PartialDate(2023, 5, 15);
         var json = Serialize(date);
-        
+
         using var document = JsonDocument.Parse(json);
         var root = document.RootElement;
-        
+
         using var scope = Assert.Multiple();
         _ = await Assert.That(root.GetProperty("year").GetInt32()).IsEqualTo(2023);
         _ = await Assert.That(root.GetProperty("month").GetInt32()).IsEqualTo(5);
@@ -139,21 +139,21 @@ public class PartialDateTests
     {
         var json = """{"year": 2023, "month": null, "day": null}""";
         var date = Deserialize(json);
-        
+
         _ = await Assert.That(date).IsNotNull();
         using var scope = Assert.Multiple();
         _ = await Assert.That(date!.Value.Year).IsEqualTo(2023);
         _ = await Assert.That(date!.Value.Month).IsNull();
         _ = await Assert.That(date!.Value.Day).IsNull();
     }
-    
+
     [Test]
     [Category("Unit")]
     public async Task Deserialization_WithPascalCase_ReturnsCorrectObject()
     {
         var json = """{"Year": 2023, "Month": 5, "Day": 15}""";
         var date = Deserialize(json);
-        
+
         _ = await Assert.That(date).IsNotNull();
         using var scope = Assert.Multiple();
         _ = await Assert.That(date!.Value.Year).IsEqualTo(2023);
@@ -174,12 +174,12 @@ public class PartialDateTests
     [Category("Unit")]
     public async Task Deserialization_InvalidJson_ThrowsException()
     {
-         var json = """{"year": "invalid"}""";
-         _ = await Assert.ThrowsAsync<JsonException>(() => 
-         {
-             _ = Deserialize(json);
-             return Task.CompletedTask;
-         });
+        var json = """{"year": "invalid"}""";
+        _ = await Assert.ThrowsAsync<JsonException>(() =>
+        {
+            _ = Deserialize(json);
+            return Task.CompletedTask;
+        });
     }
 
     private string Serialize(PartialDate? date)

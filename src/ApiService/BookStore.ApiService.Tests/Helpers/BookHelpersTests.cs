@@ -105,7 +105,7 @@ public class BookHelpersTests
         // Arrange
         var currentYear = DateTimeOffset.UtcNow.Year;
         var currentMonth = DateTimeOffset.UtcNow.Month;
-        
+
         // Skip test if we're in December (no future month available)
         if (currentMonth == 12)
         {
@@ -128,7 +128,7 @@ public class BookHelpersTests
         // Arrange
         var currentYear = DateTimeOffset.UtcNow.Year;
         var currentMonth = DateTimeOffset.UtcNow.Month;
-        
+
         // Skip test if we're in January (no past month available)
         if (currentMonth == 1)
         {

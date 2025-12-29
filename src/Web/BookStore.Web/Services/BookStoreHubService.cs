@@ -79,7 +79,7 @@ public class BookStoreHubService : IAsyncDisposable
         {
             await _connection.DisposeAsync();
         }
-        
+
         _lock.Dispose();
     }
 }

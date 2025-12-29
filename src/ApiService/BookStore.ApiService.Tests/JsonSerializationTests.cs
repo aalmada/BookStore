@@ -99,7 +99,7 @@ public class JsonSerializationTests
         _ = await Assert.That(json).Contains("\"bookTitle\":");
         _ = await Assert.That(json).Contains("\"publicationDate\":");
         _ = await Assert.That(json).Contains("\"lastModified\":");
-        
+
         // Should NOT contain PascalCase
         _ = await Assert.That(json).DoesNotContain("\"BookId\":");
         _ = await Assert.That(json).DoesNotContain("\"BookTitle\":");
@@ -126,11 +126,11 @@ public class JsonSerializationTests
         // camelCase properties
         _ = await Assert.That(json).Contains("\"bookId\":");
         _ = await Assert.That(json).Contains("\"bookTitle\":");
-        
+
         // ISO 8601 dates
         _ = await Assert.That(json).Contains("\"publicationDate\":\"2008-08-01\"");
         _ = await Assert.That(json).Contains("\"lastModified\":\"2025-12-26T17:16:09+00:00\"");
-        
+
         // Enum as string
         _ = await Assert.That(json).Contains("\"status\":\"active\"");
     }

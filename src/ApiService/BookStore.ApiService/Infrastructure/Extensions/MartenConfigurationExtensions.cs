@@ -1,4 +1,5 @@
 using BookStore.ApiService.Projections;
+using BookStore.Shared.Infrastructure.Json;
 using JasperFx.Events;
 using JasperFx.Events.Projections;
 using Marten;
@@ -6,7 +7,6 @@ using Marten.Events.Daemon;
 using Marten.Events.Projections;
 using Weasel.Core;
 using Wolverine.Marten;
-using BookStore.Shared.Infrastructure.Json;
 
 namespace BookStore.ApiService.Infrastructure.Extensions;
 
