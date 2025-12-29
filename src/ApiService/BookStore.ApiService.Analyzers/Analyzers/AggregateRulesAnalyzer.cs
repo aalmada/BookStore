@@ -101,6 +101,6 @@ public class AggregateRulesAnalyzer : DiagnosticAnalyzer
     static bool IsInAggregatesNamespace(INamedTypeSymbol symbol)
     {
         var namespaceName = symbol.ContainingNamespace?.ToDisplayString();
-        return namespaceName != null && namespaceName.EndsWith(".Aggregates");
+        return namespaceName?.EndsWith(".Aggregates") == true;
     }
 }

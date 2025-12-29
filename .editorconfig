@@ -73,10 +73,13 @@ csharp_style_prefer_switch_expression = true:warning
 # Null-checking preferences
 csharp_style_conditional_delegate_call = true:warning
 
-# Modifier preferences
-dotnet_diagnostic.IDE0040.severity = warning
-dotnet_style_require_accessibility_modifiers = omit_if_default:warning
-csharp_prefer_static_local_function = true:warning
+# IDE0051: Remove unused private members
+# Suppressed globally because:
+# 1. Marten uses reflection to call Apply() methods in aggregates/projections
+# 2. EditorConfig doesn't support pattern-based symbol exclusions
+# 3. Maintaining GlobalSuppressions.cs for each Apply method is not practical
+# Tradeoff: We lose detection of truly unused private members, but gain maintainability
+dotnet_diagnostic.IDE0051.severity = none
 
 # Code-block preferences
 csharp_prefer_braces = true:warning

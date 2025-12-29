@@ -13,7 +13,7 @@ builder.AddAzureBlobServiceClient("blobs");
 
 // Configure services
 builder.Services.AddJsonConfiguration(builder.Environment);
-builder.Services.AddApplicationServices(builder.Configuration, builder.Environment);
+builder.Services.AddApplicationServices(builder.Configuration);
 builder.Services.AddMartenEventStore(builder.Configuration);
 builder.Services.AddWolverineMessaging();
 

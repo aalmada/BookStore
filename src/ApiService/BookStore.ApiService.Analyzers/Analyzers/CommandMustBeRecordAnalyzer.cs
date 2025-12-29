@@ -108,7 +108,7 @@ public class CommandMustBeRecordAnalyzer : DiagnosticAnalyzer
     static bool IsInCommandsNamespace(INamedTypeSymbol symbol)
     {
         var namespaceName = symbol.ContainingNamespace?.ToDisplayString();
-        return namespaceName != null && namespaceName.EndsWith(".Commands");
+        return namespaceName?.EndsWith(".Commands") == true;
     }
 
     static bool IsCommandType(string typeName) => typeName.StartsWith("Create") ||

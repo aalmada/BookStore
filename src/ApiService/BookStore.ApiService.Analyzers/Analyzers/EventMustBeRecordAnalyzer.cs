@@ -125,7 +125,7 @@ public class EventMustBeRecordAnalyzer : DiagnosticAnalyzer
     static bool IsInEventsNamespace(INamedTypeSymbol symbol)
     {
         var namespaceName = symbol.ContainingNamespace?.ToDisplayString();
-        return namespaceName != null && namespaceName.EndsWith(".Events");
+        return namespaceName?.EndsWith(".Events") == true;
     }
 
     static bool IsEventType(string typeName) => typeName.EndsWith("Added") ||

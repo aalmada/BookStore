@@ -12,8 +12,7 @@ public static class ApplicationServicesExtensions
     /// </summary>
     public static IServiceCollection AddApplicationServices(
         this IServiceCollection services,
-        IConfiguration configuration,
-        IHostEnvironment environment)
+        IConfiguration configuration)
     {
         // Problem details for error handling
         _ = services.AddProblemDetails();

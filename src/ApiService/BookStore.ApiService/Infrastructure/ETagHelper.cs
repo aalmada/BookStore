@@ -62,9 +62,9 @@ public static class ETagHelper
     /// Create a 412 Precondition Failed response
     /// </summary>
     public static IResult PreconditionFailed() => Results.Problem(
-            title: "Precondition Failed",
             detail: "The resource has been modified since you last retrieved it. Please refresh and try again.",
-            statusCode: 412);
+            statusCode: 412,
+            title: "Precondition Failed");
 }
 
 /// <summary>

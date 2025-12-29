@@ -118,13 +118,13 @@ public class HandlerConventionAnalyzer : DiagnosticAnalyzer
     static bool IsInHandlersNamespace(INamedTypeSymbol symbol)
     {
         var namespaceName = symbol.ContainingNamespace?.ToDisplayString();
-        return namespaceName != null && namespaceName.EndsWith(".Handlers");
+        return namespaceName?.EndsWith(".Handlers") == true;
     }
 
     static bool IsFromCommandsNamespace(ITypeSymbol type)
     {
         var namespaceName = type.ContainingNamespace?.ToDisplayString();
-        return namespaceName != null && namespaceName.Contains(".Commands");
+        return namespaceName?.Contains(".Commands") == true;
     }
 
     static bool LooksLikeHandler(IMethodSymbol method)

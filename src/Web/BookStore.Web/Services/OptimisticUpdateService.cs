@@ -76,7 +76,7 @@ public class OptimisticUpdateService
                 _ = _optimisticBooks.Remove(id);
             }
 
-            if (staleBooks.Any())
+            if (staleBooks.Count != 0)
             {
                 OnBooksChanged?.Invoke();
             }

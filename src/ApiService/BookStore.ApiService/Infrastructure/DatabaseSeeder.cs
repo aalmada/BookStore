@@ -30,7 +30,7 @@ public class DatabaseSeeder(IDocumentStore store)
         await session.SaveChangesAsync();
     }
 
-    Dictionary<string, Guid> SeedPublishers(IDocumentSession session)
+    static Dictionary<string, Guid> SeedPublishers(IDocumentSession session)
     {
         var publishers = new Dictionary<string, (Guid Id, string Name, string? Website)>
         {
@@ -53,7 +53,7 @@ public class DatabaseSeeder(IDocumentStore store)
         return result;
     }
 
-    Dictionary<string, Guid> SeedAuthors(IDocumentSession session)
+    static Dictionary<string, Guid> SeedAuthors(IDocumentSession session)
     {
         var authors = new Dictionary<string, (Guid Id, string Name, string? Bio)>
         {
@@ -79,7 +79,7 @@ public class DatabaseSeeder(IDocumentStore store)
         return result;
     }
 
-    Dictionary<string, Guid> SeedCategories(IDocumentSession session)
+    static Dictionary<string, Guid> SeedCategories(IDocumentSession session)
     {
         var categories = new Dictionary<string, (Guid Id, Dictionary<string, string> Names)>
         {
@@ -108,7 +108,7 @@ public class DatabaseSeeder(IDocumentStore store)
         return result;
     }
 
-    void SeedBooks(
+    static void SeedBooks(
         IDocumentSession session,
         Dictionary<string, Guid> publisherIds,
         Dictionary<string, Guid> authorIds,

@@ -70,7 +70,7 @@ public class BookSearchProjectionBuilder : MultiStreamProjection<BookSearchProje
         }
 
         // Populate author names
-        if (projection.AuthorIds.Any())
+        if (projection.AuthorIds.Count != 0)
         {
             var authors = await session.Query<AuthorProjection>()
                 .Where(a => projection.AuthorIds.Contains(a.Id))
@@ -106,7 +106,7 @@ public class BookSearchProjectionBuilder : MultiStreamProjection<BookSearchProje
         }
 
         // Re-populate author names (IDs may have changed)
-        if (projection.AuthorIds.Any())
+        if (projection.AuthorIds.Count != 0)
         {
             var authors = await session.Query<AuthorProjection>()
                 .Where(a => projection.AuthorIds.Contains(a.Id))
@@ -148,7 +148,7 @@ public class BookSearchProjectionBuilder : MultiStreamProjection<BookSearchProje
     }
 
     // Helper method to compute SearchText from all searchable fields
-    void UpdateSearchText(BookSearchProjection projection)
+    static void UpdateSearchText(BookSearchProjection projection)
         // Use string interpolation to avoid List<string> allocation
         => projection.SearchText =
             $"{projection.Title} " +

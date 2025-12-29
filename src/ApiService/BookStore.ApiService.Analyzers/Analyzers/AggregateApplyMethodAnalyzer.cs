@@ -75,7 +75,7 @@ public class AggregateApplyMethodAnalyzer : DiagnosticAnalyzer
         var aggregateName = methodSymbol.ContainingType.Name;
 
         // BS3001: Check return type
-        if (methodSymbol.ReturnsVoid == false)
+        if (!methodSymbol.ReturnsVoid)
         {
             var diagnostic = Diagnostic.Create(
                 ReturnVoidRule,
@@ -108,6 +108,6 @@ public class AggregateApplyMethodAnalyzer : DiagnosticAnalyzer
     static bool IsInAggregatesNamespace(INamedTypeSymbol symbol)
     {
         var namespaceName = symbol.ContainingNamespace?.ToDisplayString();
-        return namespaceName != null && namespaceName.EndsWith(".Aggregates");
+        return namespaceName?.EndsWith(".Aggregates") == true;
     }
 }
