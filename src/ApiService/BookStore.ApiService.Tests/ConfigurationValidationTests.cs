@@ -41,9 +41,9 @@ public class ConfigurationValidationTests
         var results = ValidateModel(options);
 
         // Assert
-        using var _ = Assert.Multiple();
-        await Assert.That(results).Count().IsEqualTo(1);
-        await Assert.That(results[0].ErrorMessage).Contains("DefaultPageSize must be between 1 and 1000");
+        using var scope = Assert.Multiple();
+        _ = await Assert.That(results).Count().IsEqualTo(1);
+        _ = await Assert.That(results[0].ErrorMessage).Contains("DefaultPageSize must be between 1 and 1000");
     }
 
     [Test]
@@ -62,8 +62,8 @@ public class ConfigurationValidationTests
 
         // Assert
         using var scope = Assert.Multiple();
-        await Assert.That(results).Count().IsEqualTo(1);
-        await Assert.That(results[0].ErrorMessage).Contains("DefaultPageSize must be between 1 and 1000");
+        _ = await Assert.That(results).Count().IsEqualTo(1);
+        _ = await Assert.That(results[0].ErrorMessage).Contains("DefaultPageSize must be between 1 and 1000");
     }
 
     [Test]
@@ -81,9 +81,9 @@ public class ConfigurationValidationTests
         var results = ValidateModel(options);
 
         // Assert
-        using var _ = Assert.Multiple();
-        await Assert.That(results).Count().IsGreaterThanOrEqualTo(1);
-        await Assert.That(results.Any(r => r.ErrorMessage!.Contains("DefaultPageSize must be between 1 and 1000"))).IsTrue();
+        using var scope = Assert.Multiple();
+        _ = await Assert.That(results).Count().IsGreaterThanOrEqualTo(1);
+        _ = await Assert.That(results.Any(r => r.ErrorMessage!.Contains("DefaultPageSize must be between 1 and 1000"))).IsTrue();
     }
 
     [Test]
@@ -102,8 +102,8 @@ public class ConfigurationValidationTests
 
         // Assert
         using var scope = Assert.Multiple();
-        await Assert.That(results).Count().IsEqualTo(1);
-        await Assert.That(results[0].ErrorMessage).Contains("MaxPageSize must be between 1 and 1000");
+        _ = await Assert.That(results).Count().IsEqualTo(1);
+        _ = await Assert.That(results[0].ErrorMessage).Contains("MaxPageSize must be between 1 and 1000");
     }
 
     [Test]
@@ -122,8 +122,8 @@ public class ConfigurationValidationTests
 
         // Assert
         using var scope = Assert.Multiple();
-        await Assert.That(results).Count().IsEqualTo(1);
-        await Assert.That(results[0].ErrorMessage).Contains("MaxPageSize must be between 1 and 1000");
+        _ = await Assert.That(results).Count().IsEqualTo(1);
+        _ = await Assert.That(results[0].ErrorMessage).Contains("MaxPageSize must be between 1 and 1000");
     }
 
     [Test]
@@ -141,9 +141,9 @@ public class ConfigurationValidationTests
         var results = ValidateModel(options);
 
         // Assert
-        using var _ = Assert.Multiple();
-        await Assert.That(results).Count().IsEqualTo(1);
-        await Assert.That(results[0].ErrorMessage).Contains("DefaultPageSize (100) cannot be greater than MaxPageSize (50)");
+        using var scope = Assert.Multiple();
+        _ = await Assert.That(results).Count().IsEqualTo(1);
+        _ = await Assert.That(results[0].ErrorMessage).Contains("DefaultPageSize (100) cannot be greater than MaxPageSize (50)");
     }
 
     [Test]
@@ -161,7 +161,7 @@ public class ConfigurationValidationTests
         var results = ValidateModel(options);
 
         // Assert
-        await Assert.That(results).IsEmpty();
+        _ = await Assert.That(results).IsEmpty();
     }
 
     [Test]
@@ -179,9 +179,9 @@ public class ConfigurationValidationTests
         var results = ValidateModel(options);
 
         // Assert
-        using var _ = Assert.Multiple();
-        await Assert.That(results).IsNotEmpty();
-        await Assert.That(results.Any(r => r.ErrorMessage!.Contains("DefaultCulture"))).IsTrue();
+        using var scope = Assert.Multiple();
+        _ = await Assert.That(results).IsNotEmpty();
+        _ = await Assert.That(results.Any(r => r.ErrorMessage!.Contains("DefaultCulture"))).IsTrue();
     }
 
 [Test]
@@ -199,9 +199,9 @@ public class ConfigurationValidationTests
         var results = ValidateModel(options);
 
         // Assert
-        using var _ = Assert.Multiple();
-        await Assert.That(results).IsNotEmpty();
-        await Assert.That(results.Any(r => r.ErrorMessage!.Contains("At least one supported culture"))).IsTrue();
+        using var scope = Assert.Multiple();
+        _ = await Assert.That(results).IsNotEmpty();
+        _ = await Assert.That(results.Any(r => r.ErrorMessage!.Contains("At least one supported culture"))).IsTrue();
     }
 
 [Test]
@@ -219,9 +219,9 @@ public class ConfigurationValidationTests
         var results = ValidateModel(options);
 
         // Assert
-        using var _ = Assert.Multiple();
-        await Assert.That(results).Count().IsEqualTo(1);
-        await Assert.That(results[0].ErrorMessage).Contains("DefaultCulture 'en-US' must be included in SupportedCultures");
+        using var scope = Assert.Multiple();
+        _ = await Assert.That(results).Count().IsEqualTo(1);
+        _ = await Assert.That(results[0].ErrorMessage).Contains("DefaultCulture 'en-US' must be included in SupportedCultures");
     }
 
     [Test]
@@ -239,7 +239,7 @@ public class ConfigurationValidationTests
         var results = ValidateModel(options);
 
         // Assert
-        await Assert.That(results).IsEmpty();
+        _ = await Assert.That(results).IsEmpty();
     }
 
     /// <summary>

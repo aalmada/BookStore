@@ -80,9 +80,9 @@ public class CultureCacheTests
         var result2 = Infrastructure.CultureCache.IsValidCultureCode("PT");
 
         // Assert
-        using var _ = Assert.Multiple();
-        await Assert.That(result1).IsTrue();
-        await Assert.That(result2).IsTrue();
+        using var scope = Assert.Multiple();
+        _ = await Assert.That(result1).IsTrue();
+        _ = await Assert.That(result2).IsTrue();
     }
 
     [Test]
@@ -143,10 +143,10 @@ public class CultureCacheTests
         var invalidCodes = Infrastructure.CultureCache.GetInvalidCodes(codes);
 
         // Assert
-        using var _ = Assert.Multiple();
-        await Assert.That(invalidCodes).Count().IsEqualTo(2);
-        await Assert.That(invalidCodes).Contains("xx-XX");
-        await Assert.That(invalidCodes).Contains("invalid");
+        using var scope = Assert.Multiple();
+        _ = await Assert.That(invalidCodes).Count().IsEqualTo(2);
+        _ = await Assert.That(invalidCodes).Contains("xx-XX");
+        _ = await Assert.That(invalidCodes).Contains("invalid");
     }
 
     [Test]
