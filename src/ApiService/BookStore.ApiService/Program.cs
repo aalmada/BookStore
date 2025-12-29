@@ -1,5 +1,6 @@
 using BookStore.ApiService.Infrastructure;
 using BookStore.ApiService.Infrastructure.Extensions;
+using BookStore.ApiService.Projections;
 using Marten;
 using Scalar.AspNetCore;
 
@@ -24,6 +25,7 @@ if (app.Environment.IsDevelopment())
 {
     using var scope = app.Services.CreateScope();
     var store = scope.ServiceProvider.GetRequiredService<IDocumentStore>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 
     // Apply schema to create PostgreSQL extensions (pg_trgm, unaccent)
     await store.Storage.ApplyAllConfiguredChangesToDatabaseAsync();
@@ -31,9 +33,42 @@ if (app.Environment.IsDevelopment())
     var seeder = new DatabaseSeeder(store);
     await seeder.SeedAsync();
 
-    // Give async projections time to process the seeded events
+    // Wait for async projections to process the seeded events
     // In production, projections run continuously in the background
-    await Task.Delay(TimeSpan.FromSeconds(2));
+    await WaitForProjectionsAsync(store, logger);
+}
+
+static async Task WaitForProjectionsAsync(IDocumentStore store, ILogger logger)
+{
+    logger.LogInformation("Waiting for async projections to complete...");
+    
+    var timeout = TimeSpan.FromSeconds(30);
+    var checkInterval = TimeSpan.FromMilliseconds(100);
+    var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+    while (stopwatch.Elapsed < timeout)
+    {
+        await using var session = store.QuerySession();
+        
+        // Check if projections have data by querying the projection tables
+        var bookCount = await session.Query<BookSearchProjection>().CountAsync();
+        var authorCount = await session.Query<AuthorProjection>().CountAsync();
+        var categoryCount = await session.Query<CategoryProjection>().CountAsync();
+        var publisherCount = await session.Query<PublisherProjection>().CountAsync();
+
+        // If all projections have data, we're ready
+        if (bookCount > 0 && authorCount > 0 && categoryCount > 0 && publisherCount > 0)
+        {
+            logger.LogInformation(
+                "All projections are ready: {BookCount} books, {AuthorCount} authors, {CategoryCount} categories, {PublisherCount} publishers",
+                bookCount, authorCount, categoryCount, publisherCount);
+            return;
+        }
+
+        await Task.Delay(checkInterval);
+    }
+
+    logger.LogWarning("Projection initialization timed out after {Timeout}s. Some projections may not be ready.", timeout.TotalSeconds);
 }
 
 // Configure the HTTP request pipeline
