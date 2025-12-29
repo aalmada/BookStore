@@ -8,6 +8,7 @@ public record BookDto(
     string Title,
     string? Isbn,
     string Language,
+    string LanguageName,
     string? Description,
     PartialDate? PublicationDate,
     bool IsPreRelease,

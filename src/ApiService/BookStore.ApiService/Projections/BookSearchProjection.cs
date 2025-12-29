@@ -164,7 +164,6 @@ public class BookSearchProjectionBuilder : MultiStreamProjection<BookSearchProje
             $"{projection.Title} " +
             $"{allDescriptions} " +
             $"{projection.Isbn ?? string.Empty} " +
-            $"{projection.Language} " +
             $"{projection.PublisherName ?? string.Empty} " +
             $"{projection.AuthorNames}".Trim();
     }

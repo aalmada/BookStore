@@ -1,3 +1,4 @@
+using BookStore.ApiService.Infrastructure;
 using BookStore.ApiService.Models;
 using BookStore.ApiService.Projections;
 using Marten;
@@ -83,6 +84,7 @@ public static class BookEndpoints
             book.Title,
             book.Isbn,
             book.Language,
+            LocalizeLanguageName(book.Language, language),
             LocalizeDescription(book, language),
             book.PublicationDate,
             Helpers.BookHelpers.IsPreRelease(book.PublicationDate),
@@ -159,6 +161,7 @@ public static class BookEndpoints
             book.Title,
             book.Isbn,
             book.Language,
+            LocalizeLanguageName(book.Language, language),
             LocalizeDescription(book, language),
             book.PublicationDate,
             Helpers.BookHelpers.IsPreRelease(book.PublicationDate),
@@ -295,5 +298,29 @@ public static class BookEndpoints
 
         // Last resort: use first available biography
         return author.Translations.Values.FirstOrDefault()?.Biography;
+    }
+
+    // Helper method to get localized language name
+    static string LocalizeLanguageName(string bookLanguageCode, string userLanguage)
+    {
+        // Validate both culture codes first to avoid exceptions
+        if (!CultureCache.IsValidCultureCode(bookLanguageCode))
+        {
+            return bookLanguageCode.ToUpperInvariant();
+        }
+
+        var bookCulture = new System.Globalization.CultureInfo(bookLanguageCode);
+
+        // If user language is invalid, fall back to the book's native name
+        if (!CultureCache.IsValidCultureCode(userLanguage))
+        {
+            return bookCulture.NativeName;
+        }
+
+        var userCulture = new System.Globalization.CultureInfo(userLanguage);
+
+        // Get the display name of the book's language in the user's language
+        // For example: if book is in "en" and user prefers "pt", this returns "Inglês"
+        return userCulture.TextInfo.ToTitleCase(bookCulture.DisplayName);
     }
 }
