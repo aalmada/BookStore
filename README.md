@@ -101,12 +101,13 @@ BookStore/
 │   ├── BookStore.AppHost/         # Aspire orchestration
 │   │   └── Program.cs             # Service configuration
 │   │
-│   ├── BookStore.ServiceDefaults/ # Shared configuration
 │   │   └── Extensions.cs          # OpenTelemetry, health checks
 │   │
-│   └── BookStore.Tests/           # Unit tests
-│       ├── Handlers/              # Handler tests
-│       └── JsonSerializationTests.cs
+│   ├── BookStore.Shared/          # Shared domain models & DTOs
+│   │   ├── BookStore.Shared/      # Shared library
+│   │   └── BookStore.Shared.Tests/# Unit tests for shared code
+│   │
+│   └── BookStore.Tests/           # Integration tests
 │
 ├── docs/                          # Documentation
 │   ├── getting-started.md         # Setup guide
