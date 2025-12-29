@@ -14,6 +14,7 @@ public static class DiagnosticIds
     
     // Best Practices (BS1xxx continued)
     public const string UseCreateVersion7 = "BS1006";
+    public const string UseDateTimeOffsetUtcNow = "BS1007";
 
     // Command Rules (BS2xxx)
     public const string CommandMustBeRecord = "BS2001";
