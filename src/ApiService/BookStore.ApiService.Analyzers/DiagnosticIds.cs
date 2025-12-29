@@ -11,6 +11,9 @@ public static class DiagnosticIds
     public const string EventMustBeRecord = "BS1001";
     public const string EventMustBeImmutable = "BS1002";
     public const string EventMustBeInEventsNamespace = "BS1003";
+    
+    // Best Practices (BS1xxx continued)
+    public const string UseCreateVersion7 = "BS1006";
 
     // Command Rules (BS2xxx)
     public const string CommandMustBeRecord = "BS2001";
@@ -46,4 +49,5 @@ public static class DiagnosticCategories
     public const string CQRS = "CQRS";
     public const string DomainModel = "DomainModel";
     public const string Architecture = "Architecture";
+    public const string BestPractices = "BestPractices";
 }
