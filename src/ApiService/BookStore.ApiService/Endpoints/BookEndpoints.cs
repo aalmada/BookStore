@@ -17,14 +17,16 @@ public static class BookEndpoints
         _ = group.MapGet("/", SearchBooks)
             .WithName("GetBooks")
             .WithSummary("Get all books")
-            .CacheOutput(policy => policy.Expire(TimeSpan.FromMinutes(2)));
+            .CacheOutput(policy => policy
+                .Expire(TimeSpan.FromMinutes(2))
+                .SetVaryByHeader("Accept-Language"));
 
         _ = group.MapGet("/{id:guid}", GetBook)
             .WithName("GetBook")
             .WithSummary("Get book by ID")
             .CacheOutput(policy => policy
                 .Expire(TimeSpan.FromMinutes(5))
-                .SetVaryByHeader("If-None-Match"));
+                .SetVaryByHeader("Accept-Language", "If-None-Match"));
 
         return group;
     }
@@ -32,7 +34,9 @@ public static class BookEndpoints
     static async Task<Ok<PagedListDto<BookDto>>> SearchBooks(
         [FromServices] IQuerySession session,
         [FromServices] IOptions<PaginationOptions> paginationOptions,
+        [FromServices] IOptions<LocalizationOptions> localizationOptions,
         [AsParameters] PagedRequest request,
+        HttpContext context,
         [FromQuery] string? search = null)
     {
         var paging = request.Normalize(paginationOptions.Value);
@@ -45,38 +49,27 @@ public static class BookEndpoints
         var authors = new Dictionary<Guid, AuthorProjection>();
         var categories = new Dictionary<Guid, CategoryProjection>();
 
-        IPagedList<BookSearchProjection> pagedList;
-
-        if (string.IsNullOrWhiteSpace(search))
-        {
-            // Return all books if no search query - use Marten's native pagination with Include()
+        // Build query incrementally
 #pragma warning disable CS8603 // Possible null reference return - false positive from Marten's Include API
-            pagedList = await session.Query<BookSearchProjection>()
-                .Include(publishers).On(x => x.PublisherId)!
-                .Include(authors).On(x => x.AuthorIds)!
-                .Include(categories).On(x => x.CategoryIds)!
-                .OrderBy(b => b.Title)
-                .ToPagedListAsync(paging.Page!.Value, paging.PageSize!.Value);
-#pragma warning restore CS8603
-        }
-        else
+        var query = session.Query<BookSearchProjection>()
+            .Include(publishers).On(x => x.PublisherId)!
+            .Include(authors).On(x => x.AuthorIds)!
+            .Include(categories).On(x => x.CategoryIds)!;
+
+        // Add search filter if search term is provided
+        if (!string.IsNullOrWhiteSpace(search))
         {
-            // Use NGram search for fuzzy, accent-insensitive matching
             var searchQuery = search.Trim();
-
-#pragma warning disable CS8603 // Possible null reference return - false positive from Marten's Include API
-            pagedList = await session.Query<BookSearchProjection>()
-                .Include(publishers).On(x => x.PublisherId)!
-                .Include(authors).On(x => x.AuthorIds)!
-                .Include(categories).On(x => x.CategoryIds)!
-                .Where(b =>
-                    b.Title.NgramSearch(searchQuery) ||
-                    b.SearchText.NgramSearch(searchQuery) ||
-                    (b.Isbn != null && b.Isbn.Contains(searchQuery)))
-                .OrderBy(b => b.Title)
-                .ToPagedListAsync(paging.Page!.Value, paging.PageSize!.Value);
-#pragma warning restore CS8603
+            query = (Marten.Linq.IMartenQueryable<BookSearchProjection>)query.Where(b =>
+                b.SearchText.NgramSearch(searchQuery) ||
+                (b.Isbn != null && b.Isbn.Contains(searchQuery)));
         }
+
+        // Execute query with pagination
+        var pagedList = await query
+            .OrderBy(b => b.Title)
+            .ToPagedListAsync(paging.Page!.Value, paging.PageSize!.Value);
+#pragma warning restore CS8603
 
         // Map to DTOs with localized categories, descriptions, and biographies
         var bookDtos = pagedList.Select(book => new BookDto(
@@ -84,8 +77,8 @@ public static class BookEndpoints
             book.Title,
             book.Isbn,
             book.Language,
-            LocalizeLanguageName(book.Language, language),
-            LocalizeDescription(book, language),
+            LocalizationHelper.LocalizeLanguageName(book.Language, context, localizationOptions.Value),
+            LocalizeDescription(book, context, localizationOptions.Value),
             book.PublicationDate,
             Helpers.BookHelpers.IsPreRelease(book.PublicationDate),
             book.PublisherId.HasValue && publishers.TryGetValue(book.PublisherId.Value, out var pub)
@@ -93,13 +86,13 @@ public static class BookEndpoints
                 : null,
             [.. book.AuthorIds
                 .Select(id => authors.TryGetValue(id, out var author)
-                    ? new AuthorDto(author.Id, author.Name, LocalizeBiography(author, language))
+                    ? new AuthorDto(author.Id, author.Name, LocalizeBiography(author, context, localizationOptions.Value))
                     : null)
                 .Where(a => a != null)
                 .Cast<AuthorDto>()],
             [.. book.CategoryIds
                 .Select(id => categories.TryGetValue(id, out var cat)
-                    ? LocalizeCategory(cat, language)
+                    ? LocalizeCategory(cat, context, localizationOptions.Value)
                     : null)
                 .Where(c => c != null)
                 .Cast<CategoryDto>()]
@@ -112,13 +105,12 @@ public static class BookEndpoints
             pagedList.TotalItemCount));
     }
 
-    static async Task<IResult> GetBook(
+    static async Task<Results<Ok<BookDto>, NotFound, StatusCodeHttpResult>> GetBook(
         Guid id,
         [FromServices] IQuerySession session,
+        [FromServices] IOptions<LocalizationOptions> localizationOptions,
         HttpContext context)
     {
-        // Get current culture set by RequestLocalizationMiddleware
-        var language = System.Globalization.CultureInfo.CurrentCulture.TwoLetterISOLanguageName;
 
         // Dictionaries to hold included documents
         var publishers = new Dictionary<Guid, PublisherProjection>();
@@ -161,8 +153,8 @@ public static class BookEndpoints
             book.Title,
             book.Isbn,
             book.Language,
-            LocalizeLanguageName(book.Language, language),
-            LocalizeDescription(book, language),
+            LocalizationHelper.LocalizeLanguageName(book.Language, context, localizationOptions.Value),
+            LocalizeDescription(book, context, localizationOptions.Value),
             book.PublicationDate,
             Helpers.BookHelpers.IsPreRelease(book.PublicationDate),
             book.PublisherId.HasValue && publishers.TryGetValue(book.PublisherId.Value, out var pub)
@@ -170,13 +162,13 @@ public static class BookEndpoints
                 : null,
             [.. book.AuthorIds
                 .Select(id => authors.TryGetValue(id, out var author)
-                    ? new AuthorDto(author.Id, author.Name, LocalizeBiography(author, language))
+                    ? new AuthorDto(author.Id, author.Name, LocalizeBiography(author, context, localizationOptions.Value))
                     : null)
                 .Where(a => a != null)
                 .Cast<AuthorDto>()],
             [.. book.CategoryIds
                 .Select(catId => categories.TryGetValue(catId, out var cat)
-                    ? LocalizeCategory(cat, language)
+                    ? LocalizeCategory(cat, context, localizationOptions.Value)
                     : null)
                 .Where(c => c != null)
                 .Cast<CategoryDto>()]);
@@ -185,142 +177,56 @@ public static class BookEndpoints
     }
 
     // Helper method for category localization with fallback strategy
-    static CategoryDto LocalizeCategory(CategoryProjection category, string language)
+    static CategoryDto LocalizeCategory(
+        CategoryProjection category,
+        HttpContext context,
+        LocalizationOptions options)
     {
-        // Try full culture code first (e.g., "pt-PT")
-        if (category.Translations.TryGetValue(language, out var localized))
-        {
-            return new CategoryDto(category.Id, localized.Name);
-        }
+        var localizedName = LocalizationHelper.GetLocalizedValue(
+            context,
+            options,
+            category.Translations,
+            translation => translation.Name,
+            defaultValue: "Unknown");
 
-        // Fallback to two-letter ISO language code (e.g., "pt" from "pt-PT")
-        try
-        {
-            var culture = new System.Globalization.CultureInfo(language);
-            var twoLetterCode = culture.TwoLetterISOLanguageName;
-
-            if (category.Translations.TryGetValue(twoLetterCode, out var twoLetterLocalized))
-            {
-                return new CategoryDto(category.Id, twoLetterLocalized.Name);
-            }
-        }
-        catch (System.Globalization.CultureNotFoundException)
-        {
-            // Invalid culture code - fall through to default
-        }
-
-        // Fallback to English
-        if (category.Translations.TryGetValue("en", out var englishName))
-        {
-            return new CategoryDto(category.Id, englishName.Name);
-        }
-
-        // Last resort: use first available localization
-        var firstName = category.Translations.Values.FirstOrDefault();
-        return new CategoryDto(category.Id, firstName?.Name ?? "Unknown");
+        return new CategoryDto(category.Id, localizedName);
     }
 
     // Helper method for book description localization with fallback strategy
-    static string? LocalizeDescription(BookSearchProjection book, string language)
+    static string? LocalizeDescription(
+        BookSearchProjection book,
+        HttpContext context,
+        LocalizationOptions options)
     {
         if (book.Translations.Count == 0)
         {
             return null;
         }
 
-        // Try exact language match
-        if (book.Translations.TryGetValue(language, out var description))
-        {
-            return description.Description;
-        }
-
-        // Fallback to two-letter ISO language code
-        try
-        {
-            var culture = new System.Globalization.CultureInfo(language);
-            var twoLetterCode = culture.TwoLetterISOLanguageName;
-
-            if (book.Translations.TryGetValue(twoLetterCode, out var twoLetterDescription))
-            {
-                return twoLetterDescription.Description;
-            }
-        }
-        catch (System.Globalization.CultureNotFoundException)
-        {
-            // Invalid culture code - fall through to default
-        }
-
-        // Fallback to English
-        if (book.Translations.TryGetValue("en", out var englishDescription))
-        {
-            return englishDescription.Description;
-        }
-
-        // Last resort: use first available description
-        return book.Translations.Values.FirstOrDefault()?.Description;
+        return LocalizationHelper.GetLocalizedValue(
+            context,
+            options,
+            book.Translations,
+            translation => translation.Description,
+            defaultValue: string.Empty);
     }
 
     // Helper method for author biography localization with fallback strategy
-    static string? LocalizeBiography(AuthorProjection author, string language)
+    static string? LocalizeBiography(
+        AuthorProjection author,
+        HttpContext context,
+        LocalizationOptions options)
     {
         if (author.Translations.Count == 0)
         {
             return null;
         }
 
-        // Try exact language match
-        if (author.Translations.TryGetValue(language, out var biography))
-        {
-            return biography.Biography;
-        }
-
-        // Fallback to two-letter ISO language code
-        try
-        {
-            var culture = new System.Globalization.CultureInfo(language);
-            var twoLetterCode = culture.TwoLetterISOLanguageName;
-
-            if (author.Translations.TryGetValue(twoLetterCode, out var twoLetterBiography))
-            {
-                return twoLetterBiography.Biography;
-            }
-        }
-        catch (System.Globalization.CultureNotFoundException)
-        {
-            // Invalid culture code - fall through to default
-        }
-
-        // Fallback to English
-        if (author.Translations.TryGetValue("en", out var englishBiography))
-        {
-            return englishBiography.Biography;
-        }
-
-        // Last resort: use first available biography
-        return author.Translations.Values.FirstOrDefault()?.Biography;
-    }
-
-    // Helper method to get localized language name
-    static string LocalizeLanguageName(string bookLanguageCode, string userLanguage)
-    {
-        // Validate both culture codes first to avoid exceptions
-        if (!CultureCache.IsValidCultureCode(bookLanguageCode))
-        {
-            return bookLanguageCode.ToUpperInvariant();
-        }
-
-        var bookCulture = new System.Globalization.CultureInfo(bookLanguageCode);
-
-        // If user language is invalid, fall back to the book's native name
-        if (!CultureCache.IsValidCultureCode(userLanguage))
-        {
-            return bookCulture.NativeName;
-        }
-
-        var userCulture = new System.Globalization.CultureInfo(userLanguage);
-
-        // Get the display name of the book's language in the user's language
-        // For example: if book is in "en" and user prefers "pt", this returns "Inglês"
-        return userCulture.TextInfo.ToTitleCase(bookCulture.DisplayName);
+        return LocalizationHelper.GetLocalizedValue(
+            context,
+            options,
+            author.Translations,
+            translation => translation.Biography,
+            defaultValue: string.Empty);
     }
 }

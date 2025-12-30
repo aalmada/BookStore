@@ -26,7 +26,7 @@ public class BookAggregate
         Title = @event.Title;
         Isbn = @event.Isbn;
         Language = @event.Language;
-        Translations = @event.Translations ?? [];
+        Translations = @event.Translations;
         PublicationDate = @event.PublicationDate;
         PublisherId = @event.PublisherId;
         AuthorIds = @event.AuthorIds;
@@ -39,7 +39,7 @@ public class BookAggregate
         Title = @event.Title;
         Isbn = @event.Isbn;
         Language = @event.Language;
-        Translations = @event.Translations ?? [];
+        Translations = @event.Translations;
         PublicationDate = @event.PublicationDate;
         PublisherId = @event.PublisherId;
         AuthorIds = @event.AuthorIds;
@@ -58,7 +58,7 @@ public class BookAggregate
         string title,
         string? isbn,
         string language,
-        Dictionary<string, BookTranslation>? translations,
+        Dictionary<string, BookTranslation> translations,
         PartialDate? publicationDate,
         Guid? publisherId,
         List<Guid> authorIds,
@@ -86,7 +86,7 @@ public class BookAggregate
         string title,
         string? isbn,
         string language,
-        Dictionary<string, BookTranslation>? translations,
+        Dictionary<string, BookTranslation> translations,
         PartialDate? publicationDate,
         Guid? publisherId,
         List<Guid> authorIds,
@@ -121,7 +121,7 @@ public class BookAggregate
     {
         if (string.IsNullOrWhiteSpace(title))
         {
-            throw new ArgumentException("Title is required", nameof(title));
+            throw new ArgumentException("Book title cannot be null or empty", nameof(title));
         }
 
         if (title.Length > 500)
@@ -132,6 +132,11 @@ public class BookAggregate
 
     static void ValidateIsbn(string? isbn)
     {
+        if (isbn is not null && string.IsNullOrWhiteSpace(isbn))
+        {
+            throw new ArgumentException("ISBN cannot be empty if provided", nameof(isbn));
+        }
+
         if (string.IsNullOrWhiteSpace(isbn))
         {
             return; // ISBN is optional
@@ -151,23 +156,33 @@ public class BookAggregate
     {
         if (string.IsNullOrWhiteSpace(language))
         {
-            throw new ArgumentException("Language is required", nameof(language));
+            throw new ArgumentException("Language cannot be null or empty", nameof(language));
         }
 
         if (!CultureValidator.IsValidCultureCode(language))
         {
             throw new ArgumentException(
-                $"Invalid language code: '{language}'. Must be a valid ISO 639-1 (e.g., 'en'), ISO 639-3 (e.g., 'fil'), or culture code (e.g., 'en-US')",
+                $"Invalid language code: {language}",
                 nameof(language));
         }
     }
 
-    static void ValidateTranslations(Dictionary<string, BookTranslation>? translations)
+    // Validation constants
+    public const int MaxDescriptionLength = 5000;
+
+    static void ValidateTranslations(Dictionary<string, BookTranslation> translations)
     {
-        if (translations == null || translations.Count == 0)
+        ArgumentNullException.ThrowIfNull(translations);
+        
+        if (translations.Count == 0)
         {
-            return; // Translations are optional
+            throw new ArgumentException("At least one description translation is required", nameof(translations));
         }
+
+        // NOTE: We do NOT validate for a specific default language here because:
+        // 1. Configuration can change over time (e.g., default language changes from "en" to "pt")
+        // 2. During projection rebuilds, old events must remain valid
+        // 3. The handler layer validates default language presence before creating events
 
         // Validate language codes
         if (!CultureValidator.ValidateTranslations(translations, out var invalidCodes))
@@ -177,13 +192,23 @@ public class BookAggregate
                 nameof(translations));
         }
 
-        // Validate description length for each translation
+        // Validate translation values and description content
         foreach (var (languageCode, translation) in translations)
         {
-            if (translation.Description.Length > 5000)
+            if (translation is null)
+            {
+                throw new ArgumentException($"Translation value for language '{languageCode}' cannot be null", nameof(translations));
+            }
+            
+            if (string.IsNullOrWhiteSpace(translation.Description))
+            {
+                throw new ArgumentException($"Description for language '{languageCode}' cannot be null or empty", nameof(translations));
+            }
+            
+            if (translation.Description.Length > MaxDescriptionLength)
             {
                 throw new ArgumentException(
-                    $"Description for language '{languageCode}' cannot exceed 5000 characters",
+                    $"Description for language '{languageCode}' cannot exceed {MaxDescriptionLength} characters",
                     nameof(translations));
             }
         }

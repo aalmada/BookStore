@@ -2,13 +2,15 @@ using BookStore.ApiService.Aggregates;
 using BookStore.ApiService.Commands;
 using BookStore.ApiService.Events;
 using BookStore.ApiService.Infrastructure;
+using BookStore.ApiService.Models;
 using Marten;
+using Microsoft.Extensions.Options;
 
 namespace BookStore.ApiService.Handlers.Authors;
 
 public static class AuthorHandlers
 {
-    public static IResult Handle(CreateAuthor command, IDocumentSession session)
+    public static IResult Handle(CreateAuthor command, IDocumentSession session, IOptions<LocalizationOptions> localizationOptions)
     {
         // Validate language codes in biographies if provided
         if (command.Translations?.Count > 0)
@@ -24,8 +26,35 @@ public static class AuthorHandlers
             }
         }
 
+        // Validate that default language translation is provided
+        var defaultLanguage = localizationOptions.Value.DefaultCulture;
+        if (command.Translations is null || !command.Translations.ContainsKey(defaultLanguage))
+        {
+            return Results.BadRequest(new
+            {
+                error = "Default language translation required",
+                message = $"A biography translation for the default language '{defaultLanguage}' must be provided"
+            });
+        }
+
+        // Validate biography lengths
+        foreach (var (languageCode, translation) in command.Translations)
+        {
+            if (translation.Biography.Length > AuthorAggregate.MaxBiographyLength)
+            {
+                return Results.BadRequest(new
+                {
+                    error = "Biography too long",
+                    languageCode,
+                    maxLength = AuthorAggregate.MaxBiographyLength,
+                    actualLength = translation.Biography.Length,
+                    message = $"Biography for language '{languageCode}' cannot exceed {AuthorAggregate.MaxBiographyLength} characters"
+                });
+            }
+        }
+
         // Convert DTOs to domain objects
-        var biographies = command.Translations?.ToDictionary(
+        var biographies = command.Translations.ToDictionary(
             kvp => kvp.Key,
             kvp => new AuthorTranslation(kvp.Value.Biography));
 
@@ -44,7 +73,8 @@ public static class AuthorHandlers
     public static async Task<IResult> Handle(
         UpdateAuthor command,
         IDocumentSession session,
-        HttpContext context)
+        HttpContext context,
+        IOptions<LocalizationOptions> localizationOptions)
     {
         // Validate language codes in biographies if provided
         if (command.Translations?.Count > 0)
@@ -60,8 +90,35 @@ public static class AuthorHandlers
             }
         }
 
+        // Validate that default language translation is provided
+        var defaultLanguage = localizationOptions.Value.DefaultCulture;
+        if (command.Translations is null || !command.Translations.ContainsKey(defaultLanguage))
+        {
+            return Results.BadRequest(new
+            {
+                error = "Default language translation required",
+                message = $"A biography translation for the default language '{defaultLanguage}' must be provided"
+            });
+        }
+
+        // Validate biography lengths
+        foreach (var (languageCode, translation) in command.Translations)
+        {
+            if (translation.Biography.Length > AuthorAggregate.MaxBiographyLength)
+            {
+                return Results.BadRequest(new
+                {
+                    error = "Biography too long",
+                    languageCode,
+                    maxLength = AuthorAggregate.MaxBiographyLength,
+                    actualLength = translation.Biography.Length,
+                    message = $"Biography for language '{languageCode}' cannot exceed {AuthorAggregate.MaxBiographyLength} characters"
+                });
+            }
+        }
+
         var streamState = await session.Events.FetchStreamStateAsync(command.Id);
-        if (streamState == null)
+        if (streamState is null)
         {
             return Results.NotFound();
         }
@@ -74,13 +131,13 @@ public static class AuthorHandlers
         }
 
         var aggregate = await session.Events.AggregateStreamAsync<AuthorAggregate>(command.Id);
-        if (aggregate == null)
+        if (aggregate is null)
         {
             return Results.NotFound();
         }
 
         // Convert DTOs to domain objects
-        var biographies = command.Translations?.ToDictionary(
+        var biographies = command.Translations.ToDictionary(
             kvp => kvp.Key,
             kvp => new AuthorTranslation(kvp.Value.Biography));
 
@@ -100,7 +157,7 @@ public static class AuthorHandlers
         HttpContext context)
     {
         var streamState = await session.Events.FetchStreamStateAsync(command.Id);
-        if (streamState == null)
+        if (streamState is null)
         {
             return Results.NotFound();
         }
@@ -113,7 +170,7 @@ public static class AuthorHandlers
         }
 
         var aggregate = await session.Events.AggregateStreamAsync<AuthorAggregate>(command.Id);
-        if (aggregate == null)
+        if (aggregate is null)
         {
             return Results.NotFound();
         }
@@ -134,7 +191,7 @@ public static class AuthorHandlers
         HttpContext context)
     {
         var streamState = await session.Events.FetchStreamStateAsync(command.Id);
-        if (streamState == null)
+        if (streamState is null)
         {
             return Results.NotFound();
         }
@@ -147,7 +204,7 @@ public static class AuthorHandlers
         }
 
         var aggregate = await session.Events.AggregateStreamAsync<AuthorAggregate>(command.Id);
-        if (aggregate == null)
+        if (aggregate is null)
         {
             return Results.NotFound();
         }

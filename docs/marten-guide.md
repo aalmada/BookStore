@@ -642,7 +642,7 @@ Get stream metadata without loading the aggregate:
 var streamState = await session.Events
     .FetchStreamStateAsync(bookId);
 
-if (streamState != null)
+if (streamState is not null)
 {
     Console.WriteLine($"Stream ID: {streamState.Id}");
     Console.WriteLine($"Stream version: {streamState.Version}");
@@ -1064,7 +1064,7 @@ public class MartenMetadataMiddleware
     public async Task InvokeAsync(HttpContext context, RequestDelegate next)
     {
         var session = context.RequestServices.GetService<IDocumentSession>();
-        if (session != null)
+        if (session is not null)
         {
             // Set correlation ID from header or generate new one
             var correlationId = context.Request.Headers["X-Correlation-ID"].FirstOrDefault()

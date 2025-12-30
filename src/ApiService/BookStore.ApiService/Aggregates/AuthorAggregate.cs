@@ -15,14 +15,14 @@ public class AuthorAggregate
     {
         Id = @event.Id;
         Name = @event.Name;
-        Translations = @event.Translations ?? [];
+        Translations = @event.Translations;
         IsDeleted = false;
     }
 
     void Apply(AuthorUpdated @event)
     {
         Name = @event.Name;
-        Translations = @event.Translations ?? [];
+        Translations = @event.Translations;
     }
 
     void Apply(AuthorSoftDeleted _) => IsDeleted = true;
@@ -30,7 +30,7 @@ public class AuthorAggregate
     void Apply(AuthorRestored _) => IsDeleted = false;
 
     // Command methods
-    public static AuthorAdded Create(Guid id, string name, Dictionary<string, AuthorTranslation>? translations)
+    public static AuthorAdded Create(Guid id, string name, Dictionary<string, AuthorTranslation> translations)
     {
         ValidateName(name);
         ValidateTranslations(translations);
@@ -38,7 +38,7 @@ public class AuthorAggregate
         return new AuthorAdded(id, name, translations, DateTimeOffset.UtcNow);
     }
 
-    public AuthorUpdated Update(string name, Dictionary<string, AuthorTranslation>? translations)
+    public AuthorUpdated Update(string name, Dictionary<string, AuthorTranslation> translations)
     {
         // Business rule: cannot update deleted author
         if (IsDeleted)
@@ -52,12 +52,15 @@ public class AuthorAggregate
         return new AuthorUpdated(Id, name, translations, DateTimeOffset.UtcNow);
     }
 
+    // Validation constants
+    public const int MaxBiographyLength = 5000;
+
     // Validation helper methods
     static void ValidateName(string name)
     {
         if (string.IsNullOrWhiteSpace(name))
         {
-            throw new ArgumentException("Name is required", nameof(name));
+            throw new ArgumentException("Author name cannot be null or empty", nameof(name));
         }
 
         if (name.Length > 200)
@@ -66,12 +69,19 @@ public class AuthorAggregate
         }
     }
 
-    static void ValidateTranslations(Dictionary<string, AuthorTranslation>? translations)
+    static void ValidateTranslations(Dictionary<string, AuthorTranslation> translations)
     {
-        if (translations == null || translations.Count == 0)
+        ArgumentNullException.ThrowIfNull(translations);
+        
+        if (translations.Count == 0)
         {
-            return; // Translations are optional
+            throw new ArgumentException("At least one biography translation is required", nameof(translations));
         }
+
+        // NOTE: We do NOT validate for a specific default language here because:
+        // 1. Configuration can change over time (e.g., default language changes from "en" to "pt")
+        // 2. During projection rebuilds, old events must remain valid
+        // 3. The handler layer validates default language presence before creating events
 
         // Validate language codes
         if (!CultureValidator.ValidateTranslations(translations, out var invalidCodes))
@@ -81,13 +91,23 @@ public class AuthorAggregate
                 nameof(translations));
         }
 
-        // Validate biography length for each translation
+        // Validate translation values and biography content
         foreach (var (languageCode, translation) in translations)
         {
-            if (translation.Biography.Length > 5000)
+            if (translation is null)
+            {
+                throw new ArgumentException($"Translation value for language '{languageCode}' cannot be null", nameof(translations));
+            }
+            
+            if (string.IsNullOrWhiteSpace(translation.Biography))
+            {
+                throw new ArgumentException($"Biography for language '{languageCode}' cannot be null or empty", nameof(translations));
+            }
+            
+            if (translation.Biography.Length > MaxBiographyLength)
             {
                 throw new ArgumentException(
-                    $"Biography for language '{languageCode}' cannot exceed 5000 characters",
+                    $"Biography for language '{languageCode}' cannot exceed {MaxBiographyLength} characters",
                     nameof(translations));
             }
         }

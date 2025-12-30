@@ -17,7 +17,7 @@ public static class BookCoverHandlers
     {
         // Get current stream state for ETag validation
         var streamState = await session.Events.FetchStreamStateAsync(command.BookId);
-        if (streamState == null)
+        if (streamState is null)
         {
             return (Results.NotFound(), null!);
         }
@@ -32,7 +32,7 @@ public static class BookCoverHandlers
         }
 
         var aggregate = await session.Events.AggregateStreamAsync<BookAggregate>(command.BookId);
-        if (aggregate == null)
+        if (aggregate is null)
         {
             return (Results.NotFound(), null!);
         }

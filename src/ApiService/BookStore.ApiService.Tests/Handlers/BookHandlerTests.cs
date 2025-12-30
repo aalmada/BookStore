@@ -2,9 +2,11 @@ using BookStore.ApiService.Aggregates;
 using BookStore.ApiService.Commands;
 using BookStore.ApiService.Events;
 using BookStore.ApiService.Handlers.Books;
+using BookStore.ApiService.Infrastructure;
 using BookStore.ApiService.Models;
 using Marten;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 
 namespace BookStore.ApiService.Tests.Handlers;
@@ -35,10 +37,11 @@ public class BookHandlerTests
         _ = session.CorrelationId.Returns("test-correlation-id");
 
         // Act
-        var result = BookHandlers.Handle(command, session);
+        var localizationOptions = Options.Create(new LocalizationOptions { DefaultCulture = "en" });
+        var (result, notification) = BookHandlers.Handle(command, session, localizationOptions);
 
         // Assert
-        _ = await Assert.That(result.Item1).IsNotNull();
+        _ = await Assert.That(result).IsNotNull();
         _ = session.Events.Received(1).StartStream<BookAggregate>(
             command.Id,
             Arg.Is<BookAdded>(e =>
@@ -71,7 +74,8 @@ public class BookHandlerTests
             .Returns(Task.FromResult<Marten.Events.StreamState?>(null));
 
         // Act
-        var result = await BookHandlers.Handle(command, session, context);
+        var localizationOptions = Options.Create(new LocalizationOptions { DefaultCulture = "en" });
+        var result = await BookHandlers.Handle(command, session, context, localizationOptions);
 
         // Assert
         _ = await Assert.That(result).IsTypeOf<Microsoft.AspNetCore.Http.HttpResults.NotFound>();

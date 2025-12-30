@@ -1,4 +1,5 @@
 using System.Globalization;
+using BookStore.ApiService.Infrastructure;
 using BookStore.ApiService.Models;
 using BookStore.ApiService.Projections;
 using Marten;
@@ -11,31 +12,35 @@ namespace BookStore.ApiService.Endpoints;
 
 public static class CategoryEndpoints
 {
-    public record CategoryResponse(Guid Id, string Name);
+
 
     public static RouteGroupBuilder MapCategoryEndpoints(this RouteGroupBuilder group)
     {
         _ = group.MapGet("/", GetCategories)
             .WithName("GetCategories")
             .WithSummary("Get all categories")
-            .CacheOutput(policy => policy.Expire(TimeSpan.FromMinutes(5)));
+            .CacheOutput(policy => policy
+                .Expire(TimeSpan.FromMinutes(5))
+                .SetVaryByHeader("Accept-Language"));
 
         _ = group.MapGet("/{id:guid}", GetCategory)
             .WithName("GetCategory")
             .WithSummary("Get category by ID")
-            .CacheOutput(policy => policy.Expire(TimeSpan.FromMinutes(5)));
+            .CacheOutput(policy => policy
+                .Expire(TimeSpan.FromMinutes(5))
+                .SetVaryByHeader("Accept-Language"));
 
         return group;
     }
 
-    static async Task<IResult> GetCategories(
+    static async Task<Ok<PagedListDto<CategoryDto>>> GetCategories(
         [FromServices] IQuerySession session,
         [FromServices] IOptions<PaginationOptions> paginationOptions,
+        [FromServices] IOptions<LocalizationOptions> localizationOptions,
         [AsParameters] PagedRequest request,
         HttpContext context)
     {
         var paging = request.Normalize(paginationOptions.Value);
-        var language = GetPreferredLanguage(context);
 
         // Use Marten's native pagination for optimal performance
         // Note: We can't sort by localized name directly in the query, so we sort by ID
@@ -43,75 +48,46 @@ public static class CategoryEndpoints
             .OrderBy(c => c.Id)
             .ToPagedListAsync(paging.Page!.Value, paging.PageSize!.Value);
 
-        // Return the paged list - localization will be handled by the client or in a response DTO
-        // For now, we'll map to localized responses inline
-        var localizedResponse = new
-        {
-            Items = pagedList.Select(c => LocalizeCategory(c, language)).ToList(),
+        // Map to localized responses
+        var items = pagedList.Select(c => LocalizeCategory(c, context, localizationOptions.Value)).ToList();
+        
+        var response = new PagedListDto<CategoryDto>(
+            items,
             pagedList.PageNumber,
             pagedList.PageSize,
-            pagedList.TotalItemCount,
-            pagedList.PageCount,
-            pagedList.HasPreviousPage,
-            pagedList.HasNextPage
-        };
+            pagedList.TotalItemCount);
 
-        return TypedResults.Ok(localizedResponse);
+        return TypedResults.Ok(response);
     }
 
-    static async Task<Microsoft.AspNetCore.Http.HttpResults.Results<Ok<CategoryResponse>, NotFound>> GetCategory(
+    static async Task<Microsoft.AspNetCore.Http.HttpResults.Results<Ok<CategoryDto>, NotFound>> GetCategory(
         Guid id,
         [FromServices] IQuerySession session,
+        [FromServices] IOptions<LocalizationOptions> localizationOptions,
         HttpContext context)
     {
-        var language = GetPreferredLanguage(context);
         var category = await session.LoadAsync<CategoryProjection>(id);
         if (category == null)
         {
             return TypedResults.NotFound();
         }
 
-        var response = LocalizeCategory(category, language);
+        var response = LocalizeCategory(category, context, localizationOptions.Value);
         return TypedResults.Ok(response);
     }
 
-    static string GetPreferredLanguage(HttpContext context)
+    static CategoryDto LocalizeCategory(
+        CategoryProjection category,
+        HttpContext context,
+        LocalizationOptions options)
     {
-        // Get Accept-Language header
-        var acceptLanguage = context.Request.Headers.AcceptLanguage.ToString();
+        var localizedName = LocalizationHelper.GetLocalizedValue(
+            context,
+            options,
+            category.Translations,
+            translation => translation.Name,
+            defaultValue: "Unknown");
 
-        if (string.IsNullOrWhiteSpace(acceptLanguage))
-        {
-            return "en"; // Default to English
-        }
-
-        // Parse the first language from Accept-Language header
-        // Format: "en-US,en;q=0.9,pt;q=0.8"
-        var languages = acceptLanguage.Split(',')
-            .Select(lang => lang.Split(';')[0].Trim())
-            .ToList();
-
-        // Return the first two-letter language code
-        var primaryLanguage = languages.FirstOrDefault() ?? "en";
-        return primaryLanguage.Length >= 2 ? primaryLanguage[..2].ToLower() : "en";
-    }
-
-    static CategoryResponse LocalizeCategory(CategoryProjection category, string language)
-    {
-        // Try full culture code first
-        if (category.Translations.TryGetValue(language, out var localized))
-        {
-            return new CategoryResponse(category.Id, localized.Name);
-        }
-
-        // Fallback to English
-        if (category.Translations.TryGetValue("en", out var englishName))
-        {
-            return new CategoryResponse(category.Id, englishName.Name);
-        }
-
-        // Last resort: first available
-        var firstName = category.Translations.Values.FirstOrDefault();
-        return new CategoryResponse(category.Id, firstName?.Name ?? "Unknown");
+        return new CategoryDto(category.Id, localizedName);
     }
 }

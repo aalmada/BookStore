@@ -42,7 +42,7 @@ public interface IBookStoreApi
     /// Get paginated list of categories with optional language
     /// </summary>
     [Get("/api/categories")]
-    Task<object> GetCategoriesAsync(
+    Task<PagedListDto<CategoryDto>> GetCategoriesAsync(
         [Query] int page = 1,
         [Query] int pageSize = 20,
         [Header("Accept-Language")] string? language = null,

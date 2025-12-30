@@ -1,3 +1,4 @@
+using BookStore.ApiService.Infrastructure;
 using BookStore.ApiService.Models;
 using BookStore.ApiService.Projections;
 using Marten;
@@ -15,20 +16,26 @@ public static class AuthorEndpoints
         _ = group.MapGet("/", GetAuthors)
             .WithName("GetAuthors")
             .WithSummary("Get all authors")
-            .CacheOutput(policy => policy.Expire(TimeSpan.FromMinutes(5)));
+            .CacheOutput(policy => policy
+                .Expire(TimeSpan.FromMinutes(5))
+                .SetVaryByHeader("Accept-Language"));
 
         _ = group.MapGet("/{id:guid}", GetAuthor)
             .WithName("GetAuthor")
             .WithSummary("Get author by ID")
-            .CacheOutput(policy => policy.Expire(TimeSpan.FromMinutes(5)));
+            .CacheOutput(policy => policy
+                .Expire(TimeSpan.FromMinutes(5))
+                .SetVaryByHeader("Accept-Language"));
 
         return group;
     }
 
-    static async Task<Ok<IPagedList<AuthorProjection>>> GetAuthors(
+    static async Task<Ok<PagedListDto<AuthorDto>>> GetAuthors(
         [FromServices] IQuerySession session,
         [FromServices] IOptions<PaginationOptions> paginationOptions,
-        [AsParameters] PagedRequest request)
+        [FromServices] IOptions<LocalizationOptions> localizationOptions,
+        [AsParameters] PagedRequest request,
+        HttpContext context)
     {
         var paging = request.Normalize(paginationOptions.Value);
 
@@ -37,12 +44,25 @@ public static class AuthorEndpoints
             .OrderBy(a => a.Name)
             .ToPagedListAsync(paging.Page!.Value, paging.PageSize!.Value);
 
-        return TypedResults.Ok(pagedList);
+        // Map to DTOs with localized biographies
+        var authorDtos = pagedList.Select(author => new AuthorDto(
+            author.Id,
+            author.Name,
+            LocalizeBiography(author, context, localizationOptions.Value)
+        )).ToList();
+
+        return TypedResults.Ok(new PagedListDto<AuthorDto>(
+            authorDtos,
+            pagedList.PageNumber,
+            pagedList.PageSize,
+            pagedList.TotalItemCount));
     }
 
-    static async Task<Microsoft.AspNetCore.Http.HttpResults.Results<Ok<AuthorProjection>, NotFound>> GetAuthor(
+    static async Task<Microsoft.AspNetCore.Http.HttpResults.Results<Ok<AuthorDto>, NotFound>> GetAuthor(
         Guid id,
-        [FromServices] IQuerySession session)
+        [FromServices] IQuerySession session,
+        [FromServices] IOptions<LocalizationOptions> localizationOptions,
+        HttpContext context)
     {
         var author = await session.LoadAsync<AuthorProjection>(id);
         if (author == null)
@@ -50,6 +70,30 @@ public static class AuthorEndpoints
             return TypedResults.NotFound();
         }
 
-        return TypedResults.Ok(author);
+        var authorDto = new AuthorDto(
+            author.Id,
+            author.Name,
+            LocalizeBiography(author, context, localizationOptions.Value));
+
+        return TypedResults.Ok(authorDto);
+    }
+
+    // Helper method for author biography localization
+    static string? LocalizeBiography(
+        AuthorProjection author,
+        HttpContext context,
+        LocalizationOptions options)
+    {
+        if (author.Translations.Count == 0)
+        {
+            return null;
+        }
+
+        return LocalizationHelper.GetLocalizedValue(
+            context,
+            options,
+            author.Translations,
+            translation => translation.Biography,
+            defaultValue: string.Empty);
     }
 }

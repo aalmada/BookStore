@@ -24,7 +24,7 @@ public static class PublisherHandlers
         HttpContext context)
     {
         var streamState = await session.Events.FetchStreamStateAsync(command.Id);
-        if (streamState == null)
+        if (streamState is null)
         {
             return Results.NotFound();
         }
@@ -37,7 +37,7 @@ public static class PublisherHandlers
         }
 
         var aggregate = await session.Events.AggregateStreamAsync<PublisherAggregate>(command.Id);
-        if (aggregate == null)
+        if (aggregate is null)
         {
             return Results.NotFound();
         }
@@ -58,7 +58,7 @@ public static class PublisherHandlers
         HttpContext context)
     {
         var streamState = await session.Events.FetchStreamStateAsync(command.Id);
-        if (streamState == null)
+        if (streamState is null)
         {
             return Results.NotFound();
         }
@@ -71,7 +71,7 @@ public static class PublisherHandlers
         }
 
         var aggregate = await session.Events.AggregateStreamAsync<PublisherAggregate>(command.Id);
-        if (aggregate == null)
+        if (aggregate is null)
         {
             return Results.NotFound();
         }
@@ -92,7 +92,7 @@ public static class PublisherHandlers
         HttpContext context)
     {
         var streamState = await session.Events.FetchStreamStateAsync(command.Id);
-        if (streamState == null)
+        if (streamState is null)
         {
             return Results.NotFound();
         }
@@ -105,7 +105,7 @@ public static class PublisherHandlers
         }
 
         var aggregate = await session.Events.AggregateStreamAsync<PublisherAggregate>(command.Id);
-        if (aggregate == null)
+        if (aggregate is null)
         {
             return Results.NotFound();
         }

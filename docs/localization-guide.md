@@ -4,247 +4,159 @@ This guide explains how to configure and use localization in the BookStore API.
 
 ## Overview
 
-The BookStore API supports multiple languages for localized content (e.g., category names). The API automatically detects the client's preferred language from the `Accept-Language` HTTP header and returns localized content accordingly.
+The BookStore API supports multiple languages for localized content (category names, book descriptions, author biographies). The API automatically detects the client's preferred language from the `Accept-Language` HTTP header and returns localized content accordingly.
 
 ## Configuration
 
-Localization is configured in `appsettings.json` under the `Localization` section:
+### Two-Letter Language Codes
+
+The API uses **two-letter ISO 639-1 language codes** for universal variant support:
 
 ```json
 {
   "Localization": {
-    "DefaultCulture": "en-US",
-    "SupportedCultures": ["en-US"]
+    "DefaultCulture": "en",
+    "SupportedCultures": ["pt", "en", "fr", "de", "es"]
   }
 }
 ```
 
-### Configuration Options
+**Why two-letter codes?**
+- ✅ Any regional variant automatically maps to the base language (pt-BR, pt-PT, pt-AO → pt)
+- ✅ Simpler configuration - no need to list every regional variant
+- ✅ Easier maintenance - new regional variants work immediately
 
-#### `DefaultCulture`
-- **Type**: `string`
-- **Default**: `"en-US"`
-- **Description**: The default culture to use when the client's preferred language is not supported
-- **Valid Values**: Any valid culture identifier (e.g., `"en-US"`, `"pt-PT"`, `"es-ES"`, `"fr-FR"`, `"de-DE"`)
+### Cache Configuration
 
-#### `SupportedCultures`
-- **Type**: `string[]`
-- **Default**: `["en-US"]`
-- **Description**: Array of culture identifiers that the API can respond in
-- **Valid Values**: Array of valid culture identifiers
+**Critical**: All localized endpoints must vary cache by `Accept-Language`:
 
-### Example Configurations
+```csharp
+.CacheOutput(policy => policy
+    .Expire(TimeSpan.FromMinutes(5))
+    .SetVaryByHeader("Accept-Language"))
+```
 
-**English only (default)**:
+Without this, cached responses ignore the language header.
+
+## Translation Storage
+
+Translations can be **culture-specific** or **culture-invariant**:
+
+**Culture-Invariant** (recommended):
 ```json
 {
-  "Localization": {
-    "DefaultCulture": "en-US",
-    "SupportedCultures": ["en-US"]
-  }
+  "pt": "Programação",
+  "en": "Programming"
 }
 ```
 
-**Multiple languages**:
+**Hybrid** (specific + invariant):
 ```json
 {
-  "Localization": {
-    "DefaultCulture": "en-US",
-    "SupportedCultures": ["en-US", "pt-PT"]
-  }
+  "pt-BR": "Programação (Brasil)",
+  "pt": "Programação",
+  "en": "Programming"
 }
 ```
 
-**Portuguese as default**:
-```json
-{
-  "Localization": {
-    "DefaultCulture": "pt-PT",
-    "SupportedCultures": ["pt-PT", "en-US"]
-  }
-}
-```
+## Fallback Strategy
 
-## How It Works
+The API uses a 6-step fallback to find the best translation:
 
-### 1. Client Request
-The client sends an HTTP request with the `Accept-Language` header:
+1. Exact preferred culture (e.g., `"pt-PT"`)
+2. Two-letter preferred code (e.g., `"pt"`)
+3. Exact default culture (e.g., `"en"`)
+4. Two-letter default code (e.g., `"en"`)
+5. First available translation
+6. Default value (empty string)
+
+**Example**: Request with `Accept-Language: pt-BR`
+- Tries `"pt-BR"` → `"pt"` → `"en"` → first available → default
+- With hybrid translations above, returns `"Programação (Brasil)"`
+
+## Usage
+
+### Making Requests
+
+Include the `Accept-Language` header in your HTTP requests:
 
 ```http
 GET /api/books HTTP/1.1
-Accept-Language: pt-PT,pt;q=0.9,en-US;q=0.8,en;q=0.7
+Accept-Language: pt-BR
 ```
 
-### 2. Language Selection
-ASP.NET Core's `RequestLocalizationMiddleware` automatically:
-1. Parses the `Accept-Language` header
-2. Matches against `SupportedCultures`
-3. Sets `CultureInfo.CurrentCulture` to the best match
-4. Falls back to `DefaultCulture` if no match is found
+The API returns localized content based on the header value.
 
-### 3. Localized Response
-The API returns localized content based on the selected culture:
+### Testing Different Languages
 
-```json
-{
-  "id": "123e4567-e89b-12d3-a456-426614174000",
-  "title": "Clean Code",
-  "categories": [
-    {
-      "id": "456e7890-e89b-12d3-a456-426614174001",
-      "name": "Programação"  // Localized to Portuguese
-    }
-  ]
-}
-```
-
-## Localized Content
-
-### Categories
-Category names are stored with translations in multiple languages. The API automatically returns the category name in the client's preferred language.
-
-**Category Data Structure**:
-```csharp
-public class CategoryProjection
-{
-    public Guid Id { get; set; }
-    public Dictionary<string, CategoryTranslation> Translations { get; set; }
-    public DateTimeOffset LastModified { get; set; }
-}
-
-public record CategoryTranslation(string Name, string? Description);
-```
-
-**Translation Dictionary Example**:
-```json
-{
-  "en": { "name": "Programming", "description": null },
-  "pt": { "name": "Programação", "description": null }
-}
-```
-
-### Fallback Strategy
-
-The API uses a **four-tier fallback strategy** to find the best translation:
-
-1. **Full culture code**: First tries the complete culture identifier (e.g., `"pt-PT"`)
-2. **Two-letter ISO language code**: If not found, uses `CultureInfo.TwoLetterISOLanguageName` to extract the language code (e.g., `"pt"` from `"pt-PT"`)
-3. **English fallback**: If still not found, tries to use the English (`"en"`) translation
-4. **First available**: As a last resort, uses the first available translation in the dictionary
-
-**Example**:
-- Client requests `Accept-Language: pt-PT`
-- Category has translations for `"en"` and `"pt"` (but not `"pt-PT"`)
-- API tries `"pt-PT"` → not found
-- API creates `CultureInfo("pt-PT")` and gets `TwoLetterISOLanguageName` → `"pt"` → **found!** Returns Portuguese translation
-- If `"pt"` wasn't found → tries `"en"` → returns English translation
-- If `"en"` wasn't found → returns first available translation
-
-This ensures maximum compatibility even when exact culture matches aren't available, and handles edge cases correctly using .NET's built-in culture handling.
-
-### Fallback Behavior
-If a translation is not available for the requested language:
-1. The API falls back through the strategy above (full code → two-letter → English → first available)
-2. No error is thrown
-3. The response is still valid
-
-## Environment-Specific Configuration
-
-You can configure different languages for different environments:
-
-**`appsettings.Development.json`** (local development):
-```json
-{
-  "Localization": {
-    "DefaultCulture": "en-US",
-    "SupportedCultures": ["en-US", "pt-PT"]
-  }
-}
-```
-
-**`appsettings.Production.json`** (production):
-```json
-{
-  "Localization": {
-    "DefaultCulture": "en-US",
-    "SupportedCultures": ["en-US", "pt-PT"]
-  }
-}
-```
-
-## Testing Localization
-
-### Using curl
+**Using curl**:
 ```bash
-# Request in Portuguese
-curl -H "Accept-Language: pt-PT" https://localhost:5001/api/books
-
-# Request in Spanish
-curl -H "Accept-Language: es-ES" https://localhost:5001/api/books
-
-# Request with quality values
-curl -H "Accept-Language: fr-FR,fr;q=0.9,en-US;q=0.8" https://localhost:5001/api/books
+curl -H "Accept-Language: pt" https://localhost:7001/api/categories
+curl -H "Accept-Language: en" https://localhost:7001/api/categories
 ```
 
-### Using Browser DevTools
-1. Open browser DevTools (F12)
-2. Go to Network tab
-3. Find the API request
-4. Check the `Accept-Language` header in Request Headers
-5. Modify the header using browser extensions or DevTools
+**Using Postman/Insomnia**:
+1. Add header: `Accept-Language: pt`
+2. Send request
+3. Observe localized response
 
-### Using Postman
-1. Create a new request
-2. Go to Headers tab
-3. Add `Accept-Language` header with desired value (e.g., `pt-PT`)
-4. Send the request
+## Localized Endpoints
+
+All public-facing endpoints return localized content:
+
+- **Categories** (`/api/categories`): Category names
+- **Books** (`/api/books`): Descriptions, category names, author biographies, language display names
+- **Authors** (`/api/authors`): Author biographies
 
 ## Implementation Details
 
 The localization system uses:
-- **ASP.NET Core's `RequestLocalizationMiddleware`**: Handles `Accept-Language` parsing and culture selection
-- **`CultureInfo.CurrentCulture`**: Provides the current culture throughout the request pipeline
-- **`LocalizationOptions`**: Strongly-typed configuration class
-- **Query-time localization**: Categories are localized when mapping to DTOs, not in the database
+- **ASP.NET Core Middleware**: `RequestLocalizationMiddleware` determines culture from `Accept-Language` header
+- **LocalizationHelper**: Centralized helper with reusable methods:
+  - `GetLocalizedValue<T>()`: Generic method for translating any `Dictionary<string, T>`
+  - `LocalizeLanguageName()`: Gets localized display names for language codes
+  - `GetPreferredCulture()`: Retrieves user's preferred culture from middleware
+- **Generic Translation Support**: Works with any translation type via selector functions
+- **Null Safety**: Uses `[NotNullWhen(true)]` attribute for compile-time null safety
+
+### Usage Example
+
+```csharp
+// Localize category name
+var localizedName = LocalizationHelper.GetLocalizedValue(
+    context,
+    options,
+    category.Translations,
+    translation => translation.Name,
+    defaultValue: "Unknown");
+
+// Get localized language name
+var languageName = LocalizationHelper.LocalizeLanguageName(
+    "en",
+    context,
+    options); // Returns "English" or "Inglês" depending on user's language
+```
 
 ## Best Practices
 
-1. **Always include a default culture**: Ensure `DefaultCulture` is set to a language you fully support
-2. **Use standard culture codes**: Use ISO culture identifiers (e.g., `en-US`, not `english`)
-3. **Test fallback behavior**: Verify the API works when translations are missing
-4. **Document supported languages**: Keep this guide updated when adding new languages
-5. **Consider regional variants**: Use specific cultures (`en-US`, `en-GB`) rather than generic ones (`en`)
+1. **Use two-letter codes**: Configure `SupportedCultures` with two-letter codes for universal variant support
+2. **Use culture-invariant translations**: Store translations with two-letter keys unless region-specific content is needed
+3. **Always vary cache by Accept-Language**: Ensure cached responses are language-specific
+4. **Provide fallbacks**: Always include default culture translations
+5. **Validate culture codes**: Use `CultureCache.IsValidCultureCode()` to validate codes before use
 
-## Adding a New Language
+## Troubleshooting
 
-To add support for a new language:
+### Translations not working
+- ✅ Check `Accept-Language` header is being sent
+- ✅ Verify culture code is in `SupportedCultures`
+- ✅ Ensure cache varies by `Accept-Language`
+- ✅ Check translation dictionary has the expected keys
 
-1. **Update configuration** in `appsettings.json`:
-   ```json
-   {
-     "Localization": {
-       "SupportedCultures": ["en-US", "pt-PT", "ja-JP"]  // Added Japanese
-     }
-   }
-   ```
+### Always returning same language
+- ✅ Verify cache configuration includes `.SetVaryByHeader("Accept-Language")`
+- ✅ Clear cache and retry
 
-2. **Add translations** to category data (via admin API or database):
-   ```csharp
-   var translations = new Dictionary<string, CategoryTranslation>
-   {
-       ["en"] = new("Programming", null),
-       ["pt"] = new("Programação", null),
-       ["ja"] = new("プログラミング", null)  // Japanese translation
-   };
-   ```
-
-3. **Test** with the new language:
-   ```bash
-   curl -H "Accept-Language: ja-JP" https://localhost:5001/api/books
-   ```
-
-## Related Documentation
-
-- [Architecture Guide](architecture.md) - Overall system architecture
-- [Marten Guide](marten-guide.md) - Document database and projections
-- [Getting Started](getting-started.md) - Initial setup and configuration
+### Regional variant not working
+- ✅ Ensure `SupportedCultures` uses two-letter codes
+- ✅ Check translation dictionary has two-letter key (e.g., `"pt"` not `"pt-PT"`)

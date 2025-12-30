@@ -3,6 +3,7 @@ using BookStore.ApiService.Events;
 using BookStore.ApiService.Models;
 using BookStore.ApiService.Projections;
 using Marten;
+using Microsoft.Extensions.Options;
 
 namespace BookStore.ApiService.Infrastructure;
 
@@ -11,6 +12,7 @@ namespace BookStore.ApiService.Infrastructure;
 /// </summary>
 public class DatabaseSeeder(IDocumentStore store)
 {
+    
     public async Task SeedAsync()
     {
         await using var session = store.LightweightSession();

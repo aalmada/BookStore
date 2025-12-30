@@ -2,8 +2,10 @@ using BookStore.ApiService.Aggregates;
 using BookStore.ApiService.Commands;
 using BookStore.ApiService.Events;
 using BookStore.ApiService.Infrastructure;
+using BookStore.ApiService.Models;
 using Marten;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.Extensions.Options;
 
 namespace BookStore.ApiService.Handlers.Books;
 
@@ -18,7 +20,10 @@ public static class BookHandlers
     /// Wolverine automatically manages the Marten session and commits the transaction
     /// Returns a notification that will be published to SignalR
     /// </summary>
-    public static (IResult, BookStore.ApiService.Events.Notifications.BookCreatedNotification) Handle(CreateBook command, IDocumentSession session)
+    public static (IResult, BookStore.ApiService.Events.Notifications.BookCreatedNotification) Handle(
+        CreateBook command, 
+        IDocumentSession session,
+        IOptions<LocalizationOptions> localizationOptions)
     {
         // Validate language code
         if (!CultureValidator.IsValidCultureCode(command.Language))
@@ -45,8 +50,35 @@ public static class BookHandlers
             }
         }
 
+        // Validate that default language translation is provided
+        var defaultLanguage = localizationOptions.Value.DefaultCulture;
+        if (command.Translations is null || !command.Translations.ContainsKey(defaultLanguage))
+        {
+            return (Results.BadRequest(new
+            {
+                error = "Default language translation required",
+                message = $"A description translation for the default language '{defaultLanguage}' must be provided"
+            }), null!);
+        }
+
+        // Validate description lengths
+        foreach (var (languageCode, translation) in command.Translations)
+        {
+            if (translation.Description.Length > BookAggregate.MaxDescriptionLength)
+            {
+                return (Results.BadRequest(new
+                {
+                    error = "Description too long",
+                    languageCode,
+                    maxLength = BookAggregate.MaxDescriptionLength,
+                    actualLength = translation.Description.Length,
+                    message = $"Description for language '{languageCode}' cannot exceed {BookAggregate.MaxDescriptionLength} characters"
+                }), null!);
+            }
+        }
+
         // Convert DTOs to domain objects
-        var descriptions = command.Translations?.ToDictionary(
+        var descriptions = command.Translations.ToDictionary(
             kvp => kvp.Key,
             kvp => new BookTranslation(kvp.Value.Description));
 
@@ -81,7 +113,8 @@ public static class BookHandlers
     public static async Task<IResult> Handle(
         UpdateBook command,
         IDocumentSession session,
-        HttpContext context)
+        HttpContext context,
+        IOptions<LocalizationOptions> localizationOptions)
     {
         // Validate language code
         if (!CultureValidator.IsValidCultureCode(command.Language))
@@ -108,9 +141,36 @@ public static class BookHandlers
             }
         }
 
+        // Validate that default language translation is provided
+        var defaultLanguage = localizationOptions.Value.DefaultCulture;
+        if (command.Translations is null || !command.Translations.ContainsKey(defaultLanguage))
+        {
+            return Results.BadRequest(new
+            {
+                error = "Default language translation required",
+                message = $"A description translation for the default language '{defaultLanguage}' must be provided"
+            });
+        }
+
+        // Validate description lengths
+        foreach (var (languageCode, translation) in command.Translations)
+        {
+            if (translation.Description.Length > BookAggregate.MaxDescriptionLength)
+            {
+                return Results.BadRequest(new
+                {
+                    error = "Description too long",
+                    languageCode,
+                    maxLength = BookAggregate.MaxDescriptionLength,
+                    actualLength = translation.Description.Length,
+                    message = $"Description for language '{languageCode}' cannot exceed {BookAggregate.MaxDescriptionLength} characters"
+                });
+            }
+        }
+
         // Get current stream state for ETag validation
         var streamState = await session.Events.FetchStreamStateAsync(command.Id);
-        if (streamState == null)
+        if (streamState is null)
         {
             return Results.NotFound();
         }
@@ -125,13 +185,13 @@ public static class BookHandlers
         }
 
         var aggregate = await session.Events.AggregateStreamAsync<BookAggregate>(command.Id);
-        if (aggregate == null)
+        if (aggregate is null)
         {
             return Results.NotFound();
         }
 
         // Convert DTOs to domain objects
-        var descriptions = command.Translations?.ToDictionary(
+        var descriptions = command.Translations.ToDictionary(
             kvp => kvp.Key,
             kvp => new BookTranslation(kvp.Value.Description));
 
@@ -165,7 +225,7 @@ public static class BookHandlers
     {
         // Get current stream state for ETag validation
         var streamState = await session.Events.FetchStreamStateAsync(command.Id);
-        if (streamState == null)
+        if (streamState is null)
         {
             return Results.NotFound();
         }
@@ -180,7 +240,7 @@ public static class BookHandlers
         }
 
         var aggregate = await session.Events.AggregateStreamAsync<BookAggregate>(command.Id);
-        if (aggregate == null)
+        if (aggregate is null)
         {
             return Results.NotFound();
         }
@@ -206,7 +266,7 @@ public static class BookHandlers
     {
         // Get current stream state for ETag validation
         var streamState = await session.Events.FetchStreamStateAsync(command.Id);
-        if (streamState == null)
+        if (streamState is null)
         {
             return Results.NotFound();
         }
@@ -221,7 +281,7 @@ public static class BookHandlers
         }
 
         var aggregate = await session.Events.AggregateStreamAsync<BookAggregate>(command.Id);
-        if (aggregate == null)
+        if (aggregate is null)
         {
             return Results.NotFound();
         }

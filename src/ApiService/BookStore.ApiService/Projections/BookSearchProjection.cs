@@ -154,15 +154,9 @@ public class BookSearchProjectionBuilder : MultiStreamProjection<BookSearchProje
     // Helper method to compute SearchText from all searchable fields
     static void UpdateSearchText(BookSearchProjection projection)
     {
-        // Concatenate all description translations for search
-        var allDescriptions = projection.Translations.Count > 0
-            ? string.Join(" ", projection.Translations.Values.Select(t => t.Description))
-            : string.Empty;
-
         // Use string interpolation to avoid List<string> allocation
         projection.SearchText =
             $"{projection.Title} " +
-            $"{allDescriptions} " +
             $"{projection.Isbn ?? string.Empty} " +
             $"{projection.PublisherName ?? string.Empty} " +
             $"{projection.AuthorNames}".Trim();

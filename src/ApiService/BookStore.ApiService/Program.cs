@@ -1,7 +1,9 @@
 using BookStore.ApiService.Infrastructure;
 using BookStore.ApiService.Infrastructure.Extensions;
+using BookStore.ApiService.Models;
 using BookStore.ApiService.Projections;
 using Marten;
+using Microsoft.Extensions.Options;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);

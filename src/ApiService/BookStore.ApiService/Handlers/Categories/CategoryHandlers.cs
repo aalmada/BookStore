@@ -21,6 +21,34 @@ public static class CategoryHandlers
             });
         }
 
+        // Validate name and description lengths
+        foreach (var (languageCode, translation) in command.Translations)
+        {
+            if (translation.Name.Length > CategoryAggregate.MaxNameLength)
+            {
+                return Results.BadRequest(new
+                {
+                    error = "Category name too long",
+                    languageCode,
+                    maxLength = CategoryAggregate.MaxNameLength,
+                    actualLength = translation.Name.Length,
+                    message = $"Category name for language '{languageCode}' cannot exceed {CategoryAggregate.MaxNameLength} characters"
+                });
+            }
+
+            if (translation.Description?.Length > CategoryAggregate.MaxDescriptionLength)
+            {
+                return Results.BadRequest(new
+                {
+                    error = "Category description too long",
+                    languageCode,
+                    maxLength = CategoryAggregate.MaxDescriptionLength,
+                    actualLength = translation.Description.Length,
+                    message = $"Category description for language '{languageCode}' cannot exceed {CategoryAggregate.MaxDescriptionLength} characters"
+                });
+            }
+        }
+
         // Convert DTOs to domain objects
         var translations = command.Translations.ToDictionary(
             kvp => kvp.Key,
@@ -53,8 +81,36 @@ public static class CategoryHandlers
             });
         }
 
+        // Validate name and description lengths
+        foreach (var (languageCode, translation) in command.Translations)
+        {
+            if (translation.Name.Length > CategoryAggregate.MaxNameLength)
+            {
+                return Results.BadRequest(new
+                {
+                    error = "Category name too long",
+                    languageCode,
+                    maxLength = CategoryAggregate.MaxNameLength,
+                    actualLength = translation.Name.Length,
+                    message = $"Category name for language '{languageCode}' cannot exceed {CategoryAggregate.MaxNameLength} characters"
+                });
+            }
+
+            if (translation.Description?.Length > CategoryAggregate.MaxDescriptionLength)
+            {
+                return Results.BadRequest(new
+                {
+                    error = "Category description too long",
+                    languageCode,
+                    maxLength = CategoryAggregate.MaxDescriptionLength,
+                    actualLength = translation.Description.Length,
+                    message = $"Category description for language '{languageCode}' cannot exceed {CategoryAggregate.MaxDescriptionLength} characters"
+                });
+            }
+        }
+
         var streamState = await session.Events.FetchStreamStateAsync(command.Id);
-        if (streamState == null)
+        if (streamState is null)
         {
             return Results.NotFound();
         }
@@ -67,7 +123,7 @@ public static class CategoryHandlers
         }
 
         var aggregate = await session.Events.AggregateStreamAsync<CategoryAggregate>(command.Id);
-        if (aggregate == null)
+        if (aggregate is null)
         {
             return Results.NotFound();
         }
@@ -92,7 +148,7 @@ public static class CategoryHandlers
         HttpContext context)
     {
         var streamState = await session.Events.FetchStreamStateAsync(command.Id);
-        if (streamState == null)
+        if (streamState is null)
         {
             return Results.NotFound();
         }
@@ -105,7 +161,7 @@ public static class CategoryHandlers
         }
 
         var aggregate = await session.Events.AggregateStreamAsync<CategoryAggregate>(command.Id);
-        if (aggregate == null)
+        if (aggregate is null)
         {
             return Results.NotFound();
         }
@@ -126,7 +182,7 @@ public static class CategoryHandlers
         HttpContext context)
     {
         var streamState = await session.Events.FetchStreamStateAsync(command.Id);
-        if (streamState == null)
+        if (streamState is null)
         {
             return Results.NotFound();
         }
@@ -139,7 +195,7 @@ public static class CategoryHandlers
         }
 
         var aggregate = await session.Events.AggregateStreamAsync<CategoryAggregate>(command.Id);
-        if (aggregate == null)
+        if (aggregate is null)
         {
             return Results.NotFound();
         }

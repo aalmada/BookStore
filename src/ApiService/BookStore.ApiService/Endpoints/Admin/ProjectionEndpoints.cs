@@ -1,8 +1,12 @@
 using Marten;
 using Marten.Events.Daemon;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BookStore.ApiService.Endpoints.Admin;
+
+public record RebuildResponse(string Message);
+public record ProjectionStatusResponse(string Status, string Message);
 
 public static class ProjectionEndpoints
 {
@@ -19,7 +23,7 @@ public static class ProjectionEndpoints
         return group;
     }
 
-    static async Task<IResult> RebuildProjections(
+    static async Task<Ok<RebuildResponse>> RebuildProjections(
         [FromServices] IDocumentStore store)
     {
         // Rebuild all async projections
@@ -29,10 +33,10 @@ public static class ProjectionEndpoints
         await daemon.RebuildProjectionAsync<Projections.CategoryProjection>(CancellationToken.None);
         await daemon.RebuildProjectionAsync<Projections.PublisherProjection>(CancellationToken.None);
 
-        return Results.Ok(new { message = "Projection rebuild initiated" });
+        return TypedResults.Ok(new RebuildResponse("Projection rebuild initiated"));
     }
 
-    static async Task<IResult> GetProjectionStatus(
+    static async Task<Ok<ProjectionStatusResponse>> GetProjectionStatus(
         [FromServices] IDocumentStore store)
     {
         try
@@ -40,19 +44,15 @@ public static class ProjectionEndpoints
             var daemon = await store.BuildProjectionDaemonAsync();
 
             // Return basic daemon status
-            return Results.Ok(new
-            {
-                status = "running",
-                message = "Projection daemon is active. Use rebuild endpoint to refresh projections."
-            });
+            return TypedResults.Ok(new ProjectionStatusResponse(
+                "running",
+                "Projection daemon is active. Use rebuild endpoint to refresh projections."));
         }
         catch (Exception ex)
         {
-            return Results.Ok(new
-            {
-                status = "error",
-                message = ex.Message
-            });
+            return TypedResults.Ok(new ProjectionStatusResponse(
+                "error",
+                ex.Message));
         }
     }
 }

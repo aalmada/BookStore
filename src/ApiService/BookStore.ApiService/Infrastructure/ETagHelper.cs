@@ -56,12 +56,12 @@ public static class ETagHelper
     /// <summary>
     /// Create a 304 Not Modified response with ETag
     /// </summary>
-    public static IResult NotModified(string _) => Results.StatusCode(304);
+    public static StatusCodeHttpResult NotModified(string _) => TypedResults.StatusCode(304);
 
     /// <summary>
     /// Create a 412 Precondition Failed response
     /// </summary>
-    public static IResult PreconditionFailed() => Results.Problem(
+    public static ProblemHttpResult PreconditionFailed() => TypedResults.Problem(
             detail: "The resource has been modified since you last retrieved it. Please refresh and try again.",
             statusCode: 412,
             title: "Precondition Failed");
