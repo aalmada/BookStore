@@ -152,11 +152,12 @@ public class BookSearchProjectionBuilder : MultiStreamProjection<BookSearchProje
     }
 
     // Helper method to compute SearchText from all searchable fields
-    static void UpdateSearchText(BookSearchProjection projection) =>
-        projection.SearchText = $"{projection.Title} " +
-            $"{projection.Isbn ?? string.Empty} " +
-            $"{projection.PublisherName ?? string.Empty} " +
-            $"{projection.AuthorNames}".Trim();
+    static void UpdateSearchText(BookSearchProjection projection) 
+        => projection.SearchText = 
+                $"{projection.Title} " +
+                $"{projection.Isbn ?? string.Empty} " +
+                $"{projection.PublisherName ?? string.Empty} " +
+                $"{projection.AuthorNames}".Trim();
 
     // Projection will be deleted on BookSoftDeleted (configured in constructor)
     // Projection will be recreated on BookRestored by replaying the stream
