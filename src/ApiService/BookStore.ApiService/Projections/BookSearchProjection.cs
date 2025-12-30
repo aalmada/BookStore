@@ -153,7 +153,6 @@ public class BookSearchProjectionBuilder : MultiStreamProjection<BookSearchProje
 
     // Helper method to compute SearchText from all searchable fields
     static void UpdateSearchText(BookSearchProjection projection) =>
-        // Use string interpolation to avoid List<string> allocation
         projection.SearchText =
             $"{projection.Title} " +
             $"{projection.Isbn ?? string.Empty} " +
