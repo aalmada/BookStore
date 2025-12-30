@@ -7,7 +7,7 @@ public class CategoryAggregate
     // Validation constants
     public const int MaxNameLength = 100;
     public const int MaxDescriptionLength = 500;
-    
+
     public Guid Id { get; private set; }
     public Dictionary<string, CategoryTranslation> Translations { get; private set; } = [];
     public bool IsDeleted { get; private set; }
@@ -30,7 +30,7 @@ public class CategoryAggregate
     public static CategoryAdded Create(Guid id, Dictionary<string, CategoryTranslation> translations)
     {
         ArgumentNullException.ThrowIfNull(translations);
-        
+
         if (translations.Count == 0)
         {
             throw new ArgumentException("At least one localized name is required", nameof(translations));
@@ -43,12 +43,12 @@ public class CategoryAggregate
             {
                 throw new ArgumentException($"Translation value for language '{key}' cannot be null", nameof(translations));
             }
-            
+
             if (string.IsNullOrWhiteSpace(value.Name))
             {
                 throw new ArgumentException($"Translation name for language '{key}' cannot be null or empty", nameof(translations));
             }
-            
+
             if (value.Name.Length > MaxNameLength)
             {
                 throw new ArgumentException($"Translation name for language '{key}' cannot exceed {MaxNameLength} characters", nameof(translations));
@@ -66,7 +66,7 @@ public class CategoryAggregate
         }
 
         ArgumentNullException.ThrowIfNull(translations);
-        
+
         if (translations.Count == 0)
         {
             throw new ArgumentException("At least one localized name is required", nameof(translations));
@@ -79,12 +79,12 @@ public class CategoryAggregate
             {
                 throw new ArgumentException($"Translation value for language '{key}' cannot be null", nameof(translations));
             }
-            
+
             if (string.IsNullOrWhiteSpace(value.Name))
             {
                 throw new ArgumentException($"Translation name for language '{key}' cannot be null or empty", nameof(translations));
             }
-            
+
             if (value.Name.Length > MaxNameLength)
             {
                 throw new ArgumentException($"Translation name for language '{key}' cannot exceed {MaxNameLength} characters", nameof(translations));

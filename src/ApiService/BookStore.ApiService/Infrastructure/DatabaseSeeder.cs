@@ -12,7 +12,7 @@ namespace BookStore.ApiService.Infrastructure;
 /// </summary>
 public class DatabaseSeeder(IDocumentStore store)
 {
-    
+
     public async Task SeedAsync()
     {
         await using var session = store.LightweightSession();

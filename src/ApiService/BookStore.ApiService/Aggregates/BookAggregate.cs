@@ -173,7 +173,7 @@ public class BookAggregate
     static void ValidateTranslations(Dictionary<string, BookTranslation> translations)
     {
         ArgumentNullException.ThrowIfNull(translations);
-        
+
         if (translations.Count == 0)
         {
             throw new ArgumentException("At least one description translation is required", nameof(translations));
@@ -199,12 +199,12 @@ public class BookAggregate
             {
                 throw new ArgumentException($"Translation value for language '{languageCode}' cannot be null", nameof(translations));
             }
-            
+
             if (string.IsNullOrWhiteSpace(translation.Description))
             {
                 throw new ArgumentException($"Description for language '{languageCode}' cannot be null or empty", nameof(translations));
             }
-            
+
             if (translation.Description.Length > MaxDescriptionLength)
             {
                 throw new ArgumentException(

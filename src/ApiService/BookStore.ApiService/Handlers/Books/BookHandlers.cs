@@ -21,7 +21,7 @@ public static class BookHandlers
     /// Returns a notification that will be published to SignalR
     /// </summary>
     public static (IResult, BookStore.ApiService.Events.Notifications.BookCreatedNotification) Handle(
-        CreateBook command, 
+        CreateBook command,
         IDocumentSession session,
         IOptions<LocalizationOptions> localizationOptions)
     {

@@ -49,7 +49,7 @@ public static class CategoryEndpoints
 
         // Map to localized responses
         var items = pagedList.Select(c => LocalizeCategory(c, context, localizationOptions.Value)).ToList();
-        
+
         var response = new PagedListDto<CategoryDto>(
             items,
             pagedList.PageNumber,
