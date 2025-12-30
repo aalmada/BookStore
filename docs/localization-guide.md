@@ -50,7 +50,7 @@ Localization is configured in `appsettings.json` under the `Localization` sectio
 {
   "Localization": {
     "DefaultCulture": "en-US",
-    "SupportedCultures": ["en-US", "pt-PT", "es-ES", "fr-FR", "de-DE"]
+    "SupportedCultures": ["en-US", "pt-PT"]
   }
 }
 ```
@@ -60,7 +60,7 @@ Localization is configured in `appsettings.json` under the `Localization` sectio
 {
   "Localization": {
     "DefaultCulture": "pt-PT",
-    "SupportedCultures": ["pt-PT", "en-US", "es-ES"]
+    "SupportedCultures": ["pt-PT", "en-US"]
   }
 }
 ```
@@ -119,10 +119,7 @@ public record CategoryTranslation(string Name, string? Description);
 ```json
 {
   "en": { "name": "Programming", "description": null },
-  "pt": { "name": "Programação", "description": null },
-  "es": { "name": "Programación", "description": null },
-  "fr": { "name": "Programmation", "description": null },
-  "de": { "name": "Programmierung", "description": null }
+  "pt": { "name": "Programação", "description": null }
 }
 ```
 
@@ -170,7 +167,7 @@ You can configure different languages for different environments:
 {
   "Localization": {
     "DefaultCulture": "en-US",
-    "SupportedCultures": ["en-US", "pt-PT", "es-ES", "fr-FR", "de-DE"]
+    "SupportedCultures": ["en-US", "pt-PT"]
   }
 }
 ```

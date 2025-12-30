@@ -22,10 +22,10 @@ The project uses **TUnit v1.6.28**, a modern testing framework for .NET that pro
 dotnet test
 
 # Run tests for specific project
-dotnet test --project src/BookStore.Tests/BookStore.Tests.csproj
+dotnet test --project src/ApiService/BookStore.ApiService.Tests/BookStore.ApiService.Tests.csproj
 
 # Run tests directly (alternative method)
-dotnet run --project src/BookStore.Tests/BookStore.Tests.csproj
+dotnet run --project src/ApiService/BookStore.ApiService.Tests/BookStore.ApiService.Tests.csproj
 ```
 
 ### IDE Support
@@ -41,11 +41,10 @@ TUnit works with all major .NET IDEs:
 ### Test Files
 
 ```
-src/BookStore.Tests/
+src/ApiService/BookStore.ApiService.Tests/
 ├── Handlers/
 │   └── BookHandlerTests.cs          # Command handler tests
-├── JsonSerializationTests.cs        # JSON standards verification
-└── WebTests.cs                      # Integration tests with Aspire
+└── JsonSerializationTests.cs        # JSON standards verification
 ```
 
 ### Test Anatomy
@@ -145,7 +144,7 @@ await Assert.ThrowsAsync<InvalidOperationException>(async () =>
 
 Test individual command handlers in isolation using mocked dependencies.
 
-**Example**: [BookHandlerTests.cs](file:///Users/antaoalmada/Projects/BookStore/src/BookStore.Tests/Handlers/BookHandlerTests.cs)
+**Example**: [BookHandlerTests.cs](file:///Users/antaoalmada/Projects/BookStore/src/ApiService/BookStore.ApiService.Tests/Handlers/BookHandlerTests.cs)
 
 ```csharp
 [Test]
@@ -171,7 +170,7 @@ public async Task UpdateBookHandler_WithMissingBook_ShouldReturnNotFound()
 
 Verify that the API follows JSON standards (ISO 8601, camelCase, etc.).
 
-**Example**: [JsonSerializationTests.cs](file:///Users/antaoalmada/Projects/BookStore/src/BookStore.Tests/JsonSerializationTests.cs)
+**Example**: [JsonSerializationTests.cs](file:///Users/antaoalmada/Projects/BookStore/src/ApiService/BookStore.ApiService.Tests/JsonSerializationTests.cs)
 
 ```csharp
 [Test]
@@ -188,7 +187,7 @@ public async Task DateTimeOffset_Should_Serialize_As_ISO8601_With_UTC()
 
 Test the full application stack using Aspire.Hosting.Testing.
 
-**Example**: [WebTests.cs](file:///Users/antaoalmada/Projects/BookStore/src/BookStore.Tests/WebTests.cs)
+**Example**: [WebTests.cs](file:///Users/antaoalmada/Projects/BookStore/src/Web/BookStore.Web.Tests/BookStore.Web.Tests.csproj)
 
 ```csharp
 [Test]
@@ -286,7 +285,7 @@ When running in GitHub Actions, TUnit automatically:
   run: dotnet build --no-restore --configuration Release
 
 - name: Run tests
-  run: dotnet test --project src/BookStore.Tests/BookStore.Tests.csproj --configuration Release --no-build ${{ github.event_name == 'pull_request' && '--fail-fast' || '' }}
+  run: dotnet test --project src/ApiService/BookStore.ApiService.Tests/BookStore.ApiService.Tests.csproj --configuration Release --no-build ${{ github.event_name == 'pull_request' && '--fail-fast' || '' }}
   # TUnit automatically generates GitHub Actions test summary
   # Results appear in the workflow run summary with collapsible details
   # --fail-fast: Stop on first failure in PRs for quick feedback

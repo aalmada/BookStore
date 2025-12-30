@@ -202,7 +202,10 @@ Understanding the architecture helps you contribute effectively:
 - **BookStore.Web** - Blazor frontend
 - **BookStore.AppHost** - Aspire orchestration
 - **BookStore.ServiceDefaults** - Shared configuration
-- **BookStore.Tests** - Unit tests
+- **BookStore.Shared** - Shared library
+- **BookStore.Shared.Tests** - Shared unit tests
+- **BookStore.ApiService.Tests** - API unit tests
+- **BookStore.Web.Tests** - Web tests
 
 Key patterns:
 - **Event Sourcing** - All state changes via events

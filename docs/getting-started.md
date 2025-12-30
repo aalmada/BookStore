@@ -150,6 +150,10 @@ curl -X POST http://localhost:5000/api/admin/categories \
     "name": "Software Architecture",
     "description": "Books about software design and architecture",
     "translations": {
+      "en": {
+        "name": "Software Architecture",
+        "description": "Books about software design and architecture"
+      },
       "pt": {
         "name": "Arquitetura de Software",
         "description": "Livros sobre design e arquitetura de software"
@@ -271,10 +275,10 @@ The project uses **TUnit**, a modern testing framework for .NET with built-in co
 dotnet test
 
 # Run tests for specific project
-dotnet test --project src/BookStore.Tests/BookStore.Tests.csproj
+dotnet test --project src/ApiService/BookStore.ApiService.Tests/BookStore.ApiService.Tests.csproj
 
 # Alternative: Run tests directly
-dotnet run --project src/BookStore.Tests/BookStore.Tests.csproj
+dotnet run --project src/ApiService/BookStore.ApiService.Tests/BookStore.ApiService.Tests.csproj
 ```
 
 ### Test Structure

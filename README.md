@@ -188,8 +188,8 @@ curl -X POST http://localhost:5000/api/admin/categories \
   -d '{
     "name": "Software Architecture",
     "translations": {
-      "pt": {"name": "Arquitetura de Software"},
-      "es": {"name": "Arquitectura de Software"}
+      "en": {"name": "Software Architecture"},
+      "pt": {"name": "Arquitetura de Software"}
     }
   }'
 ```
