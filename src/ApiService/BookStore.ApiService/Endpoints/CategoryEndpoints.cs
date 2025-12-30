@@ -13,7 +13,6 @@ namespace BookStore.ApiService.Endpoints;
 public static class CategoryEndpoints
 {
 
-
     public static RouteGroupBuilder MapCategoryEndpoints(this RouteGroupBuilder group)
     {
         _ = group.MapGet("/", GetCategories)
