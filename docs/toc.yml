@@ -22,8 +22,12 @@
       href: etag-guide.md
     - name: Correlation & Causation
       href: correlation-causation-guide.md
-    - name: Time Standards
-      href: time-standards.md
+    - name: API Conventions
+      href: api-conventions-guide.md
+    - name: Aspire Deployment
+      href: aspire-deployment-guide.md
+    - name: Production Scaling
+      href: production-scaling-guide.md
 - name: Rules
   items:
     - name: Analyzer Rules

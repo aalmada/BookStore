@@ -125,10 +125,12 @@ BookStore/
 
 - **[Getting Started](docs/getting-started.md)** - Setup and first steps
 - **[Architecture Overview](docs/architecture.md)** - System design and patterns
+- **[Aspire Deployment Guide](docs/aspire-deployment-guide.md)** - Deploy to Azure and Kubernetes
+- **[Production Scaling Guide](docs/production-scaling-guide.md)** - Scale applications and databases in production
 - **[Performance Guide](docs/performance-guide.md)** - GC optimization and performance tuning
 - **[Testing Guide](docs/testing-guide.md)** - Testing with TUnit, assertions, and best practices
 - **[Wolverine Integration](docs/wolverine-guide.md)** - Command/handler pattern with Wolverine
-- **[Time Standards](docs/time-standards.md)** - JSON serialization and UTC standards
+- **[API Conventions](docs/api-conventions-guide.md)** - Time handling and JSON serialization standards
 - **[ETag Support](docs/etag-guide.md)** - Optimistic concurrency and caching
 - **[Correlation & Causation IDs](docs/correlation-causation-guide.md)** - Distributed tracing
 - **[Real-time Notifications](docs/signalr-guide.md)** - SignalR integration and optimistic updates
