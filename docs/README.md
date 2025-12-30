@@ -6,13 +6,12 @@ Welcome to the Book Store API documentation. This is an event-sourced book store
 
 - [Getting Started](getting-started.md)
 - [Architecture Overview](architecture.md)
-- [API Reference](api-reference.md)
-- [Event Sourcing Guide](event-sourcing.md)
+- [API Reference](../api/index.md)
+- [Event Sourcing Guide](event-sourcing-guide.md)
 - [Wolverine Integration](wolverine-guide.md)
 - [Correlation & Causation IDs](correlation-causation-guide.md)
 - [ETag Support](etag-guide.md)
-- [Localization](localization.md)
-- [Deployment](deployment.md)
+- [Localization](localization-guide.md)
 
 ## 🚀 Quick Start
 
@@ -67,20 +66,16 @@ BookStore/
 
 - **[Getting Started](getting-started.md)** - Setup and first steps
 - **[Architecture Overview](architecture.md)** - System design and patterns
-- **[Event Sourcing Guide](event-sourcing.md)** - Understanding the event store
-- **[API Reference](api-reference.md)** - Complete endpoint documentation
+- **[Event Sourcing Guide](event-sourcing-guide.md)** - Understanding the event store
+- **[API Reference](../api/index.md)** - Complete endpoint documentation
 
 ### For API Consumers
 
-- **[API Reference](api-reference.md)** - All available endpoints
+- **[API Reference](../api/index.md)** - All available endpoints
 - **[ETag Support](etag-guide.md)** - Optimistic concurrency and caching
 - **[Correlation & Causation IDs](correlation-causation-guide.md)** - Distributed tracing
 - **[Localization Guide](localization-guide.md)** - Multi-language support and configuration
 
-### For Operations
-
-- **[Deployment](deployment.md)** - Production deployment guide
-- **[Monitoring](monitoring.md)** - Observability and health checks
 
 ## 🔗 Quick Links
 

@@ -485,3 +485,7 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# DocFX site
+_site/
+api/

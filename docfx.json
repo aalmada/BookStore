@@ -1,0 +1,80 @@
+{
+    "metadata": [
+        {
+            "src": [
+                {
+                    "files": [
+                        "src/**/*.csproj"
+                    ],
+                    "exclude": [
+                        "**/obj/**",
+                        "**/bin/**",
+                        "**/*.Tests/**",
+                        "**/BookStore.Web/**",
+                        "**/BookStore.AppHost/**"
+                    ]
+                }
+            ],
+            "dest": "api",
+            "disableGitFeatures": false,
+            "disableDefaultFilter": false
+        }
+    ],
+    "build": {
+        "content": [
+            {
+                "files": [
+                    "api/**.yml",
+                    "api/index.md"
+                ]
+            },
+            {
+                "files": [
+                    "docs/**.md",
+                    "docs/**/toc.yml",
+                    "toc.yml",
+                    "*.md",
+                    "LICENSE"
+                ],
+                "exclude": [
+                    "obj/**",
+                    "_site/**",
+                    "**/bin/**",
+                    "**/obj/**"
+                ]
+            }
+        ],
+        "resource": [
+            {
+                "files": [
+                    "images/**"
+                ]
+            }
+        ],
+        "overwrite": [
+            {
+                "files": [
+                    "apidoc/**.md",
+                    "apidoc/**/toc.yml"
+                ],
+                "exclude": [
+                    "obj/**",
+                    "_site/**"
+                ]
+            }
+        ],
+        "dest": "_site",
+        "globalMetadataFiles": [],
+        "fileMetadataFiles": [],
+        "template": [
+            "default",
+            "modern"
+        ],
+        "postProcessors": [],
+        "markdownEngineName": "markdig",
+        "noLangKeyword": false,
+        "keepFileLink": false,
+        "cleanupCacheHistory": false,
+        "disableGitFeatures": false
+    }
+}
