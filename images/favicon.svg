@@ -1,0 +1,22 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <!-- Favicon version of the logo -->
+  <defs>
+    <linearGradient id="bookGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#1e3a8a;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#2563eb;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <g transform="translate(8, 12)">
+    <!-- Main book shape -->
+    <rect x="4" y="4" width="40" height="36" rx="3" fill="url(#bookGradient)"/>
+    
+    <!-- Book pages effect -->
+    <rect x="7" y="1" width="40" height="36" rx="3" fill="none" stroke="#2563eb" stroke-width="2.5" opacity="0.4"/>
+    <rect x="10" y="-1" width="40" height="36" rx="3" fill="none" stroke="#3b82f6" stroke-width="2.5" opacity="0.3"/>
+    
+    <!-- Bookmark accent -->
+    <path d="M 30 4 L 30 20 L 34 16 L 38 20 L 38 4 Z" fill="#f59e0b" opacity="0.9"/>
+  </g>
+</svg>

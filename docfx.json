@@ -64,6 +64,22 @@
             }
         ],
         "dest": "_site",
+        "globalMetadata": {
+            "_appTitle": "BookStore Documentation",
+            "_appName": "BookStore",
+            "_appLogoPath": "images/logo.svg",
+            "_appFaviconPath": "images/favicon.png",
+            "_description": "Documentation for BookStore - An event-sourced bookstore application built with .NET 10, Aspire, Blazor, Marten, and Wolverine",
+            "_keywords": "bookstore, event-sourcing, marten, wolverine, aspire, blazor, cqrs, dotnet",
+            "_enableSearch": true,
+            "_enableNewTab": true,
+            "_appFooter": "<span>Made with <a href=\"https://dotnet.github.io/docfx\">docfx</a></span>",
+            "_gitContribute": {
+                "repo": "https://github.com/aalmada/BookStore",
+                "branch": "main"
+            },
+            "_gitUrlPattern": "github"
+        },
         "globalMetadataFiles": [],
         "fileMetadataFiles": [],
         "template": [
