@@ -12,6 +12,7 @@ Welcome to the Book Store API documentation. This is an event-sourced book store
 - [Correlation & Causation IDs](correlation-causation-guide.md)
 - [ETag Support](etag-guide.md)
 - [Localization](localization-guide.md)
+- [Deployment](deployment.md)
 
 ## 🚀 Quick Start
 
