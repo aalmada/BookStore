@@ -153,8 +153,7 @@ public class BookSearchProjectionBuilder : MultiStreamProjection<BookSearchProje
 
     // Helper method to compute SearchText from all searchable fields
     static void UpdateSearchText(BookSearchProjection projection) =>
-        projection.SearchText =
-            $"{projection.Title} " +
+        projection.SearchText = $"{projection.Title} " +
             $"{projection.Isbn ?? string.Empty} " +
             $"{projection.PublisherName ?? string.Empty} " +
             $"{projection.AuthorNames}".Trim();
