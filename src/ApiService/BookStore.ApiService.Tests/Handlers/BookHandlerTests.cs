@@ -26,7 +26,10 @@ public class BookHandlerTests
             "Clean Code",
             "978-0132350884",
             "en",
-            [], // Translations
+            new Dictionary<string, BookTranslationDto> // Translations
+            {
+                ["en"] = new BookTranslationDto("A handbook of agile software craftsmanship")
+            },
             new PartialDate(2008, 8, 1),
             Guid.CreateVersion7(), // PublisherId
             [Guid.CreateVersion7()], // AuthorIds
@@ -59,7 +62,10 @@ public class BookHandlerTests
             "Updated Title",
             null,
             "en", // Language (non-nullable)
-            null, // Translations
+            new Dictionary<string, BookTranslationDto> // Translations
+            {
+                ["en"] = new BookTranslationDto("Updated description")
+            },
             null, // PartialDate
             null, // PublisherId
             [],   // AuthorIds
