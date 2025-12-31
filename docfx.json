@@ -78,14 +78,14 @@
                 "repo": "https://github.com/aalmada/BookStore",
                 "branch": "main"
             },
-            "_gitUrlPattern": "github",
-            "_gitUrl": "https://github.com/aalmada/BookStore"
+            "_gitUrlPattern": "github"
         },
         "globalMetadataFiles": [],
         "fileMetadataFiles": [],
         "template": [
             "default",
-            "modern"
+            "modern",
+            "template"
         ],
         "postProcessors": [],
         "markdownEngineName": "markdig",
