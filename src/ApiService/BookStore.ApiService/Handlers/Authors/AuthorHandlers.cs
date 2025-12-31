@@ -2,6 +2,7 @@ using BookStore.ApiService.Aggregates;
 using BookStore.ApiService.Commands;
 using BookStore.ApiService.Events;
 using BookStore.ApiService.Infrastructure;
+using BookStore.ApiService.Infrastructure.Logging;
 using BookStore.ApiService.Models;
 using Marten;
 using Microsoft.Extensions.Options;
@@ -10,13 +11,16 @@ namespace BookStore.ApiService.Handlers.Authors;
 
 public static class AuthorHandlers
 {
-    public static IResult Handle(CreateAuthor command, IDocumentSession session, IOptions<LocalizationOptions> localizationOptions)
+    public static IResult Handle(CreateAuthor command, IDocumentSession session, IOptions<LocalizationOptions> localizationOptions, ILogger logger)
     {
+        Log.Authors.AuthorCreating(logger, command.Id, command.Name, session.CorrelationId ?? "none");
+
         // Validate language codes in biographies if provided
         if (command.Translations?.Count > 0)
         {
             if (!CultureValidator.ValidateTranslations(command.Translations, out var invalidCodes))
             {
+                Log.Authors.InvalidTranslationCodes(logger, command.Id, string.Join(", ", invalidCodes));
                 return Results.BadRequest(new
                 {
                     error = "Invalid language codes in biographies",
@@ -30,6 +34,7 @@ public static class AuthorHandlers
         var defaultLanguage = localizationOptions.Value.DefaultCulture;
         if (command.Translations is null || !command.Translations.ContainsKey(defaultLanguage))
         {
+            Log.Authors.MissingDefaultTranslation(logger, command.Id, defaultLanguage);
             return Results.BadRequest(new
             {
                 error = "Default language translation required",
@@ -42,6 +47,7 @@ public static class AuthorHandlers
         {
             if (translation.Biography.Length > AuthorAggregate.MaxBiographyLength)
             {
+                Log.Authors.BiographyTooLong(logger, command.Id, languageCode, AuthorAggregate.MaxBiographyLength, translation.Biography.Length);
                 return Results.BadRequest(new
                 {
                     error = "Biography too long",
@@ -65,6 +71,8 @@ public static class AuthorHandlers
 
         _ = session.Events.StartStream<AuthorAggregate>(command.Id, @event);
 
+        Log.Authors.AuthorCreated(logger, command.Id, command.Name);
+
         return Results.Created(
             $"/api/admin/authors/{command.Id}",
             new { id = command.Id, correlationId = session.CorrelationId });
@@ -74,7 +82,8 @@ public static class AuthorHandlers
         UpdateAuthor command,
         IDocumentSession session,
         HttpContext context,
-        IOptions<LocalizationOptions> localizationOptions)
+        IOptions<LocalizationOptions> localizationOptions,
+        ILogger logger)
     {
         // Validate language codes in biographies if provided
         if (command.Translations?.Count > 0)
@@ -144,6 +153,8 @@ public static class AuthorHandlers
         var @event = aggregate.Update(command.Name, biographies);
         _ = session.Events.Append(command.Id, @event);
 
+        Log.Authors.AuthorUpdated(logger, command.Id);
+
         var newStreamState = await session.Events.FetchStreamStateAsync(command.Id);
         var newETag = ETagHelper.GenerateETag(newStreamState!.Version);
         ETagHelper.AddETagHeader(context, newETag);
@@ -154,11 +165,15 @@ public static class AuthorHandlers
     public static async Task<IResult> Handle(
         SoftDeleteAuthor command,
         IDocumentSession session,
-        HttpContext context)
+        HttpContext context,
+        ILogger logger)
     {
+        Log.Authors.AuthorSoftDeleting(logger, command.Id);
+
         var streamState = await session.Events.FetchStreamStateAsync(command.Id);
         if (streamState is null)
         {
+            Log.Authors.AuthorNotFound(logger, command.Id);
             return Results.NotFound();
         }
 
@@ -172,11 +187,14 @@ public static class AuthorHandlers
         var aggregate = await session.Events.AggregateStreamAsync<AuthorAggregate>(command.Id);
         if (aggregate is null)
         {
+            Log.Authors.AuthorNotFound(logger, command.Id);
             return Results.NotFound();
         }
 
         var @event = aggregate.SoftDelete();
         _ = session.Events.Append(command.Id, @event);
+
+        Log.Authors.AuthorSoftDeleted(logger, command.Id);
 
         var newStreamState = await session.Events.FetchStreamStateAsync(command.Id);
         var newETag = ETagHelper.GenerateETag(newStreamState!.Version);
@@ -188,11 +206,15 @@ public static class AuthorHandlers
     public static async Task<IResult> Handle(
         RestoreAuthor command,
         IDocumentSession session,
-        HttpContext context)
+        HttpContext context,
+        ILogger logger)
     {
+        Log.Authors.AuthorRestoring(logger, command.Id);
+
         var streamState = await session.Events.FetchStreamStateAsync(command.Id);
         if (streamState is null)
         {
+            Log.Authors.AuthorNotFound(logger, command.Id);
             return Results.NotFound();
         }
 
@@ -206,11 +228,14 @@ public static class AuthorHandlers
         var aggregate = await session.Events.AggregateStreamAsync<AuthorAggregate>(command.Id);
         if (aggregate is null)
         {
+            Log.Authors.AuthorNotFound(logger, command.Id);
             return Results.NotFound();
         }
 
         var @event = aggregate.Restore();
         _ = session.Events.Append(command.Id, @event);
+
+        Log.Authors.AuthorRestored(logger, command.Id);
 
         var newStreamState = await session.Events.FetchStreamStateAsync(command.Id);
         var newETag = ETagHelper.GenerateETag(newStreamState!.Version);

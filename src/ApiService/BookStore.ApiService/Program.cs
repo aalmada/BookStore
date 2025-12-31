@@ -1,5 +1,6 @@
 using BookStore.ApiService.Infrastructure;
 using BookStore.ApiService.Infrastructure.Extensions;
+using BookStore.ApiService.Infrastructure.Logging;
 using BookStore.ApiService.Models;
 using BookStore.ApiService.Projections;
 using Marten;
@@ -42,7 +43,7 @@ if (app.Environment.IsDevelopment())
 
 static async Task WaitForProjectionsAsync(IDocumentStore store, ILogger logger)
 {
-    logger.LogInformation("Waiting for async projections to complete...");
+    Log.Infrastructure.WaitingForProjections(logger);
 
     var timeout = TimeSpan.FromSeconds(30);
     var checkInterval = TimeSpan.FromMilliseconds(100);
@@ -61,16 +62,14 @@ static async Task WaitForProjectionsAsync(IDocumentStore store, ILogger logger)
         // If all projections have data, we're ready
         if (bookCount > 0 && authorCount > 0 && categoryCount > 0 && publisherCount > 0)
         {
-            logger.LogInformation(
-                "All projections are ready: {BookCount} books, {AuthorCount} authors, {CategoryCount} categories, {PublisherCount} publishers",
-                bookCount, authorCount, categoryCount, publisherCount);
+            Log.Infrastructure.ProjectionsReady(logger, bookCount, authorCount, categoryCount, publisherCount);
             return;
         }
 
         await Task.Delay(checkInterval);
     }
 
-    logger.LogWarning("Projection initialization timed out after {Timeout}s. Some projections may not be ready.", timeout.TotalSeconds);
+    Log.Infrastructure.ProjectionTimeout(logger, timeout.TotalSeconds);
 }
 
 // Configure the HTTP request pipeline

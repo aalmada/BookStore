@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using BookStore.ApiService.Infrastructure.Logging;
 using Microsoft.AspNetCore.Http;
 
 namespace BookStore.ApiService.Infrastructure;
@@ -47,15 +48,10 @@ public class MartenMetadataMiddleware
             return Task.CompletedTask;
         });
 
-        // Create log scope with correlation and causation IDs for all logs in this request
-        using (_logger.BeginScope(new Dictionary<string, object>
-        {
-            ["CorrelationId"] = correlationId,
-            ["CausationId"] = causationId
-        }))
-        {
-            await _next(context);
-        }
+        // Log the Marten metadata setup
+        Log.Infrastructure.MartenMetadataSet(_logger, correlationId, causationId, userId ?? "anonymous");
+
+        await _next(context);
     }
 }
 

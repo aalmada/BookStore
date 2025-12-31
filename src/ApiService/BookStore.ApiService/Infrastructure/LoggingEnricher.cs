@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using BookStore.ApiService.Infrastructure.Logging;
 
 namespace BookStore.ApiService.Infrastructure;
 
@@ -36,23 +37,14 @@ public class LoggingEnricherMiddleware
         var userAgent = context.Request.Headers["User-Agent"].FirstOrDefault();
         var remoteIp = context.Connection.RemoteIpAddress?.ToString();
 
-        // Create a log scope with all metadata (excluding PII like email)
-        using (_logger.BeginScope(new Dictionary<string, object>
-        {
-            ["CorrelationId"] = correlationId,
-            ["TraceId"] = traceId ?? "none",
-            ["SpanId"] = spanId ?? "none",
-            ["UserId"] = userId,
-            ["RequestPath"] = requestPath ?? "/",
-            ["RequestMethod"] = requestMethod,
-            ["UserAgent"] = userAgent ?? "unknown",
-            ["RemoteIp"] = remoteIp ?? "unknown",
-            ["MachineName"] = Environment.MachineName,
-            ["Environment"] = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production"
-        }))
-        {
-            await _next(context);
-        }
+        // Log the request start with enriched metadata
+        Log.Infrastructure.RequestStarted(
+            _logger,
+            requestMethod,
+            requestPath ?? "/",
+            remoteIp ?? "unknown");
+
+        await _next(context);
     }
 }
 

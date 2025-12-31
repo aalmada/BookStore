@@ -6,6 +6,7 @@ using BookStore.ApiService.Infrastructure;
 using BookStore.ApiService.Models;
 using Marten;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 
@@ -45,7 +46,7 @@ public class BookHandlerTests
             DefaultCulture = "en",
             SupportedCultures = ["en"]
         });
-        var (result, notification) = BookHandlers.Handle(command, session, localizationOptions);
+        var (result, notification) = BookHandlers.Handle(command, session, localizationOptions, Substitute.For<ILogger>());
 
         // Assert
         _ = await Assert.That(result).IsNotNull();
@@ -89,7 +90,7 @@ public class BookHandlerTests
             DefaultCulture = "en",
             SupportedCultures = ["en"]
         });
-        var result = await BookHandlers.Handle(command, session, context, localizationOptions);
+        var result = await BookHandlers.Handle(command, session, context, localizationOptions, Substitute.For<ILogger>());
 
         // Assert
         _ = await Assert.That(result).IsTypeOf<Microsoft.AspNetCore.Http.HttpResults.NotFound>();

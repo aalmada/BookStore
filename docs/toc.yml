@@ -18,6 +18,8 @@
       href: performance-guide.md
     - name: Localization
       href: localization-guide.md
+    - name: Logging
+      href: logging-guide.md
     - name: ETag
       href: etag-guide.md
     - name: Correlation & Causation

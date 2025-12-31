@@ -2,6 +2,7 @@ using BookStore.ApiService.Aggregates;
 using BookStore.ApiService.Commands;
 using BookStore.ApiService.Events;
 using BookStore.ApiService.Infrastructure;
+using BookStore.ApiService.Infrastructure.Logging;
 using BookStore.ApiService.Models;
 using Marten;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -23,11 +24,15 @@ public static class BookHandlers
     public static (IResult, BookStore.ApiService.Events.Notifications.BookCreatedNotification) Handle(
         CreateBook command,
         IDocumentSession session,
-        IOptions<LocalizationOptions> localizationOptions)
+        IOptions<LocalizationOptions> localizationOptions,
+        ILogger logger)
     {
+        Log.Books.BookCreating(logger, command.Id, command.Title, session.CorrelationId ?? "none");
+
         // Validate language code
         if (!CultureValidator.IsValidCultureCode(command.Language))
         {
+            Log.Books.InvalidLanguageCode(logger, command.Id, command.Language);
             return (Results.BadRequest(new
             {
                 error = "Invalid language code",
@@ -41,6 +46,7 @@ public static class BookHandlers
         {
             if (!CultureValidator.ValidateTranslations(command.Translations, out var invalidCodes))
             {
+                Log.Books.InvalidTranslationCodes(logger, command.Id, string.Join(", ", invalidCodes));
                 return (Results.BadRequest(new
                 {
                     error = "Invalid language codes in descriptions",
@@ -54,6 +60,7 @@ public static class BookHandlers
         var defaultLanguage = localizationOptions.Value.DefaultCulture;
         if (command.Translations is null || !command.Translations.ContainsKey(defaultLanguage))
         {
+            Log.Books.MissingDefaultTranslation(logger, command.Id, defaultLanguage);
             return (Results.BadRequest(new
             {
                 error = "Default language translation required",
@@ -66,6 +73,7 @@ public static class BookHandlers
         {
             if (translation.Description.Length > BookAggregate.MaxDescriptionLength)
             {
+                Log.Books.DescriptionTooLong(logger, command.Id, languageCode, BookAggregate.MaxDescriptionLength, translation.Description.Length);
                 return (Results.BadRequest(new
                 {
                     error = "Description too long",
@@ -95,6 +103,8 @@ public static class BookHandlers
 
         _ = session.Events.StartStream<BookAggregate>(command.Id, @event);
 
+        Log.Books.BookCreated(logger, command.Id, command.Title);
+
         // Create notification for SignalR (will be published as cascading message)
         var notification = new BookStore.ApiService.Events.Notifications.BookCreatedNotification(
             command.Id,
@@ -114,7 +124,8 @@ public static class BookHandlers
         UpdateBook command,
         IDocumentSession session,
         HttpContext context,
-        IOptions<LocalizationOptions> localizationOptions)
+        IOptions<LocalizationOptions> localizationOptions,
+        ILogger logger)
     {
         // Validate language code
         if (!CultureValidator.IsValidCultureCode(command.Language))
@@ -172,6 +183,7 @@ public static class BookHandlers
         var streamState = await session.Events.FetchStreamStateAsync(command.Id);
         if (streamState is null)
         {
+            Log.Books.BookNotFound(logger, command.Id);
             return Results.NotFound();
         }
 
@@ -181,14 +193,18 @@ public static class BookHandlers
         if (!string.IsNullOrEmpty(command.ETag) &&
             !ETagHelper.CheckIfMatch(context, currentETag))
         {
+            Log.Books.ETagMismatch(logger, command.Id, currentETag, command.ETag);
             return ETagHelper.PreconditionFailed();
         }
 
         var aggregate = await session.Events.AggregateStreamAsync<BookAggregate>(command.Id);
         if (aggregate is null)
         {
+            Log.Books.BookNotFound(logger, command.Id);
             return Results.NotFound();
         }
+
+        Log.Books.BookUpdating(logger, command.Id, command.Title, streamState.Version);
 
         // Convert DTOs to domain objects
         var descriptions = command.Translations.ToDictionary(
@@ -207,6 +223,8 @@ public static class BookHandlers
 
         _ = session.Events.Append(command.Id, @event);
 
+        Log.Books.BookUpdated(logger, command.Id);
+
         // Get new stream state and return new ETag
         var newStreamState = await session.Events.FetchStreamStateAsync(command.Id);
         var newETag = ETagHelper.GenerateETag(newStreamState!.Version);
@@ -221,12 +239,16 @@ public static class BookHandlers
     public static async Task<IResult> Handle(
         SoftDeleteBook command,
         IDocumentSession session,
-        HttpContext context)
+        HttpContext context,
+        ILogger logger)
     {
+        Log.Books.BookSoftDeleting(logger, command.Id);
+
         // Get current stream state for ETag validation
         var streamState = await session.Events.FetchStreamStateAsync(command.Id);
         if (streamState is null)
         {
+            Log.Books.BookNotFound(logger, command.Id);
             return Results.NotFound();
         }
 
@@ -242,11 +264,14 @@ public static class BookHandlers
         var aggregate = await session.Events.AggregateStreamAsync<BookAggregate>(command.Id);
         if (aggregate is null)
         {
+            Log.Books.BookNotFound(logger, command.Id);
             return Results.NotFound();
         }
 
         var @event = aggregate.SoftDelete();
         _ = session.Events.Append(command.Id, @event);
+
+        Log.Books.BookSoftDeleted(logger, command.Id);
 
         // Get new stream state and return new ETag
         var newStreamState = await session.Events.FetchStreamStateAsync(command.Id);
@@ -262,12 +287,16 @@ public static class BookHandlers
     public static async Task<IResult> Handle(
         RestoreBook command,
         IDocumentSession session,
-        HttpContext context)
+        HttpContext context,
+        ILogger logger)
     {
+        Log.Books.BookRestoring(logger, command.Id);
+
         // Get current stream state for ETag validation
         var streamState = await session.Events.FetchStreamStateAsync(command.Id);
         if (streamState is null)
         {
+            Log.Books.BookNotFound(logger, command.Id);
             return Results.NotFound();
         }
 
@@ -283,11 +312,14 @@ public static class BookHandlers
         var aggregate = await session.Events.AggregateStreamAsync<BookAggregate>(command.Id);
         if (aggregate is null)
         {
+            Log.Books.BookNotFound(logger, command.Id);
             return Results.NotFound();
         }
 
         var @event = aggregate.Restore();
         _ = session.Events.Append(command.Id, @event);
+
+        Log.Books.BookRestored(logger, command.Id);
 
         // Get new stream state and return new ETag
         var newStreamState = await session.Events.FetchStreamStateAsync(command.Id);

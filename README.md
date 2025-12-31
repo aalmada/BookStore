@@ -129,6 +129,7 @@ BookStore/
 - **[Production Scaling Guide](docs/production-scaling-guide.md)** - Scale applications and databases in production
 - **[Configuration Guide](docs/configuration-guide.md)** - Options pattern and validation
 - **[Performance Guide](docs/performance-guide.md)** - GC optimization and performance tuning
+- **[Logging Guide](docs/logging-guide.md)** - Structured logging with source-generated log messages
 - **[Testing Guide](docs/testing-guide.md)** - Testing with TUnit, assertions, and best practices
 - **[Wolverine Integration](docs/wolverine-guide.md)** - Command/handler pattern with Wolverine
 - **[API Conventions](docs/api-conventions-guide.md)** - Time handling and JSON serialization standards
