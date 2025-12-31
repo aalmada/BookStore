@@ -1,3 +1,4 @@
+using BookStore.ApiService.Models;
 using BookStore.ApiService.Projections;
 using BookStore.Shared.Infrastructure.Json;
 using JasperFx.Events;
@@ -5,6 +6,7 @@ using JasperFx.Events.Projections;
 using Marten;
 using Marten.Events.Daemon;
 using Marten.Events.Projections;
+using Microsoft.Extensions.Options;
 using Weasel.Core;
 using Wolverine.Marten;
 
@@ -33,7 +35,7 @@ public static class MartenConfigurationExtensions
             ConfigureEventMetadata(options);
             ConfigureJsonSerialization(options);
             RegisterEventTypes(options);
-            RegisterProjections(options);
+            RegisterProjections(options, sp);
             ConfigureIndexes(options);
 
             return options;
@@ -96,14 +98,25 @@ public static class MartenConfigurationExtensions
         _ = options.Events.AddEventType<Events.PublisherRestored>();
     }
 
-    static void RegisterProjections(StoreOptions options)
+    static void RegisterProjections(StoreOptions options, IServiceProvider sp)
     {
+        // Configure Conjoined Tenancy for Multi-Lingual Projections
+        options.Schema.For<BookSearchProjection>().MultiTenanted();
+        options.Schema.For<AuthorProjection>().MultiTenanted();
+        options.Schema.For<CategoryProjection>().MultiTenanted();
+
         // Configure projections - using AddAsync for async projections managed by Wolverine
-        // Register projection builders explicitly with async lifecycle
-        options.Projections.Add<AuthorProjectionBuilder>(ProjectionLifecycle.Async);
-        options.Projections.Add<CategoryProjectionBuilder>(ProjectionLifecycle.Async);
+        // Instantiate builders using ServiceProvider to satisfy dependencies
+        var localization = sp.GetRequiredService<IOptions<LocalizationOptions>>();
+        
+        options.Projections.Add(new AuthorProjectionBuilder(localization), ProjectionLifecycle.Async);
+        options.Projections.Add(new CategoryProjectionBuilder(localization), ProjectionLifecycle.Async);
+        options.Projections.Add(new BookSearchProjectionBuilder(localization), ProjectionLifecycle.Async);
+        
+        // PublisherProjectionBuilder has no dependencies, so simple Add is fine if it has parameterless ctor
+        // Or we can just use defaults if it does. Check PublisherProjectionBuilder.
+        // Assuming it's simple:
         options.Projections.Add<PublisherProjectionBuilder>(ProjectionLifecycle.Async);
-        options.Projections.Add<BookSearchProjectionBuilder>(ProjectionLifecycle.Async);
     }
 
     static void ConfigureIndexes(StoreOptions options)

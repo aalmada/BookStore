@@ -1,4 +1,3 @@
-using System.Globalization;
 using BookStore.ApiService.Infrastructure;
 using BookStore.ApiService.Models;
 using BookStore.ApiService.Projections;
@@ -7,6 +6,7 @@ using Marten.Pagination;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using System.Globalization;
 
 namespace BookStore.ApiService.Endpoints;
 
@@ -33,22 +33,20 @@ public static class CategoryEndpoints
     }
 
     static async Task<Ok<PagedListDto<CategoryDto>>> GetCategories(
-        [FromServices] IQuerySession session,
+        [FromServices] IDocumentStore store,
         [FromServices] IOptions<PaginationOptions> paginationOptions,
-        [FromServices] IOptions<LocalizationOptions> localizationOptions,
         [AsParameters] PagedRequest request,
         HttpContext context)
     {
+        var culture = CultureInfo.CurrentCulture.Name;
+        await using var session = store.QuerySession(culture);
         var paging = request.Normalize(paginationOptions.Value);
 
-        // Use Marten's native pagination for optimal performance
-        // Note: We can't sort by localized name directly in the query, so we sort by ID
         var pagedList = await session.Query<CategoryProjection>()
             .OrderBy(c => c.Id)
             .ToPagedListAsync(paging.Page!.Value, paging.PageSize!.Value);
 
-        // Map to localized responses
-        var items = pagedList.Select(c => LocalizeCategory(c, context, localizationOptions.Value)).ToList();
+        var items = pagedList.Select(c => new CategoryDto(c.Id, c.Name)).ToList();
 
         var response = new PagedListDto<CategoryDto>(
             items,
@@ -59,34 +57,21 @@ public static class CategoryEndpoints
         return TypedResults.Ok(response);
     }
 
-    static async Task<Microsoft.AspNetCore.Http.HttpResults.Results<Ok<CategoryDto>, NotFound>> GetCategory(
+    static async Task<Results<Ok<CategoryDto>, NotFound>> GetCategory(
         Guid id,
-        [FromServices] IQuerySession session,
-        [FromServices] IOptions<LocalizationOptions> localizationOptions,
+        [FromServices] IDocumentStore store,
         HttpContext context)
     {
+        var culture = CultureInfo.CurrentCulture.Name;
+        await using var session = store.QuerySession(culture);
+        
         var category = await session.LoadAsync<CategoryProjection>(id);
         if (category == null)
         {
             return TypedResults.NotFound();
         }
 
-        var response = LocalizeCategory(category, context, localizationOptions.Value);
+        var response = new CategoryDto(category.Id, category.Name);
         return TypedResults.Ok(response);
-    }
-
-    static CategoryDto LocalizeCategory(
-        CategoryProjection category,
-        HttpContext context,
-        LocalizationOptions options)
-    {
-        var localizedName = LocalizationHelper.GetLocalizedValue(
-            context,
-            options,
-            category.Translations,
-            translation => translation.Name,
-            defaultValue: "Unknown");
-
-        return new CategoryDto(category.Id, localizedName);
     }
 }

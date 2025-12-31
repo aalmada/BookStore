@@ -1,34 +1,108 @@
 using BookStore.ApiService.Events;
-using Marten.Events.Aggregation;
+using BookStore.ApiService.Models;
+using Marten;
+using Marten.Events;
+using Marten.Events.Projections;
+using Microsoft.Extensions.Options;
+using JasperFx.Events;
 
 namespace BookStore.ApiService.Projections;
 
 public class CategoryProjection
 {
     public Guid Id { get; set; }
-    public Dictionary<string, CategoryTranslation> Translations { get; set; } = [];
+    public string Name { get; set; } = string.Empty; // Localized
+    public string ProjectionLocale { get; set; } = string.Empty;
     public DateTimeOffset LastModified { get; set; }
 }
 
-public class CategoryProjectionBuilder : SingleStreamProjection<CategoryProjection, Guid>
+public class CategoryProjectionBuilder : EventProjection
 {
-    public CategoryProjectionBuilder()
-        // Delete projection when category is soft-deleted
-        => DeleteEvent<CategorySoftDeleted>();
+    private readonly LocalizationOptions _localization;
 
-    public CategoryProjection Create(CategoryAdded @event) => new()
+    public CategoryProjectionBuilder(IOptions<LocalizationOptions> localizationOptions)
     {
-        Id = @event.Id,
-        Translations = @event.Translations,
-        LastModified = @event.Timestamp
-    };
-
-    void Apply(CategoryUpdated @event, CategoryProjection projection)
+        _localization = localizationOptions.Value;
+    }
+    
+    public async Task Project(IEvent<CategoryAdded> @event, IDocumentOperations ops)
     {
-        projection.Translations = @event.Translations;
-        projection.LastModified = @event.Timestamp;
+         var category = @event.Data;
+         if (ops is IDocumentSession session)
+         {
+             foreach (var culture in _localization.SupportedCultures)
+             {
+                 using var tenantSession = session.ForTenant(culture);
+                 
+                 var projection = new CategoryProjection
+                 {
+                     Id = category.Id,
+                     Name = GetLocalizedName(category.Translations, culture),
+                     ProjectionLocale = culture,
+                     LastModified = category.Timestamp
+                 };
+                 tenantSession.Store(projection);
+                 // await tenantSession.SaveChangesAsync();
+             }
+         }
     }
 
-    // Projection will be deleted on CategorySoftDeleted (configured in constructor)
-    // Projection will be recreated on CategoryRestored by replaying the stream
+    public async Task Project(IEvent<CategoryUpdated> @event, IDocumentOperations ops)
+    {
+         var category = @event.Data;
+         if (ops is IDocumentSession session)
+         {
+             foreach (var culture in _localization.SupportedCultures)
+             {
+                 using var tenantSession = session.ForTenant(culture);
+                 
+                 var projection = new CategoryProjection
+                 {
+                     Id = category.Id,
+                     Name = GetLocalizedName(category.Translations, culture),
+                     ProjectionLocale = culture,
+                     LastModified = category.Timestamp
+                 };
+                 tenantSession.Store(projection);
+                 // await tenantSession.SaveChangesAsync();
+             }
+         }
+    }
+    
+    public async Task Project(IEvent<CategorySoftDeleted> @event, IDocumentOperations ops)
+    {
+        if (ops is IDocumentSession session)
+        {
+            foreach (var culture in _localization.SupportedCultures)
+            {
+                 using var tenantSession = session.ForTenant(culture);
+                 tenantSession.DeleteWhere<CategoryProjection>(x => x.Id == @event.Data.Id);
+                 // await tenantSession.SaveChangesAsync();
+            }
+        }
+    }
+    
+    private string GetLocalizedName(Dictionary<string, CategoryTranslation>? translations, string culture)
+    {
+        if (translations == null || translations.Count == 0) return "Unknown";
+
+        var cultureInfo = System.Globalization.CultureInfo.GetCultureInfo(culture);
+
+        // 1. Exact
+        if (translations.TryGetValue(culture, out var exact)) return exact.Name;
+        
+        // 2. Neutral
+        if (translations.TryGetValue(cultureInfo.TwoLetterISOLanguageName, out var neutral)) return neutral.Name;
+        
+        // 3. Default Culture
+        var defaultCulture = _localization.DefaultCulture;
+        if (translations.TryGetValue(defaultCulture, out var def)) return def.Name;
+        
+        // 4. Default Neutral
+        var defaultNeutral = System.Globalization.CultureInfo.GetCultureInfo(defaultCulture).TwoLetterISOLanguageName;
+        if (translations.TryGetValue(defaultNeutral, out var defNeutral)) return defNeutral.Name;
+        
+        // 5. Fallback (First available)
+        return translations.Values.FirstOrDefault()?.Name ?? "Unknown";
+    }
 }

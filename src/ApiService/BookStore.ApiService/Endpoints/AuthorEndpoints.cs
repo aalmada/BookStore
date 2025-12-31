@@ -6,6 +6,7 @@ using Marten.Pagination;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using System.Globalization;
 
 namespace BookStore.ApiService.Endpoints;
 
@@ -31,24 +32,23 @@ public static class AuthorEndpoints
     }
 
     static async Task<Ok<PagedListDto<AuthorDto>>> GetAuthors(
-        [FromServices] IQuerySession session,
+        [FromServices] IDocumentStore store,
         [FromServices] IOptions<PaginationOptions> paginationOptions,
-        [FromServices] IOptions<LocalizationOptions> localizationOptions,
         [AsParameters] PagedRequest request,
         HttpContext context)
     {
+        var culture = CultureInfo.CurrentCulture.Name;
+        await using var session = store.QuerySession(culture);
         var paging = request.Normalize(paginationOptions.Value);
 
-        // Use Marten's native pagination for optimal performance
         var pagedList = await session.Query<AuthorProjection>()
             .OrderBy(a => a.Name)
             .ToPagedListAsync(paging.Page!.Value, paging.PageSize!.Value);
 
-        // Map to DTOs with localized biographies
         var authorDtos = pagedList.Select(author => new AuthorDto(
             author.Id,
             author.Name,
-            LocalizeBiography(author, context, localizationOptions.Value)
+            author.Biography
         )).ToList();
 
         return TypedResults.Ok(new PagedListDto<AuthorDto>(
@@ -58,12 +58,14 @@ public static class AuthorEndpoints
             pagedList.TotalItemCount));
     }
 
-    static async Task<Microsoft.AspNetCore.Http.HttpResults.Results<Ok<AuthorDto>, NotFound>> GetAuthor(
+    static async Task<Results<Ok<AuthorDto>, NotFound>> GetAuthor(
         Guid id,
-        [FromServices] IQuerySession session,
-        [FromServices] IOptions<LocalizationOptions> localizationOptions,
+        [FromServices] IDocumentStore store,
         HttpContext context)
     {
+        var culture = CultureInfo.CurrentCulture.Name;
+        await using var session = store.QuerySession(culture);
+        
         var author = await session.LoadAsync<AuthorProjection>(id);
         if (author == null)
         {
@@ -73,27 +75,8 @@ public static class AuthorEndpoints
         var authorDto = new AuthorDto(
             author.Id,
             author.Name,
-            LocalizeBiography(author, context, localizationOptions.Value));
+            author.Biography);
 
         return TypedResults.Ok(authorDto);
-    }
-
-    // Helper method for author biography localization
-    static string? LocalizeBiography(
-        AuthorProjection author,
-        HttpContext context,
-        LocalizationOptions options)
-    {
-        if (author.Translations.Count == 0)
-        {
-            return null;
-        }
-
-        return LocalizationHelper.GetLocalizedValue(
-            context,
-            options,
-            author.Translations,
-            translation => translation.Biography,
-            defaultValue: string.Empty);
     }
 }

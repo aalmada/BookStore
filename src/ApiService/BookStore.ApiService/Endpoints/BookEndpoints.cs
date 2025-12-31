@@ -1,4 +1,3 @@
-using BookStore.ApiService.Infrastructure;
 using BookStore.ApiService.Models;
 using BookStore.ApiService.Projections;
 using Marten;
@@ -7,6 +6,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Npgsql;
+using System.Globalization;
 
 namespace BookStore.ApiService.Endpoints;
 
@@ -32,7 +32,7 @@ public static class BookEndpoints
     }
 
     static async Task<Ok<PagedListDto<BookDto>>> SearchBooks(
-        [FromServices] IQuerySession session,
+        [FromServices] IDocumentStore store,
         [FromServices] IOptions<PaginationOptions> paginationOptions,
         [FromServices] IOptions<LocalizationOptions> localizationOptions,
         [AsParameters] PagedRequest request,
@@ -40,9 +40,10 @@ public static class BookEndpoints
         [FromQuery] string? search = null)
     {
         var paging = request.Normalize(paginationOptions.Value);
-
-        // Get current culture set by RequestLocalizationMiddleware
-        var language = System.Globalization.CultureInfo.CurrentCulture.TwoLetterISOLanguageName;
+        
+        // Use the resolved culture as the tenant ID
+        var culture = CultureInfo.CurrentCulture.Name; // e.g. "en-US", "pt", "en"
+        await using var session = store.QuerySession(culture);
 
         // Dictionaries to hold included documents
         var publishers = new Dictionary<Guid, PublisherProjection>();
@@ -76,9 +77,9 @@ public static class BookEndpoints
             book.Id,
             book.Title,
             book.Isbn,
-            book.Language,
-            LocalizationHelper.LocalizeLanguageName(book.Language, context, localizationOptions.Value),
-            LocalizeDescription(book, context, localizationOptions.Value),
+            book.OriginalLanguage,
+            CultureInfo.GetCultureInfo(book.OriginalLanguage).DisplayName,
+            book.Description,
             book.PublicationDate,
             Helpers.BookHelpers.IsPreRelease(book.PublicationDate),
             book.PublisherId.HasValue && publishers.TryGetValue(book.PublisherId.Value, out var pub)
@@ -86,13 +87,13 @@ public static class BookEndpoints
                 : null,
             [.. book.AuthorIds
                 .Select(id => authors.TryGetValue(id, out var author)
-                    ? new AuthorDto(author.Id, author.Name, LocalizeBiography(author, context, localizationOptions.Value))
+                    ? new AuthorDto(author.Id, author.Name, author.Biography)
                     : null)
                 .Where(a => a != null)
                 .Cast<AuthorDto>()],
             [.. book.CategoryIds
                 .Select(id => categories.TryGetValue(id, out var cat)
-                    ? LocalizeCategory(cat, context, localizationOptions.Value)
+                    ? new CategoryDto(cat.Id, cat.Name)
                     : null)
                 .Where(c => c != null)
                 .Cast<CategoryDto>()]
@@ -107,10 +108,13 @@ public static class BookEndpoints
 
     static async Task<Results<Ok<BookDto>, NotFound, StatusCodeHttpResult>> GetBook(
         Guid id,
-        [FromServices] IQuerySession session,
+        [FromServices] IDocumentStore store,
         [FromServices] IOptions<LocalizationOptions> localizationOptions,
         HttpContext context)
     {
+        // Use the resolved culture as the tenant ID
+        var culture = CultureInfo.CurrentCulture.Name;
+        await using var session = store.QuerySession(culture);
 
         // Dictionaries to hold included documents
         var publishers = new Dictionary<Guid, PublisherProjection>();
@@ -118,7 +122,8 @@ public static class BookEndpoints
         var categories = new Dictionary<Guid, CategoryProjection>();
 
         // Load book with Include() for related entities
-#pragma warning disable CS8603 // Possible null reference return - false positive from Marten's Include API
+        // Since session is tenant-scoped, Includes will automatically load for the same tenant!
+#pragma warning disable CS8603 // Possible null reference return
         var book = await session.Query<BookSearchProjection>()
             .Include(publishers).On(x => x.PublisherId)!
             .Include(authors).On(x => x.AuthorIds)!
@@ -132,7 +137,7 @@ public static class BookEndpoints
             return TypedResults.NotFound();
         }
 
-        // Get stream state for ETag
+        // Get stream state for ETag (Version is global, so this is fine)
         var streamState = await session.Events.FetchStreamStateAsync(id);
         if (streamState != null)
         {
@@ -147,14 +152,14 @@ public static class BookEndpoints
             Infrastructure.ETagHelper.AddETagHeader(context, etag);
         }
 
-        // Map to DTO with localized categories, description, and biographies
+        // Map to DTO (simple mapping now!)
         var bookDto = new BookDto(
             book.Id,
             book.Title,
             book.Isbn,
-            book.Language,
-            LocalizationHelper.LocalizeLanguageName(book.Language, context, localizationOptions.Value),
-            LocalizeDescription(book, context, localizationOptions.Value),
+            book.OriginalLanguage,
+            CultureInfo.GetCultureInfo(book.OriginalLanguage).DisplayName,
+            book.Description,
             book.PublicationDate,
             Helpers.BookHelpers.IsPreRelease(book.PublicationDate),
             book.PublisherId.HasValue && publishers.TryGetValue(book.PublisherId.Value, out var pub)
@@ -162,13 +167,13 @@ public static class BookEndpoints
                 : null,
             [.. book.AuthorIds
                 .Select(id => authors.TryGetValue(id, out var author)
-                    ? new AuthorDto(author.Id, author.Name, LocalizeBiography(author, context, localizationOptions.Value))
+                    ? new AuthorDto(author.Id, author.Name, author.Biography)
                     : null)
                 .Where(a => a != null)
                 .Cast<AuthorDto>()],
             [.. book.CategoryIds
                 .Select(catId => categories.TryGetValue(catId, out var cat)
-                    ? LocalizeCategory(cat, context, localizationOptions.Value)
+                    ? new CategoryDto(cat.Id, cat.Name)
                     : null)
                 .Where(c => c != null)
                 .Cast<CategoryDto>()]);
@@ -176,57 +181,5 @@ public static class BookEndpoints
         return TypedResults.Ok(bookDto);
     }
 
-    // Helper method for category localization with fallback strategy
-    static CategoryDto LocalizeCategory(
-        CategoryProjection category,
-        HttpContext context,
-        LocalizationOptions options)
-    {
-        var localizedName = LocalizationHelper.GetLocalizedValue(
-            context,
-            options,
-            category.Translations,
-            translation => translation.Name,
-            defaultValue: "Unknown");
 
-        return new CategoryDto(category.Id, localizedName);
-    }
-
-    // Helper method for book description localization with fallback strategy
-    static string? LocalizeDescription(
-        BookSearchProjection book,
-        HttpContext context,
-        LocalizationOptions options)
-    {
-        if (book.Translations.Count == 0)
-        {
-            return null;
-        }
-
-        return LocalizationHelper.GetLocalizedValue(
-            context,
-            options,
-            book.Translations,
-            translation => translation.Description,
-            defaultValue: string.Empty);
-    }
-
-    // Helper method for author biography localization with fallback strategy
-    static string? LocalizeBiography(
-        AuthorProjection author,
-        HttpContext context,
-        LocalizationOptions options)
-    {
-        if (author.Translations.Count == 0)
-        {
-            return null;
-        }
-
-        return LocalizationHelper.GetLocalizedValue(
-            context,
-            options,
-            author.Translations,
-            translation => translation.Biography,
-            defaultValue: string.Empty);
-    }
 }
