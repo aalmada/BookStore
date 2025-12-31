@@ -36,7 +36,7 @@ public class BookSearchProjectionBuilder : EventProjection
 {
     private readonly LocalizationOptions _localization;
 
-    public BookSearchProjectionBuilder(IOptions<LocalizationOptions> localizationOptions) 
+    public BookSearchProjectionBuilder(IOptions<LocalizationOptions> localizationOptions)
         => _localization = localizationOptions.Value;
 
     public async Task Project(IEvent<BookAdded> @event, IDocumentOperations ops)
@@ -231,7 +231,7 @@ public class BookSearchProjectionBuilder : EventProjection
     // Helper Methods
 
     private string? GetLocalizedDescription(BookAdded book, string culture) => GetValue(culture, book.Translations, t => t.Description, null);
-    private string? GetLocalizedDescription(BookUpdated book, string culture) 
+    private string? GetLocalizedDescription(BookUpdated book, string culture)
         => GetValue(culture, book.Translations, t => t.Description, null);
 
     private string? GetValue<T>(string culture, Dictionary<string, T>? translations, Func<T, string?> selector, string? defaultValue)

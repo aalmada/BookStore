@@ -21,7 +21,7 @@ public class AuthorProjectionBuilder : EventProjection
 {
     private readonly LocalizationOptions _localization;
 
-    public AuthorProjectionBuilder(IOptions<LocalizationOptions> localizationOptions) 
+    public AuthorProjectionBuilder(IOptions<LocalizationOptions> localizationOptions)
         => _localization = localizationOptions.Value;
 
     public async Task Project(IEvent<AuthorAdded> @event, IDocumentOperations ops)

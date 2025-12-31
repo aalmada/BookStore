@@ -20,7 +20,7 @@ public class CategoryProjectionBuilder : EventProjection
 {
     private readonly LocalizationOptions _localization;
 
-    public CategoryProjectionBuilder(IOptions<LocalizationOptions> localizationOptions) 
+    public CategoryProjectionBuilder(IOptions<LocalizationOptions> localizationOptions)
         => _localization = localizationOptions.Value;
 
     public async Task Project(IEvent<CategoryAdded> @event, IDocumentOperations ops)
