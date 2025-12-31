@@ -28,6 +28,8 @@
       href: correlation-causation-guide.md
     - name: API Conventions
       href: api-conventions-guide.md
+    - name: API Client Generation
+      href: api-client-generation.md
     - name: Aspire Orchestration
       href: aspire-guide.md
     - name: Aspire Deployment

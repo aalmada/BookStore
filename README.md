@@ -42,7 +42,7 @@ The Aspire dashboard opens automatically, providing access to:
 - **Real-time Updates** with SignalR notifications
 - **Optimistic UI** for instant feedback with eventual consistency
 - **Responsive Design** for desktop and mobile
-- **Type-safe API Client** with Refit
+- **Type-safe API Client** with BookStore.Client library (Refit-based)
 - **Resilience** with Polly (retry and circuit breaker)
 
 ### Backend API
@@ -83,41 +83,51 @@ See [Analyzer Rules Documentation](docs/analyzer-rules.md) for details.
 ```
 BookStore/
 ├── src/
-│   ├── BookStore.ApiService/      # Backend API with event sourcing
-│   │   ├── Aggregates/            # Domain aggregates
-│   │   ├── Events/                # Domain events
-│   │   ├── Commands/              # Command definitions
-│   │   ├── Handlers/              # Wolverine command handlers
-│   │   ├── Projections/           # Read model projections
-│   │   ├── Endpoints/             # API endpoints
-│   │   └── Infrastructure/        # Cross-cutting concerns
+│   ├── ApiService/
+│   │   ├── BookStore.ApiService/      # Backend API with event sourcing
+│   │   │   ├── Aggregates/            # Domain aggregates
+│   │   │   ├── Events/                # Domain events
+│   │   │   ├── Commands/              # Command definitions
+│   │   │   ├── Handlers/              # Wolverine command handlers
+│   │   │   ├── Projections/           # Read model projections
+│   │   │   ├── Endpoints/             # API endpoints
+│   │   │   └── Infrastructure/        # Cross-cutting concerns
+│   │   │
+│   │   └── BookStore.ApiService.Analyzers/  # Roslyn analyzers
 │   │
-│   ├── BookStore.Web/             # Blazor frontend
-│   │   ├── Components/            # Blazor components
-│   │   ├── Services/              # API client (Refit)
-│   │   └── Models/                # DTOs and view models
+│   ├── Client/
+│   │   └── BookStore.Client/          # Reusable API client library
+│   │       ├── IBookStoreApi.cs       # Refit interface
+│   │       ├── BookStoreClientExtensions.cs  # DI helpers
+│   │       └── README.md              # Usage guide
 │   │
-│   ├── BookStore.AppHost/         # Aspire orchestration
-│   │   └── Program.cs             # Service configuration
+│   ├── Web/
+│   │   └── BookStore.Web/             # Blazor frontend
+│   │       ├── Components/            # Blazor components
+│   │       └── Services/              # Application services
 │   │
-│   │   └── Extensions.cs          # OpenTelemetry, health checks
+│   ├── Shared/
+│   │   ├── BookStore.Shared/          # Shared domain models & DTOs
+│   │   └── BookStore.Shared.Tests/    # Unit tests for shared code
 │   │
-│   ├── BookStore.Shared/          # Shared domain models & DTOs
-│   │   ├── BookStore.Shared/      # Shared library
-│   │   └── BookStore.Shared.Tests/# Unit tests for shared code
+│   ├── BookStore.AppHost/             # Aspire orchestration
+│   │   └── Program.cs                 # Service configuration
 │   │
-│   └── BookStore.Tests/           # Integration tests
+│   └── BookStore.ServiceDefaults/     # Shared service configuration
+│       └── Extensions.cs              # OpenTelemetry, health checks
 │
-├── docs/                          # Documentation
-│   ├── getting-started.md         # Setup guide
-│   ├── architecture.md            # System design
-│   ├── wolverine-guide.md         # Command/handler pattern
-│   ├── time-standards.md          # JSON and time standards
-│   ├── etag-guide.md              # ETag usage
-│   └── correlation-causation-guide.md
+├── docs/                              # Documentation
+│   ├── getting-started.md             # Setup guide
+│   ├── architecture.md                # System design
+│   ├── api-client-generation.md       # Client library usage
+│   ├── wolverine-guide.md             # Command/handler pattern
+│   └── ...
 │
-├── BookStore.slnx                 # Solution file (new .slnx format)
-└── README.md                      # This file
+├── _tools/                            # Development tools
+│   └── update-openapi.sh              # OpenAPI spec updater
+│
+├── BookStore.slnx                     # Solution file (new .slnx format)
+└── README.md                          # This file
 ```
 
 ## 📖 Documentation
@@ -133,6 +143,7 @@ BookStore/
 - **[Testing Guide](docs/testing-guide.md)** - Testing with TUnit, assertions, and best practices
 - **[Wolverine Integration](docs/wolverine-guide.md)** - Command/handler pattern with Wolverine
 - **[API Conventions](docs/api-conventions-guide.md)** - Time handling and JSON serialization standards
+- **[API Client Generation](docs/api-client-generation.md)** - Automated client generation with OpenAPI and Refitter
 - **[ETag Support](docs/etag-guide.md)** - Optimistic concurrency and caching
 - **[Correlation & Causation IDs](docs/correlation-causation-guide.md)** - Distributed tracing
 - **[Caching Guide](docs/caching-guide.md)** - Hybrid caching with Redis and localization support
@@ -144,7 +155,7 @@ BookStore/
 ### Frontend
 - **Blazor Web** - Interactive web UI with Server rendering
 - **SignalR Client** - Real-time notifications
-- **Refit** - Type-safe HTTP client
+- **BookStore.Client** - Reusable API client library (Refit-based)
 - **Polly** - Resilience and transient fault handling
 
 ### Backend

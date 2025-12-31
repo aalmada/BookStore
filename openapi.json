@@ -1,0 +1,2089 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "Book Store API",
+    "description": "Book store management system with search, authors, categories, and publishers.\n\n## Features\n- Multi-language support (English, Portuguese, Spanish, French, German)\n- Request tracking with correlation IDs\n- Optimistic concurrency control for updates\n- Real-time notifications via SignalR\n\n## SignalR Hub\n\n**WebSocket Endpoint**: `/hub/bookstore`\n\n### Events (Server → Client)\n\nThe server broadcasts the following events to all connected clients:\n\n- **BookCreatedNotification** - Sent when a book is created\n  ```json\n  {\n    \"entityId\": \"3fa85f64-5717-4562-b3fc-2c963f66afa6\",\n    \"title\": \"Clean Code\",\n    \"eventType\": \"BookCreated\",\n    \"timestamp\": \"2025-12-28T16:00:00Z\"\n  }\n  ```\n\n- **BookUpdatedNotification** - Sent when a book is updated\n- **BookDeletedNotification** - Sent when a book is deleted\n\n### Connection Example\n\n**JavaScript/TypeScript**:\n```javascript\nconst connection = new signalR.HubConnectionBuilder()\n    .withUrl(\"/hub/bookstore\")\n    .withAutomaticReconnect()\n    .build();\n\nconnection.on(\"BookCreatedNotification\", (notification) => {\n    console.log(\"Book created:\", notification);\n});\n\nawait connection.start();\n```\n\n**C# (.NET)**:\n```csharp\nvar connection = new HubConnectionBuilder()\n    .WithUrl(\"https://localhost:7001/hub/bookstore\")\n    .WithAutomaticReconnect()\n    .Build();\n\nconnection.On<BookNotification>(\"BookCreatedNotification\", notification =>\n{\n    Console.WriteLine($\"Book created: {notification.Title}\");\n});\n\nawait connection.StartAsync();\n```\n\nFor more details, see the [SignalR Guide](https://github.com/yourusername/bookstore/blob/main/docs/signalr-guide.md).",
+    "contact": {
+      "name": "Book Store Support"
+    },
+    "version": "v1"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:61910/"
+    }
+  ],
+  "paths": {
+    "/api/books": {
+      "get": {
+        "tags": [
+          "Books"
+        ],
+        "summary": "Get all books",
+        "operationId": "GetBooks",
+        "parameters": [
+          {
+            "name": "Page",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "PageSize",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "header",
+            "description": "API version. Example: `1.0`"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+          },
+          {
+            "name": "X-Correlation-ID",
+            "in": "header",
+            "description": "Correlation ID for tracking requests across the system"
+          },
+          {
+            "name": "X-Causation-ID",
+            "in": "header",
+            "description": "Causation ID linking this request to its trigger"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedListDtoOfBookDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/books/{id}": {
+      "get": {
+        "tags": [
+          "Books"
+        ],
+        "summary": "Get book by ID",
+        "operationId": "GetBook",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "header",
+            "description": "API version. Example: `1.0`"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+          },
+          {
+            "name": "X-Correlation-ID",
+            "in": "header",
+            "description": "Correlation ID for tracking requests across the system"
+          },
+          {
+            "name": "X-Causation-ID",
+            "in": "header",
+            "description": "Causation ID linking this request to its trigger"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/authors": {
+      "get": {
+        "tags": [
+          "Authors"
+        ],
+        "summary": "Get all authors",
+        "operationId": "GetAuthors",
+        "parameters": [
+          {
+            "name": "Page",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "PageSize",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "header",
+            "description": "API version. Example: `1.0`"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+          },
+          {
+            "name": "X-Correlation-ID",
+            "in": "header",
+            "description": "Correlation ID for tracking requests across the system"
+          },
+          {
+            "name": "X-Causation-ID",
+            "in": "header",
+            "description": "Causation ID linking this request to its trigger"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedListDtoOfAuthorDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/authors/{id}": {
+      "get": {
+        "tags": [
+          "Authors"
+        ],
+        "summary": "Get author by ID",
+        "operationId": "GetAuthor",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "header",
+            "description": "API version. Example: `1.0`"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+          },
+          {
+            "name": "X-Correlation-ID",
+            "in": "header",
+            "description": "Correlation ID for tracking requests across the system"
+          },
+          {
+            "name": "X-Causation-ID",
+            "in": "header",
+            "description": "Causation ID linking this request to its trigger"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/categories": {
+      "get": {
+        "tags": [
+          "Categories"
+        ],
+        "summary": "Get all categories",
+        "operationId": "GetCategories",
+        "parameters": [
+          {
+            "name": "Page",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "PageSize",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "header",
+            "description": "API version. Example: `1.0`"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+          },
+          {
+            "name": "X-Correlation-ID",
+            "in": "header",
+            "description": "Correlation ID for tracking requests across the system"
+          },
+          {
+            "name": "X-Causation-ID",
+            "in": "header",
+            "description": "Causation ID linking this request to its trigger"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedListDtoOfCategoryDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/categories/{id}": {
+      "get": {
+        "tags": [
+          "Categories"
+        ],
+        "summary": "Get category by ID",
+        "operationId": "GetCategory",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "header",
+            "description": "API version. Example: `1.0`"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+          },
+          {
+            "name": "X-Correlation-ID",
+            "in": "header",
+            "description": "Correlation ID for tracking requests across the system"
+          },
+          {
+            "name": "X-Causation-ID",
+            "in": "header",
+            "description": "Causation ID linking this request to its trigger"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/publishers": {
+      "get": {
+        "tags": [
+          "Publishers"
+        ],
+        "summary": "Get all publishers",
+        "operationId": "GetPublishers",
+        "parameters": [
+          {
+            "name": "Page",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "PageSize",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "header",
+            "description": "API version. Example: `1.0`"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+          },
+          {
+            "name": "X-Correlation-ID",
+            "in": "header",
+            "description": "Correlation ID for tracking requests across the system"
+          },
+          {
+            "name": "X-Causation-ID",
+            "in": "header",
+            "description": "Causation ID linking this request to its trigger"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PublisherDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/publishers/{id}": {
+      "get": {
+        "tags": [
+          "Publishers"
+        ],
+        "summary": "Get publisher by ID",
+        "operationId": "GetPublisher",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "header",
+            "description": "API version. Example: `1.0`"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+          },
+          {
+            "name": "X-Correlation-ID",
+            "in": "header",
+            "description": "Correlation ID for tracking requests across the system"
+          },
+          {
+            "name": "X-Causation-ID",
+            "in": "header",
+            "description": "Causation ID linking this request to its trigger"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublisherDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/admin/books": {
+      "post": {
+        "tags": [
+          "Admin - Books"
+        ],
+        "summary": "Create a new book",
+        "operationId": "CreateBook",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "header",
+            "description": "API version. Example: `1.0`"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+          },
+          {
+            "name": "X-Correlation-ID",
+            "in": "header",
+            "description": "Correlation ID for tracking requests across the system"
+          },
+          {
+            "name": "X-Causation-ID",
+            "in": "header",
+            "description": "Causation ID linking this request to its trigger"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBookRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Admin - Books"
+        ],
+        "summary": "Get all books",
+        "operationId": "GetAllBooksAdmin",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "header",
+            "description": "API version. Example: `1.0`"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+          },
+          {
+            "name": "X-Correlation-ID",
+            "in": "header",
+            "description": "Correlation ID for tracking requests across the system"
+          },
+          {
+            "name": "X-Causation-ID",
+            "in": "header",
+            "description": "Causation ID linking this request to its trigger"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/admin/books/{id}": {
+      "put": {
+        "tags": [
+          "Admin - Books"
+        ],
+        "summary": "Update a book",
+        "operationId": "UpdateBook",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "header",
+            "description": "API version. Example: `1.0`"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+          },
+          {
+            "name": "X-Correlation-ID",
+            "in": "header",
+            "description": "Correlation ID for tracking requests across the system"
+          },
+          {
+            "name": "X-Causation-ID",
+            "in": "header",
+            "description": "Causation ID linking this request to its trigger"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateBookRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Admin - Books"
+        ],
+        "summary": "Delete a book",
+        "operationId": "SoftDeleteBook",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "header",
+            "description": "API version. Example: `1.0`"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+          },
+          {
+            "name": "X-Correlation-ID",
+            "in": "header",
+            "description": "Correlation ID for tracking requests across the system"
+          },
+          {
+            "name": "X-Causation-ID",
+            "in": "header",
+            "description": "Causation ID linking this request to its trigger"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/admin/books/{id}/restore": {
+      "post": {
+        "tags": [
+          "Admin - Books"
+        ],
+        "summary": "Restore a deleted book",
+        "operationId": "RestoreBook",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "header",
+            "description": "API version. Example: `1.0`"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+          },
+          {
+            "name": "X-Correlation-ID",
+            "in": "header",
+            "description": "Correlation ID for tracking requests across the system"
+          },
+          {
+            "name": "X-Causation-ID",
+            "in": "header",
+            "description": "Causation ID linking this request to its trigger"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/admin/books/{id}/cover": {
+      "post": {
+        "tags": [
+          "Admin - Books"
+        ],
+        "summary": "Upload book cover image",
+        "operationId": "UploadBookCover",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "header",
+            "description": "API version. Example: `1.0`"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+          },
+          {
+            "name": "X-Correlation-ID",
+            "in": "header",
+            "description": "Correlation ID for tracking requests across the system"
+          },
+          {
+            "name": "X-Causation-ID",
+            "in": "header",
+            "description": "Causation ID linking this request to its trigger"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "required": [
+                  "file"
+                ],
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "$ref": "#/components/schemas/IFormFile"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/admin/authors": {
+      "post": {
+        "tags": [
+          "Admin - Authors"
+        ],
+        "summary": "Create a new author",
+        "operationId": "CreateAuthor",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "header",
+            "description": "API version. Example: `1.0`"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+          },
+          {
+            "name": "X-Correlation-ID",
+            "in": "header",
+            "description": "Correlation ID for tracking requests across the system"
+          },
+          {
+            "name": "X-Causation-ID",
+            "in": "header",
+            "description": "Causation ID linking this request to its trigger"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAuthorRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/admin/authors/{id}": {
+      "put": {
+        "tags": [
+          "Admin - Authors"
+        ],
+        "summary": "Update an author",
+        "operationId": "UpdateAuthor",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "header",
+            "description": "API version. Example: `1.0`"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+          },
+          {
+            "name": "X-Correlation-ID",
+            "in": "header",
+            "description": "Correlation ID for tracking requests across the system"
+          },
+          {
+            "name": "X-Causation-ID",
+            "in": "header",
+            "description": "Causation ID linking this request to its trigger"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAuthorRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Admin - Authors"
+        ],
+        "summary": "Delete an author",
+        "operationId": "SoftDeleteAuthor",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "header",
+            "description": "API version. Example: `1.0`"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+          },
+          {
+            "name": "X-Correlation-ID",
+            "in": "header",
+            "description": "Correlation ID for tracking requests across the system"
+          },
+          {
+            "name": "X-Causation-ID",
+            "in": "header",
+            "description": "Causation ID linking this request to its trigger"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/admin/authors/{id}/restore": {
+      "post": {
+        "tags": [
+          "Admin - Authors"
+        ],
+        "summary": "Restore a deleted author",
+        "operationId": "RestoreAuthor",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "header",
+            "description": "API version. Example: `1.0`"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+          },
+          {
+            "name": "X-Correlation-ID",
+            "in": "header",
+            "description": "Correlation ID for tracking requests across the system"
+          },
+          {
+            "name": "X-Causation-ID",
+            "in": "header",
+            "description": "Causation ID linking this request to its trigger"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/admin/categories": {
+      "post": {
+        "tags": [
+          "Admin - Categories"
+        ],
+        "summary": "Create a new category",
+        "operationId": "CreateCategory",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "header",
+            "description": "API version. Example: `1.0`"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+          },
+          {
+            "name": "X-Correlation-ID",
+            "in": "header",
+            "description": "Correlation ID for tracking requests across the system"
+          },
+          {
+            "name": "X-Causation-ID",
+            "in": "header",
+            "description": "Causation ID linking this request to its trigger"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCategoryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/admin/categories/{id}": {
+      "put": {
+        "tags": [
+          "Admin - Categories"
+        ],
+        "summary": "Update a category",
+        "operationId": "UpdateCategory",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "header",
+            "description": "API version. Example: `1.0`"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+          },
+          {
+            "name": "X-Correlation-ID",
+            "in": "header",
+            "description": "Correlation ID for tracking requests across the system"
+          },
+          {
+            "name": "X-Causation-ID",
+            "in": "header",
+            "description": "Causation ID linking this request to its trigger"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCategoryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Admin - Categories"
+        ],
+        "summary": "Delete a category",
+        "operationId": "SoftDeleteCategory",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "header",
+            "description": "API version. Example: `1.0`"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+          },
+          {
+            "name": "X-Correlation-ID",
+            "in": "header",
+            "description": "Correlation ID for tracking requests across the system"
+          },
+          {
+            "name": "X-Causation-ID",
+            "in": "header",
+            "description": "Causation ID linking this request to its trigger"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/admin/categories/{id}/restore": {
+      "post": {
+        "tags": [
+          "Admin - Categories"
+        ],
+        "summary": "Restore a deleted category",
+        "operationId": "RestoreCategory",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "header",
+            "description": "API version. Example: `1.0`"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+          },
+          {
+            "name": "X-Correlation-ID",
+            "in": "header",
+            "description": "Correlation ID for tracking requests across the system"
+          },
+          {
+            "name": "X-Causation-ID",
+            "in": "header",
+            "description": "Causation ID linking this request to its trigger"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/admin/publishers": {
+      "post": {
+        "tags": [
+          "Admin - Publishers"
+        ],
+        "summary": "Create a new publisher",
+        "operationId": "CreatePublisher",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "header",
+            "description": "API version. Example: `1.0`"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+          },
+          {
+            "name": "X-Correlation-ID",
+            "in": "header",
+            "description": "Correlation ID for tracking requests across the system"
+          },
+          {
+            "name": "X-Causation-ID",
+            "in": "header",
+            "description": "Causation ID linking this request to its trigger"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePublisherRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/admin/publishers/{id}": {
+      "put": {
+        "tags": [
+          "Admin - Publishers"
+        ],
+        "summary": "Update a publisher",
+        "operationId": "UpdatePublisher",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "header",
+            "description": "API version. Example: `1.0`"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+          },
+          {
+            "name": "X-Correlation-ID",
+            "in": "header",
+            "description": "Correlation ID for tracking requests across the system"
+          },
+          {
+            "name": "X-Causation-ID",
+            "in": "header",
+            "description": "Causation ID linking this request to its trigger"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePublisherRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Admin - Publishers"
+        ],
+        "summary": "Delete a publisher",
+        "operationId": "SoftDeletePublisher",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "header",
+            "description": "API version. Example: `1.0`"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+          },
+          {
+            "name": "X-Correlation-ID",
+            "in": "header",
+            "description": "Correlation ID for tracking requests across the system"
+          },
+          {
+            "name": "X-Causation-ID",
+            "in": "header",
+            "description": "Causation ID linking this request to its trigger"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/admin/publishers/{id}/restore": {
+      "post": {
+        "tags": [
+          "Admin - Publishers"
+        ],
+        "summary": "Restore a deleted publisher",
+        "operationId": "RestorePublisher",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "header",
+            "description": "API version. Example: `1.0`"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+          },
+          {
+            "name": "X-Correlation-ID",
+            "in": "header",
+            "description": "Correlation ID for tracking requests across the system"
+          },
+          {
+            "name": "X-Causation-ID",
+            "in": "header",
+            "description": "Causation ID linking this request to its trigger"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/admin/projections/rebuild": {
+      "post": {
+        "tags": [
+          "Admin - System"
+        ],
+        "summary": "Rebuild all projections",
+        "operationId": "RebuildProjections",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "header",
+            "description": "API version. Example: `1.0`"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+          },
+          {
+            "name": "X-Correlation-ID",
+            "in": "header",
+            "description": "Correlation ID for tracking requests across the system"
+          },
+          {
+            "name": "X-Causation-ID",
+            "in": "header",
+            "description": "Causation ID linking this request to its trigger"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RebuildResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/projections/status": {
+      "get": {
+        "tags": [
+          "Admin - System"
+        ],
+        "summary": "Get projection status",
+        "operationId": "GetProjectionStatus",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "header",
+            "description": "API version. Example: `1.0`"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+          },
+          {
+            "name": "X-Correlation-ID",
+            "in": "header",
+            "description": "Correlation ID for tracking requests across the system"
+          },
+          {
+            "name": "X-Causation-ID",
+            "in": "header",
+            "description": "Causation ID linking this request to its trigger"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectionStatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AuthorDto": {
+        "required": [
+          "id",
+          "name",
+          "biography"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "biography": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "AuthorTranslationDto": {
+        "required": [
+          "biography"
+        ],
+        "type": "object",
+        "properties": {
+          "biography": {
+            "type": "string"
+          }
+        }
+      },
+      "BookDto": {
+        "required": [
+          "id",
+          "title",
+          "isbn",
+          "language",
+          "languageName",
+          "description",
+          "publicationDate",
+          "isPreRelease",
+          "publisher",
+          "authors",
+          "categories"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "isbn": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "language": {
+            "type": "string"
+          },
+          "languageName": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "publicationDate": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PartialDate"
+              }
+            ]
+          },
+          "isPreRelease": {
+            "type": "boolean"
+          },
+          "publisher": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PublisherDto"
+              }
+            ]
+          },
+          "authors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuthorDto"
+            }
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CategoryDto"
+            }
+          }
+        }
+      },
+      "BookTranslationDto": {
+        "required": [
+          "description"
+        ],
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string"
+          }
+        }
+      },
+      "CategoryDto": {
+        "required": [
+          "id",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "CategoryTranslationDto": {
+        "required": [
+          "name",
+          "description"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "CreateAuthorRequest": {
+        "required": [
+          "name",
+          "translations"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "translations": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "$ref": "#/components/schemas/AuthorTranslationDto"
+            }
+          }
+        }
+      },
+      "CreateBookRequest": {
+        "required": [
+          "title",
+          "isbn",
+          "language",
+          "translations",
+          "publicationDate",
+          "publisherId",
+          "authorIds",
+          "categoryIds"
+        ],
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "isbn": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "language": {
+            "type": "string"
+          },
+          "translations": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "$ref": "#/components/schemas/BookTranslationDto"
+            }
+          },
+          "publicationDate": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PartialDate"
+              }
+            ]
+          },
+          "publisherId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "authorIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "categoryIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        }
+      },
+      "CreateCategoryRequest": {
+        "required": [
+          "translations"
+        ],
+        "type": "object",
+        "properties": {
+          "translations": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "$ref": "#/components/schemas/CategoryTranslationDto"
+            }
+          }
+        }
+      },
+      "CreatePublisherRequest": {
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "IFormFile": {
+        "type": "string",
+        "format": "binary"
+      },
+      "PagedListDtoOfAuthorDto": {
+        "required": [
+          "items",
+          "pageNumber",
+          "pageSize",
+          "totalItemCount"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuthorDto"
+            }
+          },
+          "pageNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "totalItemCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "pageCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "hasPreviousPage": {
+            "type": "boolean"
+          },
+          "hasNextPage": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PagedListDtoOfBookDto": {
+        "required": [
+          "items",
+          "pageNumber",
+          "pageSize",
+          "totalItemCount"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BookDto"
+            }
+          },
+          "pageNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "totalItemCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "pageCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "hasPreviousPage": {
+            "type": "boolean"
+          },
+          "hasNextPage": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PagedListDtoOfCategoryDto": {
+        "required": [
+          "items",
+          "pageNumber",
+          "pageSize",
+          "totalItemCount"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CategoryDto"
+            }
+          },
+          "pageNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "totalItemCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "pageCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "hasPreviousPage": {
+            "type": "boolean"
+          },
+          "hasNextPage": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PartialDate": { },
+      "ProjectionStatusResponse": {
+        "required": [
+          "status",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "PublisherDto": {
+        "required": [
+          "id",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "RebuildResponse": {
+        "required": [
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdateAuthorRequest": {
+        "required": [
+          "name",
+          "translations"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "translations": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "$ref": "#/components/schemas/AuthorTranslationDto"
+            }
+          }
+        }
+      },
+      "UpdateBookRequest": {
+        "required": [
+          "title",
+          "isbn",
+          "language",
+          "translations",
+          "publicationDate",
+          "publisherId",
+          "authorIds",
+          "categoryIds"
+        ],
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "isbn": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "language": {
+            "type": "string"
+          },
+          "translations": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "$ref": "#/components/schemas/BookTranslationDto"
+            }
+          },
+          "publicationDate": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PartialDate"
+              }
+            ]
+          },
+          "publisherId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "authorIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "categoryIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        }
+      },
+      "UpdateCategoryRequest": {
+        "required": [
+          "translations"
+        ],
+        "type": "object",
+        "properties": {
+          "translations": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "$ref": "#/components/schemas/CategoryTranslationDto"
+            }
+          }
+        }
+      },
+      "UpdatePublisherRequest": {
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Books"
+    },
+    {
+      "name": "Authors"
+    },
+    {
+      "name": "Categories"
+    },
+    {
+      "name": "Publishers"
+    },
+    {
+      "name": "Admin - Books"
+    },
+    {
+      "name": "Admin - Authors"
+    },
+    {
+      "name": "Admin - Categories"
+    },
+    {
+      "name": "Admin - Publishers"
+    },
+    {
+      "name": "Admin - System"
+    }
+  ]
+}

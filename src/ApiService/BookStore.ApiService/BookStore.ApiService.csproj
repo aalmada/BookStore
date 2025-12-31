@@ -37,6 +37,12 @@
     <PackageReference Include="WolverineFx.SignalR" Version="5.9.2" />
   </ItemGroup>
 
+  <PropertyGroup>
+    <!-- Build-time OpenAPI generation runs the app (requires database) -->
+    <!-- We generate at runtime and use update script instead -->
+    <OpenApiGenerateDocuments>false</OpenApiGenerateDocuments>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\BookStore.ApiService.Analyzers\BookStore.ApiService.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\..\Shared\BookStore.Shared\BookStore.Shared.csproj" />

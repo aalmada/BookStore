@@ -7,7 +7,9 @@ The Book Store API is built using **Event Sourcing** and **CQRS** patterns with 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                     Client Applications                      │
-│  (Web UI, Mobile Apps, Third-party Integrations)            │
+│  (Blazor Web, Mobile Apps, Console Apps, etc.)              │
+│                                                              │
+│  Uses: BookStore.Client library (Refit-based)               │
 └────────────────────────┬────────────────────────────────────┘
                          │
                          │ HTTP/REST

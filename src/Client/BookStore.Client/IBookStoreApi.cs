@@ -1,6 +1,7 @@
+using BookStore.Shared.Models;
 using Refit;
 
-namespace BookStore.Web.Services;
+namespace BookStore.Client;
 
 /// <summary>
 /// Refit interface for Book Store API

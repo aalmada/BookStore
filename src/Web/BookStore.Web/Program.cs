@@ -3,6 +3,7 @@ using BookStore.Shared.Infrastructure.Json;
 using BookStore.Web;
 using BookStore.Web.Components;
 using BookStore.Web.Services;
+using BookStore.Client;
 using MudBlazor.Services;
 using Polly;
 using Polly.Extensions.Http;
@@ -20,6 +21,11 @@ builder.Services.AddRazorComponents()
 // Add MudBlazor services
 builder.Services.AddMudServices();
 
+// Get API base URL from service discovery (Aspire)
+var apiServiceUrl = builder.Configuration["services:apiservice:https:0"]
+    ?? builder.Configuration["services:apiservice:http:0"]
+    ?? "http://localhost:5000";
+
 // Configure Polly policies for resilience
 var retryPolicy = HttpPolicyExtensions
     .HandleTransientHttpError()
@@ -30,24 +36,9 @@ var circuitBreakerPolicy = HttpPolicyExtensions
     .HandleTransientHttpError()
     .CircuitBreakerAsync(5, TimeSpan.FromSeconds(30));
 
-// Register Refit API client with Polly policies
+// Register BookStore API client with Polly resilience policies
 builder.Services
-    .AddRefitClient<IBookStoreApi>(new RefitSettings
-    {
-        ContentSerializer = new SystemTextJsonContentSerializer(new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            Converters = { new PartialDateJsonConverter() }
-        })
-    })
-    .ConfigureHttpClient(c =>
-    {
-        // Get API base URL from service discovery (Aspire)
-        var apiServiceUrl = builder.Configuration["services:apiservice:https:0"]
-            ?? builder.Configuration["services:apiservice:http:0"]
-            ?? "http://localhost:5000";
-        c.BaseAddress = new Uri(apiServiceUrl);
-    })
+    .AddBookStoreClient(new Uri(apiServiceUrl))
     .AddPolicyHandler(retryPolicy)
     .AddPolicyHandler(circuitBreakerPolicy);
 

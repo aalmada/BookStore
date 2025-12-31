@@ -18,6 +18,9 @@
     <Project Path="src/ApiService/BookStore.ApiService.Tests/BookStore.ApiService.Tests.csproj" />
     <Project Path="src/ApiService/BookStore.ApiService/BookStore.ApiService.csproj" />
   </Folder>
+  <Folder Name="/src/Client/">
+    <Project Path="src/Client/BookStore.Client/BookStore.Client.csproj" />
+  </Folder>
   <Folder Name="/src/Shared/">
     <Project Path="src/Shared/BookStore.Shared.Tests/BookStore.Shared.Tests.csproj" />
     <Project Path="src/Shared/BookStore.Shared/BookStore.Shared.csproj" />

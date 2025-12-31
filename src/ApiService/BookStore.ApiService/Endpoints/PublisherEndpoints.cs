@@ -1,3 +1,4 @@
+using BookStore.ApiService.Infrastructure;
 using BookStore.ApiService.Models;
 using BookStore.ApiService.Projections;
 using Marten;
@@ -25,7 +26,7 @@ public static class PublisherEndpoints
         return group;
     }
 
-    static async Task<Ok<IPagedList<PublisherProjection>>> GetPublishers(
+    static async Task<Ok<PagedListAdapter<PublisherDto>>> GetPublishers(
         [FromServices] IQuerySession session,
         [FromServices] IOptions<PaginationOptions> paginationOptions,
         [AsParameters] PagedRequest request)
@@ -37,10 +38,21 @@ public static class PublisherEndpoints
             .OrderBy(p => p.Name)
             .ToPagedListAsync(paging.Page!.Value, paging.PageSize!.Value);
 
-        return TypedResults.Ok(pagedList);
+        // Map to DTOs using LINQ's lazy Select (no intermediate collection)
+        var mappedList = pagedList.Select(p => new PublisherDto(p.Id, p.Name)).ToList();
+        
+        // Wrap in adapter for zero-allocation serialization
+        var adapter = new PagedListAdapter<PublisherDto>(
+            new PagedListWrapper<PublisherDto>(
+                mappedList,
+                pagedList.PageNumber,
+                pagedList.PageSize,
+                pagedList.TotalItemCount));
+
+        return TypedResults.Ok(adapter);
     }
 
-    static async Task<Microsoft.AspNetCore.Http.HttpResults.Results<Ok<PublisherProjection>, NotFound>> GetPublisher(
+    static async Task<Microsoft.AspNetCore.Http.HttpResults.Results<Ok<PublisherDto>, NotFound>> GetPublisher(
         Guid id,
         [FromServices] IQuerySession session)
     {
@@ -50,6 +62,7 @@ public static class PublisherEndpoints
             return TypedResults.NotFound();
         }
 
-        return TypedResults.Ok(publisher);
+        var publisherDto = new PublisherDto(publisher.Id, publisher.Name);
+        return TypedResults.Ok(publisherDto);
     }
 }
