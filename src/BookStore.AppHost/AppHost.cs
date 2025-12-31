@@ -13,9 +13,12 @@ var storage = builder.AddAzureStorage("storage")
 
 var blobs = storage.AddBlobs("blobs");
 
+var cache = builder.AddRedis("cache");
+
 var apiService = builder.AddProject<Projects.BookStore_ApiService>("apiservice")
     .WithReference(bookStoreDb)
     .WithReference(blobs) // Add blob storage reference
+    .WithReference(cache)
     .WithHttpHealthCheck("/health")
     .WithExternalHttpEndpoints()
     .WithUrlForEndpoint("http", url =>

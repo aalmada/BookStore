@@ -22,6 +22,8 @@
       href: logging-guide.md
     - name: ETag
       href: etag-guide.md
+    - name: Caching
+      href: caching-guide.md
     - name: Correlation & Causation
       href: correlation-causation-guide.md
     - name: API Conventions

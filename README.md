@@ -134,6 +134,7 @@ BookStore/
 - **[API Conventions](docs/api-conventions-guide.md)** - Time handling and JSON serialization standards
 - **[ETag Support](docs/etag-guide.md)** - Optimistic concurrency and caching
 - **[Correlation & Causation IDs](docs/correlation-causation-guide.md)** - Distributed tracing
+- **[Caching Guide](docs/caching-guide.md)** - Hybrid caching with Redis and localization support
 - **[Real-time Notifications](docs/signalr-guide.md)** - SignalR integration and optimistic updates
 - **[Contributing Guidelines](CONTRIBUTING.md)** - How to contribute to this project
 

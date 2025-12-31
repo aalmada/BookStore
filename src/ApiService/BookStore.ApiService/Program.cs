@@ -15,6 +15,9 @@ builder.AddServiceDefaults();
 // Add Azure Blob Storage client (Azurite locally, Azure in production)
 builder.AddAzureBlobServiceClient("blobs");
 
+// Add Redis distributed cache
+builder.AddRedisDistributedCache("cache");
+
 // Configure services
 builder.Services.AddJsonConfiguration(builder.Environment);
 builder.Services.AddApplicationServices(builder.Configuration);
