@@ -1,3 +1,4 @@
+using System.Globalization;
 using BookStore.ApiService.Infrastructure;
 using BookStore.ApiService.Models;
 using BookStore.ApiService.Projections;
@@ -6,7 +7,6 @@ using Marten.Pagination;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
-using System.Globalization;
 
 namespace BookStore.ApiService.Endpoints;
 
@@ -65,7 +65,7 @@ public static class AuthorEndpoints
     {
         var culture = CultureInfo.CurrentCulture.Name;
         await using var session = store.QuerySession(culture);
-        
+
         var author = await session.LoadAsync<AuthorProjection>(id);
         if (author == null)
         {

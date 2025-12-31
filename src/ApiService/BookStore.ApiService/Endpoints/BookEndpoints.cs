@@ -1,3 +1,4 @@
+using System.Globalization;
 using BookStore.ApiService.Models;
 using BookStore.ApiService.Projections;
 using Marten;
@@ -6,7 +7,6 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Npgsql;
-using System.Globalization;
 
 namespace BookStore.ApiService.Endpoints;
 
@@ -40,7 +40,7 @@ public static class BookEndpoints
         [FromQuery] string? search = null)
     {
         var paging = request.Normalize(paginationOptions.Value);
-        
+
         // Use the resolved culture as the tenant ID
         var culture = CultureInfo.CurrentCulture.Name; // e.g. "en-US", "pt", "en"
         await using var session = store.QuerySession(culture);
@@ -180,6 +180,4 @@ public static class BookEndpoints
 
         return TypedResults.Ok(bookDto);
     }
-
-
 }

@@ -101,18 +101,18 @@ public static class MartenConfigurationExtensions
     static void RegisterProjections(StoreOptions options, IServiceProvider sp)
     {
         // Configure Conjoined Tenancy for Multi-Lingual Projections
-        options.Schema.For<BookSearchProjection>().MultiTenanted();
-        options.Schema.For<AuthorProjection>().MultiTenanted();
-        options.Schema.For<CategoryProjection>().MultiTenanted();
+        _ = options.Schema.For<BookSearchProjection>().MultiTenanted();
+        _ = options.Schema.For<AuthorProjection>().MultiTenanted();
+        _ = options.Schema.For<CategoryProjection>().MultiTenanted();
 
         // Configure projections - using AddAsync for async projections managed by Wolverine
         // Instantiate builders using ServiceProvider to satisfy dependencies
         var localization = sp.GetRequiredService<IOptions<LocalizationOptions>>();
-        
+
         options.Projections.Add(new AuthorProjectionBuilder(localization), ProjectionLifecycle.Async);
         options.Projections.Add(new CategoryProjectionBuilder(localization), ProjectionLifecycle.Async);
         options.Projections.Add(new BookSearchProjectionBuilder(localization), ProjectionLifecycle.Async);
-        
+
         // PublisherProjectionBuilder has no dependencies, so simple Add is fine if it has parameterless ctor
         // Or we can just use defaults if it does. Check PublisherProjectionBuilder.
         // Assuming it's simple:
