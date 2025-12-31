@@ -15,6 +15,7 @@ Welcome to the Book Store API documentation. This is an event-sourced book store
 - [API Conventions](api-conventions-guide.md)
 - [Aspire Deployment Guide](aspire-deployment-guide.md)
 - [Production Scaling Guide](production-scaling-guide.md)
+- [Configuration Guide](configuration-guide.md)
 - [Deployment](deployment.md)
 
 ## 🚀 Quick Start

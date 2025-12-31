@@ -127,6 +127,7 @@ BookStore/
 - **[Architecture Overview](docs/architecture.md)** - System design and patterns
 - **[Aspire Deployment Guide](docs/aspire-deployment-guide.md)** - Deploy to Azure and Kubernetes
 - **[Production Scaling Guide](docs/production-scaling-guide.md)** - Scale applications and databases in production
+- **[Configuration Guide](docs/configuration-guide.md)** - Options pattern and validation
 - **[Performance Guide](docs/performance-guide.md)** - GC optimization and performance tuning
 - **[Testing Guide](docs/testing-guide.md)** - Testing with TUnit, assertions, and best practices
 - **[Wolverine Integration](docs/wolverine-guide.md)** - Command/handler pattern with Wolverine

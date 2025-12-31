@@ -28,6 +28,8 @@
       href: aspire-deployment-guide.md
     - name: Production Scaling
       href: production-scaling-guide.md
+    - name: Configuration
+      href: configuration-guide.md
 - name: Rules
   items:
     - name: Analyzer Rules

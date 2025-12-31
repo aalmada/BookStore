@@ -40,7 +40,11 @@ public class BookHandlerTests
         _ = session.CorrelationId.Returns("test-correlation-id");
 
         // Act
-        var localizationOptions = Options.Create(new LocalizationOptions { DefaultCulture = "en" });
+        var localizationOptions = Options.Create(new LocalizationOptions 
+        { 
+            DefaultCulture = "en",
+            SupportedCultures = ["en"]
+        });
         var (result, notification) = BookHandlers.Handle(command, session, localizationOptions);
 
         // Assert
@@ -80,7 +84,11 @@ public class BookHandlerTests
             .Returns(Task.FromResult<Marten.Events.StreamState?>(null));
 
         // Act
-        var localizationOptions = Options.Create(new LocalizationOptions { DefaultCulture = "en" });
+        var localizationOptions = Options.Create(new LocalizationOptions 
+        { 
+            DefaultCulture = "en",
+            SupportedCultures = ["en"]
+        });
         var result = await BookHandlers.Handle(command, session, context, localizationOptions);
 
         // Assert

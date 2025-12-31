@@ -5,7 +5,7 @@ namespace BookStore.ApiService.Models;
 /// <summary>
 /// Configuration options for pagination
 /// </summary>
-public sealed class PaginationOptions : IValidatableObject
+public sealed record PaginationOptions : IValidatableObject
 {
     /// <summary>
     /// Configuration section name
