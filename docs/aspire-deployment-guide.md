@@ -526,6 +526,8 @@ Use Aspire's local development experience:
 aspire run
 ```
 
+For a detailed look at the local orchestration configuration, see the [Aspire Orchestration Guide](aspire-guide.md).
+
 This starts:
 - Aspire Dashboard
 - All services with hot reload

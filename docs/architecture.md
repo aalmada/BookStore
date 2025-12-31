@@ -236,7 +236,7 @@ Example event flow:
 - **Wolverine 5.9.2** - Command/handler pattern and message bus
 - **Marten 8.17.0** - Event store and document DB
 - **PostgreSQL 16** - Database
-- **Aspire** - Orchestration and observability
+- **Aspire** - [Orchestration](aspire-guide.md) and observability
 - **Scalar 2.11.10** - API documentation
 
 ### Features
@@ -366,4 +366,5 @@ Example event flow:
 - **[Event Sourcing Guide](event-sourcing-guide.md)** - Event sourcing concepts and patterns
 - **[Marten Guide](marten-guide.md)** - Event sourcing implementation with Marten
 - **[Wolverine Guide](wolverine-guide.md)** - Command/handler pattern
+- **[Aspire Orchestration Guide](aspire-guide.md)** - Service orchestration details
 - **[Getting Started](getting-started.md)** - Setup and running the application

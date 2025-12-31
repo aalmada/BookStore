@@ -58,6 +58,9 @@ This will:
 - Start the Blazor web frontend
 - Open the Aspire dashboard in your browser
 
+> [!TIP]
+> For a deep dive into how Aspire orchestrates the solution locally, see the [Aspire Orchestration Guide](aspire-guide.md).
+
 ## Accessing the Application
 
 ### Aspire Dashboard

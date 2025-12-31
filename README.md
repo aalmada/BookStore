@@ -124,6 +124,7 @@ BookStore/
 
 - **[Getting Started](docs/getting-started.md)** - Setup and first steps
 - **[Architecture Overview](docs/architecture.md)** - System design and patterns
+- **[Aspire Orchestration Guide](docs/aspire-guide.md)** - Service orchestration and local development
 - **[Aspire Deployment Guide](docs/aspire-deployment-guide.md)** - Deploy to Azure and Kubernetes
 - **[Production Scaling Guide](docs/production-scaling-guide.md)** - Scale applications and databases in production
 - **[Configuration Guide](docs/configuration-guide.md)** - Options pattern and validation
