@@ -50,8 +50,8 @@ cd BookStore
 # Install dependencies
 dotnet restore
 
-# Install Aspire workload (if not already installed)
-dotnet workload install aspire
+# Install Aspire CLI (if not already installed)
+# Follow instructions at https://aspire.dev/get-started/install-cli/
 
 # Run the application
 aspire run

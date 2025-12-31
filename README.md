@@ -17,10 +17,9 @@ A complete book store management system featuring:
 ## 🚀 Quick Start
 
 ```bash
-# Prerequisites: .NET 10 SDK, .NET Aspire workload, Docker Desktop
+# Prerequisites: .NET 10 SDK, Aspire CLI, Docker Desktop
 
-# Install Aspire workload (if not already installed)
-dotnet workload install aspire
+# Install Aspire CLI: Follow instructions at https://aspire.dev/get-started/install-cli/
 
 # Clone and run
 git clone <repository-url>
@@ -284,10 +283,4 @@ Contributions are welcome! Please read our [Contributing Guidelines](CONTRIBUTIN
 
 By contributing, you agree that your contributions will be licensed under the MIT License.
 
-## 📚 Learn More
 
-- [Marten - Event Store & Document DB](https://martendb.io/)
-- [Wolverine - Mediator & Message Bus](https://wolverine.netlify.app/)
-- [ASP.NET Core Minimal APIs](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/minimal-apis)
-- [.NET Aspire](https://learn.microsoft.com/en-us/dotnet/aspire/)
-- [PostgreSQL Trigram (pg_trgm)](https://www.postgresql.org/docs/current/pgtrgm.html)
