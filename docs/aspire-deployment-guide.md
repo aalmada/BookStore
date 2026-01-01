@@ -1,10 +1,10 @@
 # Aspire Deployment Guide
 
-This guide covers deploying the BookStore application using .NET Aspire to production environments, including Azure Container Apps and Kubernetes.
+This guide covers deploying the BookStore application using **Aspire** to production environments, including Azure Container Apps and Kubernetes.
 
 ## Overview
 
-.NET Aspire separates the act of producing deployment assets from executing a deployment:
+**Aspire** separates the act of producing deployment assets from executing a deployment:
 
 - **`aspire publish`** - Generates intermediate, parameterized deployment artifacts (Docker Compose, Kubernetes manifests, Azure specifications)
 - **`aspire deploy`** - Executes deployment by resolving parameters and applying changes to the target environment
@@ -19,7 +19,7 @@ The BookStore application uses Aspire to orchestrate:
 
 ### General Requirements
 
-- **.NET 10 SDK** or later (with .NET Aspire workload)
+- **.NET 10 SDK** or later (with Aspire workload)
 - **Docker Desktop** or Podman (OCI-compliant container runtime)
 - **Aspire CLI** (for publishing and deployment)
 
@@ -65,7 +65,7 @@ kubectl cluster-info
 
 ## Deployment to Azure Container Apps
 
-Azure Container Apps (ACA) is the recommended hosting environment for .NET Aspire applications, providing a fully managed, serverless platform for containerized microservices.
+Azure Container Apps (ACA) is the recommended hosting environment for Aspire applications, providing a fully managed, serverless platform for containerized microservices.
 
 ### Step 1: Initialize Azure Deployment
 
@@ -791,7 +791,7 @@ jobs:
 
 ## Additional Resources
 
-- [.NET Aspire Deployment Overview](https://learn.microsoft.com/dotnet/aspire/deployment/overview)
+- [Aspire Deployment Overview](https://learn.microsoft.com/dotnet/aspire/deployment/overview)
 - [Deploy to Azure Container Apps](https://learn.microsoft.com/dotnet/aspire/deployment/azure/aca-deployment)
 - [Azure Developer CLI Reference](https://learn.microsoft.com/azure/developer/azure-developer-cli/reference)
 - [Aspire.Hosting.Kubernetes Package](https://www.nuget.org/packages/Aspire.Hosting.Kubernetes)

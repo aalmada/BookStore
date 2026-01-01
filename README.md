@@ -3,7 +3,7 @@
 [![CI](https://github.com/aalmada/BookStore/actions/workflows/ci.yml/badge.svg)](https://github.com/aalmada/BookStore/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/aalmada/BookStore/actions/workflows/codeql.yml/badge.svg)](https://github.com/aalmada/BookStore/actions/workflows/codeql.yml)
 
-Full-stack .NET online book store application with event-sourced backend API and Blazor frontend, orchestrated by .NET Aspire.
+Full-stack .NET online book store application with event-sourced backend API and Blazor frontend, orchestrated by Aspire.
 
 ## Overview
 
@@ -12,7 +12,7 @@ This project is a demonstration and exploration of modern .NET technologies, des
 A complete book store management system featuring:
 - **Backend API**: Event-sourced ASP.NET Core Minimal APIs with Marten and PostgreSQL
 - **Frontend**: Blazor web application for browsing and managing books
-- **Orchestration**: .NET Aspire for local development, deployment, and observability
+- **Orchestration**: Aspire for local development, deployment, and observability
 - **Database**: PostgreSQL with event store and read model projections
 - **Modern Stack**: .NET 10 with C# 14 (latest language features)
 
@@ -73,7 +73,7 @@ See [Analyzer Rules Documentation](docs/analyzer-rules.md) for details.
 - **Native OpenAPI** with Scalar UI
 - **Structured Logging** with correlation IDs
 
-### Infrastructure (.NET Aspire)
+### Infrastructure (Aspire)
 - **Service Orchestration** for local development
 - **Service Discovery** between frontend and backend
 - **OpenTelemetry** integration for observability
@@ -171,7 +171,7 @@ BookStore/
 - **PostgreSQL 16** - Database with pg_trgm and unaccent extensions
 
 ### Infrastructure
-- **.NET Aspire** - Orchestration and observability
+- **Aspire** - Orchestration and observability
 - **OpenTelemetry** - Distributed tracing and metrics
 - **Scalar** - API documentation UI
 - **Docker** - Container runtime

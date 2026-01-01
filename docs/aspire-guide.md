@@ -1,6 +1,6 @@
-# .NET Aspire Orchestration Guide
+# Aspire Orchestration Guide
 
-This guide explains how the BookStore solution uses **.NET Aspire** to orchestrate distributed services, manage local development resources, and simplify cloud-native application composition.
+This guide explains how the BookStore solution uses **Aspire** to orchestrate distributed services, manage local development resources, and simplify cloud-native application composition.
 
 ## Overview
 
@@ -9,7 +9,7 @@ The BookStore solution is built as a distributed system composed of:
 2.  **Web Frontend**: Blazor interactive UI
 3.  **Infrastructure**: PostgreSQL, Redis, and Azure Blob Storage
 
-.NET Aspire serves as the glue that binds these components together, handling:
+Aspire serves as the glue that binds these components together, handling:
 - **Service Discovery**: Automatically injecting connection strings and service URLs.
 - **Resource Management**: Spinning up containers for databases and emulators during development.
 - **Observability**: Providing a unified dashboard for logs, traces, and metrics.

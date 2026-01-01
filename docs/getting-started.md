@@ -1,6 +1,6 @@
 # Getting Started with Book Store
 
-This guide will help you set up and run the complete Book Store application (frontend + backend) on your local machine using .NET Aspire.
+This guide will help you set up and run the complete Book Store application (frontend + backend) on your local machine using **Aspire**.
 
 ## Prerequisites
 
@@ -8,7 +8,7 @@ This guide will help you set up and run the complete Book Store application (fro
 
 - **.NET 10 SDK** - [Download](https://dotnet.microsoft.com/download/dotnet/10.0)
   - Includes **C# 14** with latest language features (collection expressions, primary constructors, etc.)
-- **.NET Aspire workload** - Install after .NET SDK:
+- **Aspire workload** - Install after .NET SDK:
   ```bash
   dotnet workload install aspire
   ```
@@ -52,7 +52,7 @@ aspire run
 ```
 
 This will:
-- Start the .NET Aspire orchestrator
+- Start the **Aspire** orchestrator
 - Launch PostgreSQL and PgAdmin containers via Docker
 - Start the backend API service
 - Start the Blazor web frontend

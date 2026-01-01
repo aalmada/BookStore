@@ -1,10 +1,10 @@
 # Caching Guide
 
-This guide explains how to configure and use caching in the BookStore API, specifically focusing on the hybrid caching strategy integrated with .NET Aspire and localization.
+This guide explains how to configure and use caching in the BookStore API, specifically focusing on the hybrid caching strategy integrated with Aspire and localization.
 
 ## Overview
 
-The BookStore API uses **Hybrid Caching** (`HybridCache`), enriched by **.NET Aspire** for seamless distributed cache orchestration.
+The BookStore API uses **Hybrid Caching** (`HybridCache`), enriched by **Aspire** for seamless distributed cache orchestration.
 
 **Components:**
 - **L1 Cache (In-Memory)**: Local, fast access.
@@ -16,7 +16,7 @@ The BookStore API uses **Hybrid Caching** (`HybridCache`), enriched by **.NET As
 
 ### Aspire Orchestration
 
-The caching infrastructure is automatically wired up by .NET Aspire.
+The caching infrastructure is automatically wired up by Aspire.
 
 1.  **AppHost**: Declares the Redis resource.
     ```csharp
