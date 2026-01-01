@@ -50,6 +50,9 @@ public static class ApplicationServicesExtensions
         _ = services.AddHybridCache();
 #pragma warning restore EXTEXP0018 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 
+        // Configure Identity with JWT authentication
+        AddIdentityServices(services);
+
         return services;
     }
 
@@ -81,5 +84,20 @@ public static class ApplicationServicesExtensions
                     .AddSupportedCultures(localization.SupportedCultures)
                     .AddSupportedUICultures(localization.SupportedCultures);
             });
+    }
+
+    static void AddIdentityServices(IServiceCollection services)
+    {
+        // Add Identity with custom Marten user store
+        _ = services.AddIdentityApiEndpoints<Models.ApplicationUser>()
+            .AddUserStore<Identity.MartenUserStore>();
+
+        // Configure JWT bearer authentication
+        _ = services.AddAuthentication()
+            .AddBearerToken(Microsoft.AspNetCore.Identity.IdentityConstants.BearerScheme);
+
+        // Add authorization services
+        _ = services.AddAuthorizationBuilder()
+            .AddPolicy("Admin", policy => policy.RequireRole("Admin"));
     }
 }

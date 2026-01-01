@@ -33,6 +33,38 @@ public class DatabaseSeeder(IDocumentStore store)
         await session.SaveChangesAsync();
     }
 
+    /// <summary>
+    /// Seeds a default admin user for development purposes
+    /// </summary>
+    public static async Task SeedAdminUserAsync(
+        Microsoft.AspNetCore.Identity.UserManager<Models.ApplicationUser> userManager)
+    {
+        const string adminEmail = "admin@bookstore.com";
+        const string adminPassword = "Admin123!";
+
+        // Check if admin user already exists
+        var existingAdmin = await userManager.FindByEmailAsync(adminEmail);
+        if (existingAdmin is not null)
+        {
+            return; // Admin already exists
+        }
+
+        // Create admin user
+        var adminUser = new Models.ApplicationUser
+        {
+            UserName = adminEmail,
+            Email = adminEmail,
+            EmailConfirmed = true
+        };
+
+        var result = await userManager.CreateAsync(adminUser, adminPassword);
+        if (result.Succeeded)
+        {
+            // Assign Admin role
+            _ = await userManager.AddToRoleAsync(adminUser, "Admin");
+        }
+    }
+
     static Dictionary<string, PublisherAdded> SeedPublishers(IDocumentSession session)
     {
         var publishers = new Dictionary<string, PublisherAdded>

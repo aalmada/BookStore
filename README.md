@@ -53,6 +53,7 @@ The Aspire dashboard opens automatically, providing access to:
 - **Event Sourcing** with Marten and PostgreSQL
 - **CQRS** with async projections for optimized reads
 - **Real-time Notifications** with SignalR (Wolverine integration)
+- **Authentication** with JWT bearer tokens and role-based authorization
 - **Multi-language Support** for categories (en, pt, es, fr, de)
 - **Full-text Search** with PostgreSQL trigrams and unaccent
 - **Optimistic Concurrency** with ETags
@@ -145,6 +146,7 @@ BookStore/
 - **[Configuration Guide](docs/configuration-guide.md)** - Options pattern and validation
 - **[API Conventions](docs/api-conventions-guide.md)** - Time handling and JSON serialization standards
 - **[API Client Generation](docs/api-client-generation.md)** - Automated client generation with OpenAPI and Refitter
+- **[Authentication Guide](docs/authentication-guide.md)** - JWT authentication and role-based authorization
 - **[Real-time Notifications](docs/signalr-guide.md)** - SignalR integration and optimistic updates
 - **[Logging Guide](docs/logging-guide.md)** - Structured logging with source-generated log messages
 - **[Correlation & Causation IDs](docs/correlation-causation-guide.md)** - Distributed tracing
@@ -194,7 +196,20 @@ BookStore/
 - `GET /api/categories` - List categories (localized)
 - `GET /api/publishers` - List publishers
 
+### Identity Endpoints
+
+- `POST /identity/register` - Register new user
+- `POST /identity/login` - Login and receive JWT token
+- `POST /identity/refresh` - Refresh access token
+- `POST /identity/forgotPassword` - Request password reset
+- `POST /identity/resetPassword` - Reset password
+- `GET /identity/manage/info` - Get user information
+- `POST /identity/manage/info` - Update user information
+
 ### Admin Endpoints
+
+> [!NOTE]
+> Admin endpoints require authentication with the `Admin` role. Include the JWT token in the `Authorization: Bearer <token>` header.
 
 - `POST /api/admin/books` - Create book
 - `PUT /api/admin/books/{id}` - Update book (with If-Match)

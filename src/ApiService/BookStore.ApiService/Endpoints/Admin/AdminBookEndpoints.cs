@@ -59,7 +59,7 @@ namespace BookStore.ApiService.Endpoints.Admin
                 .DisableAntiforgery()
                 .Accepts<IFormFile>("multipart/form-data");
 
-            return group;
+            return group.RequireAuthorization("Admin");
         }
 
         // Wolverine approach: Endpoint just creates command and invokes it via message bus

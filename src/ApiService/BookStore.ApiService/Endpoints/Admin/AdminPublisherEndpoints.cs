@@ -30,7 +30,7 @@ namespace BookStore.ApiService.Endpoints.Admin
                 .WithName("RestorePublisher")
                 .WithSummary("Restore a deleted publisher");
 
-            return group;
+            return group.RequireAuthorization("Admin");
         }
 
         static Task<IResult> CreatePublisher(

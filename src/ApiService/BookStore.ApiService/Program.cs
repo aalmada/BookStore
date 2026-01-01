@@ -39,6 +39,10 @@ if (app.Environment.IsDevelopment())
     var seeder = new DatabaseSeeder(store);
     await seeder.SeedAsync();
 
+    // Seed admin user
+    var userManager = scope.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.Identity.UserManager<BookStore.ApiService.Models.ApplicationUser>>();
+    await DatabaseSeeder.SeedAdminUserAsync(userManager);
+
     // Wait for async projections to process the seeded events
     // In production, projections run continuously in the background
     await WaitForProjectionsAsync(store, logger);
@@ -116,6 +120,10 @@ app.UseMartenMetadata();
 // Add logging enricher middleware to add metadata to all logs
 app.UseLoggingEnricher();
 
+// Add authentication and authorization
+app.UseAuthentication();
+app.UseAuthorization();
+
 // Map OpenAPI endpoint and configure Scalar UI
 app.MapOpenApi();
 
@@ -130,6 +138,9 @@ if (app.Environment.IsDevelopment())
 
 app.UseResponseCaching();
 app.UseOutputCache();
+
+// Map Identity endpoints for authentication
+app.MapGroup("/identity").MapIdentityApi<BookStore.ApiService.Models.ApplicationUser>();
 
 // Map all API endpoints
 app.MapApiEndpoints();

@@ -18,6 +18,8 @@
       href: api-conventions-guide.md
     - name: API Client Generation
       href: api-client-generation.md
+    - name: Authentication
+      href: authentication-guide.md
     - name: SignalR
       href: signalr-guide.md
     - name: Logging

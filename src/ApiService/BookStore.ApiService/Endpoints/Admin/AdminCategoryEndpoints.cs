@@ -35,7 +35,7 @@ namespace BookStore.ApiService.Endpoints.Admin
                 .WithName("RestoreCategory")
                 .WithSummary("Restore a deleted category");
 
-            return group;
+            return group.RequireAuthorization("Admin");
         }
 
         static Task<IResult> CreateCategory(
