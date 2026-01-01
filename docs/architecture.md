@@ -256,6 +256,9 @@ Example event flow:
 - **PgAdmin** - Database management
 - **OpenTelemetry** - Distributed tracing
 - **Health Checks** - Service monitoring
+- **Roslyn Analyzers** - Custom analyzers for Event Sourcing/CQRS patterns ([docs](analyzer-rules.md))
+- **Roslynator.Analyzers** - Enhanced code analysis
+- **NSwag** - OpenAPI client generation (optional development tool)
 
 ## Key Design Decisions
 

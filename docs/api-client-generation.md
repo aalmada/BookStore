@@ -2,6 +2,9 @@
 
 This guide explains how to use the BookStore API client library.
 
+> [!NOTE]
+> **Build-Time Generation**: Fully automatic compile-time client generation is not currently possible because .NET 9's `Microsoft.Extensions.ApiDescription.Server` requires running the application (including database connections) to generate the OpenAPI spec. We use a runtime generation approach with manual updates or optional NSwag auto-generation from the saved `openapi.json` file.
+
 ## Overview
 
 The BookStore API client is provided as a reusable library (`BookStore.Client`) that can be used by any .NET project.
@@ -109,28 +112,88 @@ builder.Services
 
 ### When API Changes
 
-1. **Update OpenAPI Spec**:
+**Workflow**:
+
+1. **Start the API**:
+   ```bash
+   aspire run
+   ```
+
+2. **Update OpenAPI Spec**:
    ```bash
    ./_tools/update-openapi.sh
    ```
 
-2. **Update `IBookStoreApi.cs`** if endpoints changed:
-   - Location: `src/Client/BookStore.Client/IBookStoreApi.cs`
+3. **Update Client Interface** (choose one):
+
+   **Option A: NSwag Auto-Generation** (optional):
+   ```bash
+   ./_tools/generate-client-nswag.sh
+   ```
+   
+   **Option B: Manual Update**:
+   - Edit `src/Client/BookStore.Client/IBookStoreApi.cs`
    - Add/update methods to match API changes
 
-3. **Build and Test**:
+4. **Build and Test**:
    ```bash
    dotnet build
    dotnet test
    ```
 
-4. **Commit Changes**:
+5. **Commit Changes**:
    ```bash
    git add openapi.json src/Client/BookStore.Client/IBookStoreApi.cs
    git commit -m "Update API client: [description]"
    ```
 
-### Update Script
+### NSwag Auto-Generation (Optional)
+
+NSwag can automatically generate the Refit interface from the OpenAPI spec.
+
+**Install NSwag CLI**:
+```bash
+dotnet tool install --global NSwag.ConsoleCore
+```
+
+**Pros**:
+- ✅ Automatic - generates entire interface
+- ✅ Consistent - always matches OpenAPI spec
+- ✅ Fast - one command
+
+**Cons**:
+- ❌ Requires NSwag CLI installed
+- ❌ Generates full client implementation (not just Refit interface)
+- ❌ Generates DTOs (conflicts with `BookStore.Shared`)
+- ❌ Uses Newtonsoft.Json (we use System.Text.Json)
+- ❌ Needs manual cleanup and conversion to Refit
+
+> [!NOTE]
+> NSwag's default output generates a complete client implementation with DTOs, which conflicts with our architecture where DTOs are in `BookStore.Shared`. Converting NSwag output to a clean Refit interface requires significant manual work, making the manual approach more practical for this project.
+
+**Current Approach**: We use **manual updates** for clean, minimal code. NSwag is available as a reference tool to see what endpoints exist, but the generated code requires extensive modification.
+
+### Why Not Build-Time Generation?
+
+Build-time OpenAPI generation is not currently feasible because:
+
+1. **`Microsoft.Extensions.ApiDescription.Server` runs the application** during build
+2. **Requires database connection** - The app needs PostgreSQL to start
+3. **Infrastructure dependencies** - Marten, Wolverine, and other services must initialize
+4. **CI/CD complexity** - Would need database available during builds
+
+**Microsoft's Documentation** explicitly states:
+> "Build-time OpenAPI document generation functions by launching the app's entrypoint with a mock server implementation."
+
+This means the entire application stack runs, including all service registrations and infrastructure dependencies.
+
+**Our Solution**:
+- ✅ Generate OpenAPI at **runtime** from running API
+- ✅ Save `openapi.json` to git (tracks API changes)
+- ✅ Update client **manually** or with **NSwag** from saved spec
+- ✅ Simple, reliable, works in all environments
+
+### Update Scripts
 
 The `update-openapi.sh` script:
 - Auto-detects Aspire's dynamic ports

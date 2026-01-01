@@ -171,7 +171,9 @@ BookStore/
 - **Scalar** - API documentation UI
 - **Docker** - Container runtime
 - **TUnit** - Modern testing framework with built-in code coverage
+- **Roslyn Analyzers** - Custom analyzers for Event Sourcing/CQRS patterns
 - **Roslynator.Analyzers 4.15.0** - Enhanced code analysis
+- **NSwag** - OpenAPI client generation (optional development tool)
 
 ## 📊 API Endpoints
 
