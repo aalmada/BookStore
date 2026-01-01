@@ -54,6 +54,32 @@ All date/time values are automatically serialized in **ISO 8601** format:
 - `DateOnly`: `YYYY-MM-DD`
 - Timezone: Always `Z` (UTC)
 
+### Partial Dates
+
+**Rule**: Use `PartialDate` for incomplete dates (e.g., publication year only).
+
+```csharp
+public record BookDto(
+    string Title,
+    PartialDate? PublicationDate // ✅ Can be year, year-month, or full date
+);
+```
+
+**Capabilities**:
+- **Year only**: `2008`
+- **Year-Month**: `2008-08`
+- **Full Date**: `2008-08-01`
+
+**Client Usage**:
+Always check for value before access:
+```csharp
+if (book.PublicationDate.HasValue)
+{
+    var year = book.PublicationDate.Value.Year;
+    var display = book.PublicationDate.Value.ToDisplayString();
+}
+```
+
 ## JSON Serialization Standards
 
 ### camelCase
@@ -170,17 +196,19 @@ var bookId = Guid.NewGuid();  // WRONG - creates random UUIDv4
 ✅ **Correct**:
 ```csharp
 // DTOs
+// DTOs (in BookStore.Shared.Models)
 public record BookDto(
     Guid Id,
     string Title,
     string? Isbn,
-    PublisherDto? Publisher);
+    PublisherDto? Publisher,
+    IReadOnlyList<AuthorDto> Authors); // ✅ Use IReadOnlyList for collections
 
 // Commands
 public record CreateBook(
     string Title,
     string? Isbn,
-    List<Guid> AuthorIds);
+    IReadOnlyList<Guid> AuthorIds); // ✅ Use IReadOnlyList for collections
 
 // Events
 public record BookAdded(

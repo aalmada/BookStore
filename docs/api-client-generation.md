@@ -176,19 +176,36 @@ The `.refitter` file in the repository root configures Refitter:
   "namespace": "BookStore.Client",
   "naming": {
     "useOpenApiTitle": false,
-    "interfaceName": "IBookStoreApiClient"
+    "interfaceName": "I{controller}Endpoint"
   },
   "generateContracts": true,
   "multipleInterfaces": "ByEndpoint",
+  "useIsoDateFormat": true,
   "outputFolder": "src/Client/BookStore.Client",
   "contractsOutputFolder": "src/Client/BookStore.Client",
-  "contractsOutputFilename": "Contracts.cs"
+  "contractsOutputFilename": "Contracts.cs",
+  "additionalNamespaces": [
+    "BookStore.Shared.Models"
+  ],
+  "codeGeneratorSettings": {
+    "excludedTypeNames": [
+      "PartialDate",
+      "BookDto",
+      "AuthorDto",
+      "CategoryDto",
+      "PublisherDto",
+      "PagedListDto"
+    ]
+  }
 }
 ```
 
 **Key Settings**:
 - `multipleInterfaces: "ByEndpoint"` - Generates one interface per endpoint
 - `generateContracts: true` - Generates DTOs in `Contracts.cs`
+- `useIsoDateFormat: true` - Ensures compatible ISO 8601 date handling
+- `additionalNamespaces` - Adds `using BookStore.Shared.Models` to generated files
+- `excludedTypeNames` - Prevents regeneration of shared DTOs defined in `BookStore.Shared`
 - `outputFolder` - Where to generate interface files
 
 ### Install Refitter (Optional)
