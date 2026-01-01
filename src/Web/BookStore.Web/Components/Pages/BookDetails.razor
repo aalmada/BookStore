@@ -91,11 +91,11 @@
                                     </MudStack>
                                 }
 
-                                @if (!book.PublicationDate.Equals(default(BookStore.Shared.Models.PartialDate)))
+                                @if (book.PublicationDate.HasValue)
                                 {
                                     <MudStack Row="true" AlignItems="AlignItems.Center">
                                         <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" Color="Color.Secondary" />
-                                        <MudText Typo="Typo.body2"><strong>Published:</strong> @book.PublicationDate.ToDisplayString()</MudText>
+                                        <MudText Typo="Typo.body2"><strong>Published:</strong> @book.PublicationDate.Value.ToDisplayString()</MudText>
                                     </MudStack>
                                 }
                             </MudStack>
@@ -129,7 +129,7 @@
     [Parameter]
     public Guid Id { get; set; }
 
-    private ClientModels.BookDto? book;
+    private BookDto? book;
     private string? errorMessage;
     private bool isLoading = true;
     private List<BreadcrumbItem> _breadcrumbItems = new();

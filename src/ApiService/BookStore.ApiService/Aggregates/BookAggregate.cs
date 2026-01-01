@@ -1,6 +1,6 @@
 using BookStore.ApiService.Events;
 using BookStore.ApiService.Infrastructure;
-using BookStore.ApiService.Models;
+using BookStore.Shared.Models;
 using Marten;
 
 namespace BookStore.ApiService.Aggregates;

@@ -4,8 +4,8 @@ using Wolverine;
 
 namespace BookStore.ApiService.Commands
 {
-    public record CreateAuthorRequest(string Name, Dictionary<string, AuthorTranslationDto>? Translations);
-    public record UpdateAuthorRequest(string Name, Dictionary<string, AuthorTranslationDto>? Translations);
+    public record CreateAuthorRequest(string Name, IReadOnlyDictionary<string, AuthorTranslationDto>? Translations);
+    public record UpdateAuthorRequest(string Name, IReadOnlyDictionary<string, AuthorTranslationDto>? Translations);
 }
 
 namespace BookStore.ApiService.Endpoints.Admin

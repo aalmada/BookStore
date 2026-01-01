@@ -1,5 +1,5 @@
 using BookStore.ApiService.Helpers;
-using BookStore.ApiService.Models;
+using BookStore.Shared.Models;
 
 namespace BookStore.ApiService.Tests.Helpers;
 

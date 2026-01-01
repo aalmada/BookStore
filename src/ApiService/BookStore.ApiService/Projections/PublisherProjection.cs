@@ -1,4 +1,5 @@
 using BookStore.ApiService.Events;
+using BookStore.Shared.Models;
 using Marten.Events.Aggregation;
 
 namespace BookStore.ApiService.Projections;

@@ -1,4 +1,4 @@
-using BookStore.ApiService.Models;
+using BookStore.Shared.Models;
 
 namespace BookStore.ApiService.Events;
 

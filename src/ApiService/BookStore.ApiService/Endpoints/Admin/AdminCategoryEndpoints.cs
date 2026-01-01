@@ -1,3 +1,5 @@
+using System.Collections.Immutable;
+using BookStore.ApiService.Commands;
 using Marten;
 using Microsoft.AspNetCore.Mvc;
 using Wolverine;
@@ -5,10 +7,10 @@ using Wolverine;
 namespace BookStore.ApiService.Commands
 {
     public record CreateCategoryRequest(
-        Dictionary<string, CategoryTranslationDto>? Translations);
+        IReadOnlyDictionary<string, CategoryTranslationDto>? Translations);
 
     public record UpdateCategoryRequest(
-        Dictionary<string, CategoryTranslationDto>? Translations);
+        IReadOnlyDictionary<string, CategoryTranslationDto>? Translations);
 }
 
 namespace BookStore.ApiService.Endpoints.Admin
@@ -40,7 +42,7 @@ namespace BookStore.ApiService.Endpoints.Admin
             [FromBody] Commands.CreateCategoryRequest request,
             [FromServices] IMessageBus bus)
         {
-            var translations = request.Translations ?? [];
+            var translations = request.Translations ?? (IReadOnlyDictionary<string, CategoryTranslationDto>)ImmutableDictionary<string, CategoryTranslationDto>.Empty;
             var command = new Commands.CreateCategory(translations);
             return bus.InvokeAsync<IResult>(command);
         }
@@ -52,7 +54,7 @@ namespace BookStore.ApiService.Endpoints.Admin
             HttpContext context)
         {
             var etag = context.Request.Headers["If-Match"].FirstOrDefault();
-            var translations = request.Translations ?? [];
+            var translations = request.Translations ?? (IReadOnlyDictionary<string, CategoryTranslationDto>)ImmutableDictionary<string, CategoryTranslationDto>.Empty;
             var command = new Commands.UpdateCategory(id, translations) { ETag = etag };
             return bus.InvokeAsync<IResult>(command);
         }

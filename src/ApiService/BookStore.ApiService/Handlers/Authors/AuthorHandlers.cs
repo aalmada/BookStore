@@ -3,7 +3,7 @@ using BookStore.ApiService.Commands;
 using BookStore.ApiService.Events;
 using BookStore.ApiService.Infrastructure;
 using BookStore.ApiService.Infrastructure.Logging;
-using BookStore.ApiService.Models;
+using BookStore.Shared.Models;
 using Marten;
 using Microsoft.Extensions.Options;
 

@@ -4,7 +4,7 @@ namespace BookStore.ApiService.Commands;
 /// Command to create a new category
 /// </summary>
 public record CreateCategory(
-    Dictionary<string, CategoryTranslationDto> Translations)
+    IReadOnlyDictionary<string, CategoryTranslationDto> Translations)
 {
     public Guid Id { get; init; } = Guid.CreateVersion7();
 }
@@ -19,7 +19,7 @@ public record CategoryTranslationDto(string Name, string? Description);
 /// </summary>
 public record UpdateCategory(
     Guid Id,
-    Dictionary<string, CategoryTranslationDto> Translations)
+    IReadOnlyDictionary<string, CategoryTranslationDto> Translations)
 {
     public string? ETag { get; init; }
 }

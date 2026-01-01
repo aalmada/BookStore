@@ -1,4 +1,5 @@
-using BookStore.ApiService.Models;
+using System.Collections.Immutable;
+using BookStore.Shared.Models;
 using Marten;
 using Microsoft.AspNetCore.Mvc;
 using Wolverine;
@@ -9,21 +10,21 @@ namespace BookStore.ApiService.Commands
         string Title,
         string? Isbn,
         string Language,
-        Dictionary<string, BookTranslationDto>? Translations,
+        IReadOnlyDictionary<string, BookTranslationDto>? Translations,
         PartialDate? PublicationDate,
         Guid? PublisherId,
-        List<Guid> AuthorIds,
-        List<Guid> CategoryIds);
+        IReadOnlyList<Guid> AuthorIds,
+        IReadOnlyList<Guid> CategoryIds);
 
     public record UpdateBookRequest(
         string Title,
         string? Isbn,
         string Language,
-        Dictionary<string, BookTranslationDto>? Translations,
+        IReadOnlyDictionary<string, BookTranslationDto>? Translations,
         PartialDate? PublicationDate,
         Guid? PublisherId,
-        List<Guid> AuthorIds,
-        List<Guid> CategoryIds);
+        IReadOnlyList<Guid> AuthorIds,
+        IReadOnlyList<Guid> CategoryIds);
 }
 
 namespace BookStore.ApiService.Endpoints.Admin
@@ -73,8 +74,8 @@ namespace BookStore.ApiService.Endpoints.Admin
                 request.Translations,
                 request.PublicationDate,
                 request.PublisherId,
-                request.AuthorIds ?? [],
-                request.CategoryIds ?? []);
+                request.AuthorIds ?? ImmutableList<Guid>.Empty,
+                request.CategoryIds ?? ImmutableList<Guid>.Empty);
 
             // Wolverine invokes the handler, manages transaction, and returns result
             return bus.InvokeAsync<IResult>(command);
@@ -97,8 +98,8 @@ namespace BookStore.ApiService.Endpoints.Admin
                 request.Translations,
                 request.PublicationDate,
                 request.PublisherId,
-                request.AuthorIds ?? [],
-                request.CategoryIds ?? [])
+                request.AuthorIds ?? ImmutableList<Guid>.Empty,
+                request.CategoryIds ?? ImmutableList<Guid>.Empty)
             {
                 ETag = etag
             };

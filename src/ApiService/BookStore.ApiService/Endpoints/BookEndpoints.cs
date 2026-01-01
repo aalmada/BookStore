@@ -1,8 +1,8 @@
 using System.Globalization;
 using BookStore.ApiService.Aggregates;
 using BookStore.ApiService.Infrastructure;
-using BookStore.ApiService.Models;
 using BookStore.ApiService.Projections;
+using BookStore.Shared.Models;
 using Marten;
 using Marten.Pagination;
 using Microsoft.AspNetCore.Http.HttpResults;

@@ -1,4 +1,4 @@
-using BookStore.ApiService.Models;
+using BookStore.Shared.Models;
 
 namespace BookStore.ApiService.Commands;
 
@@ -9,11 +9,11 @@ public record CreateBook(
     string Title,
     string? Isbn,
     string Language,
-    Dictionary<string, BookTranslationDto>? Translations,
+    IReadOnlyDictionary<string, BookTranslationDto>? Translations,
     PartialDate? PublicationDate,
     Guid? PublisherId,
-    List<Guid> AuthorIds,
-    List<Guid> CategoryIds)
+    IReadOnlyList<Guid> AuthorIds,
+    IReadOnlyList<Guid> CategoryIds)
 {
     /// <summary>
     /// Unique identifier for the book (generated automatically)
@@ -34,11 +34,11 @@ public record UpdateBook(
     string Title,
     string? Isbn,
     string Language,
-    Dictionary<string, BookTranslationDto>? Translations,
+    IReadOnlyDictionary<string, BookTranslationDto>? Translations,
     PartialDate? PublicationDate,
     Guid? PublisherId,
-    List<Guid> AuthorIds,
-    List<Guid> CategoryIds)
+    IReadOnlyList<Guid> AuthorIds,
+    IReadOnlyList<Guid> CategoryIds)
 {
     /// <summary>
     /// ETag for optimistic concurrency control

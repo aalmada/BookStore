@@ -1,8 +1,8 @@
 using BookStore.ApiService.Infrastructure;
 using BookStore.ApiService.Infrastructure.Extensions;
 using BookStore.ApiService.Infrastructure.Logging;
-using BookStore.ApiService.Models;
 using BookStore.ApiService.Projections;
+using BookStore.Shared.Models;
 using Marten;
 using Microsoft.Extensions.Options;
 using Scalar.AspNetCore;

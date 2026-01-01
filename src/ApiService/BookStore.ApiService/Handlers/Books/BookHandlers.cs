@@ -3,7 +3,7 @@ using BookStore.ApiService.Commands;
 using BookStore.ApiService.Events;
 using BookStore.ApiService.Infrastructure;
 using BookStore.ApiService.Infrastructure.Logging;
-using BookStore.ApiService.Models;
+using BookStore.Shared.Models;
 using Marten;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Extensions.Options;
@@ -98,8 +98,8 @@ public static class BookHandlers
             descriptions,
             command.PublicationDate,
             command.PublisherId,
-            command.AuthorIds,
-            command.CategoryIds);
+            [.. command.AuthorIds],
+            [.. command.CategoryIds]);
 
         _ = session.Events.StartStream<BookAggregate>(command.Id, @event);
 
@@ -218,8 +218,8 @@ public static class BookHandlers
             descriptions,
             command.PublicationDate,
             command.PublisherId,
-            command.AuthorIds,
-            command.CategoryIds);
+            [.. command.AuthorIds],
+            [.. command.CategoryIds]);
 
         _ = session.Events.Append(command.Id, @event);
 

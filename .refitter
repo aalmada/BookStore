@@ -11,7 +11,7 @@
   "generateStatusCodeComments": true,
   "typeAccessibility": "public",
   "useCancellationTokens": true,
-  "useIsoDateFormat": false,
+  "useIsoDateFormat": true,
   "outputFolder": "src/Client/BookStore.Client",
   "outputFilename": "IBookStoreApiClient.g.cs",
   "contractsOutputFolder": "src/Client/BookStore.Client",
@@ -24,7 +24,15 @@
   "typeAccessibilityForContracts": "public",
   "codeGeneratorSettings": {
     "excludedTypeNames": [
-      "PartialDate"
+      "PartialDate",
+      "BookDto",
+      "AuthorDto",
+      "CategoryDto",
+      "PublisherDto",
+      "PagedListDto"
+    ],
+    "additionalNamespaceUsings": [
+      "BookStore.Shared.Models"
     ]
   }
 }

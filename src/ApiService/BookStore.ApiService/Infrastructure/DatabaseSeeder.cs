@@ -1,7 +1,7 @@
 using BookStore.ApiService.Aggregates;
 using BookStore.ApiService.Events;
-using BookStore.ApiService.Models;
 using BookStore.ApiService.Projections;
+using BookStore.Shared.Models;
 using Marten;
 using Microsoft.Extensions.Options;
 

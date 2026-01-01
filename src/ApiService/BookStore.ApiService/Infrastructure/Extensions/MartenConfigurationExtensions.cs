@@ -1,6 +1,6 @@
-using BookStore.ApiService.Models;
 using BookStore.ApiService.Projections;
 using BookStore.Shared.Infrastructure.Json;
+using BookStore.Shared.Models;
 using JasperFx.Events;
 using JasperFx.Events.Projections;
 using Marten;

@@ -25,10 +25,14 @@ public static class CultureValidator
     /// <param name="translations">Dictionary of translations with language codes as keys</param>
     /// <param name="invalidCodes">Output parameter containing list of invalid codes found</param>
     /// <returns>True if all codes are valid, false otherwise</returns>
-    public static bool ValidateTranslations<T>(
-        Dictionary<string, T> translations,
-        out List<string> invalidCodes)
+    public static bool ValidateTranslations<T>(IReadOnlyDictionary<string, T>? translations, out List<string> invalidCodes)
     {
+        if (translations is null)
+        {
+            invalidCodes = [];
+            return true;
+        }
+
         var invalid = CultureCache.GetInvalidCodes(translations.Keys);
         invalidCodes = [.. invalid];
         return invalidCodes.Count == 0;

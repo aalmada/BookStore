@@ -1,3 +1,4 @@
+
 namespace BookStore.Shared.Models;
 
 /// <summary>
@@ -13,5 +14,5 @@ public record BookDto(
     PartialDate? PublicationDate,
     bool IsPreRelease,
     PublisherDto? Publisher,
-    List<AuthorDto> Authors,
-    List<CategoryDto> Categories);
+    IReadOnlyList<AuthorDto> Authors,
+    IReadOnlyList<CategoryDto> Categories);
