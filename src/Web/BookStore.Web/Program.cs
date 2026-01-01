@@ -1,9 +1,9 @@
 using System.Text.Json;
+using BookStore.Client;
 using BookStore.Shared.Infrastructure.Json;
 using BookStore.Web;
 using BookStore.Web.Components;
 using BookStore.Web.Services;
-using BookStore.Client;
 using MudBlazor.Services;
 using Polly;
 using Polly.Extensions.Http;
@@ -42,8 +42,8 @@ builder.Services.AddBookStoreClient(new Uri(apiServiceUrl));
 // Add Polly resilience policies to all HTTP clients
 builder.Services.ConfigureHttpClientDefaults(http =>
 {
-    http.AddPolicyHandler(retryPolicy);
-    http.AddPolicyHandler(circuitBreakerPolicy);
+    _ = http.AddPolicyHandler(retryPolicy);
+    _ = http.AddPolicyHandler(circuitBreakerPolicy);
 });
 
 // Register SignalR hub service for real-time notifications

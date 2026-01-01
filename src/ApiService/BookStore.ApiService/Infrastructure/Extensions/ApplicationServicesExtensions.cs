@@ -61,7 +61,9 @@ public static class ApplicationServicesExtensions
                                                                           options.ApiVersionReader = new Asp.Versioning.HeaderApiVersionReader("api-version");
                                                                       });
 
+#pragma warning disable IDE0060 // Remove unused parameter
     static void AddLocalization(IServiceCollection services, IConfiguration configuration)
+#pragma warning restore IDE0060 // Remove unused parameter
     {
         // Configure localization from appsettings.json with validation
         _ = services.AddOptions<Infrastructure.LocalizationOptions>()

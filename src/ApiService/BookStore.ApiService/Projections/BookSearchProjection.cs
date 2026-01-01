@@ -1,5 +1,5 @@
-using BookStore.ApiService.Infrastructure;
 using BookStore.ApiService.Events;
+using BookStore.ApiService.Infrastructure;
 using BookStore.ApiService.Models;
 using JasperFx.Events;
 using Marten;

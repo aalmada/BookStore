@@ -1,5 +1,5 @@
-using BookStore.ApiService.Infrastructure;
 using BookStore.ApiService.Aggregates;
+using BookStore.ApiService.Infrastructure;
 using BookStore.ApiService.Models;
 using BookStore.ApiService.Projections;
 using Marten;
@@ -41,7 +41,7 @@ public static class PublisherEndpoints
 
         // Map to DTOs using LINQ's lazy Select (no intermediate collection)
         var mappedList = pagedList.Select(p => new PublisherDto(p.Id, p.Name)).ToList();
-        
+
         // Wrap in adapter for zero-allocation serialization
         var adapter = new PagedListAdapter<PublisherDto>(
             new PagedListWrapper<PublisherDto>(

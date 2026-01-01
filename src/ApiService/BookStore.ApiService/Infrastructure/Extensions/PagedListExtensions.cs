@@ -1,5 +1,5 @@
-using ApiServiceModels = BookStore.ApiService.Models;
 using Marten.Pagination;
+using ApiServiceModels = BookStore.ApiService.Models;
 
 namespace BookStore.ApiService.Infrastructure.Extensions;
 
