@@ -21,10 +21,10 @@ public class LoggingEnricherMiddleware
     {
         // Cache Activity reference to avoid multiple property accesses
         var activity = Activity.Current;
-        
+
         // Get headers once to avoid multiple lookups
         var headers = context.Request.Headers;
-        
+
         // Get correlation ID (already set by MartenMetadataMiddleware)
         var correlationId = headers.TryGetValue("X-Correlation-ID", out var correlationHeader)
             ? correlationHeader.ToString()
@@ -46,8 +46,8 @@ public class LoggingEnricherMiddleware
         var request = context.Request;
         var requestPath = request.Path.Value;
         var requestMethod = request.Method;
-        var userAgent = headers.TryGetValue("User-Agent", out var userAgentHeader) 
-            ? userAgentHeader.ToString() 
+        var userAgent = headers.TryGetValue("User-Agent", out var userAgentHeader)
+            ? userAgentHeader.ToString()
             : null;
         var remoteIp = context.Connection.RemoteIpAddress?.ToString();
 

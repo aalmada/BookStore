@@ -85,12 +85,12 @@ if (app.Environment.IsDevelopment())
         {
             var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
             var exception = exceptionHandlerFeature.Error;
-            
+
             logger.LogError(exception, "Unhandled exception: {Message}", exception.Message);
-            
+
             context.Response.StatusCode = StatusCodes.Status500InternalServerError;
             context.Response.ContentType = "application/problem+json";
-            
+
             await context.Response.WriteAsJsonAsync(new
             {
                 type = "https://tools.ietf.org/html/rfc9110#section-15.6.1",
