@@ -4,40 +4,40 @@
   href: architecture.md
 - name: Guides
   items:
+    - name: Event Sourcing
+      href: event-sourcing-guide.md
+    - name: Aspire Orchestration
+      href: aspire-guide.md
     - name: Marten
       href: marten-guide.md
     - name: Wolverine
       href: wolverine-guide.md
-    - name: SignalR
-      href: signalr-guide.md
-    - name: Event Sourcing
-      href: event-sourcing-guide.md
-    - name: Testing
-      href: testing-guide.md
-    - name: Performance
-      href: performance-guide.md
-    - name: Localization
-      href: localization-guide.md
-    - name: Logging
-      href: logging-guide.md
-    - name: ETag
-      href: etag-guide.md
-    - name: Caching
-      href: caching-guide.md
-    - name: Correlation & Causation
-      href: correlation-causation-guide.md
+    - name: Configuration
+      href: configuration-guide.md
     - name: API Conventions
       href: api-conventions-guide.md
     - name: API Client Generation
       href: api-client-generation.md
-    - name: Aspire Orchestration
-      href: aspire-guide.md
+    - name: SignalR
+      href: signalr-guide.md
+    - name: Logging
+      href: logging-guide.md
+    - name: Correlation & Causation
+      href: correlation-causation-guide.md
+    - name: Localization
+      href: localization-guide.md
+    - name: Caching
+      href: caching-guide.md
+    - name: ETag
+      href: etag-guide.md
+    - name: Performance
+      href: performance-guide.md
+    - name: Testing
+      href: testing-guide.md
     - name: Aspire Deployment
       href: aspire-deployment-guide.md
     - name: Production Scaling
       href: production-scaling-guide.md
-    - name: Configuration
-      href: configuration-guide.md
 - name: Rules
   items:
     - name: Analyzer Rules

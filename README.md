@@ -134,20 +134,23 @@ BookStore/
 
 - **[Getting Started](docs/getting-started.md)** - Setup and first steps
 - **[Architecture Overview](docs/architecture.md)** - System design and patterns
+- **[Event Sourcing Guide](docs/event-sourcing-guide.md)** - Event sourcing concepts and implementation
 - **[Aspire Orchestration Guide](docs/aspire-guide.md)** - Service orchestration and local development
-- **[Aspire Deployment Guide](docs/aspire-deployment-guide.md)** - Deploy to Azure and Kubernetes
-- **[Production Scaling Guide](docs/production-scaling-guide.md)** - Scale applications and databases in production
-- **[Configuration Guide](docs/configuration-guide.md)** - Options pattern and validation
-- **[Performance Guide](docs/performance-guide.md)** - GC optimization and performance tuning
-- **[Logging Guide](docs/logging-guide.md)** - Structured logging with source-generated log messages
-- **[Testing Guide](docs/testing-guide.md)** - Testing with TUnit, assertions, and best practices
+- **[Marten Guide](docs/marten-guide.md)** - Document DB and Event Store features
 - **[Wolverine Integration](docs/wolverine-guide.md)** - Command/handler pattern with Wolverine
+- **[Configuration Guide](docs/configuration-guide.md)** - Options pattern and validation
 - **[API Conventions](docs/api-conventions-guide.md)** - Time handling and JSON serialization standards
 - **[API Client Generation](docs/api-client-generation.md)** - Automated client generation with OpenAPI and Refitter
-- **[ETag Support](docs/etag-guide.md)** - Optimistic concurrency and caching
-- **[Correlation & Causation IDs](docs/correlation-causation-guide.md)** - Distributed tracing
-- **[Caching Guide](docs/caching-guide.md)** - Hybrid caching with Redis and localization support
 - **[Real-time Notifications](docs/signalr-guide.md)** - SignalR integration and optimistic updates
+- **[Logging Guide](docs/logging-guide.md)** - Structured logging with source-generated log messages
+- **[Correlation & Causation IDs](docs/correlation-causation-guide.md)** - Distributed tracing
+- **[Localization Guide](docs/localization-guide.md)** - Multi-language support
+- **[Caching Guide](docs/caching-guide.md)** - Hybrid caching with Redis and localization support
+- **[ETag Support](docs/etag-guide.md)** - Optimistic concurrency and caching
+- **[Performance Guide](docs/performance-guide.md)** - GC optimization and performance tuning
+- **[Testing Guide](docs/testing-guide.md)** - Testing with TUnit, assertions, and best practices
+- **[Aspire Deployment Guide](docs/aspire-deployment-guide.md)** - Deploy to Azure and Kubernetes
+- **[Production Scaling Guide](docs/production-scaling-guide.md)** - Scale applications and databases in production
 - **[Contributing Guidelines](CONTRIBUTING.md)** - How to contribute to this project
 
 ## 🔧 Technology Stack
@@ -181,7 +184,7 @@ BookStore/
 
 ### Public Endpoints
 
-- `GET /api/books/search` - Search books with pagination
+- `GET /api/books` - List and search books (search with `?search=query`)
 - `GET /api/books/{id}` - Get book by ID (with ETag)
 - `GET /api/authors` - List authors
 - `GET /api/categories` - List categories (localized)
