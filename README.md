@@ -9,6 +9,8 @@ Full-stack .NET online book store application with event-sourced backend API and
 
 This project is a demonstration and exploration of modern .NET technologies, designed to be as complete as possible while strictly following architectural best practices, and keeping performance as a core priority. The performance philosophy adopted in this project is described in [A 12% improvement, easily obtained, is never considered marginal](https://aalmada.github.io/posts/Performance-optimizations/).
 
+I am sure a lot may be missing. This is also an opportunity for me to learn from others' contributions.
+
 A complete book store management system featuring:
 - **Backend API**: Event-sourced ASP.NET Core Minimal APIs with Marten and PostgreSQL
 - **Frontend**: Blazor web application for browsing and managing books
