@@ -30,13 +30,24 @@ public static class PublisherEndpoints
     static async Task<Ok<PagedListAdapter<PublisherDto>>> GetPublishers(
         [FromServices] IQuerySession session,
         [FromServices] IOptions<PaginationOptions> paginationOptions,
-        [AsParameters] PagedRequest request)
+        [AsParameters] OrderedPagedRequest request)
     {
         var paging = request.Normalize(paginationOptions.Value);
 
+        var normalizedSortOrder = request.SortOrder?.ToLowerInvariant() == "desc" ? "desc" : "asc";
+        var normalizedSortBy = request.SortBy?.ToLowerInvariant();
+
+        IQueryable<PublisherProjection> query = session.Query<PublisherProjection>();
+
+        query = (normalizedSortBy, normalizedSortOrder) switch
+        {
+            ("name", "desc") => query
+                .OrderByDescending(p => p.Name),
+            _ => query.OrderBy(p => p.Name)
+        };
+
         // Use Marten's native pagination for optimal performance
-        var pagedList = await session.Query<PublisherProjection>()
-            .OrderBy(p => p.Name)
+        var pagedList = await query
             .ToPagedListAsync(paging.Page!.Value, paging.PageSize!.Value);
 
         // Map to DTOs using LINQ's lazy Select (no intermediate collection)

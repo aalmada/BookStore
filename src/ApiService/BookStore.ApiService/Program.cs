@@ -76,7 +76,39 @@ static async Task WaitForProjectionsAsync(IDocumentStore store, ILogger logger)
 }
 
 // Configure the HTTP request pipeline
-app.UseExceptionHandler();
+if (app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler(exceptionHandlerApp =>
+    {
+        exceptionHandlerApp.Run(async context =>
+        {
+            var exceptionHandlerFeature = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>();
+            if (exceptionHandlerFeature is not null)
+            {
+                var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+                var exception = exceptionHandlerFeature.Error;
+                
+                logger.LogError(exception, "Unhandled exception: {Message}", exception.Message);
+                
+                context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+                context.Response.ContentType = "application/problem+json";
+                
+                await context.Response.WriteAsJsonAsync(new
+                {
+                    type = "https://tools.ietf.org/html/rfc9110#section-15.6.1",
+                    title = "An error occurred while processing your request.",
+                    status = StatusCodes.Status500InternalServerError,
+                    detail = exception.Message,
+                    stackTrace = exception.StackTrace
+                });
+            }
+        });
+    });
+}
+else
+{
+    app.UseExceptionHandler();
+}
 
 // Add request localization middleware
 app.UseRequestLocalization();

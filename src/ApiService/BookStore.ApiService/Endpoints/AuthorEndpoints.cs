@@ -34,15 +34,27 @@ public static class AuthorEndpoints
     static async Task<Ok<PagedListDto<AuthorDto>>> GetAuthors(
         [FromServices] IDocumentStore store,
         [FromServices] IOptions<PaginationOptions> paginationOptions,
-        [AsParameters] PagedRequest request,
+        [AsParameters] OrderedPagedRequest request,
         HttpContext context)
     {
         var culture = CultureInfo.CurrentCulture.Name;
         await using var session = store.QuerySession(culture);
         var paging = request.Normalize(paginationOptions.Value);
 
-        var pagedList = await session.Query<AuthorProjection>()
-            .OrderBy(a => a.Name)
+        var normalizedSortOrder = request.SortOrder?.ToLowerInvariant() == "desc" ? "desc" : "asc";
+        var normalizedSortBy = request.SortBy?.ToLowerInvariant();
+
+        IQueryable<AuthorProjection> query = session.Query<AuthorProjection>();
+
+        query = (normalizedSortBy, normalizedSortOrder) switch
+        {
+            ("name", "desc") => query
+                .OrderByDescending(a => a.Name),
+            _ => query
+                .OrderBy(a => a.Name)
+        };
+
+        var pagedList = await query
             .ToPagedListAsync(paging.Page!.Value, paging.PageSize!.Value);
 
         var authorDtos = pagedList.Select(author => new AuthorDto(

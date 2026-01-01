@@ -10,6 +10,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Npgsql;
 
+using BookStore.ApiService.Models;
+
 namespace BookStore.ApiService.Endpoints;
 
 public static class BookEndpoints
@@ -37,12 +39,8 @@ public static class BookEndpoints
         [FromServices] IDocumentStore store,
         [FromServices] IOptions<PaginationOptions> paginationOptions,
         [FromServices] IOptions<LocalizationOptions> localizationOptions,
-        [AsParameters] PagedRequest request,
-        HttpContext context,
-        [FromQuery] string? search = null,
-        [FromQuery] Guid? authorId = null,
-        [FromQuery] Guid? categoryId = null,
-        [FromQuery] Guid? publisherId = null)
+        [AsParameters] BookSearchRequest request,
+        HttpContext context)
     {
         var paging = request.Normalize(paginationOptions.Value);
 
@@ -57,38 +55,65 @@ public static class BookEndpoints
 
         // Build query incrementally
 #pragma warning disable CS8603 // Possible null reference return - false positive from Marten's Include API
-        var query = session.Query<BookSearchProjection>()
+        IQueryable<BookSearchProjection> query = session.Query<BookSearchProjection>()
             .Include(publishers).On(x => x.PublisherId)!
             .Include(authors).On(x => x.AuthorIds)!
             .Include(categories).On(x => x.CategoryIds)!;
 
         // Add search filter if search term is provided
-        if (!string.IsNullOrWhiteSpace(search))
+        if (!string.IsNullOrWhiteSpace(request.Search))
         {
-            var searchQuery = search.Trim();
-            query = (Marten.Linq.IMartenQueryable<BookSearchProjection>)query.Where(b =>
+            var searchQuery = request.Search.Trim();
+            query = query.Where(b =>
                 b.SearchText.NgramSearch(searchQuery) ||
                 (b.Isbn != null && b.Isbn.Contains(searchQuery)));
         }
 
-        if (authorId.HasValue)
+        if (request.AuthorId.HasValue)
         {
-            query = (Marten.Linq.IMartenQueryable<BookSearchProjection>)query.Where(b => b.AuthorIds.Contains(authorId.Value));
+            query = query.Where(b => b.AuthorIds.Contains(request.AuthorId.Value));
         }
 
-        if (categoryId.HasValue)
+        if (request.CategoryId.HasValue)
         {
-            query = (Marten.Linq.IMartenQueryable<BookSearchProjection>)query.Where(b => b.CategoryIds.Contains(categoryId.Value));
+            query = query.Where(b => b.CategoryIds.Contains(request.CategoryId.Value));
         }
 
-        if (publisherId.HasValue)
+        if (request.PublisherId.HasValue)
         {
-            query = (Marten.Linq.IMartenQueryable<BookSearchProjection>)query.Where(b => b.PublisherId == publisherId.Value);
+            query = query.Where(b => b.PublisherId == request.PublisherId.Value);
         }
+
+        // Apply sorting
+        var normalizedSortOrder = request.SortOrder?.ToLowerInvariant() == "desc" ? "desc" : "asc";
+        var normalizedSortBy = request.SortBy?.ToLowerInvariant();
+
+        query = (normalizedSortBy, normalizedSortOrder) switch
+        {
+            ("publisher", "desc") => query
+                .OrderByDescending(b => b.PublisherName)
+                .ThenBy(b => b.Title),
+            ("publisher", "asc") => query
+                .OrderBy(b => b.PublisherName)
+                .ThenBy(b => b.Title),
+            ("date", "desc") => query
+                .OrderByDescending(b => b.PublicationDate.GetValueOrDefault().Year)
+                .ThenByDescending(b => b.PublicationDate.GetValueOrDefault().Month)
+                .ThenByDescending(b => b.PublicationDate.GetValueOrDefault().Day)
+                .ThenBy(b => b.Title),
+            ("date", "asc") => query
+                .OrderBy(b => b.PublicationDate.GetValueOrDefault().Year)
+                .ThenBy(b => b.PublicationDate.GetValueOrDefault().Month)
+                .ThenBy(b => b.PublicationDate.GetValueOrDefault().Day)
+                .ThenBy(b => b.Title),
+            ("title", "desc") => query
+                .OrderByDescending(b => b.Title),
+            _ => query
+                .OrderBy(b => b.Title) // Default to Title asc
+        };
 
         // Execute query with pagination
         var pagedList = await query
-            .OrderBy(b => b.Title)
             .ToPagedListAsync(paging.Page!.Value, paging.PageSize!.Value);
 #pragma warning restore CS8603
 

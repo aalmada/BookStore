@@ -35,15 +35,30 @@ public static class CategoryEndpoints
     static async Task<Ok<PagedListDto<CategoryDto>>> GetCategories(
         [FromServices] IDocumentStore store,
         [FromServices] IOptions<PaginationOptions> paginationOptions,
-        [AsParameters] PagedRequest request,
+        [AsParameters] OrderedPagedRequest request,
         HttpContext context)
     {
         var culture = CultureInfo.CurrentCulture.Name;
         await using var session = store.QuerySession(culture);
         var paging = request.Normalize(paginationOptions.Value);
 
-        var pagedList = await session.Query<CategoryProjection>()
-            .OrderBy(c => c.Id)
+        var normalizedSortOrder = request.SortOrder?.ToLowerInvariant() == "desc" ? "desc" : "asc";
+        var normalizedSortBy = request.SortBy?.ToLowerInvariant();
+
+        IQueryable<CategoryProjection> query = session.Query<CategoryProjection>();
+
+        query = (normalizedSortBy, normalizedSortOrder) switch
+        {
+            ("id", "desc") => query
+                .OrderByDescending(c => c.Id),
+            ("id", "asc") => query
+                .OrderBy(c => c.Id),
+            ("name", "desc") => query
+                .OrderByDescending(c => c.Name),
+            _ => query.OrderBy(c => c.Name) // Default to Name asc (changed from ID)
+        };
+
+        var pagedList = await query
             .ToPagedListAsync(paging.Page!.Value, paging.PageSize!.Value);
 
         var items = pagedList.Select(c => new CategoryDto(c.Id, c.Name)).ToList();
