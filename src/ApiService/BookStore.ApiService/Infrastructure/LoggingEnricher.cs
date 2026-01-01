@@ -19,32 +19,62 @@ public class LoggingEnricherMiddleware
 
     public async Task InvokeAsync(HttpContext context)
     {
+        // Cache Activity reference to avoid multiple property accesses
+        var activity = Activity.Current;
+        
+        // Get headers once to avoid multiple lookups
+        var headers = context.Request.Headers;
+        
         // Get correlation ID (already set by MartenMetadataMiddleware)
-        var correlationId = context.Request.Headers["X-Correlation-ID"].FirstOrDefault()
-            ?? Activity.Current?.RootId
-            ?? Guid.CreateVersion7().ToString();
+        var correlationId = headers.TryGetValue("X-Correlation-ID", out var correlationHeader)
+            ? correlationHeader.ToString()
+            : activity?.RootId ?? Guid.CreateVersion7().ToString();
 
-        // Get trace and span IDs from OpenTelemetry Activity
-        var traceId = Activity.Current?.TraceId.ToString();
-        var spanId = Activity.Current?.SpanId.ToString();
+        // Get causation ID from header
+        var causationId = headers.TryGetValue("X-Causation-ID", out var causationHeader)
+            ? causationHeader.ToString()
+            : activity?.ParentId;
+
+        // Get trace and span IDs from OpenTelemetry Activity (avoid ToString() if null)
+        var traceId = activity?.TraceId.ToString();
+        var spanId = activity?.SpanId.ToString();
 
         // Get user information (excluding email for privacy)
-        var userId = context.User?.Identity?.Name ?? "anonymous";
+        var userId = context.User.Identity?.Name ?? "anonymous";
 
-        // Get request information
-        var requestPath = context.Request.Path.Value;
-        var requestMethod = context.Request.Method;
-        var userAgent = context.Request.Headers["User-Agent"].FirstOrDefault();
+        // Get request information (cache frequently accessed properties)
+        var request = context.Request;
+        var requestPath = request.Path.Value;
+        var requestMethod = request.Method;
+        var userAgent = headers.TryGetValue("User-Agent", out var userAgentHeader) 
+            ? userAgentHeader.ToString() 
+            : null;
         var remoteIp = context.Connection.RemoteIpAddress?.ToString();
 
-        // Log the request start with enriched metadata
-        Log.Infrastructure.RequestStarted(
-            _logger,
-            requestMethod,
-            requestPath ?? "/",
-            remoteIp ?? "unknown");
+        // Create a log scope with all metadata - this makes these properties available
+        // in all structured logs within this request
+        using (_logger.BeginScope(new Dictionary<string, object?>
+        {
+            ["CorrelationId"] = correlationId,
+            ["CausationId"] = causationId,
+            ["TraceId"] = traceId,
+            ["SpanId"] = spanId,
+            ["UserId"] = userId,
+            ["RequestPath"] = requestPath,
+            ["RequestMethod"] = requestMethod,
+            ["RemoteIp"] = remoteIp,
+            ["UserAgent"] = userAgent
+        }))
+        {
+            // Log the request start with enriched metadata
+            Log.Infrastructure.RequestStarted(
+                _logger,
+                requestMethod,
+                requestPath ?? "/",
+                remoteIp ?? "unknown");
 
-        await _next(context);
+            await _next(context);
+        }
     }
 }
 
