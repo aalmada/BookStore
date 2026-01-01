@@ -5,9 +5,7 @@
     <ProjectReference Include="..\..\Client\BookStore.Client\BookStore.Client.csproj" />
     
     <!-- Ensure API project builds before Web project to generate OpenAPI spec -->
-    <ProjectReference Include="..\..\ApiService\BookStore.ApiService\BookStore.ApiService.csproj">
-      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-    </ProjectReference>
+    <ProjectReference Include="..\..\ApiService\BookStore.ApiService\BookStore.ApiService.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <ItemGroup>
