@@ -39,7 +39,10 @@ public static class BookEndpoints
         [FromServices] IOptions<LocalizationOptions> localizationOptions,
         [AsParameters] PagedRequest request,
         HttpContext context,
-        [FromQuery] string? search = null)
+        [FromQuery] string? search = null,
+        [FromQuery] Guid? authorId = null,
+        [FromQuery] Guid? categoryId = null,
+        [FromQuery] Guid? publisherId = null)
     {
         var paging = request.Normalize(paginationOptions.Value);
 
@@ -66,6 +69,21 @@ public static class BookEndpoints
             query = (Marten.Linq.IMartenQueryable<BookSearchProjection>)query.Where(b =>
                 b.SearchText.NgramSearch(searchQuery) ||
                 (b.Isbn != null && b.Isbn.Contains(searchQuery)));
+        }
+
+        if (authorId.HasValue)
+        {
+            query = (Marten.Linq.IMartenQueryable<BookSearchProjection>)query.Where(b => b.AuthorIds.Contains(authorId.Value));
+        }
+
+        if (categoryId.HasValue)
+        {
+            query = (Marten.Linq.IMartenQueryable<BookSearchProjection>)query.Where(b => b.CategoryIds.Contains(categoryId.Value));
+        }
+
+        if (publisherId.HasValue)
+        {
+            query = (Marten.Linq.IMartenQueryable<BookSearchProjection>)query.Where(b => b.PublisherId == publisherId.Value);
         }
 
         // Execute query with pagination
