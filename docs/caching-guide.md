@@ -39,7 +39,7 @@ The caching infrastructure is automatically wired up by Aspire.
 
 ### Usage Pattern
 
-Instead of `GetOrCreateAsync`, use `GetOrCreateLocalizedAsync`. This method automatically appends the current UI culture (e.g., `|en-US`, `|pt-BR`) to the cache key.
+Instead of `GetOrCreateAsync`, use `GetOrCreateLocalizedAsync`. This method automatically appends the current UI culture (e.g., `|pt-PT`, `|pt-BR`) to the cache key.
 
 ```csharp
 public class BookService(HybridCache cache)

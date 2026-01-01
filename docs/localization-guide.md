@@ -18,7 +18,7 @@ This approach ensures high performance by eliminating complex runtime fallback l
 
 ### Supported Languages
 
-The API is configured using **ISO 639-1 language codes**. You can configure either generic codes (e.g., `en`, `pt`) or specific regional cultures (e.g., `en-US`, `pt-BR`).
+The API is configured using **ISO 639-1 language codes**. You can configure either generic codes (e.g., `en`, `pt`) or specific regional cultures (e.g., `en-US`, `pt-PT`).
 
 **Standard Configuration (Generic)**:
 Suitable for applications where a single translation per language works for all regions.
@@ -32,7 +32,7 @@ Suitable for applications where a single translation per language works for all 
 ```
 
 **Regional Configuration (Specific)**:
-Suitable when you need different content for specific regions (e.g., "Color" vs "Colour").
+Suitable when you need different content for specific regions (e.g., "Color" vs "Colour" in English, or regional differences between pt-PT, pt-BR, etc.).
 ```json
 {
   "Localization": {
@@ -72,9 +72,9 @@ Translations are captured at the source in Domain Events using a dictionary.
 You can store both generic and specific keys.
 ```json
 {
-  "pt": "Programação",
-  "pt-BR": "Programação (Brasil)",
-  "en": "Programming"
+  "pt": "Desporto",
+  "pt-BR": "Esporte",
+  "en": "Sports"
 }
 ```
 
@@ -82,9 +82,9 @@ You can store both generic and specific keys.
 
 The API applies fallback logic **during projection generation** to ensure every supported culture has content.
 
-**Logic sequence for a target culture (e.g., `pt-BR`):**
+**Logic sequence for a target culture (e.g., `pt-PT`):**
 
-1. **Exact Match**: Look for a translation with key `"pt-BR"`.
+1. **Exact Match**: Look for a translation with key `"pt-PT"`.
 2. **Parent Culture**: Look for a translation with key `"pt"`.
 3. **Default Culture**: Look for a translation with the key of the `DefaultCulture`.
 4. **Any**: Use the first available translation.
@@ -100,7 +100,7 @@ Clients request a specific language using the `Accept-Language` header.
 
 ```http
 GET /api/books HTTP/1.1
-Accept-Language: pt-BR
+Accept-Language: pt-PT
 ```
 
 If the requested culture is not supported (e.g., `ja-JP`), the API will automatically fall back to the configured `DefaultCulture`.
@@ -110,7 +110,7 @@ If the requested culture is not supported (e.g., `ja-JP`), the API will automati
 Endpoints are simplified to purely read operations. They resolve the current culture (handled by ASP.NET Core middleware) and query the corresponding database tenant.
 
 ```csharp
-// 1. Resolve culture (e.g., "pt-BR")
+// 1. Resolve culture (e.g., "pt-PT")
 var culture = CultureInfo.CurrentCulture.Name;
 
 // 2. Open a session specific to that culture
