@@ -258,7 +258,8 @@ Example event flow:
 - **Health Checks** - Service monitoring
 - **Roslyn Analyzers** - Custom analyzers for Event Sourcing/CQRS patterns ([docs](analyzer-rules.md))
 - **Roslynator.Analyzers** - Enhanced code analysis
-- **NSwag** - OpenAPI client generation (optional development tool)
+- **Refit** - Type-safe REST library for .NET
+- **Refitter** - Tool to generate Refit interfaces from OpenAPI specifications
 
 ## Key Design Decisions
 

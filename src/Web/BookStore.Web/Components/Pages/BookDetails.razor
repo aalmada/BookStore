@@ -1,6 +1,9 @@
 @page "/book/{id:guid}"
 @using BookStore.Web.Services
-@inject IBookStoreApi ApiClient
+@using BookStore.Client
+@using ClientModels = BookStore.Client
+@using BookStore.Shared.Models
+@inject IGetBookEndpoint ApiClient
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 
@@ -88,11 +91,11 @@
                                     </MudStack>
                                 }
 
-                                @if (book.PublicationDate.HasValue)
+                                @if (!book.PublicationDate.Equals(default(BookStore.Shared.Models.PartialDate)))
                                 {
                                     <MudStack Row="true" AlignItems="AlignItems.Center">
                                         <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" Color="Color.Secondary" />
-                                        <MudText Typo="Typo.body2"><strong>Published:</strong> @book.PublicationDate.Value.ToDisplayString()</MudText>
+                                        <MudText Typo="Typo.body2"><strong>Published:</strong> @book.PublicationDate.ToDisplayString()</MudText>
                                     </MudStack>
                                 }
                             </MudStack>
@@ -126,7 +129,7 @@
     [Parameter]
     public Guid Id { get; set; }
 
-    private BookDto? book;
+    private ClientModels.BookDto? book;
     private string? errorMessage;
     private bool isLoading = true;
     private List<BreadcrumbItem> _breadcrumbItems = new();
@@ -153,13 +156,18 @@
 
         try
         {
-            book = await ApiClient.GetBookAsync(Id);
+            book = await ApiClient.Execute(
+                id: Id,
+                api_version: "1.0",
+                accept_Language: "en",
+                x_Correlation_ID: Guid.NewGuid().ToString(),
+                x_Causation_ID: string.Empty);
             
             // Update breadcrumbs
             _breadcrumbItems = new List<BreadcrumbItem>
             {
                 new BreadcrumbItem("Home", href: "/", icon: Icons.Material.Filled.Home),
-                new BreadcrumbItem(book.Title, href: null, disabled: true)
+                new BreadcrumbItem(book.Title ?? "Book", href: null, disabled: true)
             };
         }
         catch (Refit.ApiException apiEx) when (apiEx.StatusCode == System.Net.HttpStatusCode.NotFound)

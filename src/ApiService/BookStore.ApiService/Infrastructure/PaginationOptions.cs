@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace BookStore.ApiService.Models;
+namespace BookStore.ApiService.Infrastructure;
 
 /// <summary>
 /// Configuration options for pagination

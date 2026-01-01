@@ -51,7 +51,7 @@ public static class OpenApiTransformerExtensions
                 Name = "Accept-Language",
                 In = ParameterLocation.Header,
                 Required = false,
-                Description = "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+                Description = "Preferred language for localized content (configurable via LocalizationOptions)"
             });
 
             // Add correlation ID header

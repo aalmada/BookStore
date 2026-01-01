@@ -18,8 +18,8 @@ public static class ApplicationServicesExtensions
         _ = services.AddProblemDetails();
 
         // Configure pagination options with validation
-        _ = services.AddOptions<Models.PaginationOptions>()
-            .Bind(configuration.GetSection(Models.PaginationOptions.SectionName))
+        _ = services.AddOptions<Infrastructure.PaginationOptions>()
+            .BindConfiguration(Infrastructure.PaginationOptions.SectionName)
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
@@ -64,14 +64,14 @@ public static class ApplicationServicesExtensions
     static void AddLocalization(IServiceCollection services, IConfiguration configuration)
     {
         // Configure localization from appsettings.json with validation
-        _ = services.AddOptions<Models.LocalizationOptions>()
-            .Bind(configuration.GetSection(Models.LocalizationOptions.SectionName))
+        _ = services.AddOptions<Infrastructure.LocalizationOptions>()
+            .BindConfiguration(Infrastructure.LocalizationOptions.SectionName)
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
         _ = services.AddLocalization();
         _ = services.AddOptions<RequestLocalizationOptions>()
-            .Configure<IOptions<Models.LocalizationOptions>>((options, localizationOptions) =>
+            .Configure<IOptions<Infrastructure.LocalizationOptions>>((options, localizationOptions) =>
             {
                 var localization = localizationOptions.Value;
 

@@ -1,4 +1,4 @@
-namespace BookStore.ApiService.Models;
+namespace BookStore.ApiService.Infrastructure;
 
 /// <summary>
 /// Standard pagination request parameters

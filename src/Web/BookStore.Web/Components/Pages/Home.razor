@@ -1,6 +1,9 @@
 ﻿@page "/"
+@using BookStore.Client
+@using ClientModels = BookStore.Client
+@using BookStore.Shared.Models
 @using BookStore.Web.Services
-@inject IBookStoreApi ApiClient
+@inject IGetBooksEndpoint ApiClient
 @inject BookStoreHubService HubService
 @inject OptimisticUpdateService OptimisticService
 @implements IAsyncDisposable
@@ -125,10 +128,10 @@
                                     <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" /> @book.Publisher.Name
                                 </MudText>
                             }
-                            @if (book.PublicationDate.HasValue)
+                            @if (!book.PublicationDate.Equals(default(BookStore.Shared.Models.PartialDate)))
                             {
                                 <MudText Typo="Typo.body2" Color="Color.Secondary">
-                                    <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" /> @book.PublicationDate.Value.Year
+                                    <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" /> @book.PublicationDate.Year
                                 </MudText>
                             }
                         </MudCardContent>
@@ -171,7 +174,7 @@
 </MudContainer>
 
 @code {
-    private PagedListDto<BookDto>? pagedBooks;
+    private BookStore.Client.PagedListDtoOfBookDto? pagedBooks;
     private string searchQuery = string.Empty;
     private string? errorMessage;
     private bool isLoading = true;
@@ -204,10 +207,14 @@
         
         try
         {
-            pagedBooks = await ApiClient.GetBooksAsync(
-                string.IsNullOrWhiteSpace(searchQuery) ? null : searchQuery,
-                currentPage,
-                pageSize);
+            pagedBooks = await ApiClient.Execute(
+                page: currentPage,
+                pageSize: pageSize,
+                search: string.IsNullOrWhiteSpace(searchQuery) ? string.Empty : searchQuery,
+                api_version: "1.0",
+                accept_Language: "en",
+                x_Correlation_ID: Guid.NewGuid().ToString(),
+                x_Causation_ID: string.Empty);
         }
         catch (Exception ex)
         {

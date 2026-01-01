@@ -173,6 +173,8 @@ BookStore/
 - **TUnit** - Modern testing framework with built-in code coverage
 - **Roslyn Analyzers** - Custom analyzers for Event Sourcing/CQRS patterns
 - **Roslynator.Analyzers 4.15.0** - Enhanced code analysis
+- **Refit** - Type-safe REST library for .NET
+- **Refitter** - Tool to generate Refit interfaces from OpenAPI specifications
 - **NSwag** - OpenAPI client generation (optional development tool)
 
 ## 📊 API Endpoints

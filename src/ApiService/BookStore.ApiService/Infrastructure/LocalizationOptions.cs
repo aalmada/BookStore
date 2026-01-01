@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using BookStore.ApiService.Infrastructure;
 
-namespace BookStore.ApiService.Models;
+namespace BookStore.ApiService.Infrastructure;
 
 /// <summary>
 /// Configuration options for application localization.

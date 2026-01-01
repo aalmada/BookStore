@@ -1,5 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-using BookStore.ApiService.Models;
+using BookStore.ApiService.Infrastructure;
 
 namespace BookStore.ApiService.Tests;
 

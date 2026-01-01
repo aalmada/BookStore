@@ -36,11 +36,15 @@ var circuitBreakerPolicy = HttpPolicyExtensions
     .HandleTransientHttpError()
     .CircuitBreakerAsync(5, TimeSpan.FromSeconds(30));
 
-// Register BookStore API client with Polly resilience policies
-builder.Services
-    .AddBookStoreClient(new Uri(apiServiceUrl))
-    .AddPolicyHandler(retryPolicy)
-    .AddPolicyHandler(circuitBreakerPolicy);
+// Register BookStore API client
+builder.Services.AddBookStoreClient(new Uri(apiServiceUrl));
+
+// Add Polly resilience policies to all HTTP clients
+builder.Services.ConfigureHttpClientDefaults(http =>
+{
+    http.AddPolicyHandler(retryPolicy);
+    http.AddPolicyHandler(circuitBreakerPolicy);
+});
 
 // Register SignalR hub service for real-time notifications
 builder.Services.AddSingleton<BookStoreHubService>();

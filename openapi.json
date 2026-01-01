@@ -10,7 +10,7 @@
   },
   "servers": [
     {
-      "url": "http://localhost:56132/"
+      "url": "http://localhost:60385/"
     }
   ],
   "paths": {
@@ -61,7 +61,7 @@
           {
             "name": "Accept-Language",
             "in": "header",
-            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+            "description": "Preferred language for localized content (configurable via LocalizationOptions)"
           },
           {
             "name": "X-Correlation-ID",
@@ -113,7 +113,7 @@
           {
             "name": "Accept-Language",
             "in": "header",
-            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+            "description": "Preferred language for localized content (configurable via LocalizationOptions)"
           },
           {
             "name": "X-Correlation-ID",
@@ -183,7 +183,7 @@
           {
             "name": "Accept-Language",
             "in": "header",
-            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+            "description": "Preferred language for localized content (configurable via LocalizationOptions)"
           },
           {
             "name": "X-Correlation-ID",
@@ -235,7 +235,7 @@
           {
             "name": "Accept-Language",
             "in": "header",
-            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+            "description": "Preferred language for localized content (configurable via LocalizationOptions)"
           },
           {
             "name": "X-Correlation-ID",
@@ -305,7 +305,7 @@
           {
             "name": "Accept-Language",
             "in": "header",
-            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+            "description": "Preferred language for localized content (configurable via LocalizationOptions)"
           },
           {
             "name": "X-Correlation-ID",
@@ -357,7 +357,7 @@
           {
             "name": "Accept-Language",
             "in": "header",
-            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+            "description": "Preferred language for localized content (configurable via LocalizationOptions)"
           },
           {
             "name": "X-Correlation-ID",
@@ -427,7 +427,7 @@
           {
             "name": "Accept-Language",
             "in": "header",
-            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+            "description": "Preferred language for localized content (configurable via LocalizationOptions)"
           },
           {
             "name": "X-Correlation-ID",
@@ -482,7 +482,7 @@
           {
             "name": "Accept-Language",
             "in": "header",
-            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+            "description": "Preferred language for localized content (configurable via LocalizationOptions)"
           },
           {
             "name": "X-Correlation-ID",
@@ -528,7 +528,7 @@
           {
             "name": "Accept-Language",
             "in": "header",
-            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+            "description": "Preferred language for localized content (configurable via LocalizationOptions)"
           },
           {
             "name": "X-Correlation-ID",
@@ -572,7 +572,7 @@
           {
             "name": "Accept-Language",
             "in": "header",
-            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+            "description": "Preferred language for localized content (configurable via LocalizationOptions)"
           },
           {
             "name": "X-Correlation-ID",
@@ -617,7 +617,7 @@
           {
             "name": "Accept-Language",
             "in": "header",
-            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+            "description": "Preferred language for localized content (configurable via LocalizationOptions)"
           },
           {
             "name": "X-Correlation-ID",
@@ -670,7 +670,7 @@
           {
             "name": "Accept-Language",
             "in": "header",
-            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+            "description": "Preferred language for localized content (configurable via LocalizationOptions)"
           },
           {
             "name": "X-Correlation-ID",
@@ -715,7 +715,7 @@
           {
             "name": "Accept-Language",
             "in": "header",
-            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+            "description": "Preferred language for localized content (configurable via LocalizationOptions)"
           },
           {
             "name": "X-Correlation-ID",
@@ -760,7 +760,7 @@
           {
             "name": "Accept-Language",
             "in": "header",
-            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+            "description": "Preferred language for localized content (configurable via LocalizationOptions)"
           },
           {
             "name": "X-Correlation-ID",
@@ -814,7 +814,7 @@
           {
             "name": "Accept-Language",
             "in": "header",
-            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+            "description": "Preferred language for localized content (configurable via LocalizationOptions)"
           },
           {
             "name": "X-Correlation-ID",
@@ -869,7 +869,7 @@
           {
             "name": "Accept-Language",
             "in": "header",
-            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+            "description": "Preferred language for localized content (configurable via LocalizationOptions)"
           },
           {
             "name": "X-Correlation-ID",
@@ -922,7 +922,7 @@
           {
             "name": "Accept-Language",
             "in": "header",
-            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+            "description": "Preferred language for localized content (configurable via LocalizationOptions)"
           },
           {
             "name": "X-Correlation-ID",
@@ -967,7 +967,7 @@
           {
             "name": "Accept-Language",
             "in": "header",
-            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+            "description": "Preferred language for localized content (configurable via LocalizationOptions)"
           },
           {
             "name": "X-Correlation-ID",
@@ -1003,7 +1003,7 @@
           {
             "name": "Accept-Language",
             "in": "header",
-            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+            "description": "Preferred language for localized content (configurable via LocalizationOptions)"
           },
           {
             "name": "X-Correlation-ID",
@@ -1058,7 +1058,7 @@
           {
             "name": "Accept-Language",
             "in": "header",
-            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+            "description": "Preferred language for localized content (configurable via LocalizationOptions)"
           },
           {
             "name": "X-Correlation-ID",
@@ -1111,7 +1111,7 @@
           {
             "name": "Accept-Language",
             "in": "header",
-            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+            "description": "Preferred language for localized content (configurable via LocalizationOptions)"
           },
           {
             "name": "X-Correlation-ID",
@@ -1156,7 +1156,7 @@
           {
             "name": "Accept-Language",
             "in": "header",
-            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+            "description": "Preferred language for localized content (configurable via LocalizationOptions)"
           },
           {
             "name": "X-Correlation-ID",
@@ -1192,7 +1192,7 @@
           {
             "name": "Accept-Language",
             "in": "header",
-            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+            "description": "Preferred language for localized content (configurable via LocalizationOptions)"
           },
           {
             "name": "X-Correlation-ID",
@@ -1247,7 +1247,7 @@
           {
             "name": "Accept-Language",
             "in": "header",
-            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+            "description": "Preferred language for localized content (configurable via LocalizationOptions)"
           },
           {
             "name": "X-Correlation-ID",
@@ -1300,7 +1300,7 @@
           {
             "name": "Accept-Language",
             "in": "header",
-            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+            "description": "Preferred language for localized content (configurable via LocalizationOptions)"
           },
           {
             "name": "X-Correlation-ID",
@@ -1345,7 +1345,7 @@
           {
             "name": "Accept-Language",
             "in": "header",
-            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+            "description": "Preferred language for localized content (configurable via LocalizationOptions)"
           },
           {
             "name": "X-Correlation-ID",
@@ -1381,7 +1381,7 @@
           {
             "name": "Accept-Language",
             "in": "header",
-            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+            "description": "Preferred language for localized content (configurable via LocalizationOptions)"
           },
           {
             "name": "X-Correlation-ID",
@@ -1424,7 +1424,7 @@
           {
             "name": "Accept-Language",
             "in": "header",
-            "description": "Preferred language. Supported: `en`, `pt`, `es`, `fr`, `de`"
+            "description": "Preferred language for localized content (configurable via LocalizationOptions)"
           },
           {
             "name": "X-Correlation-ID",

@@ -1,3 +1,4 @@
+using BookStore.ApiService.Infrastructure;
 using BookStore.ApiService.Events;
 using BookStore.ApiService.Models;
 using JasperFx.Events;
