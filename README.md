@@ -3,9 +3,11 @@
 [![CI](https://github.com/aalmada/BookStore/actions/workflows/ci.yml/badge.svg)](https://github.com/aalmada/BookStore/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/aalmada/BookStore/actions/workflows/codeql.yml/badge.svg)](https://github.com/aalmada/BookStore/actions/workflows/codeql.yml)
 
-Full-stack online book store application with event-sourced backend API and Blazor frontend, orchestrated by .NET Aspire.
+Full-stack .NET online book store application with event-sourced backend API and Blazor frontend, orchestrated by .NET Aspire.
 
 ## Overview
+
+This project is a demonstration and exploration of modern .NET technologies, designed to be as complete as possible while strictly following architectural best practices, and keeping performance as a core priority. The performance philosophy adopted in this project is described in [A 12% improvement, easily obtained, is never considered marginal](https://aalmada.github.io/posts/Performance-optimizations/).
 
 A complete book store management system featuring:
 - **Backend API**: Event-sourced ASP.NET Core Minimal APIs with Marten and PostgreSQL
