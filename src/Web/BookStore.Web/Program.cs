@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Blazored.LocalStorage;
 using BookStore.Client;
 using BookStore.Shared.Infrastructure.Json;
 using BookStore.Web;
@@ -39,9 +40,22 @@ var circuitBreakerPolicy = HttpPolicyExtensions
 // Register BookStore API client
 builder.Services.AddBookStoreClient(new Uri(apiServiceUrl));
 
+// Add authentication services
+builder.Services.AddBlazoredLocalStorage();
+builder.Services.AddScoped<AuthenticationService>();
+builder.Services.AddScoped<CustomAuthenticationStateProvider>();
+builder.Services.AddScoped<Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider>(
+    sp => sp.GetRequiredService<CustomAuthenticationStateProvider>());
+builder.Services.AddCascadingAuthenticationState();
+builder.Services.AddAuthorizationCore();
+
+// Add HTTP message handler for automatic token injection
+builder.Services.AddTransient<AuthorizingHttpMessageHandler>();
+
 // Add Polly resilience policies to all HTTP clients
 builder.Services.ConfigureHttpClientDefaults(http =>
 {
+    _ = http.AddHttpMessageHandler<AuthorizingHttpMessageHandler>();
     _ = http.AddPolicyHandler(retryPolicy);
     _ = http.AddPolicyHandler(circuitBreakerPolicy);
 });

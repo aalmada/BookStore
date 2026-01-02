@@ -1,0 +1,213 @@
+@page "/register"
+@using BookStore.Web.Services
+@inject AuthenticationService AuthService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Register - BookStore</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-8">
+    <MudPaper Elevation="4" Class="pa-8" Style="border-radius: 12px;">
+        <MudText Typo="Typo.h4" Align="Align.Center" Class="mb-6">
+            <MudIcon Icon="@Icons.Material.Filled.PersonAdd" Size="Size.Large" Class="mr-2" />
+            Create Account
+        </MudText>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-4">@errorMessage</MudAlert>
+        }
+
+        @if (registrationSuccess)
+        {
+            <MudAlert Severity="Severity.Success" Class="mb-4">
+                Registration successful! Redirecting to login...
+            </MudAlert>
+        }
+
+        <MudForm @ref="form">
+            <MudTextField @bind-Value="email"
+                          Label="Email"
+                          Variant="Variant.Outlined"
+                          Required="true"
+                          RequiredError="Email is required"
+                          Validation="@(new Func<string, string?>(ValidateEmail))"
+                          Class="mb-4" />
+
+            <MudTextField @bind-Value="password"
+                          Label="Password"
+                          Variant="Variant.Outlined"
+                          InputType="InputType.Password"
+                          Required="true"
+                          RequiredError="Password is required"
+                          OnBlur="ValidatePasswordStrength"
+                          Class="mb-4" />
+
+            @if (passwordErrors.Any())
+            {
+                <MudAlert Severity="Severity.Warning" Class="mb-4">
+                    <MudText Typo="Typo.body2" Class="mb-2"><strong>Password must meet the following requirements:</strong></MudText>
+                    <ul style="margin: 0; padding-left: 20px;">
+                        @foreach (var error in passwordErrors)
+                        {
+                            <li>@error</li>
+                        }
+                    </ul>
+                </MudAlert>
+            }
+
+            <MudTextField @bind-Value="confirmPassword"
+                          Label="Confirm Password"
+                          Variant="Variant.Outlined"
+                          InputType="InputType.Password"
+                          Required="true"
+                          RequiredError="Please confirm your password"
+                          Validation="@(new Func<string, string?>(ValidateConfirmPassword))"
+                          Class="mb-4" />
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       FullWidth="true"
+                       Size="Size.Large"
+                       OnClick="HandleRegister"
+                       Disabled="isLoading || passwordErrors.Any()"
+                       Class="mb-4">
+                @if (isLoading)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    <span>Creating account...</span>
+                }
+                else
+                {
+                    <span>Register</span>
+                }
+            </MudButton>
+        </MudForm>
+
+        <MudDivider Class="my-4" />
+
+        <MudText Align="Align.Center">
+            Already have an account?
+            <MudLink Href="/login" Color="Color.Primary">Login here</MudLink>
+        </MudText>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    MudForm? form;
+    string email = string.Empty;
+    string password = string.Empty;
+    string confirmPassword = string.Empty;
+    string? errorMessage;
+    bool isLoading;
+    bool registrationSuccess;
+    List<string> passwordErrors = new();
+
+    async Task HandleRegister()
+    {
+        if (form == null)
+        {
+            return;
+        }
+
+        await form.Validate();
+        if (!form.IsValid)
+        {
+            return;
+        }
+
+        ValidatePasswordStrength();
+        if (passwordErrors.Any())
+        {
+            return;
+        }
+
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            var result = await AuthService.RegisterAsync(email, password);
+
+            if (result.Success)
+            {
+                registrationSuccess = true;
+                await Task.Delay(2000);
+                Navigation.NavigateTo("/login");
+            }
+            else
+            {
+                errorMessage = result.Error ?? "Registration failed";
+            }
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    void ValidatePasswordStrength()
+    {
+        passwordErrors.Clear();
+
+        if (string.IsNullOrWhiteSpace(password))
+        {
+            return;
+        }
+
+        if (password.Length < 8)
+        {
+            passwordErrors.Add("At least 8 characters");
+        }
+
+        if (!password.Any(char.IsUpper))
+        {
+            passwordErrors.Add("At least one uppercase letter");
+        }
+
+        if (!password.Any(char.IsLower))
+        {
+            passwordErrors.Add("At least one lowercase letter");
+        }
+
+        if (!password.Any(char.IsDigit))
+        {
+            passwordErrors.Add("At least one number");
+        }
+
+        if (!password.Any(ch => !char.IsLetterOrDigit(ch)))
+        {
+            passwordErrors.Add("At least one special character");
+        }
+    }
+
+    static string? ValidateEmail(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            return "Email is required";
+        }
+
+        if (!email.Contains('@'))
+        {
+            return "Invalid email format";
+        }
+
+        return null;
+    }
+
+    string? ValidateConfirmPassword(string confirmPwd)
+    {
+        if (string.IsNullOrWhiteSpace(confirmPwd))
+        {
+            return "Please confirm your password";
+        }
+
+        if (confirmPwd != password)
+        {
+            return "Passwords do not match";
+        }
+
+        return null;
+    }
+}

@@ -1,0 +1,126 @@
+@page "/login"
+@using BookStore.Web.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationService AuthService
+@inject CustomAuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Login - BookStore</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-8">
+    <MudPaper Elevation="4" Class="pa-8" Style="border-radius: 12px;">
+        <MudText Typo="Typo.h4" Align="Align.Center" Class="mb-6">
+            <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Large" Class="mr-2" />
+            Login
+        </MudText>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-4">@errorMessage</MudAlert>
+        }
+
+        <MudForm @ref="form">
+            <MudTextField @bind-Value="email"
+                          Label="Email"
+                          Variant="Variant.Outlined"
+                          Required="true"
+                          RequiredError="Email is required"
+                          Validation="@(new Func<string, string?>(ValidateEmail))"
+                          Class="mb-4" />
+
+            <MudTextField @bind-Value="password"
+                          Label="Password"
+                          Variant="Variant.Outlined"
+                          InputType="InputType.Password"
+                          Required="true"
+                          RequiredError="Password is required"
+                          Class="mb-4" />
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       FullWidth="true"
+                       Size="Size.Large"
+                       OnClick="HandleLogin"
+                       Disabled="isLoading"
+                       Class="mb-4">
+                @if (isLoading)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    <span>Logging in...</span>
+                }
+                else
+                {
+                    <span>Login</span>
+                }
+            </MudButton>
+        </MudForm>
+
+        <MudDivider Class="my-4" />
+
+        <MudText Align="Align.Center">
+            Don't have an account?
+            <MudLink Href="/register" Color="Color.Primary">Register here</MudLink>
+        </MudText>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    MudForm? form;
+    string email = string.Empty;
+    string password = string.Empty;
+    string? errorMessage;
+    bool isLoading;
+
+    [SupplyParameterFromQuery]
+    public string? ReturnUrl { get; set; }
+
+    async Task HandleLogin()
+    {
+        if (form == null)
+        {            return;
+        }
+
+        await form.Validate();
+        if (!form.IsValid)
+        {            return;
+        }
+
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            var result = await AuthService.LoginAsync(email, password);
+
+            if (result.Success)
+            {
+                AuthStateProvider.NotifyAuthenticationStateChanged();
+                Navigation.NavigateTo(ReturnUrl ?? "/", forceLoad: true);
+            }
+            else
+            {
+                errorMessage = result.Error ?? "Login failed";
+            }
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    static string? ValidateEmail(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            return "Email is required";
+        }
+
+        if (!email.Contains('@'))
+        {
+            return "Invalid email format";
+        }
+
+        return null;
+    }
+}

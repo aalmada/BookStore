@@ -105,6 +105,19 @@ public static class BookStoreClientExtensions
         _ = services.AddRefitClient<IGetProjectionStatusEndpoint>()
             .ConfigureHttpClient(c => c.BaseAddress = baseAddress);
 
+        // Identity endpoints
+        _ = services.AddRefitClient<IIdentityLoginEndpoint>()
+            .ConfigureHttpClient(c => c.BaseAddress = baseAddress);
+
+        _ = services.AddRefitClient<IIdentityRegisterEndpoint>()
+            .ConfigureHttpClient(c => c.BaseAddress = baseAddress);
+
+        _ = services.AddRefitClient<IIdentityRefreshEndpoint>()
+            .ConfigureHttpClient(c => c.BaseAddress = baseAddress);
+
+        _ = services.AddRefitClient<IIdentityManageInfoEndpoint>()
+            .ConfigureHttpClient(c => c.BaseAddress = baseAddress);
+
         return services;
     }
 

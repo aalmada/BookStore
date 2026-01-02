@@ -89,12 +89,9 @@ public static class ApplicationServicesExtensions
     static void AddIdentityServices(IServiceCollection services)
     {
         // Add Identity with custom Marten user store
+        // AddIdentityApiEndpoints already configures Bearer token authentication
         _ = services.AddIdentityApiEndpoints<Models.ApplicationUser>()
             .AddUserStore<Identity.MartenUserStore>();
-
-        // Configure JWT bearer authentication
-        _ = services.AddAuthentication()
-            .AddBearerToken(Microsoft.AspNetCore.Identity.IdentityConstants.BearerScheme);
 
         // Add authorization services
         _ = services.AddAuthorizationBuilder()

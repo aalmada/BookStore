@@ -145,7 +145,7 @@ BookStore/
 - **[Wolverine Integration](docs/wolverine-guide.md)** - Command/handler pattern with Wolverine
 - **[Configuration Guide](docs/configuration-guide.md)** - Options pattern and validation
 - **[API Conventions](docs/api-conventions-guide.md)** - Time handling and JSON serialization standards
-- **[API Client Generation](docs/api-client-generation.md)** - Automated client generation with OpenAPI and Refitter
+- **[API Client Generation](docs/api-client-generation.md)** - Type-safe API client with Refit
 - **[Authentication Guide](docs/authentication-guide.md)** - JWT authentication and role-based authorization
 - **[Real-time Notifications](docs/signalr-guide.md)** - SignalR integration and optimistic updates
 - **[Logging Guide](docs/logging-guide.md)** - Structured logging with source-generated log messages
@@ -183,7 +183,6 @@ BookStore/
 - **Roslyn Analyzers** - Custom analyzers for Event Sourcing/CQRS patterns
 - **Roslynator.Analyzers 4.15.0** - Enhanced code analysis
 - **Refit** - Type-safe REST library for .NET
-- **Refitter** - Tool to generate Refit interfaces from OpenAPI specifications
 - **NSwag** - OpenAPI client generation (optional development tool)
 
 ## 📊 API Endpoints

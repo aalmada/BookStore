@@ -1,621 +1,305 @@
-# API Client Generation Guide
-
-This guide explains how to use and maintain the BookStore API client library.
-
-> [!NOTE]
-> **Build-Time Generation**: Fully automatic compile-time client generation is not currently possible because .NET 9's `Microsoft.Extensions.ApiDescription.Server` requires running the application (including database connections) to generate the OpenAPI spec. We use **Refitter** to generate Refit interfaces + DTOs from the runtime-generated `openapi.json` file.
+# API Client Generation
 
 ## Overview
 
-The BookStore API client is provided as a reusable library (`BookStore.Client`) that can be used by any .NET project. The client is automatically generated from the OpenAPI specification using **Refitter**.
+The BookStore API client is provided as a reusable library (`BookStore.Client`) that can be used by any .NET project. The client uses **Refit** for type-safe HTTP calls and is **manually maintained** to ensure clean, predictable interfaces.
 
-### What is Refitter?
+## Manual Refit Approach
 
-[Refitter](https://github.com/christianhelle/refitter) is a tool that generates Refit interfaces and DTOs from OpenAPI specifications. It uses NSwag internally for DTO generation but creates clean Refit interfaces instead of full HTTP client implementations.
+Instead of automated code generation, we manually create Refit interfaces. This approach provides:
 
-**Benefits**:
-- ✅ Automatic generation from OpenAPI spec
-- ✅ Clean Refit interfaces (not verbose HTTP client code)
-- ✅ Type-safe DTOs
-- ✅ Uses Refit's proven HTTP client
-- ✅ Much smaller output than NSwag alone (~1,300 lines vs 4,489 lines)
+✅ **Full Control** - Exact interface design  
+✅ **No Build Dependencies** - No code generation tools required  
+✅ **Clean Interfaces** - Hand-crafted, readable code  
+✅ **Shared DTOs** - Models in `BookStore.Shared` for API/Client reuse  
+✅ **Type Safety** - Compile-time checking with Refit  
 
-## Installation
+### Architecture
 
-### For .NET Projects
+```
+BookStore.Shared/Models/
+├── BookDto.cs              # Shared DTOs
+├── AuthorDto.cs
+├── CategoryDto.cs
+├── PublisherDto.cs
+├── IdentityModels.cs       # Authentication DTOs
+└── ...
 
-```bash
-dotnet add package BookStore.Client
+BookStore.Client/
+├── IGetBooksEndpoint.cs    # Query endpoints
+├── IGetBookEndpoint.cs
+├── ICreateBookEndpoint.cs  # Command endpoints
+├── IIdentityEndpoints.cs   # Authentication endpoints
+└── BookStoreClientExtensions.cs  # DI registration
 ```
 
-Or add to your `.csproj`:
+## Creating New Endpoints
 
-```xml
-<ItemGroup>
-  <ProjectReference Include="../path/to/BookStore.Client/BookStore.Client.csproj" />
-</ItemGroup>
-```
+### 1. Define Shared DTOs (if needed)
 
-### Register the Client
+If the endpoint uses new models, add them to `BookStore.Shared/Models/`:
 
 ```csharp
-using BookStore.Client;
+namespace BookStore.Shared.Models;
 
-// In Program.cs or Startup.cs
-builder.Services.AddBookStoreClient(new Uri("https://api.bookstore.com"));
+public record MyNewDto(
+    Guid Id,
+    string Name,
+    // ... other properties
+);
 ```
 
-### With Resilience Policies (Polly)
+### 2. Create Refit Interface
+
+Add a new interface in `BookStore.Client/`:
 
 ```csharp
-// Configure Polly policies
-var retryPolicy = HttpPolicyExtensions
-    .HandleTransientHttpError()
-    .WaitAndRetryAsync(3, retryAttempt => 
-        TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
+using BookStore.Shared.Models;
+using Refit;
 
-var circuitBreakerPolicy = HttpPolicyExtensions
-    .HandleTransientHttpError()
-    .CircuitBreakerAsync(5, TimeSpan.FromSeconds(30));
+namespace BookStore.Client;
 
-// Register client
+public interface IMyNewEndpoint
+{
+    [Get("/api/my-resource/{id}")]
+    Task<MyNewDto> Execute(
+        Guid id,
+        [Header("api-version")] string api_version,
+        [Header("Accept-Language")] string accept_Language,
+        [Header("X-Correlation-ID")] string x_Correlation_ID,
+        [Header("X-Causation-ID")] string x_Causation_ID,
+        CancellationToken cancellationToken = default);
+}
+```
+
+### 3. Register in DI
+
+Add to `BookStoreClientExtensions.cs`:
+
+```csharp
+_ = services.AddRefitClient<IMyNewEndpoint>()
+    .ConfigureHttpClient(c => c.BaseAddress = baseAddress);
+```
+
+## Common Patterns
+
+### Query Endpoints (GET)
+
+```csharp
+public interface IGetBooksEndpoint
+{
+    [Get("/api/books")]
+    Task<PagedListDto<BookDto>> Execute(
+        [Query] int pageNumber,
+        [Query] int pageSize,
+        [Header("api-version")] string api_version,
+        [Header("Accept-Language")] string accept_Language,
+        [Header("X-Correlation-ID")] string x_Correlation_ID,
+        [Header("X-Causation-ID")] string x_Causation_ID,
+        CancellationToken cancellationToken = default);
+}
+```
+
+### Command Endpoints (POST/PUT)
+
+```csharp
+public interface ICreateBookEndpoint
+{
+    [Post("/api/admin/books")]
+    Task<IApiResponse> Execute(
+        [Body] CreateBookRequest request,
+        [Header("api-version")] string api_version,
+        [Header("X-Correlation-ID")] string x_Correlation_ID,
+        [Header("X-Causation-ID")] string x_Causation_ID,
+        CancellationToken cancellationToken = default);
+}
+```
+
+### Authentication Endpoints
+
+```csharp
+public interface IIdentityLoginEndpoint
+{
+    [Post("/identity/login")]
+    Task<LoginResponse> Execute(
+        [Body] LoginRequest request,
+        [AliasAs("useCookies")] bool? useCookies = null,
+        [AliasAs("useSessionCookies")] bool? useSessionCookies = null,
+        CancellationToken cancellationToken = default);
+}
+```
+
+## Using the Client
+
+### Registration
+
+```csharp
+// In Program.cs
+var apiServiceUrl = builder.Configuration["services:apiservice:https:0"]
+    ?? "http://localhost:5000";
+
 builder.Services.AddBookStoreClient(new Uri(apiServiceUrl));
+```
 
-// Apply policies to all HTTP clients
+### Injection and Usage
+
+```csharp
+public class MyService(IGetBooksEndpoint booksEndpoint)
+{
+    public async Task<PagedListDto<BookDto>> GetBooksAsync()
+    {
+        return await booksEndpoint.Execute(
+            pageNumber: 1,
+            pageSize: 20,
+            api_version: "1.0",
+            accept_Language: "en",
+            x_Correlation_ID: Guid.NewGuid().ToString(),
+            x_Causation_ID: string.Empty);
+    }
+}
+```
+
+## Benefits of Manual Approach
+
+### vs. Automated Generation
+
+| Aspect | Manual Refit | Automated (Refitter/NSwag) |
+|--------|--------------|----------------------------|
+| **Control** | ✅ Full control | ⚠️ Generated code |
+| **Dependencies** | ✅ None | ❌ Build-time tools |
+| **Readability** | ✅ Hand-crafted | ⚠️ Generated |
+| **Maintenance** | ⚠️ Manual updates | ✅ Auto-sync |
+| **Customization** | ✅ Easy | ❌ Limited |
+| **Build Speed** | ✅ Fast | ⚠️ Slower |
+| **Type Conflicts** | ✅ Avoided | ❌ Common issue |
+
+### When to Use Manual Approach
+
+✅ **Small to medium APIs** - Manageable number of endpoints  
+✅ **Stable APIs** - Infrequent changes  
+✅ **Custom requirements** - Need specific interface design  
+✅ **Shared models** - DTOs used by both API and client  
+✅ **Clean architecture** - Want predictable, readable code  
+
+## Authentication Integration
+
+The client includes automatic JWT token injection via `AuthorizingHttpMessageHandler`:
+
+```csharp
+// Configured in Program.cs
+builder.Services.AddTransient<AuthorizingHttpMessageHandler>();
+
 builder.Services.ConfigureHttpClientDefaults(http =>
 {
-    http.AddPolicyHandler(retryPolicy);
-    http.AddPolicyHandler(circuitBreakerPolicy);
+    _ = http.AddHttpMessageHandler<AuthorizingHttpMessageHandler>();
+    // ... other handlers
 });
 ```
 
-## Usage
+All API calls automatically include the `Authorization: Bearer <token>` header when the user is authenticated.
 
-### Inject Specific Endpoints
+## Best Practices
 
-Refitter generates one interface per endpoint, giving you fine-grained control:
+### 1. Use Shared DTOs
 
-```csharp
-public class BookService
-{
-    private readonly IGetBooksEndpoint _getBooksEndpoint;
-    private readonly IGetBookEndpoint _getBookEndpoint;
-    private readonly ICreateBookEndpoint _createBookEndpoint;
-
-    public BookService(
-        IGetBooksEndpoint getBooksEndpoint,
-        IGetBookEndpoint getBookEndpoint,
-        ICreateBookEndpoint createBookEndpoint)
-    {
-        _getBooksEndpoint = getBooksEndpoint;
-        _getBookEndpoint = getBookEndpoint;
-        _createBookEndpoint = createBookEndpoint;
-    }
-
-    public async Task<PagedListDtoOfBookDto> GetBooksAsync(int page = 1, int pageSize = 20)
-    {
-        return await _getBooksEndpoint.Execute(
-            page: page,
-            pageSize: pageSize,
-            search: null,
-            api_version: "1.0",
-            accept_Language: "en",
-            x_Correlation_ID: Guid.NewGuid().ToString(),
-            x_Causation_ID: null);
-    }
-}
-```
-
-### Available Endpoint Interfaces
-
-**Public Endpoints**:
-- `IGetBooksEndpoint` - Get all books with pagination
-- `IGetBookEndpoint` - Get book by ID
-- `IGetAuthorsEndpoint` - Get all authors
-- `IGetAuthorEndpoint` - Get author by ID
-- `IGetCategoriesEndpoint` - Get all categories
-- `IGetCategoryEndpoint` - Get category by ID
-- `IGetPublishersEndpoint` - Get all publishers
-- `IGetPublisherEndpoint` - Get publisher by ID
-
-**Admin Endpoints**:
-- `ICreateBookEndpoint`, `IUpdateBookEndpoint`, `ISoftDeleteBookEndpoint`, `IRestoreBookEndpoint`
-- `ICreateAuthorEndpoint`, `IUpdateAuthorEndpoint`, `ISoftDeleteAuthorEndpoint`, `IRestoreAuthorEndpoint`
-- `ICreateCategoryEndpoint`, `IUpdateCategoryEndpoint`, `ISoftDeleteCategoryEndpoint`, `IRestoreCategoryEndpoint`
-- `ICreatePublisherEndpoint`, `IUpdatePublisherEndpoint`, `ISoftDeletePublisherEndpoint`, `IRestorePublisherEndpoint`
-- `IUploadBookCoverEndpoint`
-
-**System Endpoints**:
-- `IRebuildProjectionsEndpoint` - Rebuild read model projections
-- `IGetProjectionStatusEndpoint` - Get projection daemon status
-
-## Maintaining the Client
-
-### When API Changes
-
-**Workflow**:
-
-1. **Start the API**:
-   ```bash
-   aspire run
-   ```
-
-2. **Update OpenAPI Spec**:
-   ```bash
-   ./_tools/update-openapi.sh
-   ```
-   
-   This downloads the latest spec from the running API to `openapi.json`.
-
-3. **Regenerate Client**:
-   ```bash
-   ./_tools/generate-client.sh
-   ```
-   
-   This runs Refitter to regenerate all interfaces and DTOs.
-
-4. **Build and Test**:
-   ```bash
-   dotnet build
-   dotnet test
-   ```
-
-5. **Commit Changes**:
-   ```bash
-   git add openapi.json src/Client/BookStore.Client/
-   git commit -m "Update API client from OpenAPI spec"
-   ```
-
-### Refitter Configuration
-
-The `.refitter` file in the repository root configures Refitter:
-
-```json
-{
-  "openApiPath": "openapi.json",
-  "namespace": "BookStore.Client",
-  "naming": {
-    "useOpenApiTitle": false,
-    "interfaceName": "I{controller}Endpoint"
-  },
-  "generateContracts": true,
-  "multipleInterfaces": "ByEndpoint",
-  "useIsoDateFormat": true,
-  "outputFolder": "src/Client/BookStore.Client",
-  "contractsOutputFolder": "src/Client/BookStore.Client",
-  "contractsOutputFilename": "Contracts.cs",
-  "additionalNamespaces": [
-    "BookStore.Shared.Models"
-  ],
-  "codeGeneratorSettings": {
-    "excludedTypeNames": [
-      "PartialDate",
-      "BookDto",
-      "AuthorDto",
-      "CategoryDto",
-      "PublisherDto",
-      "PagedListDto"
-    ]
-  }
-}
-```
-
-**Key Settings**:
-- `multipleInterfaces: "ByEndpoint"` - Generates one interface per endpoint
-- `generateContracts: true` - Generates DTOs in `Contracts.cs`
-- `useIsoDateFormat: true` - Ensures compatible ISO 8601 date handling
-- `additionalNamespaces` - Adds `using BookStore.Shared.Models` to generated files
-- `excludedTypeNames` - Prevents regeneration of shared DTOs defined in `BookStore.Shared`
-- `outputFolder` - Where to generate interface files
-
-### Install Refitter (Optional)
-
-If you want to run client generation locally:
-
-```bash
-dotnet tool install --global Refitter
-```
-
-### Generated Files
-
-After running `generate-client.sh`, you'll have:
-
-- **28 Interface Files**: `I*Endpoint.cs` (e.g., `IGetBooksEndpoint.cs`)
-- **1 Contracts File**: `Contracts.cs` with all DTOs (~624 lines)
-
-All files are auto-generated and should not be manually edited.
-
-### Why Refitter Instead of NSwag?
-
-**NSwag Alone**:
-- ❌ Generates full HTTP client implementation (~3,200 lines)
-- ❌ Verbose code with custom HTTP handling
-- ❌ Harder to customize
-
-**Refitter (NSwag + Refit)**:
-- ✅ Generates clean Refit interfaces (~700 lines)
-- ✅ Uses proven Refit HTTP client
-- ✅ Smaller, more maintainable code
-- ✅ Easy to apply Polly policies
-
-### Why Not Build-Time Generation?
-
-Build-time OpenAPI generation is not currently feasible because:
-
-1. **`Microsoft.Extensions.ApiDescription.Server` runs the application** during build
-2. **Requires database connection** - The app needs PostgreSQL to start
-3. **Infrastructure dependencies** - Marten, Wolverine, and other services must initialize
-4. **CI/CD complexity** - Would need database available during builds
-
-**Microsoft's Documentation** explicitly states:
-> "Build-time OpenAPI document generation functions by launching the app's entrypoint with a mock server implementation."
-
-This means the entire application stack runs, including all service registrations and infrastructure dependencies.
-
-**Our Solution**:
-- ✅ Generate OpenAPI at **runtime** from running API
-- ✅ Save `openapi.json` to git (tracks API changes)
-- ✅ Use **Refitter** to generate client from saved spec
-- ✅ Simple, reliable, works in all environments
-
-## Update Scripts
-
-### `update-openapi.sh`
-
-The `update-openapi.sh` script:
-- Auto-detects Aspire's dynamic ports
-- Downloads OpenAPI spec from running API
-- Saves to `openapi.json` in repository root
-
-### `generate-client.sh`
-
-The `generate-client.sh` script:
-- Runs Refitter with `.refitter` configuration
-- Generates 28 endpoint interfaces
-- Generates `Contracts.cs` with all DTOs
-- Uses `--skip-validation` flag (OpenAPI 3.1.1 support)
-
-## Architecture
-
-```
-┌─────────────────────────────────────────┐
-│         Your .NET Application           │
-│                                         │
-│  Injects: IGetBooksEndpoint, etc.      │
-└────────────────┬────────────────────────┘
-                 │
-                 │ Uses
-                 ▼
-┌─────────────────────────────────────────┐
-│       BookStore.Client Library          │
-│                                         │
-│  ┌───────────────────────────────────┐ │
-│  │  28 Refit Interfaces              │ │
-│  │  (I*Endpoint.cs)                  │ │
-│  └───────────────────────────────────┘ │
-│  ┌───────────────────────────────────┐ │
-│  │  Contracts.cs (DTOs)              │ │
-│  │  - BookDto, AuthorDto, etc.       │ │
-│  └───────────────────────────────────┘ │
-│  ┌───────────────────────────────────┐ │
-│  │  BookStoreClientExtensions.cs     │ │
-│  │  - DI registration helpers        │ │
-│  └───────────────────────────────────┘ │
-└────────────────┬────────────────────────┘
-                 │
-                 │ Uses
-                 ▼
-┌─────────────────────────────────────────┐
-│         Refit (HTTP Client)             │
-└────────────────┬────────────────────────┘
-                 │
-                 │ HTTP/REST
-                 ▼
-┌─────────────────────────────────────────┐
-│       BookStore API Service             │
-└─────────────────────────────────────────┘
-```
-
-## Examples
-
-### Console Application
+Place DTOs in `BookStore.Shared/Models/` to avoid duplication:
 
 ```csharp
-using BookStore.Client;
-using Microsoft.Extensions.DependencyInjection;
+// ✅ Good - Shared DTO
+namespace BookStore.Shared.Models;
+public record BookDto(...);
 
-var services = new ServiceCollection();
-services.AddBookStoreClient(new Uri("https://api.bookstore.com"));
-
-var provider = services.BuildServiceProvider();
-var getBooksEndpoint = provider.GetRequiredService<IGetBooksEndpoint>();
-
-var books = await getBooksEndpoint.Execute(
-    page: 1,
-    pageSize: 20,
-    search: "Clean Code",
-    api_version: "1.0",
-    accept_Language: "en",
-    x_Correlation_ID: Guid.NewGuid().ToString(),
-    x_Causation_ID: null);
-
-foreach (var book in books.Items)
-{
-    Console.WriteLine($"{book.Title} by {book.AuthorNames}");
-}
+// ❌ Bad - Duplicate in Client
+namespace BookStore.Client;
+public record BookDto(...);
 ```
 
-### Blazor Component
+### 2. Consistent Naming
 
-```razor
-@inject IGetBooksEndpoint GetBooksEndpoint
+Follow the pattern `I{Action}{Resource}Endpoint`:
 
-<MudDataGrid Items="@books">
-    <Columns>
-        <PropertyColumn Property="x => x.Title" />
-        <PropertyColumn Property="x => x.AuthorNames" />
-    </Columns>
-</MudDataGrid>
+```csharp
+IGetBooksEndpoint
+IGetBookEndpoint
+ICreateBookEndpoint
+IUpdateBookEndpoint
+IDeleteBookEndpoint
+```
 
-@code {
-    private List<BookDto> books = new();
+### 3. Include Standard Headers
 
-    protected override async Task OnInitializedAsync()
-    {
-        var result = await GetBooksEndpoint.Execute(
-            page: 1,
-            pageSize: 20,
-            search: null,
-            api_version: "1.0",
-            accept_Language: "en",
-            x_Correlation_ID: Guid.NewGuid().ToString(),
-            x_Causation_ID: null);
-        
-        books = result.Items.ToList();
-    }
-}
+Always include API version, correlation ID, and causation ID:
+
+```csharp
+[Header("api-version")] string api_version,
+[Header("X-Correlation-ID")] string x_Correlation_ID,
+[Header("X-Causation-ID")] string x_Causation_ID
+```
+
+### 4. Use CancellationToken
+
+Support cancellation for all async operations:
+
+```csharp
+Task<T> Execute(..., CancellationToken cancellationToken = default);
+```
+
+### 5. Return Appropriate Types
+
+- **Queries**: Return `Task<TDto>` or `Task<PagedListDto<TDto>>`
+- **Commands**: Return `Task<IApiResponse>` or `Task`
+- **Authentication**: Return specific response types
+
+## Testing
+
+### Unit Testing
+
+Mock Refit interfaces for testing:
+
+```csharp
+var mockEndpoint = Substitute.For<IGetBooksEndpoint>();
+mockEndpoint.Execute(Arg.Any<int>(), ...)
+    .Returns(new PagedListDto<BookDto>(...));
+
+var service = new MyService(mockEndpoint);
+var result = await service.GetBooksAsync();
+```
+
+### Integration Testing
+
+Use `WebApplicationFactory` to test against real API:
+
+```csharp
+var client = factory.Services.GetRequiredService<IGetBooksEndpoint>();
+var books = await client.Execute(1, 20, ...);
+Assert.NotEmpty(books.Items);
 ```
 
 ## Troubleshooting
 
-### "Refitter not found"
+### "Could not resolve type"
 
-Install Refitter globally:
-```bash
-dotnet tool install --global Refitter
-```
-
-### "OpenAPI 3.1.1 not supported"
-
-The scripts use `--skip-validation` flag to work around this. Refitter's validation doesn't support OpenAPI 3.1.1 yet, but generation works fine.
-
-### Build Errors After Regeneration
-
-1. Clean and rebuild:
-   ```bash
-   dotnet clean
-   dotnet build
-   ```
-
-2. Check for breaking changes in the OpenAPI spec
-3. Review generated files for issues
-
-## See Also
-
-- [Refitter Documentation](https://github.com/christianhelle/refitter)
-- [Refit Documentation](https://github.com/reactiveui/refit)
-- [Polly Documentation](https://github.com/App-vNext/Polly)
-
-
-## Overview
-
-The BookStore API client is provided as a reusable library (`BookStore.Client`) that can be used by any .NET project.
-
-**Technology Stack**:
-- **Refit**: Type-safe REST library
-- **BookStore.Client**: Standalone client library
-- **OpenAPI Spec**: Generated at runtime for documentation
-
-## Using the Client Library
-
-### Installation
-
-Add a project reference to `BookStore.Client`:
-
-```xml
-<ProjectReference Include="path/to/BookStore.Client/BookStore.Client.csproj" />
-```
-
-### Registration
-
-#### ASP.NET Core / Blazor
+Ensure the DTO is in `BookStore.Shared` and referenced:
 
 ```csharp
-using BookStore.Client;
-
-var builder = WebApplication.CreateBuilder(args);
-
-// Register the client
-builder.Services
-    .AddBookStoreClient(new Uri("https://api.bookstore.com"))
-    .AddStandardResilienceHandler(); // Optional: Add Polly resilience
-
-var app = builder.Build();
+using BookStore.Shared.Models;
 ```
 
-#### Console Application
+### "No service for type"
+
+Register the endpoint in `BookStoreClientExtensions.cs`:
 
 ```csharp
-using BookStore.Client;
-using Microsoft.Extensions.DependencyInjection;
-
-var services = new ServiceCollection();
-services.AddBookStoreClient(new Uri("https://api.bookstore.com"));
-
-var provider = services.BuildServiceProvider();
-var client = provider.GetRequiredService<IBookStoreApi>();
-
-// Use the client
-var books = await client.GetBooksAsync("clean code");
+_ = services.AddRefitClient<IMyEndpoint>()
+    .ConfigureHttpClient(c => c.BaseAddress = baseAddress);
 ```
 
-### Usage
+### "401 Unauthorized"
 
-Inject `IBookStoreApi` into your services:
+Ensure `AuthorizingHttpMessageHandler` is configured and user is logged in.
 
-```csharp
-public class BookService
-{
-    private readonly IBookStoreApi _api;
-
-    public BookService(IBookStoreApi api)
-    {
-        _api = api;
-    }
-
-    public async Task<PagedListDto<BookDto>> SearchBooksAsync(
-        string? query = null,
-        int page = 1,
-        int pageSize = 20,
-        CancellationToken cancellationToken = default)
-    {
-        return await _api.GetBooksAsync(query, page, pageSize, cancellationToken);
-    }
-}
-```
-
-## Available Endpoints
-
-See `IBookStoreApi` for all available methods:
-
-- **Books**: `GetBooksAsync`, `GetBookAsync`
-- **Authors**: `GetAuthorsAsync`, `GetAuthorAsync`
-- **Categories**: `GetCategoriesAsync`, `GetCategoryAsync`
-- **Publishers**: `GetPublishersAsync`, `GetPublisherAsync`
-
-## Resilience (Optional)
-
-Add Polly resilience policies:
-
-```csharp
-// Standard resilience (recommended)
-builder.Services
-    .AddBookStoreClient(apiUrl)
-    .AddStandardResilienceHandler();
-
-// Custom Polly policies
-builder.Services
-    .AddBookStoreClient(apiUrl)
-    .AddPolicyHandler(retryPolicy)
-    .AddPolicyHandler(circuitBreakerPolicy);
-```
-
-## Maintaining the Client
-
-### When API Changes
-
-**Workflow**:
-
-1. **Start the API**:
-   ```bash
-   aspire run
-   ```
-
-2. **Update OpenAPI Spec**:
-   ```bash
-   ./_tools/update-openapi.sh
-   ```
-
-3. **Update Client Interface** (choose one):
-
-   **Option A: NSwag Auto-Generation** (optional):
-   ```bash
-   ./_tools/generate-client-nswag.sh
-   ```
-   
-   **Option B: Manual Update**:
-   - Edit `src/Client/BookStore.Client/IBookStoreApi.cs`
-   - Add/update methods to match API changes
-
-4. **Build and Test**:
-   ```bash
-   dotnet build
-   dotnet test
-   ```
-
-5. **Commit Changes**:
-   ```bash
-   git add openapi.json src/Client/BookStore.Client/IBookStoreApi.cs
-   git commit -m "Update API client: [description]"
-   ```
-
-### NSwag Auto-Generation (Optional)
-
-NSwag can automatically generate the Refit interface from the OpenAPI spec.
-
-**Install NSwag CLI**:
-```bash
-dotnet tool install --global NSwag.ConsoleCore
-```
-
-**Pros**:
-- ✅ Automatic - generates entire interface
-- ✅ Consistent - always matches OpenAPI spec
-- ✅ Fast - one command
-
-**Cons**:
-- ❌ Requires NSwag CLI installed
-- ❌ Generates full client implementation (not just Refit interface)
-- ❌ Generates DTOs (conflicts with `BookStore.Shared`)
-- ❌ Uses Newtonsoft.Json (we use System.Text.Json)
-- ❌ Needs manual cleanup and conversion to Refit
-
-> [!NOTE]
-> NSwag's default output generates a complete client implementation with DTOs, which conflicts with our architecture where DTOs are in `BookStore.Shared`. Converting NSwag output to a clean Refit interface requires significant manual work, making the manual approach more practical for this project.
-
-**Current Approach**: We use **manual updates** for clean, minimal code. NSwag is available as a reference tool to see what endpoints exist, but the generated code requires extensive modification.
-
-### Why Not Build-Time Generation?
-
-Build-time OpenAPI generation is not currently feasible because:
-
-1. **`Microsoft.Extensions.ApiDescription.Server` runs the application** during build
-2. **Requires database connection** - The app needs PostgreSQL to start
-3. **Infrastructure dependencies** - Marten, Wolverine, and other services must initialize
-4. **CI/CD complexity** - Would need database available during builds
-
-**Microsoft's Documentation** explicitly states:
-> "Build-time OpenAPI document generation functions by launching the app's entrypoint with a mock server implementation."
-
-This means the entire application stack runs, including all service registrations and infrastructure dependencies.
-
-**Our Solution**:
-- ✅ Generate OpenAPI at **runtime** from running API
-- ✅ Save `openapi.json` to git (tracks API changes)
-- ✅ Update client **manually** or with **NSwag** from saved spec
-- ✅ Simple, reliable, works in all environments
-
-### Update Scripts
-
-The `update-openapi.sh` script:
-- Auto-detects Aspire's dynamic ports
-- Downloads the OpenAPI spec
-- Validates the file
-
-## OpenAPI Specification
-
-**Location**: `openapi.json` (repository root)
-
-**Purpose**:
-- API contract documentation
-- Scalar UI documentation (`/scalar/v1`)
-- Contract validation
-- Manual client updates
-
-**Format**: OpenAPI 3.1.1 (generated by .NET 9)
-
-## References
+## Related Documentation
 
 - [Refit Documentation](https://github.com/reactiveui/refit)
-- [OpenAPI 3.1 Specification](https://spec.openapis.org/oas/v3.1.0)
-- [Client Library README](../src/Client/BookStore.Client/README.md)
+- [Authentication Guide](authentication-guide.md)
+- [API Conventions](api-conventions-guide.md)
