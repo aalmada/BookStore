@@ -1,8 +1,9 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using BookStore.Web.Services
+@using Microsoft.JSInterop
 @inject AuthenticationService AuthService
-@inject CustomAuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Navigation
+@inject IJSRuntime JS
 
 <AuthorizeView>
     <Authorized>
@@ -31,7 +32,17 @@
     async Task HandleLogout()
     {
         await AuthService.LogoutAsync();
-        AuthStateProvider.NotifyAuthenticationStateChanged();
+        
+        // Notify other tabs via BroadcastChannel
+        try
+        {
+            await JS.InvokeVoidAsync("authBroadcast.notifyLogout");
+        }
+        catch
+        {
+            // BroadcastChannel might not be available, continue anyway
+        }
+        
         Navigation.NavigateTo("/", forceLoad: true);
     }
 }

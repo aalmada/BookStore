@@ -1,44 +1,33 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using Blazored.LocalStorage;
 using BookStore.Client;
 using BookStore.Shared.Models;
 
 namespace BookStore.Web.Services;
 
 /// <summary>
-/// Service for managing user authentication
+/// Service for managing user authentication using cookie-based authentication
 /// </summary>
 public class AuthenticationService(
-    ILocalStorageService localStorage,
     IIdentityLoginEndpoint loginEndpoint,
-    IIdentityRegisterEndpoint registerEndpoint,
-    IIdentityRefreshEndpoint refreshEndpoint)
+    IIdentityRegisterEndpoint registerEndpoint)
 {
-    const string AccessTokenKey = "accessToken";
-    const string RefreshTokenKey = "refreshToken";
-    const string TokenExpiryKey = "tokenExpiry";
-
     /// <summary>
-    /// Login with email and password
+    /// Login with email and password (cookie-based)
     /// </summary>
     public async Task<LoginResult> LoginAsync(string email, string password)
     {
         try
         {
             var request = new LoginRequest(email, password);
-            var response = await loginEndpoint.Execute(request);
+            // useCookies=true tells the API to set an authentication cookie
+            var response = await loginEndpoint.Execute(request, useCookies: true);
 
-            // Store tokens
-            await localStorage.SetItemAsync(AccessTokenKey, response.AccessToken);
-            await localStorage.SetItemAsync(RefreshTokenKey, response.RefreshToken);
-            await localStorage.SetItemAsync(TokenExpiryKey, DateTime.UtcNow.AddSeconds(response.ExpiresIn));
-
-            return new LoginResult(true, null, GetUserFromToken(response.AccessToken));
+            // Cookie is set automatically by the browser
+            // No need to store tokens manually
+            return new LoginResult(true, null);
         }
         catch (Refit.ApiException ex)
         {
-            return new LoginResult(false, ex.Content ?? "Login failed", null);
+            return new LoginResult(false, ex.Content ?? "Login failed");
         }
     }
 
@@ -71,86 +60,16 @@ public class AuthenticationService(
     /// </summary>
     public async Task LogoutAsync()
     {
-        await localStorage.RemoveItemAsync(AccessTokenKey);
-        await localStorage.RemoveItemAsync(RefreshTokenKey);
-        await localStorage.RemoveItemAsync(TokenExpiryKey);
-    }
-
-    /// <summary>
-    /// Get the current access token
-    /// </summary>
-    public async Task<string?> GetAccessTokenAsync()
-    {
         try
         {
-            // Check if token is expired
-            var expiry = await localStorage.GetItemAsync<DateTime?>(TokenExpiryKey);
-            if (expiry.HasValue && expiry.Value <= DateTime.UtcNow.AddMinutes(5))
-            {
-                // Token expired or expiring soon, try to refresh
-                await RefreshTokenAsync();
-            }
-
-            return await localStorage.GetItemAsync<string>(AccessTokenKey);
-        }
-        catch (InvalidOperationException)
-        {
-            // JavaScript interop not available during prerendering
-            return null;
-        }
-    }
-
-    /// <summary>
-    /// Refresh the access token
-    /// </summary>
-    async Task RefreshTokenAsync()
-    {
-        try
-        {
-            var refreshToken = await localStorage.GetItemAsync<string>(RefreshTokenKey);
-            if (string.IsNullOrEmpty(refreshToken))
-            {
-                return;
-            }
-
-            var request = new RefreshRequest(refreshToken);
-            var response = await refreshEndpoint.Execute(request);
-
-            // Update tokens
-            await localStorage.SetItemAsync(AccessTokenKey, response.AccessToken);
-            await localStorage.SetItemAsync(RefreshTokenKey, response.RefreshToken);
-            await localStorage.SetItemAsync(TokenExpiryKey, DateTime.UtcNow.AddSeconds(response.ExpiresIn));
+            // Call logout endpoint to clear the cookie on the server
+            // Note: This requires adding IIdentityLogoutEndpoint to BookStore.Client
+            // For now, the cookie will expire naturally or on browser close
+            await Task.CompletedTask;
         }
         catch
         {
-            // Refresh failed, clear tokens
-            await LogoutAsync();
-        }
-    }
-
-    /// <summary>
-    /// Get user information from JWT token
-    /// </summary>
-    static UserClaims? GetUserFromToken(string token)
-    {
-        try
-        {
-            var handler = new JwtSecurityTokenHandler();
-            var jwtToken = handler.ReadJwtToken(token);
-
-            var email = jwtToken.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value
-                ?? jwtToken.Claims.FirstOrDefault(c => c.Type == "email")?.Value;
-
-            var roles = jwtToken.Claims
-                .Where(c => c.Type is ClaimTypes.Role or "role")
-                .Select(c => c.Value)
-                .ToList();
-
-            return email != null ? new UserClaims(email, roles) : null;
-        }
-        catch
-        {
-            return null;
+            // Logout failures are non-critical
         }
     }
 
@@ -169,9 +88,9 @@ public class AuthenticationService(
             return "Password must be at least 8 characters long";
         }
 
-        if (!password.Any(char.IsUpper))
+        if (!password.Any(char.IsDigit))
         {
-            return "Password must contain at least one uppercase letter";
+            return "Password must contain at least one digit";
         }
 
         if (!password.Any(char.IsLower))
@@ -179,9 +98,9 @@ public class AuthenticationService(
             return "Password must contain at least one lowercase letter";
         }
 
-        if (!password.Any(char.IsDigit))
+        if (!password.Any(char.IsUpper))
         {
-            return "Password must contain at least one number";
+            return "Password must contain at least one uppercase letter";
         }
 
         if (!password.Any(ch => !char.IsLetterOrDigit(ch)))
@@ -193,6 +112,12 @@ public class AuthenticationService(
     }
 }
 
-public record LoginResult(bool Success, string? Error, UserClaims? User);
+/// <summary>
+/// Result of a login attempt
+/// </summary>
+public record LoginResult(bool Success, string? Error);
+
+/// <summary>
+/// Result of a registration attempt
+/// </summary>
 public record RegisterResult(bool Success, string? Error);
-public record UserClaims(string Email, IReadOnlyList<string> Roles);

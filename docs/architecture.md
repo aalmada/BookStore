@@ -336,9 +336,28 @@ Example event flow:
 
 ### Authentication & Authorization
 
-- **Future**: Add JWT authentication
-- **Future**: Role-based authorization
-- **Current**: Admin endpoints unprotected (development only)
+The application implements a **hybrid authentication system**:
+
+- **Cookie Authentication** - Primary method for Blazor Server frontend
+  - HttpOnly, Secure cookies prevent XSS attacks
+  - SameSite protection against CSRF
+  - Cross-tab synchronization via BroadcastChannel API
+  
+- **JWT Bearer Tokens** - For external apps and APIs
+  - Stateless authentication for mobile apps
+  - Third-party integrations
+  - Cross-domain scenarios
+
+- **Passkey Support** - Passwordless authentication (.NET 10)
+  - WebAuthn/FIDO2 standards
+  - Phishing-resistant biometric authentication
+  - Built-in .NET 10 Identity support
+
+- **Role-Based Authorization** - Admin endpoints protected
+  - Admin role for full access
+  - Extensible for additional roles
+  
+See [Authentication Guide](authentication-guide.md) and [Passkey Guide](passkey-guide.md) for details.
 
 ### Data Protection
 

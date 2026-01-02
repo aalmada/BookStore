@@ -24,6 +24,38 @@ builder.Services.AddApplicationServices(builder.Configuration);
 builder.Services.AddMartenEventStore(builder.Configuration);
 builder.Services.AddWolverineMessaging();
 
+// Configure cookie authentication security
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SecurePolicy = Microsoft.AspNetCore.Http.CookieSecurePolicy.Always;
+    options.Cookie.SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Lax; // Lax for Aspire same-domain
+    options.ExpireTimeSpan = TimeSpan.FromHours(24);
+    options.SlidingExpiration = true;
+    
+    // API-friendly responses (no redirects)
+    options.Events.OnRedirectToLogin = context =>
+    {
+        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+        return Task.CompletedTask;
+    };
+    options.Events.OnRedirectToAccessDenied = context =>
+    {
+        context.Response.StatusCode = StatusCodes.Status403Forbidden;
+        return Task.CompletedTask;
+    };
+});
+
+// Configure passkey options (.NET 10 WebAuthn support)
+builder.Services.Configure<Microsoft.AspNetCore.Identity.IdentityPasskeyOptions>(options =>
+{
+    var passkeyDomain = builder.Configuration["Authentication:Passkey:ServerDomain"] ?? "localhost";
+    options.ServerDomain = passkeyDomain;
+    options.AuthenticatorTimeout = TimeSpan.FromMinutes(2);
+    options.ChallengeSize = 32;
+});
+
+
 var app = builder.Build();
 
 // Seed database in development

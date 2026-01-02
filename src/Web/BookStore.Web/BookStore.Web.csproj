@@ -4,16 +4,14 @@
     <ProjectReference Include="..\..\BookStore.ServiceDefaults\BookStore.ServiceDefaults.csproj" />
     <ProjectReference Include="..\..\Client\BookStore.Client\BookStore.Client.csproj" />
     
-    <!-- Ensure API project builds before Web project to generate OpenAPI spec -->
+    <!-- Ensure API project builds before Web project but don't reference assemblies to avoid type conflicts -->
     <ProjectReference Include="..\..\ApiService\BookStore.ApiService\BookStore.ApiService.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Blazored.LocalStorage" Version="4.3.0" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.1" />
     <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="10.0.1" />
     <PackageReference Include="MudBlazor" Version="8.15.0" />
-    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.15.0" />
   </ItemGroup>
 
 </Project>

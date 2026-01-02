@@ -183,20 +183,40 @@ public class MyService(IGetBooksEndpoint booksEndpoint)
 
 ## Authentication Integration
 
-The client includes automatic JWT token injection via `AuthorizingHttpMessageHandler`:
+The BookStore uses **hybrid authentication**:
+
+### Cookie Authentication (Blazor Frontend)
+
+For the Blazor frontend, authentication cookies are sent automatically by the browser. No manual token injection is needed:
 
 ```csharp
-// Configured in Program.cs
-builder.Services.AddTransient<AuthorizingHttpMessageHandler>();
+// Cookies are sent automatically with every request
+var books = await booksEndpoint.Execute(
+    pageNumber: 1,
+    pageSize: 20,
+    api_version: "1.0",
+    accept_Language: "en",
+    x_Correlation_ID: Guid.NewGuid().ToString(),
+    x_Causation_ID: string.Empty);
+```
 
+### JWT Bearer Tokens (External Apps)
+
+For external applications (mobile apps, third-party integrations), use JWT bearer tokens:
+
+```csharp
+// Add JWT token to Authorization header
 builder.Services.ConfigureHttpClientDefaults(http =>
 {
-    _ = http.AddHttpMessageHandler<AuthorizingHttpMessageHandler>();
-    // ... other handlers
+    http.ConfigureHttpClient(client =>
+    {
+        client.DefaultRequestHeaders.Authorization = 
+            new AuthenticationHeaderValue("Bearer", accessToken);
+    });
 });
 ```
 
-All API calls automatically include the `Authorization: Bearer <token>` header when the user is authenticated.
+See [Authentication Guide](authentication-guide.md) for details on cookie vs JWT authentication.
 
 ## Best Practices
 

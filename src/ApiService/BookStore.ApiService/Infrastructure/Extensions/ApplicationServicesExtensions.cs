@@ -88,9 +88,20 @@ public static class ApplicationServicesExtensions
 
     static void AddIdentityServices(IServiceCollection services)
     {
-        // Add Identity with custom Marten user store
-        // AddIdentityApiEndpoints already configures Bearer token authentication
-        _ = services.AddIdentityApiEndpoints<Models.ApplicationUser>()
+        // Add Identity API endpoints with dual authentication support
+        // AddIdentityApiEndpoints configures both Cookie and Bearer token authentication
+        _ = services.AddIdentityApiEndpoints<Models.ApplicationUser>(options =>
+            {
+                // Password requirements
+                options.Password.RequireDigit = true;
+                options.Password.RequireLowercase = true;
+                options.Password.RequireUppercase = true;
+                options.Password.RequireNonAlphanumeric = true;
+                options.Password.RequiredLength = 8;
+                
+                // Note: Passkey support will be configured when .NET 10 API is available
+                // For now, infrastructure is prepared in Program.cs
+            })
             .AddUserStore<Identity.MartenUserStore>();
 
         // Add authorization services

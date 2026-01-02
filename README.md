@@ -53,7 +53,9 @@ The Aspire dashboard opens automatically, providing access to:
 - **Event Sourcing** with Marten and PostgreSQL
 - **CQRS** with async projections for optimized reads
 - **Real-time Notifications** with SignalR (Wolverine integration)
-- **Authentication** with JWT bearer tokens and role-based authorization
+- **Hybrid Authentication** - Cookie-based (Blazor), JWT (external apps), Passkeys (.NET 10)
+- **Cross-Tab Sync** - BroadcastChannel API for consistent login state
+- **Role-Based Authorization** - Admin endpoints protected
 - **Multi-language Support** for categories (en, pt, es, fr, de)
 - **Full-text Search** with PostgreSQL trigrams and unaccent
 - **Optimistic Concurrency** with ETags
@@ -146,7 +148,8 @@ BookStore/
 - **[Configuration Guide](docs/configuration-guide.md)** - Options pattern and validation
 - **[API Conventions](docs/api-conventions-guide.md)** - Time handling and JSON serialization standards
 - **[API Client Generation](docs/api-client-generation.md)** - Type-safe API client with Refit
-- **[Authentication Guide](docs/authentication-guide.md)** - JWT authentication and role-based authorization
+- **[Authentication Guide](docs/authentication-guide.md)** - Hybrid cookie/JWT authentication and role-based authorization
+- **[Passkey Guide](docs/passkey-guide.md)** - Passwordless authentication with WebAuthn/FIDO2
 - **[Real-time Notifications](docs/signalr-guide.md)** - SignalR integration and optimistic updates
 - **[Logging Guide](docs/logging-guide.md)** - Structured logging with source-generated log messages
 - **[Correlation & Causation IDs](docs/correlation-causation-guide.md)** - Distributed tracing
@@ -197,9 +200,22 @@ BookStore/
 
 ### Identity Endpoints
 
+**Authentication:**
 - `POST /identity/register` - Register new user
-- `POST /identity/login` - Login and receive JWT token
-- `POST /identity/refresh` - Refresh access token
+- `POST /identity/login?useCookies=true` - Login with cookie (Blazor frontend)
+- `POST /identity/login` - Login and receive JWT token (external apps)
+- `POST /identity/refresh` - Refresh JWT access token
+- `POST /identity/logout` - Logout (clears cookie)
+
+**Passkey (Passwordless):**
+- `POST /identity/passkey/register/begin` - Begin passkey registration
+- `POST /identity/passkey/register/complete` - Complete passkey registration
+- `POST /identity/passkey/login/begin` - Begin passkey login
+- `POST /identity/passkey/login/complete` - Complete passkey login
+- `GET /identity/passkey/list` - List user's passkeys
+- `DELETE /identity/passkey/{id}` - Delete a passkey
+
+**Account Management:**
 - `POST /identity/forgotPassword` - Request password reset
 - `POST /identity/resetPassword` - Reset password
 - `GET /identity/manage/info` - Get user information

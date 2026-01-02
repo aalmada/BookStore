@@ -1,9 +1,10 @@
 @page "/login"
 @using BookStore.Web.Services
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.JSInterop
 @inject AuthenticationService AuthService
-@inject CustomAuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Navigation
+@inject IJSRuntime JS
 @rendermode InteractiveServer
 
 <PageTitle>Login - BookStore</PageTitle>
@@ -95,7 +96,16 @@
 
             if (result.Success)
             {
-                AuthStateProvider.NotifyAuthenticationStateChanged();
+                // Notify other tabs via BroadcastChannel
+                try
+                {
+                    await JS.InvokeVoidAsync("authBroadcast.notifyLogin");
+                }
+                catch
+                {
+                    // BroadcastChannel might not be available, continue anyway
+                }
+                
                 Navigation.NavigateTo(ReturnUrl ?? "/", forceLoad: true);
             }
             else

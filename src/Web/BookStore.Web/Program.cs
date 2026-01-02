@@ -1,10 +1,10 @@
 using System.Text.Json;
-using Blazored.LocalStorage;
 using BookStore.Client;
 using BookStore.Shared.Infrastructure.Json;
 using BookStore.Web;
 using BookStore.Web.Components;
 using BookStore.Web.Services;
+using Microsoft.AspNetCore.Components.Authorization;
 using MudBlazor.Services;
 using Polly;
 using Polly.Extensions.Http;
@@ -40,22 +40,19 @@ var circuitBreakerPolicy = HttpPolicyExtensions
 // Register BookStore API client
 builder.Services.AddBookStoreClient(new Uri(apiServiceUrl));
 
-// Add authentication services
-builder.Services.AddBlazoredLocalStorage();
+// Add authentication services (cookie-based)
 builder.Services.AddScoped<AuthenticationService>();
-builder.Services.AddScoped<CustomAuthenticationStateProvider>();
-builder.Services.AddScoped<Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider>(
-    sp => sp.GetRequiredService<CustomAuthenticationStateProvider>());
+builder.Services.AddScoped<BookStoreAuthenticationStateProvider>();
+builder.Services.AddScoped<AuthenticationStateProvider>(
+    sp => sp.GetRequiredService<BookStoreAuthenticationStateProvider>());
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddAuthorizationCore();
 
-// Add HTTP message handler for automatic token injection
-builder.Services.AddTransient<AuthorizingHttpMessageHandler>();
 
 // Add Polly resilience policies to all HTTP clients
 builder.Services.ConfigureHttpClientDefaults(http =>
 {
-    _ = http.AddHttpMessageHandler<AuthorizingHttpMessageHandler>();
+    // Cookies are sent automatically by the browser - no need for manual token injection
     _ = http.AddPolicyHandler(retryPolicy);
     _ = http.AddPolicyHandler(circuitBreakerPolicy);
 });

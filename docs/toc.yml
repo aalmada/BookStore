@@ -20,6 +20,8 @@
       href: api-client-generation.md
     - name: Authentication
       href: authentication-guide.md
+    - name: Passkey Authentication
+      href: passkey-guide.md
     - name: SignalR
       href: signalr-guide.md
     - name: Logging
