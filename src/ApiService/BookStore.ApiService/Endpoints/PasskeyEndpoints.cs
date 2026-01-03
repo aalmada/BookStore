@@ -122,7 +122,6 @@ public static class PasskeyEndpoints
                 return Results.BadRequest(createResult.Errors);
             }
 
-            // Save the passkey
             if (userStore is IUserPasskeyStore<ApplicationUser> ps)
             {
                 // We MUST update the Passkey's UserId to match the actual DB user ID if they differ
@@ -136,6 +135,13 @@ public static class PasskeyEndpoints
                 // For this MVP, we will save the passkey as is. 
                 // Login relies on UserHandle lookup.
                 await ps.AddOrUpdatePasskeyAsync(newUser, attestationNew.Passkey, CancellationToken.None);
+                
+                // CRITICAL: Persist the changes (the added passkey) to the database
+                var updateResult = await userManager.UpdateAsync(newUser);
+                if (!updateResult.Succeeded)
+                {
+                    return Results.BadRequest(updateResult.Errors);
+                }
             }
 
             // Auto Login - Issue Token

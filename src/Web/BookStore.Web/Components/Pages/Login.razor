@@ -24,52 +24,72 @@
             <MudAlert Severity="Severity.Error" Class="mb-4">@errorMessage</MudAlert>
         }
 
-        <MudForm @ref="form">
-            <MudTextField @bind-Value="email"
-                          Label="Email"
-                          Variant="Variant.Outlined"
-                          Required="true"
-                          RequiredError="Email is required"
-                          Validation="@(new Func<string, string?>(ValidateEmail))"
-                          Class="mb-4" />
+        <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="px-4 py-6">
+            <MudTabPanel Text="Standard" Icon="@Icons.Material.Filled.Email">
+                <MudForm @ref="form">
+                    <MudTextField @bind-Value="email"
+                                  Label="Email"
+                                  Variant="Variant.Outlined"
+                                  Required="true"
+                                  RequiredError="Email is required"
+                                  Validation="@(new Func<string, string?>(ValidateEmail))"
+                                  Class="mb-4" />
 
-            <MudTextField @bind-Value="password"
-                          Label="Password"
-                          Variant="Variant.Outlined"
-                          InputType="InputType.Password"
-                          Required="true"
-                          RequiredError="Password is required"
-                          Class="mb-4" />
+                    <MudTextField @bind-Value="password"
+                                  Label="Password"
+                                  Variant="Variant.Outlined"
+                                  InputType="InputType.Password"
+                                  Required="true"
+                                  RequiredError="Password is required"
+                                  Class="mb-4" />
 
-            <MudButton Variant="Variant.Filled"
-                       Color="Color.Primary"
-                       FullWidth="true"
-                       Size="Size.Large"
-                       OnClick="HandleLogin"
-                       Disabled="isLoading"
-                       Class="mb-4">
-                @if (isLoading)
-                {
-                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                    <span>Logging in...</span>
-                }
-                else
-                {
-                    <span>Login</span>
-                }
-            </MudButton>
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               FullWidth="true"
+                               Size="Size.Large"
+                               OnClick="HandleLogin"
+                               Disabled="isLoading"
+                               Class="mb-4">
+                        @if (isLoading)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            <span>Logging in...</span>
+                        }
+                        else
+                        {
+                            <span>Login</span>
+                        }
+                    </MudButton>
+                </MudForm>
+            </MudTabPanel>
+            <MudTabPanel Text="Passkey" Icon="@Icons.Material.Filled.Fingerprint">
+                <MudText Typo="Typo.body1" Class="mb-4">
+                    Login using your device's biometric authenticator (FaceID, TouchID) or security key.
+                </MudText>
+                
+                <MudForm>
+                    <MudTextField @bind-Value="email"
+                                  Label="Email"
+                                  Variant="Variant.Outlined"
+                                  Required="true"
+                                  RequiredError="Email is required"
+                                  Validation="@(new Func<string, string?>(ValidateEmail))"
+                                  Immediate="true"
+                                  Class="mb-4" />
 
-            <MudButton Variant="Variant.Outlined"
-                       StartIcon="@Icons.Material.Filled.Fingerprint"
-                       Color="Color.Secondary"
-                       FullWidth="true"
-                       Size="Size.Large"
-                       OnClick="LoginWithPasskey"
-                       Disabled="isLoading"
-                       Class="mb-4">
-                Sign in with Passkey
-            </MudButton>
-        </MudForm>
+                    <MudButton Variant="Variant.Outlined"
+                               StartIcon="@Icons.Material.Filled.Fingerprint"
+                               Color="Color.Secondary"
+                               FullWidth="true"
+                               Size="Size.Large"
+                               OnClick="LoginWithPasskey"
+                               Disabled="isLoading"
+                               Class="mb-4">
+                        Sign in with Passkey
+                    </MudButton>
+                </MudForm>
+            </MudTabPanel>
+        </MudTabs>
 
         <MudDivider Class="my-4" />
 
