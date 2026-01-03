@@ -76,25 +76,17 @@ sequenceDiagram
 
 ### Project Structure
 
-```mermaid
-graph TD
-    Root[BookStore.ApiService/]
-    Commands[Commands/]
-    Handlers[Handlers/]
-    Endpoints[Endpoints/]
-    
-    Root --> Commands
-    Root --> Handlers
-    Root --> Endpoints
-    
-    Commands --> BooksCmd[Books/]
-    BooksCmd --> CmdFile[BookCommands.cs]
-    
-    Handlers --> BooksHdl[Books/]
-    BooksHdl --> HdlFile[BookHandlers.cs]
-    
-    Endpoints --> Admin[Admin/]
-    Admin --> EndpointsFile[AdminBookEndpoints.cs]
+```
+BookStore.ApiService/
+├── Commands/
+│   └── Books/
+│       └── BookCommands.cs      # Command records
+├── Handlers/
+│   └── Books/
+│       └── BookHandlers.cs      # Handler static methods
+└── Endpoints/
+    └── Admin/
+        └── AdminBookEndpoints.cs # Thin routing layer
 ```
 
 ## Creating Commands

@@ -6,7 +6,7 @@ The Book Store API is built using **Event Sourcing** and **CQRS** patterns with 
 
 ```mermaid
 graph TD
-    Client[Client Applications<br/>Blazor Web, Mobile Apps, Console Apps<br/>Uses: BookStore.Client library]
+    Client["Client Applications<br/>(Blazor Web, Mobile Apps, Console Apps)<br/>Uses: BookStore.Client library (Refit-based)"]
 
     subgraph "Book Store API (ASP.NET Core Minimal APIs)"
         direction TB
@@ -25,12 +25,12 @@ graph TD
     end
 
     subgraph Marten [Marten Event Store]
-        EventStore[Event Store<br/>- Append events<br/>- Stream management<br/>- Correlation/Causation]
-        Projections[Read Models / Projections<br/>- BookSearchProjection<br/>- AuthorProjection<br/>- CategoryProjection]
+        EventStore["Event Store<br/>- Append events<br/>- Stream management<br/>- Correlation/Causation"]
+        Projections["Read Models / Projections<br/>- BookSearchProjection<br/>- AuthorProjection<br/>- CategoryProjection"]
     end
 
     subgraph Database [PostgreSQL Database]
-        Postgres[Tables:<br/>- mt_events (Events)<br/>- mt_streams (Metadata)<br/>- Projections (Read Models)]
+        Postgres["Tables:<br/>- mt_events (Events)<br/>- mt_streams (Metadata)<br/>- Projections (Read Models)"]
     end
 
     Client -- HTTP/REST --> Endpoints

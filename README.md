@@ -86,66 +86,8 @@ See [Analyzer Rules Documentation](docs/analyzer-rules.md) for details.
 - **Dashboard** for monitoring all services
 
 ## 📁 Project Structure
-
-```mermaid
-graph TD
-    src[src/]
-    docs[docs/]
-    tools[_tools/]
-    slnx[BookStore.slnx]
-    readme[README.md]
     
-    src --> ApiService
-    src --> Client
-    src --> Web
-    src --> Shared
-    src --> AppHost
-    src --> ServiceDefaults[BookStore.ServiceDefaults/]
-    
-    subgraph ApiService [ApiService/]
-        direction TB
-        MainApi[BookStore.ApiService/]
-        Analyzers[BookStore.ApiService.Analyzers/]
-    end
-    
-    subgraph MainApiDir [BookStore.ApiService]
-        Aggregates[Aggregates/]
-        Events[Events/]
-        Commands[Commands/]
-        Handlers[Handlers/]
-        Projections[Projections/]
-        Endpoints[Endpoints/]
-        Infra[Infrastructure/]
-    end
-    
-    MainApi --> MainApiDir
-    
-    subgraph Client [Client/]
-        ClientLib[BookStore.Client/]
-    end
-    
-    subgraph Web [Web/]
-        Blazor[BookStore.Web/]
-    end
-    
-    subgraph Shared [Shared/]
-        SharedLib[BookStore.Shared/]
-        SharedTests[BookStore.Shared.Tests/]
-    end
-
-    subgraph AppHost [BookStore.AppHost/]
-        Program[Program.cs]
-    end
-    
-    subgraph Documentation [docs/]
-        GettingStarted[getting-started.md]
-        Architecture[architecture.md]
-        ApiClient[api-client-generation.md]
-        Wolverine[wolverine-guide.md]
-    end
-    
-    docs --> Documentation
-```
+For a detailed breakdown of the project structure, please refer to the [Getting Started Guide](docs/getting-started.md#project-structure).
 
 ## 📖 Documentation
 

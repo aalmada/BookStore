@@ -41,16 +41,11 @@ TUnit works with all major .NET IDEs:
 ### Test Files
 
 ```
-```mermaid
-graph TD
-    Root[src/ApiService/BookStore.ApiService.Tests/]
-    Handlers[Handlers/]
-    Tests[BookHandlerTests.cs]
-    Json[JsonSerializationTests.cs]
-    
-    Root --> Handlers
-    Handlers --> Tests
-    Root --> Json
+```
+src/ApiService/BookStore.ApiService.Tests/
+├── Handlers/
+│   └── BookHandlerTests.cs          # Command handler tests
+└── JsonSerializationTests.cs        # JSON standards verification
 ```
 ```
 
