@@ -56,28 +56,45 @@ public static IResult Handle(CreateBook command, IDocumentSession session)
 ### Command Flow
 
 ```
-1. HTTP Request → Endpoint
-2. Endpoint creates Command
-3. Command sent to IMessageBus
-4. Wolverine routes to Handler
-5. Handler executes business logic
-6. Wolverine commits Marten transaction
-7. Result returned to client
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Endpoint
+    participant Bus as IMessageBus
+    participant Handler
+    participant Marten as Marten/DB
+    
+    Client->>Endpoint: 1. HTTP Request
+    Endpoint->>Bus: 2. InvokeAsync(Command)
+    Bus->>Handler: 3. Route to Handler
+    Handler->>Handler: 4. Execute Logic
+    Handler->>Marten: 5. Store Events
+    Bus->>Marten: 6. Auto-commit Transaction
+    Endpoint->>Client: 7. Return Result
+```
 ```
 
 ### Project Structure
 
-```
-BookStore.ApiService/
-├── Commands/
-│   └── Books/
-│       └── BookCommands.cs      # Command records
-├── Handlers/
-│   └── Books/
-│       └── BookHandlers.cs      # Handler static methods
-└── Endpoints/
-    └── Admin/
-        └── AdminBookEndpoints.cs # Thin routing layer
+```mermaid
+graph TD
+    Root[BookStore.ApiService/]
+    Commands[Commands/]
+    Handlers[Handlers/]
+    Endpoints[Endpoints/]
+    
+    Root --> Commands
+    Root --> Handlers
+    Root --> Endpoints
+    
+    Commands --> BooksCmd[Books/]
+    BooksCmd --> CmdFile[BookCommands.cs]
+    
+    Handlers --> BooksHdl[Books/]
+    BooksHdl --> HdlFile[BookHandlers.cs]
+    
+    Endpoints --> Admin[Admin/]
+    Admin --> EndpointsFile[AdminBookEndpoints.cs]
 ```
 
 ## Creating Commands

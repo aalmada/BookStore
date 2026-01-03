@@ -176,10 +176,14 @@ var bookId = Guid.NewGuid();  // WRONG - creates random UUIDv4
 - ✅ **No collisions**: Globally unique without coordination
 
 **Format**:
-```
-018d5e4a-7b2c-7000-8000-123456789abc
-└─────┬─────┘ └┬┘ └┬┘ └──────┬──────┘
-  Timestamp   Ver Var   Random
+```mermaid
+graph TD
+    UUID[UUIDv7: 018d5e4a-7b2c-7000-8000-123456789abc]
+    
+    UUID --> Time[Timestamp<br/>48 bits]
+    UUID --> Ver[Version<br/>4 bits]
+    UUID --> Var[Variant<br/>2 bits]
+    UUID --> Rand[Random<br/>74 bits]
 ```
 
 > [!NOTE]

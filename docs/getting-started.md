@@ -225,46 +225,60 @@ WHERE id = '<book-id>';
 
 ## Project Structure
 
-```
-BookStore/
-├── src/
-│   ├── BookStore.ApiService/      # Backend API
-│   │   ├── Aggregates/            # Domain aggregates (event sourcing)
-│   │   ├── Events/                # Domain events
-│   │   ├── Commands/              # Command definitions
-│   │   ├── Handlers/              # Wolverine command handlers
-│   │   ├── Projections/           # Read models (CQRS)
-│   │   ├── Endpoints/             # API endpoints
-│   │   │   ├── Admin/             # Admin CRUD endpoints
-│   │   │   ├── BookEndpoints.cs   # Public book endpoints
-│   │   │   └── ...                # Other public endpoints
-│   │   ├── Infrastructure/        # Cross-cutting concerns
-│   │   └── Program.cs             # API entry point
-│   │
-│   ├── BookStore.Web/             # Blazor Frontend
-│   │   ├── Components/            # Blazor components
-│   │   │   ├── Pages/             # Page components
-│   │   │   └── Layout/            # Layout components
-│   │   ├── Services/              # API client (Refit)
-│   │   ├── Models/                # DTOs and view models
-│   │   └── Program.cs             # Frontend entry point
-│   │
-│   ├── BookStore.AppHost/         # Aspire Orchestration
-│   │   └── Program.cs             # Service configuration
-│   │
-│   ├── BookStore.ServiceDefaults/ # Shared Configuration
-│   │   └── Extensions.cs          # OpenTelemetry, logging, health checks
-│   │
-│   └── BookStore.Tests/           # Unit Tests
-│       ├── Handlers/              # Handler tests
-│       └── JsonSerializationTests.cs
-│
-└── docs/                          # Documentation
-    ├── getting-started.md         # This guide
-    ├── architecture.md            # System design
-    ├── wolverine-guide.md         # Command/handler pattern
-    ├── time-standards.md          # JSON and time standards
-    └── ...                        # Other guides
+```mermaid
+graph TD
+    Root[BookStore/]
+    src[src/]
+    docs[docs/]
+    
+    Root --> src
+    Root --> docs
+    
+    subgraph Src [Source Code]
+        direction TB
+        Api[BookStore.ApiService/]
+        Web[BookStore.Web/]
+        AppHost[BookStore.AppHost/]
+        Defaults[BookStore.ServiceDefaults/]
+        Tests[BookStore.Tests/]
+    end
+    
+    src --> Api
+    src --> Web
+    src --> AppHost
+    src --> Defaults
+    src --> Tests
+    
+    subgraph ApiDir [Backend API]
+        Aggregates[Aggregates/]
+        Events[Events/]
+        Commands[Commands/]
+        Handlers[Handlers/]
+        Projections[Projections/]
+        Endpoints[Endpoints/]
+        Infra[Infrastructure/]
+        ApiProgram[Program.cs]
+    end
+    
+    Api --> ApiDir
+    
+    subgraph WebDir [Frontend]
+        Components[Components/]
+        Services[Services/]
+        Models[Models/]
+        WebProgram[Program.cs]
+    end
+    
+    Web --> WebDir
+    
+    subgraph Docs [Documentation]
+        GS[getting-started.md]
+        Arch[architecture.md]
+        Wolv[wolverine-guide.md]
+        Time[time-standards.md]
+    end
+    
+    docs --> Docs
 ```
 
 ## Testing

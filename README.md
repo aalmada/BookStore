@@ -53,9 +53,8 @@ The Aspire dashboard opens automatically, providing access to:
 - **Event Sourcing** with Marten and PostgreSQL
 - **CQRS** with async projections for optimized reads
 - **Real-time Notifications** with SignalR (Wolverine integration)
-- **Hybrid Authentication** - Cookie-based (Blazor), JWT (external apps)
+- **JWT Authentication** - Secure token-based authentication for all clients (Web & Mobile)
 - **Passwordless Support** - Full Passkey support including **Passkey-First Sign Up** (.NET 10)
-- **Cross-Tab Sync** - BroadcastChannel API for consistent login state
 - **Role-Based Authorization** - Admin endpoints protected
 - **Multi-language Support** for categories (en, pt, es, fr, de)
 - **Full-text Search** with PostgreSQL trigrams and unaccent
@@ -88,54 +87,64 @@ See [Analyzer Rules Documentation](docs/analyzer-rules.md) for details.
 
 ## 📁 Project Structure
 
-```
-BookStore/
-├── src/
-│   ├── ApiService/
-│   │   ├── BookStore.ApiService/      # Backend API with event sourcing
-│   │   │   ├── Aggregates/            # Domain aggregates
-│   │   │   ├── Events/                # Domain events
-│   │   │   ├── Commands/              # Command definitions
-│   │   │   ├── Handlers/              # Wolverine command handlers
-│   │   │   ├── Projections/           # Read model projections
-│   │   │   ├── Endpoints/             # API endpoints
-│   │   │   └── Infrastructure/        # Cross-cutting concerns
-│   │   │
-│   │   └── BookStore.ApiService.Analyzers/  # Roslyn analyzers
-│   │
-│   ├── Client/
-│   │   └── BookStore.Client/          # Reusable API client library
-│   │       ├── IBookStoreApi.cs       # Refit interface
-│   │       ├── BookStoreClientExtensions.cs  # DI helpers
-│   │       └── README.md              # Usage guide
-│   │
-│   ├── Web/
-│   │   └── BookStore.Web/             # Blazor frontend
-│   │       ├── Components/            # Blazor components
-│   │       └── Services/              # Application services
-│   │
-│   ├── Shared/
-│   │   ├── BookStore.Shared/          # Shared domain models & DTOs
-│   │   └── BookStore.Shared.Tests/    # Unit tests for shared code
-│   │
-│   ├── BookStore.AppHost/             # Aspire orchestration
-│   │   └── Program.cs                 # Service configuration
-│   │
-│   └── BookStore.ServiceDefaults/     # Shared service configuration
-│       └── Extensions.cs              # OpenTelemetry, health checks
-│
-├── docs/                              # Documentation
-│   ├── getting-started.md             # Setup guide
-│   ├── architecture.md                # System design
-│   ├── api-client-generation.md       # Client library usage
-│   ├── wolverine-guide.md             # Command/handler pattern
-│   └── ...
-│
-├── _tools/                            # Development tools
-│   └── update-openapi.sh              # OpenAPI spec updater
-│
-├── BookStore.slnx                     # Solution file (new .slnx format)
-└── README.md                          # This file
+```mermaid
+graph TD
+    src[src/]
+    docs[docs/]
+    tools[_tools/]
+    slnx[BookStore.slnx]
+    readme[README.md]
+    
+    src --> ApiService
+    src --> Client
+    src --> Web
+    src --> Shared
+    src --> AppHost
+    src --> ServiceDefaults[BookStore.ServiceDefaults/]
+    
+    subgraph ApiService [ApiService/]
+        direction TB
+        MainApi[BookStore.ApiService/]
+        Analyzers[BookStore.ApiService.Analyzers/]
+    end
+    
+    subgraph MainApiDir [BookStore.ApiService]
+        Aggregates[Aggregates/]
+        Events[Events/]
+        Commands[Commands/]
+        Handlers[Handlers/]
+        Projections[Projections/]
+        Endpoints[Endpoints/]
+        Infra[Infrastructure/]
+    end
+    
+    MainApi --> MainApiDir
+    
+    subgraph Client [Client/]
+        ClientLib[BookStore.Client/]
+    end
+    
+    subgraph Web [Web/]
+        Blazor[BookStore.Web/]
+    end
+    
+    subgraph Shared [Shared/]
+        SharedLib[BookStore.Shared/]
+        SharedTests[BookStore.Shared.Tests/]
+    end
+
+    subgraph AppHost [BookStore.AppHost/]
+        Program[Program.cs]
+    end
+    
+    subgraph Documentation [docs/]
+        GettingStarted[getting-started.md]
+        Architecture[architecture.md]
+        ApiClient[api-client-generation.md]
+        Wolverine[wolverine-guide.md]
+    end
+    
+    docs --> Documentation
 ```
 
 ## 📖 Documentation
@@ -149,7 +158,7 @@ BookStore/
 - **[Configuration Guide](docs/configuration-guide.md)** - Options pattern and validation
 - **[API Conventions](docs/api-conventions-guide.md)** - Time handling and JSON serialization standards
 - **[API Client Generation](docs/api-client-generation.md)** - Type-safe API client with Refit
-- **[Authentication Guide](docs/authentication-guide.md)** - Hybrid cookie/JWT authentication and role-based authorization
+- **[Authentication Guide](docs/authentication-guide.md)** - JWT authentication and role-based authorization
 - **[Passkey Guide](docs/passkey-guide.md)** - Passwordless authentication with WebAuthn/FIDO2
 - **[Real-time Notifications](docs/signalr-guide.md)** - SignalR integration and optimistic updates
 - **[Logging Guide](docs/logging-guide.md)** - Structured logging with source-generated log messages
@@ -203,10 +212,9 @@ BookStore/
 
 **Authentication:**
 - `POST /identity/register` - Register new user
-- `POST /identity/login?useCookies=true` - Login with cookie (Blazor frontend)
-- `POST /identity/login` - Login and receive JWT token (external apps)
+- `POST /identity/login` - Login and receive JWT access token
 - `POST /identity/refresh` - Refresh JWT access token
-- `POST /identity/logout` - Logout (clears cookie)
+- `POST /identity/logout` - Logout (invalidate token/session)
 
 **Passkey (Passwordless):**
 - `POST /Account/RegisterPasskey` - Register passkey / Sign up

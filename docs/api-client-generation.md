@@ -16,21 +16,23 @@ Instead of automated code generation, we manually create Refit interfaces. This 
 
 ### Architecture
 
-```
-BookStore.Shared/Models/
-├── BookDto.cs              # Shared DTOs
-├── AuthorDto.cs
-├── CategoryDto.cs
-├── PublisherDto.cs
-├── IdentityModels.cs       # Authentication DTOs
-└── ...
+```mermaid
+graph TD
+    subgraph Shared [BookStore.Shared/Models/]
+        BookDto[BookDto.cs]
+        AuthorDto[AuthorDto.cs]
+        CatDto[CategoryDto.cs]
+        PubDto[PublisherDto.cs]
+        IdentityDto[IdentityModels.cs]
+    end
 
-BookStore.Client/
-├── IGetBooksEndpoint.cs    # Query endpoints
-├── IGetBookEndpoint.cs
-├── ICreateBookEndpoint.cs  # Command endpoints
-├── IIdentityEndpoints.cs   # Authentication endpoints
-└── BookStoreClientExtensions.cs  # DI registration
+    subgraph Client [BookStore.Client/]
+        GetBooks[IGetBooksEndpoint.cs]
+        GetBook[IGetBookEndpoint.cs]
+        CreateBook[ICreateBookEndpoint.cs]
+        Identity[IIdentityEndpoints.cs]
+        DI[BookStoreClientExtensions.cs]
+    end
 ```
 
 ## Creating New Endpoints

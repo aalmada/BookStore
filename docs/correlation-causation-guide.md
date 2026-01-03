@@ -119,12 +119,14 @@ curl -X PUT http://localhost:5000/api/admin/books/book-001 \
 Response: `X-Event-ID: evt-update-001`
 
 **Event Chain**:
-```
-workflow-abc123 (Correlation ID)
-  ├─ evt-create-001 (BookAdded)
-  │   └─ causationId: workflow-abc123
-  └─ evt-update-001 (BookUpdated)
-      └─ causationId: evt-create-001
+```mermaid
+graph TD
+    Corr[workflow-abc123<br/>Correlation ID]
+    Create[evt-create-001<br/>BookAdded]
+    Update[evt-update-001<br/>BookUpdated]
+    
+    Corr -->|Causes| Create
+    Create -->|Causes| Update
 ```
 
 ### Example 3: Distributed Workflow
@@ -168,16 +170,18 @@ X-Causation-ID: evt-cat-001
 Response: `X-Event-ID: evt-book-001`
 
 **Complete Event Chain**:
-```
-import-2024-001 (Correlation ID - Book Import Workflow)
-  ├─ evt-pub-001 (PublisherAdded)
-  │   └─ causationId: import-2024-001
-  ├─ evt-auth-001 (AuthorAdded)
-  │   └─ causationId: evt-pub-001
-  ├─ evt-cat-001 (CategoryAdded)
-  │   └─ causationId: evt-auth-001
-  └─ evt-book-001 (BookAdded)
-      └─ causationId: evt-cat-001
+```mermaid
+graph TD
+    Corr[import-2024-001<br/>Correlation ID]
+    Pub[evt-pub-001<br/>PublisherAdded]
+    Auth[evt-auth-001<br/>AuthorAdded]
+    Cat[evt-cat-001<br/>CategoryAdded]
+    Book[evt-book-001<br/>BookAdded]
+    
+    Corr -->|Causes| Pub
+    Pub -->|Causes| Auth
+    Auth -->|Causes| Cat
+    Cat -->|Causes| Book
 ```
 
 ## Querying Events by Correlation ID

@@ -4,63 +4,45 @@
 
 The Book Store API is built using **Event Sourcing** and **CQRS** patterns with ASP.NET Core Minimal APIs, Marten for event storage, and PostgreSQL as the database.
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     Client Applications                      │
-│  (Blazor Web, Mobile Apps, Console Apps, etc.)              │
-│                                                              │
-│  Uses: BookStore.Client library (Refit-based)               │
-└────────────────────────┬────────────────────────────────────┘
-                         │
-                         │ HTTP/REST
-                         │
-┌────────────────────────▼────────────────────────────────────┐
-│                  Book Store API                         │
-│                 (ASP.NET Core Minimal APIs)                  │
-│                                                              │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
-│  │   Public     │  │    Admin     │  │   System     │     │
-│  │  Endpoints   │  │  Endpoints   │  │  Endpoints   │     │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘     │
-│         │                  │                  │              │
-│         │                  │                  │              │
-│  ┌──────▼──────────────────▼──────────────────▼───────┐    │
-│  │           Command Handlers (Aggregates)            │    │
-│  │  ┌──────┐  ┌────────┐  ┌──────────┐  ┌─────────┐ │    │
-│  │  │ Book │  │ Author │  │ Category │  │Publisher│ │    │
-│  │  └──────┘  └────────┘  └──────────┘  └─────────┘ │    │
-│  └─────────────────────┬──────────────────────────────┘    │
-│                        │                                     │
-│                        │ Events                              │
-│                        ▼                                     │
-│  ┌────────────────────────────────────────────────────┐    │
-│  │              Marten Event Store                     │    │
-│  │  - Append events                                    │    │
-│  │  - Stream management                                │    │
-│  │  - Correlation/Causation tracking                   │    │
-│  └────────────────────┬───────────────────────────────┘    │
-│                       │                                      │
-│                       │ Async Projections                    │
-│                       ▼                                      │
-│  ┌────────────────────────────────────────────────────┐    │
-│  │          Read Models (Projections)                  │    │
-│  │  ┌──────────────┐  ┌────────────┐  ┌──────────┐   │    │
-│  │  │BookSearch    │  │  Author    │  │ Category │   │    │
-│  │  │Projection    │  │ Projection │  │Projection│   │    │
-│  │  └──────────────┘  └────────────┘  └──────────┘   │    │
-│  └────────────────────────────────────────────────────┘    │
-└─────────────────────────┬───────────────────────────────────┘
-                          │
-                          │ PostgreSQL Protocol
-                          ▼
-┌─────────────────────────────────────────────────────────────┐
-│                      PostgreSQL Database                     │
-│                                                              │
-│  ┌──────────────┐  ┌────────────────┐  ┌────────────────┐ │
-│  │  mt_events   │  │  mt_streams    │  │  Projections   │ │
-│  │  (Events)    │  │  (Metadata)    │  │  (Read Models) │ │
-│  └──────────────┘  └────────────────┘  └────────────────┘ │
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    Client[Client Applications<br/>Blazor Web, Mobile Apps, Console Apps<br/>Uses: BookStore.Client library]
+
+    subgraph "Book Store API (ASP.NET Core Minimal APIs)"
+        direction TB
+        subgraph Endpoints
+            Public[Public Endpoints]
+            Admin[Admin Endpoints]
+            System[System Endpoints]
+        end
+        
+        subgraph Handlers [Command Handlers / Aggregates]
+            Book[Book]
+            Author[Author]
+            Category[Category]
+            Publisher[Publisher]
+        end
+    end
+
+    subgraph Marten [Marten Event Store]
+        EventStore[Event Store<br/>- Append events<br/>- Stream management<br/>- Correlation/Causation]
+        Projections[Read Models / Projections<br/>- BookSearchProjection<br/>- AuthorProjection<br/>- CategoryProjection]
+    end
+
+    subgraph Database [PostgreSQL Database]
+        Postgres[Tables:<br/>- mt_events (Events)<br/>- mt_streams (Metadata)<br/>- Projections (Read Models)]
+    end
+
+    Client -- HTTP/REST --> Endpoints
+    Public --> Handlers
+    Admin --> Handlers
+    System --> Handlers
+    
+    Handlers -- Events --> EventStore
+    EventStore -- Async Projections --> Projections
+    
+    EventStore -- PostgreSQL Protocol --> Postgres
+    Projections -- PostgreSQL Protocol --> Postgres
 ```
 
 ## Core Patterns
@@ -122,8 +104,16 @@ Separate models for writes (commands) and reads (queries).
 Commands are routed through Wolverine's message bus to handlers that execute business logic.
 
 **Command Flow**:
-```
-HTTP Request → Endpoint → Command → IMessageBus → Handler → Aggregate → Event → Auto-commit
+**Command Flow**:
+```mermaid
+graph LR
+    HTTP[HTTP Request] --> Endpoint
+    Endpoint --> Command
+    Command --> Bus[IMessageBus]
+    Bus --> Handler
+    Handler --> Aggregate
+    Aggregate --> Event
+    Event --> Commit[Auto-commit]
 ```
 
 **Benefits**:
@@ -202,32 +192,56 @@ Example event flow:
 ### Write Path (Command)
 
 ```
-1. HTTP Request → Endpoint
-2. Load Aggregate from Event Stream
-3. Execute Business Logic
-4. Generate Domain Event
-5. Append Event to Stream
-6. SaveChanges (atomic)
-7. Return Response
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API as API Endpoint
+    participant Domain as Domain Model
+    participant Marten as Marten Event Store
+    
+    Client->>API: 1. HTTP Request
+    API->>Domain: 2. Load Aggregate
+    Domain->>Domain: 3. Business Logic
+    Domain->>Domain: 4. Generate Event
+    Domain->>Marten: 5. Append Event
+    Marten->>Marten: 6. SaveChanges
+    API->>Client: 7. Return Response
+```
 ```
 
 ### Read Path (Query)
 
 ```
-1. HTTP Request → Endpoint
-2. Query Projection (Read Model)
-3. Apply Filters/Pagination
-4. Return Results
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API as API Endpoint
+    participant DB as Read Model DB
+    
+    Client->>API: 1. HTTP Request
+    API->>DB: 2. Query Projection
+    DB->>API: 3. Return Data (DTOs)
+    API->>API: 4. Apply Filters/Pagination
+    API->>Client: 5. Return Results
+```
 ```
 
 ### Projection Update (Async)
 
 ```
-1. Event Appended to Stream
-2. Async Daemon Detects New Event
-3. Projection Builder Processes Event
-4. Update Read Model
-5. Commit Changes
+```mermaid
+sequenceDiagram
+    participant EventStore as Marten Event Store
+    participant Daemon as Async Daemon
+    participant Builder as Projection Builder
+    participant DB as Read Model DB
+
+    EventStore->>Daemon: 1. New Event Appended
+    Daemon->>Builder: 2. Detect Event
+    Builder->>Builder: 3. Process Event
+    Builder->>DB: 4. Update Read Model
+    DB-->>Daemon: 5. Commit Checkpoint
+```
 ```
 
 ## Technology Stack

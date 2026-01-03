@@ -88,11 +88,19 @@ See [Marten Guide - Events](marten-guide.md#events) for implementation details.
 A **stream** is a sequence of events for a single aggregate instance.
 
 ```
-Stream: book-123
-├── Version 1: BookAdded
-├── Version 2: BookUpdated
-├── Version 3: PriceChanged
-└── Version 4: BookPublished
+```mermaid
+graph TD
+    Stream[Stream: book-123]
+    V1[Version 1: BookAdded]
+    V2[Version 2: BookUpdated]
+    V3[Version 3: PriceChanged]
+    V4[Version 4: BookPublished]
+    
+    Stream --> V1
+    V1 --> V2
+    V2 --> V3
+    V3 --> V4
+```
 ```
 
 **Stream Properties**:
@@ -165,15 +173,22 @@ See [Marten Guide - Aggregates](marten-guide.md#aggregates) for implementation p
 **Projections** transform events into read models optimized for queries.
 
 ```
-Events (Write Model)          Projection (Read Model)
-─────────────────────         ───────────────────────
-BookAdded                  →  BookSearchProjection
-├─ Title: "Clean Code"        ├─ Title: "Clean Code"
-├─ AuthorIds: [author-1]      ├─ AuthorNames: "Robert Martin"
-└─ PublisherId: pub-1         └─ PublisherName: "Prentice Hall"
-                              
-AuthorUpdated              →  (Updates denormalized author name)
-PublisherUpdated           →  (Updates denormalized publisher name)
+```mermaid
+graph LR
+    subgraph Events [Events Write Model]
+        BA[BookAdded<br/>- Title: "Clean Code"<br/>- AuthorIds: [author-1]<br/>- PublisherId: pub-1]
+        AU[AuthorUpdated]
+        PU[PublisherUpdated]
+    end
+
+    subgraph Projection [Projection Read Model]
+        BSP[BookSearchProjection<br/>- Title: "Clean Code"<br/>- AuthorNames: "Robert Martin"<br/>- PublisherName: "Prentice Hall"]
+    end
+
+    BA --> BSP
+    AU -.-> BSP
+    PU -.-> BSP
+```
 ```
 
 **Projection Types**:
