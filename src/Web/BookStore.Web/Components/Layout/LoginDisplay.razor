@@ -2,6 +2,7 @@
 @using BookStore.Web.Services
 @using Microsoft.JSInterop
 @inject AuthenticationService AuthService
+@inject JwtAuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 
@@ -33,6 +34,10 @@
     {
         await AuthService.LogoutAsync();
         
+        // Notify the authentication state provider that the user has logged out
+        // This triggers UI updates for AuthorizeView and other auth-dependent components
+        AuthStateProvider.NotifyUserLogout();
+        
         // Notify other tabs via BroadcastChannel
         try
         {
@@ -43,6 +48,7 @@
             // BroadcastChannel might not be available, continue anyway
         }
         
-        Navigation.NavigateTo("/", forceLoad: true);
+        // Navigate without forceLoad - state is already updated
+        Navigation.NavigateTo("/");
     }
 }

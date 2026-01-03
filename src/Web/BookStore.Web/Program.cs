@@ -37,14 +37,20 @@ var circuitBreakerPolicy = HttpPolicyExtensions
     .HandleTransientHttpError()
     .CircuitBreakerAsync(5, TimeSpan.FromSeconds(30));
 
-// Register BookStore API client
-builder.Services.AddBookStoreClient(new Uri(apiServiceUrl));
+// Register AuthorizationMessageHandler for JWT token injection
+builder.Services.AddScoped<AuthorizationMessageHandler>();
 
-// Add authentication services (cookie-based)
+// Register BookStore API client with authorization handler
+builder.Services.AddBookStoreClient(
+    new Uri(apiServiceUrl), 
+    clientBuilder => clientBuilder.AddHttpMessageHandler<AuthorizationMessageHandler>());
+
+// Add authentication services (JWT token-based)
+builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<AuthenticationService>();
-builder.Services.AddScoped<BookStoreAuthenticationStateProvider>();
+builder.Services.AddScoped<JwtAuthenticationStateProvider>();
 builder.Services.AddScoped<AuthenticationStateProvider>(
-    sp => sp.GetRequiredService<BookStoreAuthenticationStateProvider>());
+    sp => sp.GetRequiredService<JwtAuthenticationStateProvider>());
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddAuthorizationCore();
 

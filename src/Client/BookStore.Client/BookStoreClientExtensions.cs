@@ -13,110 +13,68 @@ public static class BookStoreClientExtensions
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <param name="baseAddress">The base address of the API.</param>
+    /// <param name="configureClient">Optional action to configure the HTTP client builder (e.g. adding handlers).</param>
     /// <returns>The service collection for chaining.</returns>
     public static IServiceCollection AddBookStoreClient(
         this IServiceCollection services,
-        Uri baseAddress)
+        Uri baseAddress,
+        Action<IHttpClientBuilder>? configureClient = null)
     {
+        // Helper to register client with optional configuration
+        IHttpClientBuilder AddClient<T>() where T : class
+        {
+            var builder = services.AddRefitClient<T>()
+                .ConfigureHttpClient(c => c.BaseAddress = baseAddress);
+            
+            configureClient?.Invoke(builder);
+            return builder;
+        }
+
         // Register all endpoint interfaces
-        _ = services.AddRefitClient<IGetBooksEndpoint>()
-            .ConfigureHttpClient(c => c.BaseAddress = baseAddress);
-
-        _ = services.AddRefitClient<IGetBookEndpoint>()
-            .ConfigureHttpClient(c => c.BaseAddress = baseAddress);
-
-        _ = services.AddRefitClient<IGetAuthorsEndpoint>()
-            .ConfigureHttpClient(c => c.BaseAddress = baseAddress);
-
-        _ = services.AddRefitClient<IGetAuthorEndpoint>()
-            .ConfigureHttpClient(c => c.BaseAddress = baseAddress);
-
-        _ = services.AddRefitClient<IGetCategoriesEndpoint>()
-            .ConfigureHttpClient(c => c.BaseAddress = baseAddress);
-
-        _ = services.AddRefitClient<IGetCategoryEndpoint>()
-            .ConfigureHttpClient(c => c.BaseAddress = baseAddress);
-
-        _ = services.AddRefitClient<IGetPublishersEndpoint>()
-            .ConfigureHttpClient(c => c.BaseAddress = baseAddress);
-
-        _ = services.AddRefitClient<IGetPublisherEndpoint>()
-            .ConfigureHttpClient(c => c.BaseAddress = baseAddress);
+        AddClient<IGetBooksEndpoint>();
+        AddClient<IGetBookEndpoint>();
+        AddClient<IGetAuthorsEndpoint>();
+        AddClient<IGetAuthorEndpoint>();
+        AddClient<IGetCategoriesEndpoint>();
+        AddClient<IGetCategoryEndpoint>();
+        AddClient<IGetPublishersEndpoint>();
+        AddClient<IGetPublisherEndpoint>();
 
         // Admin endpoints
-        _ = services.AddRefitClient<ICreateBookEndpoint>()
-            .ConfigureHttpClient(c => c.BaseAddress = baseAddress);
-
-        _ = services.AddRefitClient<IUpdateBookEndpoint>()
-            .ConfigureHttpClient(c => c.BaseAddress = baseAddress);
-
-        _ = services.AddRefitClient<ISoftDeleteBookEndpoint>()
-            .ConfigureHttpClient(c => c.BaseAddress = baseAddress);
-
-        _ = services.AddRefitClient<IRestoreBookEndpoint>()
-            .ConfigureHttpClient(c => c.BaseAddress = baseAddress);
-
-        _ = services.AddRefitClient<IUploadBookCoverEndpoint>()
-            .ConfigureHttpClient(c => c.BaseAddress = baseAddress);
-
-        _ = services.AddRefitClient<ICreateAuthorEndpoint>()
-            .ConfigureHttpClient(c => c.BaseAddress = baseAddress);
-
-        _ = services.AddRefitClient<IUpdateAuthorEndpoint>()
-            .ConfigureHttpClient(c => c.BaseAddress = baseAddress);
-
-        _ = services.AddRefitClient<ISoftDeleteAuthorEndpoint>()
-            .ConfigureHttpClient(c => c.BaseAddress = baseAddress);
-
-        _ = services.AddRefitClient<IRestoreAuthorEndpoint>()
-            .ConfigureHttpClient(c => c.BaseAddress = baseAddress);
-
-        _ = services.AddRefitClient<ICreateCategoryEndpoint>()
-            .ConfigureHttpClient(c => c.BaseAddress = baseAddress);
-
-        _ = services.AddRefitClient<IUpdateCategoryEndpoint>()
-            .ConfigureHttpClient(c => c.BaseAddress = baseAddress);
-
-        _ = services.AddRefitClient<ISoftDeleteCategoryEndpoint>()
-            .ConfigureHttpClient(c => c.BaseAddress = baseAddress);
-
-        _ = services.AddRefitClient<IRestoreCategoryEndpoint>()
-            .ConfigureHttpClient(c => c.BaseAddress = baseAddress);
-
-        _ = services.AddRefitClient<ICreatePublisherEndpoint>()
-            .ConfigureHttpClient(c => c.BaseAddress = baseAddress);
-
-        _ = services.AddRefitClient<IUpdatePublisherEndpoint>()
-            .ConfigureHttpClient(c => c.BaseAddress = baseAddress);
-
-        _ = services.AddRefitClient<ISoftDeletePublisherEndpoint>()
-            .ConfigureHttpClient(c => c.BaseAddress = baseAddress);
-
-        _ = services.AddRefitClient<IRestorePublisherEndpoint>()
-            .ConfigureHttpClient(c => c.BaseAddress = baseAddress);
+        AddClient<ICreateBookEndpoint>();
+        AddClient<IUpdateBookEndpoint>();
+        AddClient<ISoftDeleteBookEndpoint>();
+        AddClient<IRestoreBookEndpoint>();
+        AddClient<IUploadBookCoverEndpoint>();
+        
+        AddClient<ICreateAuthorEndpoint>();
+        AddClient<IUpdateAuthorEndpoint>();
+        AddClient<ISoftDeleteAuthorEndpoint>();
+        AddClient<IRestoreAuthorEndpoint>();
+        
+        AddClient<ICreateCategoryEndpoint>();
+        AddClient<IUpdateCategoryEndpoint>();
+        AddClient<ISoftDeleteCategoryEndpoint>();
+        AddClient<IRestoreCategoryEndpoint>();
+        
+        AddClient<ICreatePublisherEndpoint>();
+        AddClient<IUpdatePublisherEndpoint>();
+        AddClient<ISoftDeletePublisherEndpoint>();
+        AddClient<IRestorePublisherEndpoint>();
 
         // System endpoints
-        _ = services.AddRefitClient<IGetAllBooksAdminEndpoint>()
-            .ConfigureHttpClient(c => c.BaseAddress = baseAddress);
-
-        _ = services.AddRefitClient<IRebuildProjectionsEndpoint>()
-            .ConfigureHttpClient(c => c.BaseAddress = baseAddress);
-
-        _ = services.AddRefitClient<IGetProjectionStatusEndpoint>()
-            .ConfigureHttpClient(c => c.BaseAddress = baseAddress);
+        AddClient<IGetAllBooksAdminEndpoint>();
+        AddClient<IRebuildProjectionsEndpoint>();
+        AddClient<IGetProjectionStatusEndpoint>();
 
         // Identity endpoints
-        _ = services.AddRefitClient<IIdentityLoginEndpoint>()
-            .ConfigureHttpClient(c => c.BaseAddress = baseAddress);
-
-        _ = services.AddRefitClient<IIdentityRegisterEndpoint>()
-            .ConfigureHttpClient(c => c.BaseAddress = baseAddress);
-
-        _ = services.AddRefitClient<IIdentityRefreshEndpoint>()
-            .ConfigureHttpClient(c => c.BaseAddress = baseAddress);
-
-        _ = services.AddRefitClient<IIdentityManageInfoEndpoint>()
-            .ConfigureHttpClient(c => c.BaseAddress = baseAddress);
+        // Note: Login/Register don't strictly need auth header, but it doesn't hurt.
+        // Refresh token endpoint DOES need auth header if we implement "rotate me" logic dependent on old token,
+        // but typically refresh endpoint uses credentials or refresh token in body.
+        AddClient<IIdentityLoginEndpoint>();
+        AddClient<IIdentityRegisterEndpoint>();
+        AddClient<IIdentityRefreshEndpoint>();
+        AddClient<IIdentityManageInfoEndpoint>();
 
         return services;
     }
@@ -131,12 +89,8 @@ public static class BookStoreClientExtensions
     public static IServiceCollection AddBookStoreClientWithResilience(
         this IServiceCollection services,
         Uri baseAddress,
-#pragma warning disable IDE0060 // Remove unused parameter
         Action<IHttpClientBuilder> configureResilience)
-#pragma warning restore IDE0060 // Remove unused parameter
     {
-        // This is a simplified version - you can expand this to apply policies to each endpoint
-        _ = services.AddBookStoreClient(baseAddress);
-        return services;
+        return services.AddBookStoreClient(baseAddress, configureResilience);
     }
 }

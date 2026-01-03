@@ -51,7 +51,7 @@ public static class ApplicationServicesExtensions
 #pragma warning restore EXTEXP0018 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 
         // Configure Identity with JWT authentication
-        AddIdentityServices(services);
+        AddIdentityServices(services, configuration);
 
         return services;
     }
@@ -86,11 +86,10 @@ public static class ApplicationServicesExtensions
             });
     }
 
-    static void AddIdentityServices(IServiceCollection services)
+    static void AddIdentityServices(IServiceCollection services, IConfiguration configuration)
     {
-        // Add Identity API endpoints with dual authentication support
-        // AddIdentityApiEndpoints configures both Cookie and Bearer token authentication
-        _ = services.AddIdentityApiEndpoints<Models.ApplicationUser>(options =>
+        // Add core Identity services without API endpoints (we'll use custom JWT endpoints)
+        _ = services.AddIdentityCore<Models.ApplicationUser>(options =>
             {
                 // Password requirements
                 options.Password.RequireDigit = true;
@@ -98,11 +97,43 @@ public static class ApplicationServicesExtensions
                 options.Password.RequireUppercase = true;
                 options.Password.RequireNonAlphanumeric = true;
                 options.Password.RequiredLength = 8;
-                
-                // Note: Passkey support will be configured when .NET 10 API is available
-                // For now, infrastructure is prepared in Program.cs
             })
             .AddUserStore<Identity.MartenUserStore>();
+        
+        // Add roles support not needed via AddRoles (which requires IRoleStore), 
+        // as we use simple string roles on the user object via MartenUserStore implementation of IUserRoleStore.
+        
+        // Add HttpContextAccessor required for SignInManager
+        _ = services.AddHttpContextAccessor();
+        
+        // Add SignInManager separately
+        _ = services.AddScoped<Microsoft.AspNetCore.Identity.SignInManager<Models.ApplicationUser>>();
+
+        // Add JWT Bearer authentication
+        var jwtSettings = configuration.GetSection("Jwt");
+        _ = services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddJwtBearer(options =>
+            {
+                options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+                    ValidIssuer = jwtSettings["Issuer"],
+                    ValidAudience = jwtSettings["Audience"],
+                    IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(
+                        System.Text.Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]!)),
+                    ClockSkew = TimeSpan.Zero // Remove default 5 minute clock skew
+                };
+            });
+
+        // Add JWT token service
+        _ = services.AddSingleton<Services.JwtTokenService>();
 
         // Add authorization services
         _ = services.AddAuthorizationBuilder()

@@ -3,8 +3,10 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.JSInterop
 @inject AuthenticationService AuthService
+@inject JwtAuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
+@inject ILogger<Login> Logger
 @rendermode InteractiveServer
 
 <PageTitle>Login - BookStore</PageTitle>
@@ -79,12 +81,14 @@
     async Task HandleLogin()
     {
         if (form == null)
-        {            return;
+        {
+            return;
         }
 
         await form.Validate();
         if (!form.IsValid)
-        {            return;
+        {
+            return;
         }
 
         isLoading = true;
@@ -92,26 +96,42 @@
 
         try
         {
+            Logger.LogInformation("Attempting login for {Email}", email);
             var result = await AuthService.LoginAsync(email, password);
 
-            if (result.Success)
+            if (result.Success && result.AccessToken != null)
             {
+                Logger.LogInformation("Login successful, notifying auth state provider");
+                
+                // Notify the authentication state provider with the new token
+                // This triggers UI updates for AuthorizeView and other auth-dependent components
+                AuthStateProvider.NotifyUserAuthentication(result.AccessToken);
+                
                 // Notify other tabs via BroadcastChannel
                 try
                 {
                     await JS.InvokeVoidAsync("authBroadcast.notifyLogin");
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // BroadcastChannel might not be available, continue anyway
+                    Logger.LogWarning("BroadcastChannel error: {Error}", ex.Message);
                 }
                 
-                Navigation.NavigateTo(ReturnUrl ?? "/", forceLoad: true);
+                Logger.LogInformation("Navigating to {ReturnUrl}", ReturnUrl ?? "/");
+                
+                // Navigate without forceLoad - state is already updated
+                Navigation.NavigateTo(ReturnUrl ?? "/");
             }
             else
             {
+                Logger.LogWarning("Login failed: {Error}", result.Error);
                 errorMessage = result.Error ?? "Login failed";
             }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Login exception: {Message}", ex.Message);
+            errorMessage = $"Error: {ex.Message}";
         }
         finally
         {

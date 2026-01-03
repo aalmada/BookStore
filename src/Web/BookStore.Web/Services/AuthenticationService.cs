@@ -11,23 +11,22 @@ public class AuthenticationService(
     IIdentityRegisterEndpoint registerEndpoint)
 {
     /// <summary>
-    /// Login with email and password (cookie-based)
+    /// Login with email and password (JWT token-based)
     /// </summary>
     public async Task<LoginResult> LoginAsync(string email, string password)
     {
         try
         {
             var request = new LoginRequest(email, password);
-            // useCookies=true tells the API to set an authentication cookie
-            var response = await loginEndpoint.Execute(request, useCookies: true);
+            // useCookies=false - we want JWT tokens, not cookies
+            var response = await loginEndpoint.Execute(request, useCookies: false);
 
-            // Cookie is set automatically by the browser
-            // No need to store tokens manually
-            return new LoginResult(true, null);
+            // Return the access token so caller can store it
+            return new LoginResult(true, null, response.AccessToken, response.RefreshToken);
         }
         catch (Refit.ApiException ex)
         {
-            return new LoginResult(false, ex.Content ?? "Login failed");
+            return new LoginResult(false, ex.Content ?? "Login failed", null, null);
         }
     }
 
@@ -115,7 +114,7 @@ public class AuthenticationService(
 /// <summary>
 /// Result of a login attempt
 /// </summary>
-public record LoginResult(bool Success, string? Error);
+public record LoginResult(bool Success, string? Error, string? AccessToken = null, string? RefreshToken = null);
 
 /// <summary>
 /// Result of a registration attempt

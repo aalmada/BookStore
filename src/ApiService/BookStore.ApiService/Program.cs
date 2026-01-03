@@ -2,6 +2,7 @@ using BookStore.ApiService.Infrastructure;
 using BookStore.ApiService.Infrastructure.Extensions;
 using BookStore.ApiService.Infrastructure.Logging;
 using BookStore.ApiService.Projections;
+using BookStore.ApiService.Endpoints;
 using BookStore.Shared.Models;
 using Marten;
 using Microsoft.Extensions.Options;
@@ -58,26 +59,32 @@ builder.Services.Configure<Microsoft.AspNetCore.Identity.IdentityPasskeyOptions>
 
 var app = builder.Build();
 
-// Seed database in development
+// Start seeding in the background (don't block app startup)
 if (app.Environment.IsDevelopment())
 {
-    using var scope = app.Services.CreateScope();
-    var store = scope.ServiceProvider.GetRequiredService<IDocumentStore>();
-    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    _ = Task.Run(async () =>
+    {
+        // Give the app a moment to start listening for health checks
+        await Task.Delay(100);
+        
+        using var scope = app.Services.CreateScope();
+        var store = scope.ServiceProvider.GetRequiredService<IDocumentStore>();
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 
-    // Apply schema to create PostgreSQL extensions (pg_trgm, unaccent)
-    await store.Storage.ApplyAllConfiguredChangesToDatabaseAsync();
+        // Apply schema to create PostgreSQL extensions (pg_trgm, unaccent)
+        await store.Storage.ApplyAllConfiguredChangesToDatabaseAsync();
 
-    var seeder = new DatabaseSeeder(store);
-    await seeder.SeedAsync();
+        var seeder = new DatabaseSeeder(store);
+        await seeder.SeedAsync();
 
-    // Seed admin user
-    var userManager = scope.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.Identity.UserManager<BookStore.ApiService.Models.ApplicationUser>>();
-    await DatabaseSeeder.SeedAdminUserAsync(userManager);
+        // Seed admin user
+        var userManager = scope.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.Identity.UserManager<BookStore.ApiService.Models.ApplicationUser>>();
+        await DatabaseSeeder.SeedAdminUserAsync(userManager);
 
-    // Wait for async projections to process the seeded events
-    // In production, projections run continuously in the background
-    await WaitForProjectionsAsync(store, logger);
+        // Wait for async projections to process the seeded events
+        // In production, projections run continuously in the background
+        await WaitForProjectionsAsync(store, logger);
+    });
 }
 
 static async Task WaitForProjectionsAsync(IDocumentStore store, ILogger logger)
@@ -171,8 +178,8 @@ if (app.Environment.IsDevelopment())
 app.UseResponseCaching();
 app.UseOutputCache();
 
-// Map Identity endpoints for authentication
-app.MapGroup("/identity").MapIdentityApi<BookStore.ApiService.Models.ApplicationUser>();
+// Map JWT authentication endpoints
+app.MapGroup("/identity").MapJwtAuthenticationEndpoints();
 
 // Map all API endpoints
 app.MapApiEndpoints();
