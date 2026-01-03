@@ -47,15 +47,6 @@ builder.Services.ConfigureApplicationCookie(options =>
     };
 });
 
-// Configure passkey options (.NET 10 WebAuthn support)
-builder.Services.Configure<Microsoft.AspNetCore.Identity.IdentityPasskeyOptions>(options =>
-{
-    var passkeyDomain = builder.Configuration["Authentication:Passkey:ServerDomain"] ?? "localhost";
-    options.ServerDomain = passkeyDomain;
-    options.AuthenticatorTimeout = TimeSpan.FromMinutes(2);
-    options.ChallengeSize = 32;
-});
-
 var app = builder.Build();
 
 // Start seeding in the background (don't block app startup)

@@ -98,14 +98,17 @@ public static class ApplicationServicesExtensions
                 options.Password.RequireNonAlphanumeric = true;
                 options.Password.RequiredLength = 8;
 
-                // Passkey options
-                var passkeyDomain = configuration["Authentication:Passkey:ServerDomain"];
-                if (!string.IsNullOrEmpty(passkeyDomain))
-                {
-                    options.Passkey.ServerDomain = passkeyDomain;
-                }
             })
             .AddUserStore<Identity.MartenUserStore>();
+
+        // Configure Passkey options
+        _ = services.Configure<Microsoft.AspNetCore.Identity.IdentityPasskeyOptions>(options =>
+        {
+            var passkeyDomain = configuration["Authentication:Passkey:ServerDomain"];
+            options.ServerDomain = !string.IsNullOrEmpty(passkeyDomain) ? passkeyDomain : "localhost";
+            options.AuthenticatorTimeout = TimeSpan.FromMinutes(2);
+            options.ChallengeSize = 32;
+        });
 
         // Add roles support not needed via AddRoles (which requires IRoleStore), 
         // as we use simple string roles on the user object via MartenUserStore implementation of IUserRoleStore.
