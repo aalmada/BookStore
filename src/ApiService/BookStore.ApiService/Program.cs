@@ -1,8 +1,8 @@
+using BookStore.ApiService.Endpoints;
 using BookStore.ApiService.Infrastructure;
 using BookStore.ApiService.Infrastructure.Extensions;
 using BookStore.ApiService.Infrastructure.Logging;
 using BookStore.ApiService.Projections;
-using BookStore.ApiService.Endpoints;
 using BookStore.Shared.Models;
 using Marten;
 using Microsoft.Extensions.Options;
@@ -33,7 +33,7 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.Cookie.SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Lax; // Lax for Aspire same-domain
     options.ExpireTimeSpan = TimeSpan.FromHours(24);
     options.SlidingExpiration = true;
-    
+
     // API-friendly responses (no redirects)
     options.Events.OnRedirectToLogin = context =>
     {
@@ -56,7 +56,6 @@ builder.Services.Configure<Microsoft.AspNetCore.Identity.IdentityPasskeyOptions>
     options.ChallengeSize = 32;
 });
 
-
 var app = builder.Build();
 
 // Start seeding in the background (don't block app startup)
@@ -66,7 +65,7 @@ if (app.Environment.IsDevelopment())
     {
         // Give the app a moment to start listening for health checks
         await Task.Delay(100);
-        
+
         using var scope = app.Services.CreateScope();
         var store = scope.ServiceProvider.GetRequiredService<IDocumentStore>();
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();

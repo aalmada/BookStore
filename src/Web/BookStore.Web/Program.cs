@@ -42,15 +42,12 @@ builder.Services.AddScoped<AuthorizationMessageHandler>();
 
 // Register BookStore API client with authorization handler
 builder.Services.AddBookStoreClient(
-    new Uri(apiServiceUrl), 
+    new Uri(apiServiceUrl),
     clientBuilder => clientBuilder.AddHttpMessageHandler<AuthorizationMessageHandler>());
 
 // Add authentication services (JWT token-based)
 builder.Services.AddScoped<TokenService>();
-builder.Services.AddHttpClient<PasskeyService>(client =>
-{
-    client.BaseAddress = new Uri("https+http://bookstore-api");
-}).AddHttpMessageHandler<AuthorizationMessageHandler>();
+builder.Services.AddHttpClient<PasskeyService>(client => client.BaseAddress = new Uri("https+http://bookstore-api")).AddHttpMessageHandler<AuthorizationMessageHandler>();
 
 builder.Services.AddScoped<AuthenticationService>();
 builder.Services.AddScoped<JwtAuthenticationStateProvider>();
@@ -58,7 +55,6 @@ builder.Services.AddScoped<AuthenticationStateProvider>(
     sp => sp.GetRequiredService<JwtAuthenticationStateProvider>());
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddAuthorizationCore();
-
 
 // Add Polly resilience policies to all HTTP clients
 builder.Services.ConfigureHttpClientDefaults(http =>

@@ -12,12 +12,9 @@ namespace BookStore.ApiService.Services;
 public class JwtTokenService
 {
     private readonly IConfiguration _configuration;
-    
-    public JwtTokenService(IConfiguration configuration)
-    {
-        _configuration = configuration;
-    }
-    
+
+    public JwtTokenService(IConfiguration configuration) => _configuration = configuration;
+
     /// <summary>
     /// Generate a JWT access token for the given user
     /// </summary>
@@ -32,7 +29,7 @@ public class JwtTokenService
             new(JwtRegisteredClaimNames.Email, user.Email ?? ""),
             new(JwtRegisteredClaimNames.Jti, Guid.CreateVersion7().ToString()),
         };
-        
+
         foreach (var role in user.Roles)
         {
             claims.Add(new Claim(ClaimTypes.Role, role));
@@ -47,14 +44,14 @@ public class JwtTokenService
     public string GenerateAccessToken(IEnumerable<Claim> claims)
     {
         var jwtSettings = _configuration.GetSection("Jwt");
-        var secretKey = jwtSettings["SecretKey"] 
+        var secretKey = jwtSettings["SecretKey"]
             ?? throw new InvalidOperationException("JWT SecretKey not configured");
-            
+
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-        
+
         var expirationMinutes = int.Parse(jwtSettings["ExpirationMinutes"] ?? "60");
-        
+
         var token = new JwtSecurityToken(
             issuer: jwtSettings["Issuer"],
             audience: jwtSettings["Audience"],
@@ -62,10 +59,10 @@ public class JwtTokenService
             expires: DateTimeOffset.UtcNow.AddMinutes(expirationMinutes).UtcDateTime,
             signingCredentials: credentials
         );
-        
+
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
-    
+
     /// <summary>
     /// Generate a cryptographically secure refresh token
     /// </summary>

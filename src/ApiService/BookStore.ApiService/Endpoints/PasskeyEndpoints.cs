@@ -12,17 +12,15 @@ public static class PasskeyEndpoints
     {
         var paramsGroup = endpoints.MapGroup("/Account");
 
-
-
         // 1. Get Creation Options (Authenticated & Unauthenticated)
-        paramsGroup.MapPost("/PasskeyCreationOptions", async (
+        _ = paramsGroup.MapPost("/PasskeyCreationOptions", async (
             HttpContext context,
             [FromBody] PasskeyCreationRequest request,
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager) =>
         {
             var user = await userManager.GetUserAsync(context.User);
-            
+
             // If authenticated, use current user (Add Passkey logic)
             if (user is not null)
             {
@@ -31,7 +29,7 @@ public static class PasskeyEndpoints
                 var userEntity = new PasskeyUserEntity { Id = userId, Name = userName, DisplayName = userName };
                 return Results.Json(await signInManager.MakePasskeyCreationOptionsAsync(userEntity));
             }
-            
+
             // If anonymous, we are in "Register new Account" flow
             if (string.IsNullOrEmpty(request.Email))
             {
@@ -52,24 +50,24 @@ public static class PasskeyEndpoints
             // Store this 'intent' or rely on stateless verification? 
             // Stateless: We can't enforce the ID matches unless we manually handle option generation.
             // For MVP: We will let options be generated.
-            
+
             // NOTE: Registering a user with a passkey requires the server to know the UserHandle (ID) 
             // that is baked into the credential. 
             // In .NET 10 helper, we pass a PasskeyUserEntity.
             // We'll generate a new Guid for this prospective user.
             var newUserId = Guid.CreateVersion7().ToString();
-            var newUserEntity = new PasskeyUserEntity 
-            { 
-                Id = newUserId, 
-                Name = request.Email, 
-                DisplayName = request.Email 
+            var newUserEntity = new PasskeyUserEntity
+            {
+                Id = newUserId,
+                Name = request.Email,
+                DisplayName = request.Email
             };
-            
+
             return Results.Json(await signInManager.MakePasskeyCreationOptionsAsync(newUserEntity));
         });
 
         // 2. Register Passkey (Finish Registration)
-        paramsGroup.MapPost("/RegisterPasskey", async (
+        _ = paramsGroup.MapPost("/RegisterPasskey", async (
             HttpContext context,
             [FromBody] RegisterPasskeyRequest request,
             UserManager<ApplicationUser> userManager,
@@ -78,17 +76,21 @@ public static class PasskeyEndpoints
             BookStore.ApiService.Services.JwtTokenService tokenService) =>
         {
             var user = await userManager.GetUserAsync(context.User);
-            
+
             // Case A: Add to existing account
             if (user is not null)
             {
                 var attestation = await signInManager.PerformPasskeyAttestationAsync(request.CredentialJson);
-                if (!attestation.Succeeded) return Results.BadRequest($"Attestation failed: {attestation.Failure?.Message}");
-                
+                if (!attestation.Succeeded)
+                {
+                    return Results.BadRequest($"Attestation failed: {attestation.Failure?.Message}");
+                }
+
                 if (userStore is IUserPasskeyStore<ApplicationUser> passkeyStore)
                 {
                     await passkeyStore.AddOrUpdatePasskeyAsync(user, attestation.Passkey, CancellationToken.None);
                 }
+
                 return Results.Ok(new { Message = "Passkey added." });
             }
 
@@ -100,20 +102,26 @@ public static class PasskeyEndpoints
             }
 
             var attestationNew = await signInManager.PerformPasskeyAttestationAsync(request.CredentialJson);
-            if (!attestationNew.Succeeded) return Results.BadRequest($"Attestation failed: {attestationNew.Failure?.Message}");
-            
+            if (!attestationNew.Succeeded)
+            {
+                return Results.BadRequest($"Attestation failed: {attestationNew.Failure?.Message}");
+            }
+
             var newUser = new ApplicationUser
             {
                 UserName = request.Email,
                 Email = request.Email,
                 EmailConfirmed = true // Verified via Passkey
             };
-            
+
             // Create the user in DB
             // Note: passkey attestation is valid, but we haven't saved the user yet.
             var createResult = await userManager.CreateAsync(newUser);
-            if (!createResult.Succeeded) return Results.BadRequest(createResult.Errors);
-            
+            if (!createResult.Succeeded)
+            {
+                return Results.BadRequest(createResult.Errors);
+            }
+
             // Save the passkey
             if (userStore is IUserPasskeyStore<ApplicationUser> ps)
             {
@@ -124,16 +132,16 @@ public static class PasskeyEndpoints
                 // IMPORTANT: The WebAuthn credential is BOUND to the userHandle sent in options.
                 // Browsers will only serve this credential if we ask for that userHandle (or empty for discoverable).
                 // Ideally, newUser.Id should MATCH the UserHandle in the credential.
-                
+
                 // For this MVP, we will save the passkey as is. 
                 // Login relies on UserHandle lookup.
                 await ps.AddOrUpdatePasskeyAsync(newUser, attestationNew.Passkey, CancellationToken.None);
             }
-            
+
             // Auto Login - Issue Token
             var accessToken = tokenService.GenerateAccessToken(newUser);
             var refreshToken = tokenService.GenerateRefreshToken();
-            
+
             return Results.Ok(new LoginResponse(
                  "Bearer",
                  accessToken,
@@ -141,9 +149,9 @@ public static class PasskeyEndpoints
                  refreshToken
              ));
         });
-        
+
         // 3. Get Login Options
-        paramsGroup.MapPost("/PasskeyLoginOptions", async (
+        _ = paramsGroup.MapPost("/PasskeyLoginOptions", async (
             [FromBody] PasskeyLoginOptionsRequest request,
             SignInManager<ApplicationUser> signInManager,
             UserManager<ApplicationUser> userManager) =>
@@ -153,71 +161,69 @@ public static class PasskeyEndpoints
             {
                 user = await userManager.FindByEmailAsync(request.Email);
             }
-            
+
             // Generate options (assertion challenge)
             // If user is null, this should generate options for "discoverable" credentials (empty allowCredentials)
             var options = await signInManager.MakePasskeyRequestOptionsAsync(user);
-            
+
             return Results.Json(options);
         });
-        
-
 
         // 4. Login Passkey
-        paramsGroup.MapPost("/LoginPasskey", async (
-            [FromBody] RegisterPasskeyRequest request, 
+        _ = paramsGroup.MapPost("/LoginPasskey", async (
+            [FromBody] RegisterPasskeyRequest request,
             SignInManager<ApplicationUser> signInManager,
             UserManager<ApplicationUser> userManager,
             IUserStore<ApplicationUser> userStore,
             BookStore.ApiService.Services.JwtTokenService tokenService) =>
         {
-             // 1. Verify Assertion
-             var result = await signInManager.PasskeySignInAsync(request.CredentialJson); // Corrected to 1 arg
-             
-             if (result.Succeeded)
-             {
-                 // 2. Find User to issue JWT
-                 try
-                 {
-                     using var doc = System.Text.Json.JsonDocument.Parse(request.CredentialJson);
-                     if (doc.RootElement.TryGetProperty("id", out var idElement))
-                     {
-                         var idString = idElement.GetString();
-                         if (!string.IsNullOrEmpty(idString))
-                         {
-                             var credentialId = Microsoft.AspNetCore.WebUtilities.Base64UrlTextEncoder.Decode(idString);
-                             
-                             if (userStore is IUserPasskeyStore<ApplicationUser> passkeyStore)
-                             {
-                                 var user = await passkeyStore.FindByPasskeyIdAsync(credentialId, CancellationToken.None);
-                                 if (user is not null)
-                                 {
-                                     // 3. Generate Tokens
-                                     var accessToken = tokenService.GenerateAccessToken(user);
-                                     var refreshToken = tokenService.GenerateRefreshToken();
-                                     
-                                     // TODO: Save refresh token (mimicking existing functionality which is currently TODO)
-                                     // await tokenService.SaveRefreshTokenAsync(user.Id, refreshToken);
-                                     
-                                     return Results.Ok(new LoginResponse(
-                                         "Bearer",
-                                         accessToken,
-                                         3600,
-                                         refreshToken
-                                     ));
-                                 }
-                             }
-                         }
-                     }
-                 }
-                 catch { /* Parsing failed */ }
-                 
-                 return Results.BadRequest("User not found for passkey.");
-             }
-             else
-             {
-                 return Results.BadRequest("Invalid passkey assertion.");
-             }
+            // 1. Verify Assertion
+            var result = await signInManager.PasskeySignInAsync(request.CredentialJson); // Corrected to 1 arg
+
+            if (result.Succeeded)
+            {
+                // 2. Find User to issue JWT
+                try
+                {
+                    using var doc = System.Text.Json.JsonDocument.Parse(request.CredentialJson);
+                    if (doc.RootElement.TryGetProperty("id", out var idElement))
+                    {
+                        var idString = idElement.GetString();
+                        if (!string.IsNullOrEmpty(idString))
+                        {
+                            var credentialId = Microsoft.AspNetCore.WebUtilities.Base64UrlTextEncoder.Decode(idString);
+
+                            if (userStore is IUserPasskeyStore<ApplicationUser> passkeyStore)
+                            {
+                                var user = await passkeyStore.FindByPasskeyIdAsync(credentialId, CancellationToken.None);
+                                if (user is not null)
+                                {
+                                    // 3. Generate Tokens
+                                    var accessToken = tokenService.GenerateAccessToken(user);
+                                    var refreshToken = tokenService.GenerateRefreshToken();
+
+                                    // TODO: Save refresh token (mimicking existing functionality which is currently TODO)
+                                    // await tokenService.SaveRefreshTokenAsync(user.Id, refreshToken);
+
+                                    return Results.Ok(new LoginResponse(
+                                        "Bearer",
+                                        accessToken,
+                                        3600,
+                                        refreshToken
+                                    ));
+                                }
+                            }
+                        }
+                    }
+                }
+                catch { /* Parsing failed */ }
+
+                return Results.BadRequest("User not found for passkey.");
+            }
+            else
+            {
+                return Results.BadRequest("Invalid passkey assertion.");
+            }
         });
 
         return endpoints;

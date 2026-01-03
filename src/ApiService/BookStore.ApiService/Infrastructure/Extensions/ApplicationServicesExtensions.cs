@@ -106,13 +106,13 @@ public static class ApplicationServicesExtensions
                 }
             })
             .AddUserStore<Identity.MartenUserStore>();
-        
+
         // Add roles support not needed via AddRoles (which requires IRoleStore), 
         // as we use simple string roles on the user object via MartenUserStore implementation of IUserRoleStore.
-        
+
         // Add HttpContextAccessor required for SignInManager
         _ = services.AddHttpContextAccessor();
-        
+
         // Add SignInManager separately
         _ = services.AddScoped<Microsoft.AspNetCore.Identity.SignInManager<Models.ApplicationUser>>();
 
@@ -123,20 +123,17 @@ public static class ApplicationServicesExtensions
                 options.DefaultAuthenticateScheme = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme;
                 options.DefaultChallengeScheme = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme;
             })
-            .AddJwtBearer(options =>
+            .AddJwtBearer(options => options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
             {
-                options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
-                {
-                    ValidateIssuer = true,
-                    ValidateAudience = true,
-                    ValidateLifetime = true,
-                    ValidateIssuerSigningKey = true,
-                    ValidIssuer = jwtSettings["Issuer"],
-                    ValidAudience = jwtSettings["Audience"],
-                    IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
+                ValidIssuer = jwtSettings["Issuer"],
+                ValidAudience = jwtSettings["Audience"],
+                IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(
                         System.Text.Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]!)),
-                    ClockSkew = TimeSpan.Zero // Remove default 5 minute clock skew
-                };
+                ClockSkew = TimeSpan.Zero // Remove default 5 minute clock skew
             });
 
         // Add JWT token service

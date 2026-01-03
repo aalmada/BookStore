@@ -25,56 +25,56 @@ public static class BookStoreClientExtensions
         {
             var builder = services.AddRefitClient<T>()
                 .ConfigureHttpClient(c => c.BaseAddress = baseAddress);
-            
+
             configureClient?.Invoke(builder);
             return builder;
         }
 
         // Register all endpoint interfaces
-        AddClient<IGetBooksEndpoint>();
-        AddClient<IGetBookEndpoint>();
-        AddClient<IGetAuthorsEndpoint>();
-        AddClient<IGetAuthorEndpoint>();
-        AddClient<IGetCategoriesEndpoint>();
-        AddClient<IGetCategoryEndpoint>();
-        AddClient<IGetPublishersEndpoint>();
-        AddClient<IGetPublisherEndpoint>();
+        _ = AddClient<IGetBooksEndpoint>();
+        _ = AddClient<IGetBookEndpoint>();
+        _ = AddClient<IGetAuthorsEndpoint>();
+        _ = AddClient<IGetAuthorEndpoint>();
+        _ = AddClient<IGetCategoriesEndpoint>();
+        _ = AddClient<IGetCategoryEndpoint>();
+        _ = AddClient<IGetPublishersEndpoint>();
+        _ = AddClient<IGetPublisherEndpoint>();
 
         // Admin endpoints
-        AddClient<ICreateBookEndpoint>();
-        AddClient<IUpdateBookEndpoint>();
-        AddClient<ISoftDeleteBookEndpoint>();
-        AddClient<IRestoreBookEndpoint>();
-        AddClient<IUploadBookCoverEndpoint>();
-        
-        AddClient<ICreateAuthorEndpoint>();
-        AddClient<IUpdateAuthorEndpoint>();
-        AddClient<ISoftDeleteAuthorEndpoint>();
-        AddClient<IRestoreAuthorEndpoint>();
-        
-        AddClient<ICreateCategoryEndpoint>();
-        AddClient<IUpdateCategoryEndpoint>();
-        AddClient<ISoftDeleteCategoryEndpoint>();
-        AddClient<IRestoreCategoryEndpoint>();
-        
-        AddClient<ICreatePublisherEndpoint>();
-        AddClient<IUpdatePublisherEndpoint>();
-        AddClient<ISoftDeletePublisherEndpoint>();
-        AddClient<IRestorePublisherEndpoint>();
+        _ = AddClient<ICreateBookEndpoint>();
+        _ = AddClient<IUpdateBookEndpoint>();
+        _ = AddClient<ISoftDeleteBookEndpoint>();
+        _ = AddClient<IRestoreBookEndpoint>();
+        _ = AddClient<IUploadBookCoverEndpoint>();
+
+        _ = AddClient<ICreateAuthorEndpoint>();
+        _ = AddClient<IUpdateAuthorEndpoint>();
+        _ = AddClient<ISoftDeleteAuthorEndpoint>();
+        _ = AddClient<IRestoreAuthorEndpoint>();
+
+        _ = AddClient<ICreateCategoryEndpoint>();
+        _ = AddClient<IUpdateCategoryEndpoint>();
+        _ = AddClient<ISoftDeleteCategoryEndpoint>();
+        _ = AddClient<IRestoreCategoryEndpoint>();
+
+        _ = AddClient<ICreatePublisherEndpoint>();
+        _ = AddClient<IUpdatePublisherEndpoint>();
+        _ = AddClient<ISoftDeletePublisherEndpoint>();
+        _ = AddClient<IRestorePublisherEndpoint>();
 
         // System endpoints
-        AddClient<IGetAllBooksAdminEndpoint>();
-        AddClient<IRebuildProjectionsEndpoint>();
-        AddClient<IGetProjectionStatusEndpoint>();
+        _ = AddClient<IGetAllBooksAdminEndpoint>();
+        _ = AddClient<IRebuildProjectionsEndpoint>();
+        _ = AddClient<IGetProjectionStatusEndpoint>();
 
         // Identity endpoints
         // Note: Login/Register don't strictly need auth header, but it doesn't hurt.
         // Refresh token endpoint DOES need auth header if we implement "rotate me" logic dependent on old token,
         // but typically refresh endpoint uses credentials or refresh token in body.
-        AddClient<IIdentityLoginEndpoint>();
-        AddClient<IIdentityRegisterEndpoint>();
-        AddClient<IIdentityRefreshEndpoint>();
-        AddClient<IIdentityManageInfoEndpoint>();
+        _ = AddClient<IIdentityLoginEndpoint>();
+        _ = AddClient<IIdentityRegisterEndpoint>();
+        _ = AddClient<IIdentityRefreshEndpoint>();
+        _ = AddClient<IIdentityManageInfoEndpoint>();
 
         return services;
     }
@@ -89,8 +89,5 @@ public static class BookStoreClientExtensions
     public static IServiceCollection AddBookStoreClientWithResilience(
         this IServiceCollection services,
         Uri baseAddress,
-        Action<IHttpClientBuilder> configureResilience)
-    {
-        return services.AddBookStoreClient(baseAddress, configureResilience);
-    }
+        Action<IHttpClientBuilder> configureResilience) => services.AddBookStoreClient(baseAddress, configureResilience);
 }

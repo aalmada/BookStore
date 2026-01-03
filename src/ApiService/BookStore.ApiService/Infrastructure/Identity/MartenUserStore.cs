@@ -166,8 +166,9 @@ public sealed class MartenUserStore :
         var existing = user.Passkeys.FirstOrDefault(p => p.CredentialId.SequenceEqual(passkey.CredentialId));
         if (existing is not null)
         {
-            user.Passkeys.Remove(existing);
+            _ = user.Passkeys.Remove(existing);
         }
+
         user.Passkeys.Add(passkey);
         return Task.CompletedTask;
     }
@@ -177,8 +178,9 @@ public sealed class MartenUserStore :
         var passkey = user.Passkeys.FirstOrDefault(p => p.CredentialId.SequenceEqual(credentialId));
         if (passkey is not null)
         {
-            user.Passkeys.Remove(passkey);
+            _ = user.Passkeys.Remove(passkey);
         }
+
         return Task.CompletedTask;
     }
 
@@ -186,12 +188,10 @@ public sealed class MartenUserStore :
         => Task.FromResult<IList<UserPasskeyInfo>>([.. user.Passkeys]);
 
     public Task<ApplicationUser?> FindByPasskeyIdAsync(byte[] credentialId, CancellationToken cancellationToken)
-    {
         // Marten LINQ query to find user containing the passkey
         // specific byte[] comparison might need care, but trying standard LINQ first
-        return _session.Query<ApplicationUser>()
+        => _session.Query<ApplicationUser>()
             .FirstOrDefaultAsync(u => u.Passkeys.Any(p => p.CredentialId == credentialId), cancellationToken);
-    }
 
     public Task<UserPasskeyInfo?> FindPasskeyAsync(ApplicationUser user, byte[] credentialId, CancellationToken cancellationToken)
         => Task.FromResult(user.Passkeys.FirstOrDefault(p => p.CredentialId.SequenceEqual(credentialId)));

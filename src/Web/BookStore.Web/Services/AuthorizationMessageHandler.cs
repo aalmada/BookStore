@@ -9,22 +9,19 @@ namespace BookStore.Web.Services;
 public class AuthorizationMessageHandler : DelegatingHandler
 {
     private readonly TokenService _tokenService;
-    
-    public AuthorizationMessageHandler(TokenService tokenService)
-    {
-        _tokenService = tokenService;
-    }
-    
+
+    public AuthorizationMessageHandler(TokenService tokenService) => _tokenService = tokenService;
+
     protected override async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request, CancellationToken cancellationToken)
     {
         var token = _tokenService.GetAccessToken();
         if (!string.IsNullOrEmpty(token))
         {
-            request.Headers.Authorization = 
+            request.Headers.Authorization =
                 new AuthenticationHeaderValue("Bearer", token);
         }
-        
+
         return await base.SendAsync(request, cancellationToken);
     }
 }

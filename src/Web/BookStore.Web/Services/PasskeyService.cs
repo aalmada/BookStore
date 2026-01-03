@@ -23,13 +23,16 @@ public class PasskeyService
             {
                 return (await response.Content.ReadAsStringAsync(), null);
             }
-            
+
             var error = await response.Content.ReadAsStringAsync();
             // Try to make it cleaner if it's JSON
-            if (error.StartsWith("\"") && error.EndsWith("\"")) error = error.Trim('"');
-            
+            if (error.StartsWith("\"") && error.EndsWith("\""))
+            {
+                error = error.Trim('"');
+            }
+
             _logger.LogWarning("Failed to get creation options: {StatusCode} {Error}", response.StatusCode, error);
-            
+
             return (null, error);
         }
         catch (Exception ex)
@@ -48,12 +51,14 @@ public class PasskeyService
             {
                 return await response.Content.ReadAsStringAsync();
             }
+
             _logger.LogWarning("Failed to get login options: {StatusCode}", response.StatusCode);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting passkey login options");
         }
+
         return null;
     }
 
@@ -62,13 +67,13 @@ public class PasskeyService
         try
         {
             var response = await _httpClient.PostAsJsonAsync("Account/RegisterPasskey", new { CredentialJson = credentialJson, Email = email });
-            
+
             if (email != null && response.IsSuccessStatusCode)
             {
-                 // Registration mode returns tokens
-                 return await response.Content.ReadFromJsonAsync<LoginResult>();
+                // Registration mode returns tokens
+                return await response.Content.ReadFromJsonAsync<LoginResult>();
             }
-            
+
             return new LoginResult(response.IsSuccessStatusCode, response.ReasonPhrase, null, null);
         }
         catch (Exception ex)
@@ -92,6 +97,7 @@ public class PasskeyService
         {
             _logger.LogError(ex, "Error logging in with passkey");
         }
+
         return null;
     }
 }
