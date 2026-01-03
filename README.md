@@ -56,7 +56,7 @@ The Aspire dashboard opens automatically, providing access to:
 - **JWT Authentication** - Secure token-based authentication for all clients (Web & Mobile)
 - **Passwordless Support** - Full Passkey support including **Passkey-First Sign Up** (.NET 10)
 - **Role-Based Authorization** - Admin endpoints protected
-- **Multi-language Support** for categories (en, pt, es, fr, de)
+- **Multi-language Support** (configurable via `appsettings.json`)
 - **Full-text Search** with PostgreSQL trigrams and unaccent
 - **Optimistic Concurrency** with ETags
 - **Distributed Tracing** with correlation/causation IDs

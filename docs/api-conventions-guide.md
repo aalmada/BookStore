@@ -398,15 +398,15 @@ api-version: 1.0
 
 ### Supported Languages
 
-The API supports the following languages:
-
-| Code | Language |
-|------|----------|
-| `en` | English (default) |
-| `pt` | Portuguese |
-| `es` | Spanish |
-| `fr` | French |
-| `de` | German |
+The API supports multiple languages as configured in `appsettings.json`.
+    
+    Example configuration:
+    ```json
+    "Localization": {
+      "DefaultCulture": "en",
+      "SupportedCultures": ["pt", "en", "fr", "de", "es"]
+    }
+    ```
 
 ### Accept-Language Header
 
