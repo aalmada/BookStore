@@ -21,7 +21,6 @@ The Book Store API uses **source-generated logging** for zero-allocation, high-p
 All logging is organized in the [Infrastructure/Logging](file:///Users/antaoalmada/Projects/BookStore/src/ApiService/BookStore.ApiService/Infrastructure/Logging) directory:
 
 ```
-```
 Infrastructure/Logging/
 ├── Log.cs                    # Base partial class
 ├── Log.Books.cs             # Book-related operations
@@ -29,7 +28,6 @@ Infrastructure/Logging/
 ├── Log.Categories.cs        # Category-related operations
 ├── Log.Publishers.cs        # Publisher-related operations
 └── Log.Infrastructure.cs    # Middleware & startup
-```
 ```
 
 ### Partial Class Design
