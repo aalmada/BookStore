@@ -684,6 +684,56 @@ The BookStore application uses structured JSON logging:
 
 ---
 
+## Authentication Configuration
+
+The BookStore uses a hybrid authentication model with JWT and Passkeys.
+
+### JWT Configuration
+
+Required for token generation and validation.
+
+```json
+{
+  "Jwt": {
+    "SecretKey": "your-secret-key-must-be-at-least-32-characters-long-for-hs256",
+    "Issuer": "BookStore.ApiService",
+    "Audience": "BookStore.Web",
+    "ExpirationMinutes": 60
+  }
+}
+```
+
+**Key Settings**:
+- **SecretKey**: Strong cryptographic key (min 32 chars) for signing tokens. **Must be kept secret in production.**
+- **Issuer**: The authority issuing the token (e.g., your API domain).
+- **Audience**: The intended recipient of the token (e.g., your Web App).
+- **ExpirationMinutes**: Lifetime of the Access Token.
+
+### Passkey Configuration
+
+Required for WebAuthn/FIDO2 operations.
+
+```json
+{
+  "Authentication": {
+    "Passkey": {
+      "ServerDomain": "localhost"
+    }
+  }
+}
+```
+
+**Key Settings**:
+- **ServerDomain**: The domain where the passkey is valid (the Origin).
+    - **Development**: Use `localhost`.
+    - **Production**: **MUST** match your public domain (e.g., `bookstore.com`). Do not include protocol or port.
+
+> [!WARNING]
+> **Production Criticality**
+> Failing to set `ServerDomain` correctly in production will cause Passkey registration and login to fail with "Domain mismatch" or "NotAllowed" errors.
+
+---
+
 ## Environment Variables
 
 Override configuration using environment variables:

@@ -53,7 +53,8 @@ The Aspire dashboard opens automatically, providing access to:
 - **Event Sourcing** with Marten and PostgreSQL
 - **CQRS** with async projections for optimized reads
 - **Real-time Notifications** with SignalR (Wolverine integration)
-- **Hybrid Authentication** - Cookie-based (Blazor), JWT (external apps), Passkeys (.NET 10)
+- **Hybrid Authentication** - Cookie-based (Blazor), JWT (external apps)
+- **Passwordless Support** - Full Passkey support including **Passkey-First Sign Up** (.NET 10)
 - **Cross-Tab Sync** - BroadcastChannel API for consistent login state
 - **Role-Based Authorization** - Admin endpoints protected
 - **Multi-language Support** for categories (en, pt, es, fr, de)
@@ -208,12 +209,10 @@ BookStore/
 - `POST /identity/logout` - Logout (clears cookie)
 
 **Passkey (Passwordless):**
-- `POST /identity/passkey/register/begin` - Begin passkey registration
-- `POST /identity/passkey/register/complete` - Complete passkey registration
-- `POST /identity/passkey/login/begin` - Begin passkey login
-- `POST /identity/passkey/login/complete` - Complete passkey login
-- `GET /identity/passkey/list` - List user's passkeys
-- `DELETE /identity/passkey/{id}` - Delete a passkey
+- `POST /Account/RegisterPasskey` - Register passkey / Sign up
+- `POST /Account/LoginPasskey` - Login with passkey
+- `POST /Account/PasskeyCreationOptions` - Get creation options
+- `POST /Account/PasskeyLoginOptions` - Get login options
 
 **Account Management:**
 - `POST /identity/forgotPassword` - Request password reset

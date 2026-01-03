@@ -97,6 +97,13 @@ public static class ApplicationServicesExtensions
                 options.Password.RequireUppercase = true;
                 options.Password.RequireNonAlphanumeric = true;
                 options.Password.RequiredLength = 8;
+
+                // Passkey options
+                var passkeyDomain = configuration["Authentication:Passkey:ServerDomain"];
+                if (!string.IsNullOrEmpty(passkeyDomain))
+                {
+                    options.Passkey.ServerDomain = passkeyDomain;
+                }
             })
             .AddUserStore<Identity.MartenUserStore>();
         
