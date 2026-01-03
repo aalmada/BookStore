@@ -12,7 +12,8 @@ public sealed class MartenUserStore :
     IUserStore<ApplicationUser>,
     IUserPasswordStore<ApplicationUser>,
     IUserEmailStore<ApplicationUser>,
-    IUserRoleStore<ApplicationUser>
+    IUserRoleStore<ApplicationUser>,
+    IUserPasskeyStore<ApplicationUser>
 {
     readonly IDocumentSession _session;
 
@@ -155,6 +156,45 @@ public sealed class MartenUserStore :
             .ToListAsync(cancellationToken);
         return (IList<ApplicationUser>)users;
     }
+
+    #endregion
+
+    #region IUserPasskeyStore
+
+    public Task AddOrUpdatePasskeyAsync(ApplicationUser user, UserPasskeyInfo passkey, CancellationToken cancellationToken)
+    {
+        var existing = user.Passkeys.FirstOrDefault(p => p.CredentialId.SequenceEqual(passkey.CredentialId));
+        if (existing is not null)
+        {
+            user.Passkeys.Remove(existing);
+        }
+        user.Passkeys.Add(passkey);
+        return Task.CompletedTask;
+    }
+
+    public Task RemovePasskeyAsync(ApplicationUser user, byte[] credentialId, CancellationToken cancellationToken)
+    {
+        var passkey = user.Passkeys.FirstOrDefault(p => p.CredentialId.SequenceEqual(credentialId));
+        if (passkey is not null)
+        {
+            user.Passkeys.Remove(passkey);
+        }
+        return Task.CompletedTask;
+    }
+
+    public Task<IList<UserPasskeyInfo>> GetPasskeysAsync(ApplicationUser user, CancellationToken cancellationToken)
+        => Task.FromResult<IList<UserPasskeyInfo>>([.. user.Passkeys]);
+
+    public Task<ApplicationUser?> FindByPasskeyIdAsync(byte[] credentialId, CancellationToken cancellationToken)
+    {
+        // Marten LINQ query to find user containing the passkey
+        // specific byte[] comparison might need care, but trying standard LINQ first
+        return _session.Query<ApplicationUser>()
+            .FirstOrDefaultAsync(u => u.Passkeys.Any(p => p.CredentialId == credentialId), cancellationToken);
+    }
+
+    public Task<UserPasskeyInfo?> FindPasskeyAsync(ApplicationUser user, byte[] credentialId, CancellationToken cancellationToken)
+        => Task.FromResult(user.Passkeys.FirstOrDefault(p => p.CredentialId.SequenceEqual(credentialId)));
 
     #endregion
 

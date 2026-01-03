@@ -19,6 +19,29 @@ public class JwtTokenService
     }
     
     /// <summary>
+    /// Generate a JWT access token for the given user
+    /// </summary>
+    public string GenerateAccessToken(BookStore.ApiService.Models.ApplicationUser user)
+    {
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new(ClaimTypes.Name, user.UserName ?? ""),
+            new(ClaimTypes.Email, user.Email ?? ""),
+            new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+            new(JwtRegisteredClaimNames.Email, user.Email ?? ""),
+            new(JwtRegisteredClaimNames.Jti, Guid.CreateVersion7().ToString()),
+        };
+        
+        foreach (var role in user.Roles)
+        {
+            claims.Add(new Claim(ClaimTypes.Role, role));
+        }
+
+        return GenerateAccessToken(claims);
+    }
+
+    /// <summary>
     /// Generate a JWT access token with the provided claims
     /// </summary>
     public string GenerateAccessToken(IEnumerable<Claim> claims)

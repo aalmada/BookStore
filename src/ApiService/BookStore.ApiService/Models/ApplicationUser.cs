@@ -57,4 +57,9 @@ public sealed class ApplicationUser
     /// Roles assigned to this user
     /// </summary>
     public ICollection<string> Roles { get; set; } = [];
+
+    /// <summary>
+    /// Passkeys registered to this user (WebAuthn/FIDO2)
+    /// </summary>
+    public IList<UserPasskeyInfo> Passkeys { get; set; } = [];
 }

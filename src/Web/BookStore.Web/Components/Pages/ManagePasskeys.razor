@@ -1,0 +1,113 @@
+@page "/account/passkeys"
+@using Microsoft.AspNetCore.Authorization
+@using BookStore.Web.Services
+@using BookStore.Shared.Models
+@inject PasskeyService PasskeyService
+@inject IJSRuntime JS
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@attribute [Authorize]
+
+<PageTitle>Manage Passkeys</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-8">
+    <MudText Typo="Typo.h4" GutterBottom="true">Manage Passkeys</MudText>
+    <MudText Typo="Typo.body1" Class="mb-4">Register a passkey to sign in without a password.</MudText>
+
+    <MudPaper Class="pa-4">
+        @if (_isSupported == null)
+        {
+            <MudProgressCircular Indeterminate="true" />
+        }
+        else if (_isSupported == false)
+        {
+            <MudAlert Severity="Severity.Warning">Your device does not support passkeys.</MudAlert>
+        }
+        else
+        {
+            <MudButton Variant="Variant.Filled" 
+                       Color="Color.Primary" 
+                       OnClick="RegisterPasskey" 
+                       Disabled="@_isLoading">
+                @(_isLoading ? "Registering..." : "Register New Passkey")
+            </MudButton>
+
+            @if (!string.IsNullOrEmpty(_statusMessage))
+            {
+                <MudText Color="@(_isError ? Color.Error : Color.Success)" Class="mt-2">@_statusMessage</MudText>
+            }
+        }
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private bool? _isSupported;
+    private bool _isLoading;
+    private string? _statusMessage;
+    private bool _isError;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try 
+            {
+                _isSupported = await JS.InvokeAsync<bool>("passkey.isSupported");
+                StateHasChanged();
+            }
+            catch
+            {
+                _isSupported = false;
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task RegisterPasskey()
+    {
+        _isLoading = true;
+        _statusMessage = null;
+        _isError = false;
+        
+        try
+        {
+            // 1. Get Options
+            var (optionsJson, error) = await PasskeyService.GetCreationOptionsAsync();
+            if (string.IsNullOrEmpty(optionsJson))
+            {
+                ShowError(error ?? "Failed to get passkey options from server.");
+                return;
+            }
+
+            // 2. Create Credential via JS
+            var credentialJson = await JS.InvokeAsync<string>("passkey.register", optionsJson);
+            
+            // 3. Register on Server
+            var result = await PasskeyService.RegisterPasskeyAsync(credentialJson);
+            if (result?.Success == true)
+            {
+                _statusMessage = "Passkey registered successfully!";
+                Snackbar.Add("Passkey registered!", Severity.Success);
+            }
+            else
+            {
+                ShowError(result?.Error ?? "Failed to register passkey on server.");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+    
+    private void ShowError(string message)
+    {
+        _statusMessage = message;
+        _isError = true;
+        Snackbar.Add(message, Severity.Error);
+    }
+}

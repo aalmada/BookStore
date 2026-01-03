@@ -3,6 +3,7 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.JSInterop
 @inject AuthenticationService AuthService
+@inject PasskeyService PasskeyService
 @inject JwtAuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
@@ -57,6 +58,17 @@
                     <span>Login</span>
                 }
             </MudButton>
+
+            <MudButton Variant="Variant.Outlined"
+                       StartIcon="@Icons.Material.Filled.Fingerprint"
+                       Color="Color.Secondary"
+                       FullWidth="true"
+                       Size="Size.Large"
+                       OnClick="LoginWithPasskey"
+                       Disabled="isLoading"
+                       Class="mb-4">
+                Sign in with Passkey
+            </MudButton>
         </MudForm>
 
         <MudDivider Class="my-4" />
@@ -77,6 +89,52 @@
 
     [SupplyParameterFromQuery]
     public string? ReturnUrl { get; set; }
+
+    async Task LoginWithPasskey()
+    {
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            Logger.LogInformation("Attempting passkey login");
+            
+            // 1. Get Options
+            // Note: Currently server might return 501 Not Implemented if method is missing
+            var optionsJson = await PasskeyService.GetLoginOptionsAsync(email); 
+            if (string.IsNullOrEmpty(optionsJson))
+            {
+                errorMessage = "Passkey login not supported or failed to initialize.";
+                return;
+            }
+            
+            // 2. JS WebAuthn Get
+            var credentialJson = await JS.InvokeAsync<string>("passkey.login", optionsJson);
+            
+            // 3. Login on Server
+            var result = await PasskeyService.LoginPasskeyAsync(credentialJson);
+            
+            if (result != null && !string.IsNullOrEmpty(result.AccessToken))
+            {
+                 Logger.LogInformation("Passkey login successful");
+                 AuthStateProvider.NotifyUserAuthentication(result.AccessToken);
+                 Navigation.NavigateTo(ReturnUrl ?? "/");
+            }
+            else
+            {
+                errorMessage = "Passkey login failed.";
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Passkey login error");
+            errorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
 
     async Task HandleLogin()
     {

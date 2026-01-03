@@ -1,7 +1,11 @@
 @page "/register"
 @using BookStore.Web.Services
 @inject AuthenticationService AuthService
+@inject PasskeyService PasskeyService
+@inject JwtAuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Navigation
+@inject IJSRuntime JS
+@using Microsoft.JSInterop
 @rendermode InteractiveServer
 
 <PageTitle>Register - BookStore</PageTitle>
@@ -82,6 +86,17 @@
                     <span>Register</span>
                 }
             </MudButton>
+            
+            <MudButton Variant="Variant.Outlined"
+                       StartIcon="@Icons.Material.Filled.Fingerprint"
+                       Color="Color.Secondary"
+                       FullWidth="true"
+                       Size="Size.Large"
+                       OnClick="RegisterWithPasskey"
+                       Disabled="isLoading || string.IsNullOrEmpty(email)"
+                       Class="mb-4">
+                Register with Passkey
+            </MudButton>
         </MudForm>
 
         <MudDivider Class="my-4" />
@@ -144,6 +159,59 @@
         {
             isLoading = false;
         }
+    }
+    
+    async Task RegisterWithPasskey()
+    {
+        errorMessage = null;
+        var emailError = ValidateEmail(email);
+        if (emailError != null)
+        {
+             errorMessage = emailError;
+             return;
+        }
+
+        isLoading = true;
+        try 
+        {
+            // 1. Get Options
+            var (options, error) = await PasskeyService.GetCreationOptionsAsync(email);
+            if (string.IsNullOrEmpty(options))
+            {
+                 errorMessage = error ?? "Failed to initialize passkey registration. User may already exist.";
+                 return;
+            }
+            
+            // 2. JS WebAuthn Create
+            var credentialJson = await JS.InvokeAsync<string>("passkey.register", options);
+            
+            // 3. Submit to Server
+            // Refactored PasskeyService.RegisterPasskeyAsync returns LoginResult now
+            var result = await PasskeyService.RegisterPasskeyAsync(credentialJson, email);
+            
+            if (result != null && result.Success && !string.IsNullOrEmpty(result.AccessToken))
+            {
+                // Auto-login success
+                AuthStateProvider.NotifyUserAuthentication(result.AccessToken);
+                registrationSuccess = true;
+                await Task.Delay(2000);
+                Navigation.NavigateTo("/");
+            }
+            else
+            {
+                errorMessage = result?.Error ?? "Passkey registration failed on server.";
+            }
+
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    
     }
 
     void ValidatePasswordStrength()

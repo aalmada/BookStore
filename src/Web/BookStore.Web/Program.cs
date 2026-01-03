@@ -47,6 +47,11 @@ builder.Services.AddBookStoreClient(
 
 // Add authentication services (JWT token-based)
 builder.Services.AddScoped<TokenService>();
+builder.Services.AddHttpClient<PasskeyService>(client =>
+{
+    client.BaseAddress = new Uri("https+http://bookstore-api");
+}).AddHttpMessageHandler<AuthorizationMessageHandler>();
+
 builder.Services.AddScoped<AuthenticationService>();
 builder.Services.AddScoped<JwtAuthenticationStateProvider>();
 builder.Services.AddScoped<AuthenticationStateProvider>(
