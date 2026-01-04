@@ -18,6 +18,28 @@ A complete book store management system featuring:
 - **Database**: PostgreSQL with event store and read model projections
 - **Modern Stack**: .NET 10 with C# 14 (latest language features)
 
+## 🏗️ Architectural Philosophy
+
+> *"A complex system that works is invariably found to have evolved from a simple system that worked. A complex system designed from scratch never works and cannot be patched up to make it work. You have to start over with a working simple system."*
+>
+> — **John Gall**
+
+This project deliberately moves away from the "microservices-first" dogma, instead embracing a **Modular Monolith** approach.
+
+There is a growing industry consensus that starting with microservices introduces accidental complexity—distributed transactions, network latency, and infrastructure overhead—before domain boundaries are strictly defined. This solution provides a concrete example of how to build a scalable, robust system without the premature complexity of a distributed mesh.
+
+The architecture emphasizes:
+
+- **Modularity**: Loose coupling is enforced using **Event Sourcing** and **CQRS**. Features communicate via messages (Wolverine), ensuring that future decomposition into services is a seamless refactoring rather than a rewrite.
+
+- **Pragmatism & Performance**: We prioritize clean, maintainable code over academic purity. By avoiding excessive abstraction layers (like generic repositories and passthrough services), we eliminate "architectural tax," ensuring the code remains easy to refactor and runs with maximum performance.
+
+- **Completeness**: Unlike typical "Hello World" demos, this project implements production-grade requirements: resiliency, distributed tracing, structured logging, correct HTTP semantics, and optimistic concurrency.
+
+- **Simplicity**: By keeping the deployment unit single but the code modular, we gain the benefits of microservices (isolation, maintainability) without the operational drawbacks.
+
+This serves as a foundational blueprint that scales *with* your needs, allowing you to evolve from a simple, working system into a complex one naturally.
+
 ## 🚀 Quick Start
 
 ```bash
