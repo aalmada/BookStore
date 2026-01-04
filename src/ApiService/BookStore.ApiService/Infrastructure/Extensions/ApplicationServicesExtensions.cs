@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 
 namespace BookStore.ApiService.Infrastructure.Extensions;
@@ -99,7 +100,8 @@ public static class ApplicationServicesExtensions
                 options.Password.RequiredLength = 8;
 
             })
-            .AddUserStore<Identity.MartenUserStore>();
+            .AddUserStore<Identity.MartenUserStore>()
+            .AddDefaultTokenProviders();
 
         // Configure Passkey options
         _ = services.Configure<Microsoft.AspNetCore.Identity.IdentityPasskeyOptions>(options =>
@@ -141,6 +143,32 @@ public static class ApplicationServicesExtensions
 
         // Add JWT token service
         _ = services.AddSingleton<Services.JwtTokenService>();
+
+        // Configure Email Services
+        _ = services.AddOptions<Infrastructure.Email.EmailOptions>()
+            .BindConfiguration(Infrastructure.Email.EmailOptions.SectionName)
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        _ = services.AddSingleton<Infrastructure.Email.EmailTemplateService>();
+
+        // Register IEmailService conditionally based on DeliveryMethod
+        _ = services.AddSingleton<Infrastructure.Email.IEmailService>(sp =>
+        {
+            var options = sp.GetRequiredService<IOptions<Infrastructure.Email.EmailOptions>>().Value;
+            var logger = sp.GetRequiredService<ILogger<Infrastructure.Email.LoggingEmailService>>();
+            var smtpLogger = sp.GetRequiredService<ILogger<Infrastructure.Email.SmtpEmailService>>();
+
+            return options.DeliveryMethod?.ToLowerInvariant() switch
+            {
+                "smtp" => new Infrastructure.Email.SmtpEmailService(sp.GetRequiredService<IOptions<Infrastructure.Email.EmailOptions>>(), smtpLogger),
+                // Logging enabled if method is Logging, OR if default behavior is needed.
+                // If "None", we still register LoggingEmailService but it might no-op if checking inside, 
+                // OR we can implement a pure NoOp service.
+                // Our LoggingEmailService checks options.DeliveryMethod == "Logging".
+                _ => new Infrastructure.Email.LoggingEmailService(logger, sp.GetRequiredService<IOptions<Infrastructure.Email.EmailOptions>>())
+            };
+        });
 
         // Add authorization services
         _ = services.AddAuthorizationBuilder()

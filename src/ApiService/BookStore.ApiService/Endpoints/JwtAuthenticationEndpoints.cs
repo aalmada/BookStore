@@ -1,9 +1,11 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using Marten;
 using BookStore.ApiService.Models;
 using BookStore.ApiService.Services;
 using BookStore.Shared.Models;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Options;
 
 namespace BookStore.ApiService.Endpoints;
 
@@ -21,6 +23,10 @@ public static class JwtAuthenticationEndpoints
         _ = group.MapPost("/register", RegisterAsync)
             .WithName("JwtRegister")
             .WithSummary("Register a new user account");
+
+        _ = group.MapPost("/confirmEmail", ConfirmEmailAsync)
+            .WithName("ConfirmEmail")
+            .WithSummary("Confirm a user's email address using a verification code");
 
         _ = group.MapPost("/refresh", RefreshTokenAsync)
             .WithName("JwtRefresh")
@@ -72,9 +78,19 @@ public static class JwtAuthenticationEndpoints
         var accessToken = jwtTokenService.GenerateAccessToken(claims);
         var refreshToken = jwtTokenService.GenerateRefreshToken();
 
-        logger.LogInformation("JWT login successful for {Email}", request.Email);
+        // Store refresh token
+        var refreshTokenInfo = new RefreshTokenInfo(refreshToken, DateTimeOffset.UtcNow.AddDays(7), DateTimeOffset.UtcNow);
+        user.RefreshTokens.Add(refreshTokenInfo);
 
-        // TODO: Store refresh token in database for validation
+        // Prune old tokens (optional, keep latest 5)
+        if (user.RefreshTokens.Count > 5)
+        {
+            user.RefreshTokens = user.RefreshTokens.OrderByDescending(r => r.Created).Take(5).ToList();
+        }
+
+        await userManager.UpdateAsync(user);
+
+        logger.LogInformation("JWT login successful for {Email}", request.Email);
 
         return Results.Ok(new LoginResponse(
             TokenType: "Bearer",
@@ -88,15 +104,19 @@ public static class JwtAuthenticationEndpoints
         RegisterRequest request,
         UserManager<ApplicationUser> userManager,
         JwtTokenService jwtTokenService,
+        Wolverine.IMessageBus bus,
+        IOptions<Infrastructure.Email.EmailOptions> emailOptions,
         ILogger<Program> logger)
     {
         logger.LogInformation("JWT registration attempt for {Email}", request.Email);
+
+        var verificationRequired = emailOptions.Value.DeliveryMethod != "None";
 
         var user = new ApplicationUser
         {
             UserName = request.Email,
             Email = request.Email,
-            EmailConfirmed = false
+            EmailConfirmed = !verificationRequired
         };
 
         var result = await userManager.CreateAsync(user, request.Password);
@@ -106,6 +126,12 @@ public static class JwtAuthenticationEndpoints
             logger.LogWarning("Registration failed for {Email}: {Errors}",
                 request.Email, string.Join(", ", result.Errors.Select(e => e.Description)));
             return Results.BadRequest(new { errors = result.Errors });
+        }
+
+        if (verificationRequired)
+        {
+            var code = await userManager.GenerateEmailConfirmationTokenAsync(user);
+            await bus.PublishAsync(new Messages.Commands.SendUserVerificationEmail(user.Id, user.Email!, code, user.UserName!));
         }
 
         // Build claims
@@ -121,6 +147,13 @@ public static class JwtAuthenticationEndpoints
 
         var accessToken = jwtTokenService.GenerateAccessToken(claims);
         var refreshToken = jwtTokenService.GenerateRefreshToken();
+        
+        // Store refresh token
+        var refreshTokenInfo = new RefreshTokenInfo(refreshToken, DateTimeOffset.UtcNow.AddDays(7), DateTimeOffset.UtcNow);
+        user.RefreshTokens.Add(refreshTokenInfo);
+
+        // Update user to persist token
+        await userManager.UpdateAsync(user);
 
         logger.LogInformation("JWT registration successful for {Email}", request.Email);
 
@@ -132,23 +165,97 @@ public static class JwtAuthenticationEndpoints
         ));
     }
 
-    static Task<IResult> RefreshTokenAsync(
-        RefreshRequest request,
-        JwtTokenService jwtTokenService,
+    static async Task<IResult> ConfirmEmailAsync(
+        string userId,
+        string code,
+        UserManager<ApplicationUser> userManager,
+        Wolverine.IMessageBus bus,
         ILogger<Program> logger)
     {
-        logger.LogWarning("Refresh token endpoint called but not yet implemented");
+        var user = await userManager.FindByIdAsync(userId);
+        if (user == null)
+        {
+            // Don't reveal that the user does not exist
+            return Results.NotFound("Invalid user ID or code.");
+        }
 
-        // TODO: Implement refresh token validation
-        // 1. Validate refresh token from database
-        // 2. Check if token is expired
-        // 3. Generate new access token
-        // 4. Optionally rotate refresh token
+        var result = await userManager.ConfirmEmailAsync(user, code);
+        if (result.Succeeded)
+        {
+            await bus.PublishAsync(new BookStore.ApiService.Events.Notifications.UserVerifiedNotification(user.Id, user.Email!, DateTimeOffset.UtcNow));
+            return Results.Ok("Email confirmed successfully.");
+        }
 
-        return Task.FromResult(Results.Problem(
-            title: "Not Implemented",
-            detail: "Refresh token functionality is not yet implemented",
-            statusCode: StatusCodes.Status501NotImplemented
+        return Results.BadRequest("Error confirming email.");
+    }
+
+    static async Task<IResult> RefreshTokenAsync(
+        RefreshRequest request,
+        JwtTokenService jwtTokenService,
+        UserManager<ApplicationUser> userManager,
+        Marten.IDocumentSession session,
+        ILogger<Program> logger)
+    {
+        // 1. Find user with this refresh token
+        // Since we store tokens in the user document, we need to query based on the token
+        var user = await session.Query<ApplicationUser>()
+            .FirstOrDefaultAsync(u => u.RefreshTokens.Any(rt => rt.Token == request.RefreshToken));
+
+        if (user == null)
+        {
+            logger.LogWarning("Refresh failed: Token not found");
+            return Results.Unauthorized();
+        }
+
+        // 2. Validate token
+        var existingToken = user.RefreshTokens.FirstOrDefault(rt => rt.Token == request.RefreshToken);
+        if (existingToken == null || existingToken.Expires <= DateTimeOffset.UtcNow)
+        {
+            logger.LogWarning("Refresh failed: Token expired or invalid for user {User}", user.UserName);
+            // Optionally remove expired token
+            if (existingToken != null)
+            {
+                 user.RefreshTokens.Remove(existingToken);
+                 await userManager.UpdateAsync(user);
+            }
+            return Results.Unauthorized();
+        }
+
+        // 3. Generate new tokens
+        // Build claims again
+        var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new Claim(ClaimTypes.Name, user.UserName!),
+            new Claim(ClaimTypes.Email, user.Email!),
+            new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+            new Claim(JwtRegisteredClaimNames.Email, user.Email!),
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.CreateVersion7().ToString()),
+        };
+
+        var roles = await userManager.GetRolesAsync(user);
+        claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
+
+        var newAccessToken = jwtTokenService.GenerateAccessToken(claims);
+        var newRefreshToken = jwtTokenService.GenerateRefreshToken();
+
+        // 4. Rotate refresh token (remove old, add new)
+        user.RefreshTokens.Remove(existingToken);
+        user.RefreshTokens.Add(new RefreshTokenInfo(newRefreshToken, DateTimeOffset.UtcNow.AddDays(7), DateTimeOffset.UtcNow));
+
+        // Prune old tokens
+        if (user.RefreshTokens.Count > 5)
+        {
+             user.RefreshTokens = user.RefreshTokens.OrderByDescending(r => r.Created).Take(5).ToList();
+        }
+
+        await userManager.UpdateAsync(user);
+
+        return Results.Ok(new LoginResponse(
+            TokenType: "Bearer",
+            AccessToken: newAccessToken,
+            ExpiresIn: 3600,
+            RefreshToken: newRefreshToken
         ));
     }
 }

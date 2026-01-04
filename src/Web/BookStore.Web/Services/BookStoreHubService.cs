@@ -14,6 +14,7 @@ public class BookStoreHubService : IAsyncDisposable
     public event Action<BookNotification>? OnBookCreated;
     public event Action<BookNotification>? OnBookUpdated;
     public event Action<Guid>? OnBookDeleted;
+    public event Action<UserVerifiedNotification>? OnUserVerified;
 
     public BookStoreHubService(IConfiguration config, ILogger<BookStoreHubService> logger)
     {
@@ -48,6 +49,12 @@ public class BookStoreHubService : IAsyncDisposable
             _logger.LogInformation("Received BookDeleted notification for {BookId}",
                 notification.EntityId);
             OnBookDeleted?.Invoke(notification.EntityId);
+        });
+
+        _ = _connection.On<UserVerifiedNotification>("UserVerified", notification =>
+        {
+             _logger.LogInformation("Received UserVerified notification for {Email}", notification.Email);
+             OnUserVerified?.Invoke(notification);
         });
     }
 
@@ -97,4 +104,12 @@ public record BookNotification(
 /// </summary>
 public record BookDeletedNotification(
     Guid EntityId,
+    DateTimeOffset Timestamp);
+
+/// <summary>
+/// User verified notification DTO
+/// </summary>
+public record UserVerifiedNotification(
+    Guid EntityId,
+    string Email,
     DateTimeOffset Timestamp);

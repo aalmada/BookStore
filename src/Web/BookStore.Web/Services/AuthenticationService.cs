@@ -8,8 +8,21 @@ namespace BookStore.Web.Services;
 /// </summary>
 public class AuthenticationService(
     IIdentityLoginEndpoint loginEndpoint,
-    IIdentityRegisterEndpoint registerEndpoint)
+    IIdentityRegisterEndpoint registerEndpoint,
+    IIdentityConfirmEmailEndpoint confirmEmailEndpoint)
 {
+    public async Task<bool> ConfirmEmailAsync(string userId, string code)
+    {
+        try
+        {
+            await confirmEmailEndpoint.Execute(userId, code);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
     /// <summary>
     /// Login with email and password (JWT token-based)
     /// </summary>

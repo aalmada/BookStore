@@ -30,6 +30,18 @@ public interface IIdentityRegisterEndpoint
         CancellationToken cancellationToken = default);
 }
 
+public interface IIdentityConfirmEmailEndpoint
+{
+    /// <summary>
+    /// Confirm user email
+    /// </summary>
+    [Post("/identity/confirmEmail")]
+    Task Execute(
+        [Query] string userId,
+        [Query] string code,
+        CancellationToken cancellationToken = default);
+}
+
 public interface IIdentityRefreshEndpoint
 {
     /// <summary>

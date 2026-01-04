@@ -686,7 +686,7 @@ The BookStore application uses structured JSON logging:
 
 ## Authentication Configuration
 
-The BookStore uses a hybrid authentication model with JWT and Passkeys.
+The BookStore uses a **Token-based authentication model** with JWT and Passkeys.
 
 ### JWT Configuration
 
@@ -731,6 +731,34 @@ Required for WebAuthn/FIDO2 operations.
 > [!WARNING]
 > **Production Criticality**
 > Failing to set `ServerDomain` correctly in production will cause Passkey registration and login to fail with "Domain mismatch" or "NotAllowed" errors.
+
+### Email Configuration
+
+Required for email verification.
+
+```json
+{
+  "Email": {
+    "DeliveryMethod": "Smtp", // None, Logging, or Smtp
+    "BaseUrl": "https://localhost:7260",
+    "FromEmail": "noreply@bookstore.com",
+    "FromName": "BookStore",
+    "SmtpHost": "smtp.example.com",
+    "SmtpPort": 587,
+    "SmtpUsername": "username",
+    "SmtpPassword": "password"
+  }
+}
+```
+
+**Key Settings**:
+- **DeliveryMethod**:
+    - `None`: Disables email sending. **Users are auto-verified.**
+    - `Logging`: Logs email content to console (Development).
+    - `Smtp`: Sends actual emails via SMTP (Production).
+- **BaseUrl**: The base URL of the frontend application (used for verification links).
+- **FromEmail/FromName**: Sender details.
+- **Smtp***: SMTP server credentials (required if method is `Smtp`).
 
 ---
 

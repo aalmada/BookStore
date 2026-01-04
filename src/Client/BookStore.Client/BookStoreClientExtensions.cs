@@ -73,6 +73,7 @@ public static class BookStoreClientExtensions
         // but typically refresh endpoint uses credentials or refresh token in body.
         _ = AddClient<IIdentityLoginEndpoint>();
         _ = AddClient<IIdentityRegisterEndpoint>();
+        _ = AddClient<IIdentityConfirmEmailEndpoint>();
         _ = AddClient<IIdentityRefreshEndpoint>();
         _ = AddClient<IIdentityManageInfoEndpoint>();
 

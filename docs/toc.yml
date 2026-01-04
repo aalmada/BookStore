@@ -24,6 +24,8 @@
       href: passkey-guide.md
     - name: SignalR
       href: signalr-guide.md
+    - name: Email Verification
+      href: email-validation.md
     - name: Logging
       href: logging-guide.md
     - name: Correlation & Causation

@@ -62,4 +62,17 @@ public sealed class ApplicationUser
     /// Passkeys registered to this user (WebAuthn/FIDO2)
     /// </summary>
     public IList<UserPasskeyInfo> Passkeys { get; set; } = [];
+
+    /// <summary>
+    /// Refresh tokens for maintaining sessions
+    /// </summary>
+    public IList<RefreshTokenInfo> RefreshTokens { get; set; } = [];
 }
+
+/// <summary>
+/// Information about a refresh token
+/// </summary>
+public record RefreshTokenInfo(
+    string Token,
+    DateTimeOffset Expires,
+    DateTimeOffset Created);

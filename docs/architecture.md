@@ -323,7 +323,20 @@ sequenceDiagram
 - Standard HTTP mechanism
 - Works with any client
 - Natural fit with stream versions
+- Natural fit with stream versions
 - Prevents lost updates
+
+### 6. Identity Stored as Documents (Not Event Sourced)
+
+**Why**:
+- **Standardization**: ASP.NET Core Identity provides robust, battle-tested security.
+- **Compliance**: GDPR "Right to be Forgotten" is easier to implement with mutable documents than immutable event streams.
+- **Simplicity**: Authentication state (current password hash, lock status) is more critical than the history of changes.
+- **Performance**: High-frequency read path (login) benefits from simple index lookups.
+
+**Trade-offs**:
+- **Audit Trail**: Account changes (password reset, email change) are not automatically event-sourced (must use separate audit logs).
+- **Consistency**: Auth data lives outside the primary event stream (though still in Postgres/Marten).
 
 ## Scalability Considerations
 
@@ -350,17 +363,15 @@ sequenceDiagram
 
 ### Authentication & Authorization
 
-The application implements a **hybrid authentication system**:
+### Authentication & Authorization
 
-- **Cookie Authentication** - Primary method for Blazor Server frontend
-  - HttpOnly, Secure cookies prevent XSS attacks
-  - SameSite protection against CSRF
-  - Cross-tab synchronization via BroadcastChannel API
-  
-- **JWT Bearer Tokens** - For external apps and APIs
-  - Stateless authentication for mobile apps
-  - Third-party integrations
-  - Cross-domain scenarios
+The application implements a **Token-based authentication system**:
+
+- **JWT Bearer Tokens** - Primary authentication method
+  - Used by **Blazor Web App**, Mobile Apps, and integrations
+  - Stateless authentication
+  - Tokens stored securely in client (HttpOnly cookies or secure storage recommended for production)
+  - Automatic token refresh logic
 
 - **Passkey Support** - Passwordless authentication (.NET 10)
   - WebAuthn/FIDO2 standards

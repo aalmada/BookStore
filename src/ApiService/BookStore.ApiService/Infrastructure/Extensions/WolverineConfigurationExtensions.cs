@@ -41,6 +41,7 @@ public static class WolverineConfigurationExtensions
         _ = opts.Discovery.IncludeType(typeof(Handlers.Books.BookCoverHandlers));
         _ = opts.Discovery.IncludeType(typeof(Handlers.Categories.CategoryHandlers));
         _ = opts.Discovery.IncludeType(typeof(Handlers.Publishers.PublisherHandlers));
+        _ = opts.Discovery.IncludeType(typeof(Handlers.Notifications.EmailHandlers));
     }
 
     static void ConfigureEventPublishing(WolverineOptions opts) => opts.Publish(x =>

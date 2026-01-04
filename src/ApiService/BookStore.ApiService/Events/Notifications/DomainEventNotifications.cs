@@ -85,3 +85,14 @@ public record BookCoverUpdatedNotification(
     public string EventType => "BookCoverUpdated";
     public DateTimeOffset Timestamp { get; } = DateTimeOffset.UtcNow;
 }
+
+/// <summary>
+/// Notification when a user verifies their email
+/// </summary>
+public record UserVerifiedNotification(
+    Guid EntityId,
+    string Email,
+    DateTimeOffset Timestamp) : IDomainEventNotification
+{
+    public string EventType => "UserVerified";
+}

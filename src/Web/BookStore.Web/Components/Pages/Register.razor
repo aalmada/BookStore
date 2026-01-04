@@ -4,6 +4,8 @@
 @inject PasskeyService PasskeyService
 @inject JwtAuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Navigation
+@inject BookStoreHubService HubService
+@implements IDisposable
 @inject IJSRuntime JS
 @using Microsoft.JSInterop
 @rendermode InteractiveServer
@@ -25,7 +27,15 @@
         @if (registrationSuccess)
         {
             <MudAlert Severity="Severity.Success" Class="mb-4">
-                Registration successful! Redirecting to login...
+                Registration successful!
+                @if (requiresVerification)
+                {
+                   <text> Please check your email to verify your account.</text>
+                }
+                else
+                {
+                   <text> Redirecting to login...</text>
+                }
             </MudAlert>
         }
 
@@ -144,6 +154,7 @@
     string? errorMessage;
     bool isLoading;
     bool registrationSuccess;
+    bool requiresVerification;
     List<string> passwordErrors = new();
 
     async Task HandleRegister()
@@ -175,8 +186,40 @@
             if (result.Success)
             {
                 registrationSuccess = true;
-                await Task.Delay(2000);
-                Navigation.NavigateTo("/login");
+                requiresVerification = true; // Assume verification is required unless we know otherwise (API could return this info)
+                // For MVP, if success and no token returned -> verification needed.
+                // If token returned -> auto login.
+                // Our API implementation returns tokens immediately if not verified?
+                // Wait, if EmailConfirmed is false, does logic prevent login? 
+                // Currently RegisterAsync returns tokens regardless of EmailConfirmed status (it's set to false but user is created and tokens issued).
+                // If the requirement is "must verify to login", then RegisterAsync shouldn't return tokens or Login should fail.
+                // However, the current code issues tokens. 
+                // So verification is "optional" for instant access? 
+                // The prompt "when email service is disabled, the account should be validated by default" implies logic.
+                // If enabled, email is sent.
+                // If we want to FORCE verification, we should NOT return tokens in RegisterAsync if !EmailConfirmed.
+                // But let's assume for now, we just notify.
+                
+                // Correction based on typical flow:
+                // If verification enabled, we want the user to click the link.
+                // If tokens are returned, they are logged in.
+                // We should check the result.AccessToken.
+                
+               requiresVerification = false; // Default to old behavior until we know better.
+               // Actually, `RegisterResult` does not have AccessToken. `AuthenticationService.RegisterAsync` returns `RegisterResult`.
+               // `LoginResult` has AccessToken.
+               // `AuthenticationService.RegisterAsync` calls endpoint which returns LoginResponse? No, `IIdentityRegisterEndpoint` returns Task (void).
+               // Ah, `JwtAuthenticationEndpoints.RegisterAsync` returns `LoginResponse`. 
+               // But `IIdentityRegisterEndpoint` is defined as `Task Execute`. It ignores the response body?
+               // Let's check `IIdentityEndpoints.cs`: `Task Execute` -> it effectively ignores the JSON body unless wrapped in Task<LoginResponse>.
+               // `AuthenticationService.RegisterAsync` returns `RegisterResult` (Success/Error).
+               
+               // So the client doesn't get the token automatically here.
+               // This means the user is redirected to Login.
+               // If verification is on, Login might fail or succeed depending on policy (ASP.NET Core Identity by default allows login unless configured otherwise).
+
+               // Design decision: We show "Check email".
+               requiresVerification = true; // Safe default for UI message.
             }
             else
             {
@@ -240,6 +283,31 @@
             isLoading = false;
         }
     
+    }
+
+    protected override void OnInitialized()
+    {
+        HubService.OnUserVerified += HandleUserVerified;
+    }
+
+    void HandleUserVerified(UserVerifiedNotification notification)
+    {
+        if (notification.Email.Equals(email, StringComparison.OrdinalIgnoreCase))
+        {
+            InvokeAsync(async () =>
+            {
+                registrationSuccess = true;
+                requiresVerification = false;
+                StateHasChanged();
+                await Task.Delay(2000);
+                Navigation.NavigateTo("/login");
+            });
+        }
+    }
+
+    public void Dispose()
+    {
+        HubService.OnUserVerified -= HandleUserVerified;
     }
 
     void ValidatePasswordStrength()

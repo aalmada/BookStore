@@ -43,18 +43,7 @@ public static class PasskeyEndpoints
             }
 
             // Create a temporary user entity for the purpose of generating options
-            // The ID generated here should theoretically be used to create the user later.
-            // However, MakePasskeyCreationOptionsAsync returns options with an encoded UserID.
-            // Client will sign this.
-            // When we verify in RegisterPasskey, we need to ensure the eventually created user has this ID.
-            // Store this 'intent' or rely on stateless verification? 
-            // Stateless: We can't enforce the ID matches unless we manually handle option generation.
-            // For MVP: We will let options be generated.
-
-            // NOTE: Registering a user with a passkey requires the server to know the UserHandle (ID) 
-            // that is baked into the credential. 
-            // In .NET 10 helper, we pass a PasskeyUserEntity.
-            // We'll generate a new Guid for this prospective user.
+            // The Client will sign this.
             var newUserId = Guid.CreateVersion7().ToString();
             var newUserEntity = new PasskeyUserEntity
             {
@@ -73,9 +62,12 @@ public static class PasskeyEndpoints
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
             IUserStore<ApplicationUser> userStore,
-            BookStore.ApiService.Services.JwtTokenService tokenService) =>
+            BookStore.ApiService.Services.JwtTokenService tokenService,
+            Wolverine.IMessageBus bus,
+            Microsoft.Extensions.Options.IOptions<Infrastructure.Email.EmailOptions> emailOptions) =>
         {
             var user = await userManager.GetUserAsync(context.User);
+            var verificationRequired = emailOptions.Value.DeliveryMethod != "None";
 
             // Case A: Add to existing account
             if (user is not null)
@@ -111,7 +103,7 @@ public static class PasskeyEndpoints
             {
                 UserName = request.Email,
                 Email = request.Email,
-                EmailConfirmed = true // Verified via Passkey
+                EmailConfirmed = !verificationRequired
             };
 
             // Create the user in DB
@@ -124,19 +116,9 @@ public static class PasskeyEndpoints
 
             if (userStore is IUserPasskeyStore<ApplicationUser> ps)
             {
-                // We MUST update the Passkey's UserId to match the actual DB user ID if they differ
-                // attestationNew.Passkey.UserHandle might be the random one we sent in options.
-                // But we just created a user and it got a ID (likely different if DB generated it, or same if we set it).
-                // With Marten/Identity user manager, ID is usually a set GUID.
-                // IMPORTANT: The WebAuthn credential is BOUND to the userHandle sent in options.
-                // Browsers will only serve this credential if we ask for that userHandle (or empty for discoverable).
-                // Ideally, newUser.Id should MATCH the UserHandle in the credential.
-
-                // For this MVP, we will save the passkey as is. 
-                // Login relies on UserHandle lookup.
                 await ps.AddOrUpdatePasskeyAsync(newUser, attestationNew.Passkey, CancellationToken.None);
                 
-                // CRITICAL: Persist the changes (the added passkey) to the database
+                // Persist the changes (the added passkey) to the database
                 var updateResult = await userManager.UpdateAsync(newUser);
                 if (!updateResult.Succeeded)
                 {
@@ -144,9 +126,18 @@ public static class PasskeyEndpoints
                 }
             }
 
+            if (verificationRequired)
+            {
+                var code = await userManager.GenerateEmailConfirmationTokenAsync(newUser);
+                await bus.PublishAsync(new Messages.Commands.SendUserVerificationEmail(newUser.Id, newUser.Email!, code, newUser.UserName!));
+            }
+
             // Auto Login - Issue Token
             var accessToken = tokenService.GenerateAccessToken(newUser);
             var refreshToken = tokenService.GenerateRefreshToken();
+
+            newUser.RefreshTokens.Add(new RefreshTokenInfo(refreshToken, DateTimeOffset.UtcNow.AddDays(7), DateTimeOffset.UtcNow));
+            await userManager.UpdateAsync(newUser);
 
             return Results.Ok(new LoginResponse(
                  "Bearer",
@@ -208,8 +199,8 @@ public static class PasskeyEndpoints
                                     var accessToken = tokenService.GenerateAccessToken(user);
                                     var refreshToken = tokenService.GenerateRefreshToken();
 
-                                    // TODO: Save refresh token (mimicking existing functionality which is currently TODO)
-                                    // await tokenService.SaveRefreshTokenAsync(user.Id, refreshToken);
+                                    user.RefreshTokens.Add(new RefreshTokenInfo(refreshToken, DateTimeOffset.UtcNow.AddDays(7), DateTimeOffset.UtcNow));
+                                    await userManager.UpdateAsync(user);
 
                                     return Results.Ok(new LoginResponse(
                                         "Bearer",
