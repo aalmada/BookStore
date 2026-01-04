@@ -3,7 +3,7 @@ namespace BookStore.ApiService.Infrastructure.Email;
 public class EmailTemplateService
 {
     private const string DefaultSubject = "Welcome to BookStore! Please verify your email.";
-    
+
     // Simple HTML template avoiding Razor overhead
     private const string DefaultBodyTemplate = @"
 <!DOCTYPE html>

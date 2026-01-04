@@ -53,8 +53,8 @@ public class BookStoreHubService : IAsyncDisposable
 
         _ = _connection.On<UserVerifiedNotification>("UserVerified", notification =>
         {
-             _logger.LogInformation("Received UserVerified notification for {Email}", notification.Email);
-             OnUserVerified?.Invoke(notification);
+            _logger.LogInformation("Received UserVerified notification for {Email}", notification.Email);
+            OnUserVerified?.Invoke(notification);
         });
     }
 

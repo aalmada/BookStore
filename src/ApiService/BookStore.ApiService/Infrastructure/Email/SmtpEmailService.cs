@@ -13,7 +13,7 @@ public class SmtpEmailService(
     public async Task SendAccountVerificationEmailAsync(string email, string subject, string body)
     {
         var settings = options.Value;
-        
+
         // Safety check - although the handler should prevent this, double check here
         if (string.IsNullOrEmpty(settings.SmtpHost))
         {
@@ -37,7 +37,7 @@ public class SmtpEmailService(
             // Create a lightweight client per request for thread safety and low memory footprint
             // SmtpClient is disposable and should be disposed after use
             using var client = new SmtpClient();
-            
+
             // Connect to the server
             await client.ConnectAsync(settings.SmtpHost, settings.SmtpPort, SecureSocketOptions.StartTls);
 
@@ -48,11 +48,11 @@ public class SmtpEmailService(
             }
 
             // Send the message
-            await client.SendAsync(message);
-            
+            _ = await client.SendAsync(message);
+
             // Disconnect cleanly
             await client.DisconnectAsync(true);
-            
+
             logger.LogInformation("Sent email via SMTP to {Email}", email);
         }
         catch (Exception ex)

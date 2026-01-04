@@ -1,9 +1,9 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using Marten;
 using BookStore.ApiService.Models;
 using BookStore.ApiService.Services;
 using BookStore.Shared.Models;
+using Marten;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 
@@ -85,10 +85,10 @@ public static class JwtAuthenticationEndpoints
         // Prune old tokens (optional, keep latest 5)
         if (user.RefreshTokens.Count > 5)
         {
-            user.RefreshTokens = user.RefreshTokens.OrderByDescending(r => r.Created).Take(5).ToList();
+            user.RefreshTokens = [.. user.RefreshTokens.OrderByDescending(r => r.Created).Take(5)];
         }
 
-        await userManager.UpdateAsync(user);
+        _ = await userManager.UpdateAsync(user);
 
         logger.LogInformation("JWT login successful for {Email}", request.Email);
 
@@ -147,13 +147,13 @@ public static class JwtAuthenticationEndpoints
 
         var accessToken = jwtTokenService.GenerateAccessToken(claims);
         var refreshToken = jwtTokenService.GenerateRefreshToken();
-        
+
         // Store refresh token
         var refreshTokenInfo = new RefreshTokenInfo(refreshToken, DateTimeOffset.UtcNow.AddDays(7), DateTimeOffset.UtcNow);
         user.RefreshTokens.Add(refreshTokenInfo);
 
         // Update user to persist token
-        await userManager.UpdateAsync(user);
+        _ = await userManager.UpdateAsync(user);
 
         logger.LogInformation("JWT registration successful for {Email}", request.Email);
 
@@ -215,9 +215,10 @@ public static class JwtAuthenticationEndpoints
             // Optionally remove expired token
             if (existingToken != null)
             {
-                 user.RefreshTokens.Remove(existingToken);
-                 await userManager.UpdateAsync(user);
+                _ = user.RefreshTokens.Remove(existingToken);
+                _ = await userManager.UpdateAsync(user);
             }
+
             return Results.Unauthorized();
         }
 
@@ -225,12 +226,12 @@ public static class JwtAuthenticationEndpoints
         // Build claims again
         var claims = new List<Claim>
         {
-            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new Claim(ClaimTypes.Name, user.UserName!),
-            new Claim(ClaimTypes.Email, user.Email!),
-            new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-            new Claim(JwtRegisteredClaimNames.Email, user.Email!),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.CreateVersion7().ToString()),
+            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new(ClaimTypes.Name, user.UserName!),
+            new(ClaimTypes.Email, user.Email!),
+            new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+            new(JwtRegisteredClaimNames.Email, user.Email!),
+            new(JwtRegisteredClaimNames.Jti, Guid.CreateVersion7().ToString()),
         };
 
         var roles = await userManager.GetRolesAsync(user);
@@ -240,16 +241,16 @@ public static class JwtAuthenticationEndpoints
         var newRefreshToken = jwtTokenService.GenerateRefreshToken();
 
         // 4. Rotate refresh token (remove old, add new)
-        user.RefreshTokens.Remove(existingToken);
+        _ = user.RefreshTokens.Remove(existingToken);
         user.RefreshTokens.Add(new RefreshTokenInfo(newRefreshToken, DateTimeOffset.UtcNow.AddDays(7), DateTimeOffset.UtcNow));
 
         // Prune old tokens
         if (user.RefreshTokens.Count > 5)
         {
-             user.RefreshTokens = user.RefreshTokens.OrderByDescending(r => r.Created).Take(5).ToList();
+            user.RefreshTokens = [.. user.RefreshTokens.OrderByDescending(r => r.Created).Take(5)];
         }
 
-        await userManager.UpdateAsync(user);
+        _ = await userManager.UpdateAsync(user);
 
         return Results.Ok(new LoginResponse(
             TokenType: "Bearer",

@@ -117,7 +117,7 @@ public static class PasskeyEndpoints
             if (userStore is IUserPasskeyStore<ApplicationUser> ps)
             {
                 await ps.AddOrUpdatePasskeyAsync(newUser, attestationNew.Passkey, CancellationToken.None);
-                
+
                 // Persist the changes (the added passkey) to the database
                 var updateResult = await userManager.UpdateAsync(newUser);
                 if (!updateResult.Succeeded)
@@ -137,7 +137,7 @@ public static class PasskeyEndpoints
             var refreshToken = tokenService.GenerateRefreshToken();
 
             newUser.RefreshTokens.Add(new RefreshTokenInfo(refreshToken, DateTimeOffset.UtcNow.AddDays(7), DateTimeOffset.UtcNow));
-            await userManager.UpdateAsync(newUser);
+            _ = await userManager.UpdateAsync(newUser);
 
             return Results.Ok(new LoginResponse(
                  "Bearer",
@@ -200,7 +200,7 @@ public static class PasskeyEndpoints
                                     var refreshToken = tokenService.GenerateRefreshToken();
 
                                     user.RefreshTokens.Add(new RefreshTokenInfo(refreshToken, DateTimeOffset.UtcNow.AddDays(7), DateTimeOffset.UtcNow));
-                                    await userManager.UpdateAsync(user);
+                                    _ = await userManager.UpdateAsync(user);
 
                                     return Results.Ok(new LoginResponse(
                                         "Bearer",
