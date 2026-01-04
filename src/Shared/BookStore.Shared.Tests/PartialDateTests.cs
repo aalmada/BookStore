@@ -182,7 +182,7 @@ public class PartialDateTests
         });
     }
 
-    private string Serialize(PartialDate? date)
+    string Serialize(PartialDate? date)
     {
         var options = new JsonSerializerOptions
         {
@@ -192,7 +192,7 @@ public class PartialDateTests
         return JsonSerializer.Serialize(date, options);
     }
 
-    private PartialDate? Deserialize(string json)
+    PartialDate? Deserialize(string json)
     {
         var options = new JsonSerializerOptions
         {

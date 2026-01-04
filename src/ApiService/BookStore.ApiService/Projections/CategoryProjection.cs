@@ -19,7 +19,7 @@ public class CategoryProjection
 
 public class CategoryProjectionBuilder : EventProjection
 {
-    private readonly LocalizationOptions _localization;
+    readonly LocalizationOptions _localization;
 
     public CategoryProjectionBuilder(IOptions<LocalizationOptions> localizationOptions)
         => _localization = localizationOptions.Value;
@@ -81,7 +81,7 @@ public class CategoryProjectionBuilder : EventProjection
         }
     }
 
-    private string GetLocalizedName(Dictionary<string, CategoryTranslation>? translations, string culture)
+    string GetLocalizedName(Dictionary<string, CategoryTranslation>? translations, string culture)
     {
         if (translations == null || translations.Count == 0)
         {

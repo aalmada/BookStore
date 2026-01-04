@@ -7,9 +7,9 @@ namespace BookStore.ApiService.Infrastructure;
 /// Simple wrapper that implements IPagedList for mapped collections.
 /// Used to wrap DTO collections with pagination metadata.
 /// </summary>
-internal sealed class PagedListWrapper<T> : IPagedList<T>
+sealed class PagedListWrapper<T> : IPagedList<T>
 {
-    private readonly IReadOnlyList<T> _items;
+    readonly IReadOnlyList<T> _items;
 
     public PagedListWrapper(
         IReadOnlyList<T> items,

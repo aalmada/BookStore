@@ -20,7 +20,7 @@ public class AuthorProjection
 
 public class AuthorProjectionBuilder : EventProjection
 {
-    private readonly LocalizationOptions _localization;
+    readonly LocalizationOptions _localization;
 
     public AuthorProjectionBuilder(IOptions<LocalizationOptions> localizationOptions)
         => _localization = localizationOptions.Value;
@@ -84,7 +84,7 @@ public class AuthorProjectionBuilder : EventProjection
         }
     }
 
-    private string GetLocalizedBio(Dictionary<string, AuthorTranslation>? translations, string culture)
+    string GetLocalizedBio(Dictionary<string, AuthorTranslation>? translations, string culture)
     {
         if (translations == null || translations.Count == 0)
         {

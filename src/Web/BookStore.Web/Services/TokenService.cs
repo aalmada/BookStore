@@ -6,8 +6,8 @@ namespace BookStore.Web.Services;
 /// </summary>
 public class TokenService
 {
-    private string? _accessToken;
-    private string? _refreshToken;
+    string? _accessToken;
+    string? _refreshToken;
 
     /// <summary>
     /// Store authentication tokens

@@ -5,8 +5,8 @@ namespace BookStore.Web.Services;
 
 public class PasskeyService
 {
-    private readonly HttpClient _httpClient;
-    private readonly ILogger<PasskeyService> _logger;
+    readonly HttpClient _httpClient;
+    readonly ILogger<PasskeyService> _logger;
 
     public PasskeyService(HttpClient httpClient, ILogger<PasskeyService> logger)
     {

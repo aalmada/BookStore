@@ -8,7 +8,7 @@ namespace BookStore.Web.Services;
 /// </summary>
 public class AuthorizationMessageHandler : DelegatingHandler
 {
-    private readonly TokenService _tokenService;
+    readonly TokenService _tokenService;
 
     public AuthorizationMessageHandler(TokenService tokenService) => _tokenService = tokenService;
 

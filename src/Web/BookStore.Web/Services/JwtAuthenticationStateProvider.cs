@@ -10,7 +10,7 @@ namespace BookStore.Web.Services;
 /// </summary>
 public class JwtAuthenticationStateProvider : AuthenticationStateProvider
 {
-    private readonly TokenService _tokenService;
+    readonly TokenService _tokenService;
 
     public JwtAuthenticationStateProvider(TokenService tokenService) => _tokenService = tokenService;
 
@@ -73,7 +73,7 @@ public class JwtAuthenticationStateProvider : AuthenticationStateProvider
         NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(anonymous)));
     }
 
-    private static IEnumerable<Claim> ParseClaimsFromJwt(string jwt)
+    static IEnumerable<Claim> ParseClaimsFromJwt(string jwt)
     {
         var handler = new JwtSecurityTokenHandler();
         var token = handler.ReadJwtToken(jwt);

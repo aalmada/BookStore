@@ -35,7 +35,7 @@ public class BookSearchProjection
 // Event projection for multi-tenant localization
 public class BookSearchProjectionBuilder : EventProjection
 {
-    private readonly LocalizationOptions _localization;
+    readonly LocalizationOptions _localization;
 
     public BookSearchProjectionBuilder(IOptions<LocalizationOptions> localizationOptions)
         => _localization = localizationOptions.Value;
@@ -231,11 +231,11 @@ public class BookSearchProjectionBuilder : EventProjection
 
     // Helper Methods
 
-    private string? GetLocalizedDescription(BookAdded book, string culture) => GetValue(culture, book.Translations, t => t.Description, null);
-    private string? GetLocalizedDescription(BookUpdated book, string culture)
+    string? GetLocalizedDescription(BookAdded book, string culture) => GetValue(culture, book.Translations, t => t.Description, null);
+    string? GetLocalizedDescription(BookUpdated book, string culture)
         => GetValue(culture, book.Translations, t => t.Description, null);
 
-    private string? GetValue<T>(string culture, Dictionary<string, T>? translations, Func<T, string?> selector, string? defaultValue)
+    string? GetValue<T>(string culture, Dictionary<string, T>? translations, Func<T, string?> selector, string? defaultValue)
     {
         if (translations == null || translations.Count == 0)
         {

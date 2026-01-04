@@ -50,7 +50,7 @@ public static class HybridCacheExtensions
     /// Helper to append current culture to the key.
     /// Format: "key|culture" (e.g., "book-123|en-US")
     /// </summary>
-    private static string GetLocalizedKey(string key)
+    static string GetLocalizedKey(string key)
     {
         var culture = CultureInfo.CurrentUICulture.Name;
         // Use a pipe delimiter - distinct from colon usually used for hierarchy
