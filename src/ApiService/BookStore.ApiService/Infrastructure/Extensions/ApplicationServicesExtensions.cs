@@ -124,7 +124,7 @@ public static class ApplicationServicesExtensions
                 }
 
                 // Allow requests from the Web app (even if marked as same-origin by browser)
-                var allowedOrigins = new[] { "https://localhost:7260", "http://localhost:7260" };
+                var allowedOrigins = configuration.GetSection("Authentication:Passkey:AllowedOrigins").Get<string[]>() ?? [];
                 if (allowedOrigins.Contains(context.Origin, StringComparer.OrdinalIgnoreCase))
                 {
                     return ValueTask.FromResult(true);

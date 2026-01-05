@@ -21,7 +21,7 @@ public class PasskeyService
         try
         {
             // Use standard lowercase path
-            var response = await _httpClient.PostAsJsonAsync("account/Attestation/Options", new { Email = email });
+            var response = await _httpClient.PostAsJsonAsync("account/attestation/options", new { Email = email });
             if (response.IsSuccessStatusCode)
             {
                 return (await response.Content.ReadAsStringAsync(), null);
@@ -45,7 +45,7 @@ public class PasskeyService
     {
         try
         {
-            var response = await _httpClient.PostAsJsonAsync("account/Assertion/Options", new { Email = email });
+            var response = await _httpClient.PostAsJsonAsync("account/assertion/options", new { Email = email });
             if (response.IsSuccessStatusCode)
             {
                 return await response.Content.ReadAsStringAsync();
@@ -65,7 +65,7 @@ public class PasskeyService
     {
         try
         {
-            var response = await _httpClient.PostAsJsonAsync("account/Attestation/Result", new
+            var response = await _httpClient.PostAsJsonAsync("account/attestation/result", new
             {
                 CredentialJson = credentialJson,
                 Email = email,
@@ -105,11 +105,14 @@ public class PasskeyService
         }
     }
 
-    public async Task<LoginResult?> LoginWithPasskeyAsync(string credentialJson, string? email = null)
+    public async Task<LoginResult?> LoginWithPasskeyAsync(string credentialJson)
     {
         try
         {
-            var response = await _httpClient.PostAsJsonAsync("account/Assertion/Result", new { CredentialJson = credentialJson, Email = email });
+            var response = await _httpClient.PostAsJsonAsync("account/assertion/result", new
+            {
+                CredentialJson = credentialJson
+            });
 
             if (response.IsSuccessStatusCode)
             {
@@ -191,7 +194,7 @@ public class PasskeyService
     {
         try
         {
-            var response = await _httpClient.PostAsJsonAsync("account/Assertion/Result", new { CredentialJson = credentialJson });
+            var response = await _httpClient.PostAsJsonAsync("account/assertion/result", new { CredentialJson = credentialJson });
             if (response.IsSuccessStatusCode)
             {
                 return await response.Content.ReadFromJsonAsync<LoginResponse>();

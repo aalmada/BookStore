@@ -131,7 +131,7 @@
             var credentialJson = await JS.InvokeAsync<string>("passkey.login", optionsJson);
             
             // 3. Login on Server
-            var result = await PasskeyService.LoginWithPasskeyAsync(credentialJson, email);
+            var result = await PasskeyService.LoginWithPasskeyAsync(credentialJson);
             
             if (result != null && result.Success && !string.IsNullOrEmpty(result.AccessToken))
             {

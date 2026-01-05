@@ -5,6 +5,7 @@ using BookStore.ApiService.Infrastructure.Logging;
 using BookStore.ApiService.Projections;
 using BookStore.Shared.Models;
 using Marten;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 using Scalar.AspNetCore;
 
@@ -35,6 +36,21 @@ builder.Services.AddCors(options => options.AddDefaultPolicy(policy => _ = polic
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials()));
+
+// Add Rate Limiting
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    // Strict policy for Authentication endpoints (Login, Register, Passkeys)
+    _ = options.AddFixedWindowLimiter("AuthPolicy", opt =>
+    {
+        opt.PermitLimit = 10;
+        opt.Window = TimeSpan.FromMinutes(1);
+        opt.QueueProcessingOrder = System.Threading.RateLimiting.QueueProcessingOrder.OldestFirst;
+        opt.QueueLimit = 0;
+    });
+});
 
 // Configure cookie authentication security
 builder.Services.ConfigureApplicationCookie(options =>
@@ -162,6 +178,9 @@ app.UseLoggingEnricher();
 
 // Enable CORS
 app.UseCors();
+
+// Enable Rate Limiting
+app.UseRateLimiter();
 
 // Add authentication and authorization
 app.UseAuthentication();

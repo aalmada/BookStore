@@ -181,10 +181,10 @@ For a detailed breakdown of the project structure, please refer to the [Getting 
 - `POST /identity/logout` - Logout (invalidate token/session)
 
 **Passkey (Passwordless):**
-- `POST /account/Attestation/Options` - Get passkey creation options
-- `POST /account/Attestation/Result` - Complete passkey registration / Sign up
-- `POST /account/Assertion/Options` - Get passkey login options
-- `POST /account/Assertion/Result` - Login with passkey
+- `POST /account/attestation/options` - Get passkey creation options
+- `POST /account/attestation/result` - Complete passkey registration / Sign up
+- `POST /account/assertion/options` - Get passkey login options
+- `POST /account/assertion/result` - Login with passkey
 
 **Account Management:**
 - `POST /identity/forgotPassword` - Request password reset

@@ -24,27 +24,27 @@ sequenceDiagram
 
     Note over User,Database: Passkey-First Registration (Sign Up)
     User->>Browser: Click "Register with Passkey"
-    Browser->>API: POST /account/Attestation/Options (with Email)
+    Browser->>API: POST /account/attestation/options (with Email)
     API->>API: Generate challenge + userId (User doesn't exist yet)
     API->>Browser: Return {options, userId}
     Browser->>Device: Request credential creation
     Device->>User: Prompt for biometric/PIN
     User->>Device: Authenticate (Face ID, etc.)
     Device->>Browser: Create credential (private key stays on device)
-    Browser->>API: POST /account/Attestation/Result (with userId)
+    Browser->>API: POST /account/attestation/result (with userId)
     API->>Database: Create New User & Store public key
     API->>Browser: Success + Auth Token
 
     Note over User,Database: Login Flow
     User->>Browser: Click "Sign in with Passkey"
-    Browser->>API: POST /account/Assertion/Options
+    Browser->>API: POST /account/assertion/options
     API->>API: Generate challenge
     API->>Browser: Return challenge
     Browser->>Device: Request assertion
     Device->>User: Prompt for biometric/PIN
     User->>Device: Authenticate
     Device->>Browser: Sign challenge with private key
-    Browser->>API: POST /account/Assertion/Result
+    Browser->>API: POST /account/assertion/result
     API->>API: Verify signature with public key
     API->>Browser: Issue JWT tokens
 ```
@@ -71,10 +71,25 @@ Passkeys require binding to a specific domain (Origin) to prevent phishing.
 {
   "Authentication": {
     "Passkey": {
-      "ServerDomain": "localhost"
+      "ServerDomain": "localhost",
+      "AllowedOrigins": [
+        "https://localhost:7260",
+        "http://localhost:7260"
+      ]
     }
   }
 }
+```
+
+**Key Settings**:
+- **ServerDomain**: Public domain of the API (e.g. `bookstore.com` or `localhost`).
+- **AllowedOrigins**: List of origins allowed to perform passkey operations (e.g. your Web App URL).
+
+### Rate Limiting
+
+Rate limiting is enforced on all passkey endpoints via the `AuthPolicy`.
+- **Limit**: 10 requests per minute per IP.
+- **Violation**: Returns `429 Too Many Requests`.
 ```
 
 > [!WARNING]
@@ -87,7 +102,7 @@ The application exposes the following endpoints for Passkey operations:
 
 ### Creation (Registration)
 
-1.  **POST `/account/Attestation/Options`**
+1.  **POST `/account/attestation/options`**
     *   **Purpose**: Generates WebAuthn creation options (challenge) for creating a new passkey.
     *   **Request**: `PasskeyCreationRequest { Email: string? }`
     *   **Response**: `{ options: {...}, userId: "guid" }` - Returns both the WebAuthn options AND the generated user ID
@@ -96,7 +111,7 @@ The application exposes the following endpoints for Passkey operations:
         *   If user is **Anonymous** (and Email provided): Generates options to register a **new user** with this passkey.
         *   **Critical**: The `userId` in the response MUST be sent back during attestation to ensure consistency.
 
-2.  **POST `/account/Attestation/Result`**
+2.  **POST `/account/attestation/result`**
     *   **Purpose**: Completes the registration by verifying the attestation.
     *   **Request**: `RegisterPasskeyRequest { CredentialJson: string, Email: string?, UserId: string? }`
     *   **Logic**:
@@ -108,12 +123,12 @@ The application exposes the following endpoints for Passkey operations:
 
 ### Assertion (Login)
 
-1.  **POST `/account/Assertion/Options`**
+1.  **POST `/account/assertion/options`**
     *   **Purpose**: Generates WebAuthn assertion options (challenge) for login.
     *   **Request**: `PasskeyLoginOptionsRequest { Email: string? }`
     *   **Logic**: Supports both "Discoverable Credentials" (login without username) and username-based flows.
 
-2.  **POST `/account/Assertion/Result`**
+2.  **POST `/account/assertion/result`**
     *   **Purpose**: Verifies the assertion and logs the user in.
     *   **Request**: `{ CredentialJson: string }`
     *   **Logic**: Verifies signature, finds user by credential ID from the `userHandle` in the credential, and issues JWT access tokens.
@@ -155,13 +170,13 @@ public class PasskeyService
     
     public async Task<(string? Options, string? Error)> GetCreationOptionsAsync(string? email = null)
     {
-         // Calls POST /account/Attestation/Options
+         // Calls POST /account/attestation/options
          // Returns JSON with { options: {...}, userId: "guid" }
     }
 
     public async Task<LoginResult?> RegisterPasskeyAsync(string credentialJson, string? email = null, string? userId = null)
     {
-         // Calls POST /account/Attestation/Result
+         // Calls POST /account/attestation/result
          // Sends credentialJson, email, AND userId
          // Returns LoginResult (Success + Tokens)
     }
@@ -172,9 +187,9 @@ public class PasskeyService
 
 **The passkey's embedded user ID MUST match the database user ID.** This is achieved by:
 
-1.  **Server** generates a user ID in `/account/Attestation/Options` and returns it with the options
+1.  **Server** generates a user ID in `/account/attestation/options` and returns it with the options
 2.  **Client** extracts the `userId` from the response
-3.  **Client** sends the `userId` back in `/account/Attestation/Result`
+3.  **Client** sends the `userId` back in `/account/attestation/result`
 4.  **Server** uses this `userId` to create the database user
 
 **Example Client Code** (`Register.razor`):

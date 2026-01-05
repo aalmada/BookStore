@@ -32,7 +32,7 @@ public static class JwtAuthenticationEndpoints
             .WithName("JwtRefresh")
             .WithSummary("Refresh an expired access token using a refresh token");
 
-        return group;
+        return group.RequireRateLimiting("AuthPolicy");
     }
 
     static async Task<IResult> LoginAsync(
@@ -169,8 +169,7 @@ public static class JwtAuthenticationEndpoints
         string userId,
         string code,
         UserManager<ApplicationUser> userManager,
-        Wolverine.IMessageBus bus,
-        ILogger<Program> logger)
+        Wolverine.IMessageBus bus)
     {
         var user = await userManager.FindByIdAsync(userId);
         if (user == null)

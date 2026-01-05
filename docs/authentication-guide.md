@@ -44,7 +44,7 @@ graph TB
 - **`JwtAuthenticationEndpoints`**:
     - `POST /identity/login`: Exchange credentials for tokens.
     - `POST /identity/refresh`: Exchange refresh token for new access token.
-- **Passkey Integration**: Passkey login flow (`/Account/LoginPasskey`) also results in the issuance of standard JWTs, making the frontend agnostic to *how* the user logged in.
+- **Passkey Integration**: Passkey login flow (`/account/assertion/result`) also results in the issuance of standard JWTs, making the frontend agnostic to *how* the user logged in.
 
 ## Authentication Methods
 
@@ -68,9 +68,9 @@ Standard email/password login flow.
 The application supports WebAuthn/FIDO2 for passwordless login. This flow is fully integrated with the JWT system.
 
 **Flow**:
-1.  Frontend gets assertion options (`/Account/PasskeyLoginOptions`).
+1.  Frontend gets assertion options (`/account/assertion/options`).
 2.  User authenticates with FaceID/TouchID.
-3.  Frontend sends assertion to `/Account/LoginPasskey`.
+3.  Frontend sends assertion to `/account/assertion/result`.
 4.  **Backend issues JWT tokens** just like a password login.
 
 See [Passkey Guide](passkey-guide.md) for implementation details.
@@ -132,6 +132,14 @@ public class ApplicationUser
     // ...
 }
 ```
+
+## Rate Limiting
+
+To protect against abuse and Denial of Service (DoS) attacks, all authentication endpoints are protected by the **AuthPolicy**.
+
+- **Limit**: 10 requests per minute per IP address.
+- **Scope**: Applied globally to all endpoint in the `/account` group (Login, Register, Passkeys, etc.).
+- **Response**: `429 Too Many Requests` when exceeded.
 
 ## Related Guides
 

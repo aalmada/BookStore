@@ -717,7 +717,8 @@ Required for WebAuthn/FIDO2 operations.
 {
   "Authentication": {
     "Passkey": {
-      "ServerDomain": "localhost"
+      "ServerDomain": "localhost",
+      "AllowedOrigins": ["https://localhost:7260"]
     }
   }
 }
@@ -727,6 +728,7 @@ Required for WebAuthn/FIDO2 operations.
 - **ServerDomain**: The domain where the passkey is valid (the Origin).
     - **Development**: Use `localhost`.
     - **Production**: **MUST** match your public domain (e.g., `bookstore.com`). Do not include protocol or port.
+- **AllowedOrigins**: List of valid origins that can request passkey operations. Used for CORS and WebAuthn validation.
 
 > [!WARNING]
 > **Production Criticality**

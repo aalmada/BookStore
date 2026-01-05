@@ -10,10 +10,10 @@ public static class PasskeyEndpoints
 {
     public static IEndpointRouteBuilder MapPasskeyEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        var paramsGroup = endpoints.MapGroup("/account");
+        var paramsGroup = endpoints.MapGroup("/account").RequireRateLimiting("AuthPolicy");
 
         // 1. Get Creation Options (Authenticated & Unauthenticated)
-        _ = paramsGroup.MapPost("/Attestation/Options", async (
+        _ = paramsGroup.MapPost("/attestation/options", async (
             HttpContext context,
             [FromBody] PasskeyCreationRequest request,
             UserManager<ApplicationUser> userManager,
@@ -69,7 +69,7 @@ public static class PasskeyEndpoints
         });
 
         // 2. Register Passkey (Finish Registration)
-        _ = paramsGroup.MapPost("/Attestation/Result", async (
+        _ = paramsGroup.MapPost("/attestation/result", async (
             HttpContext context,
             [FromBody] RegisterPasskeyRequest request,
             UserManager<ApplicationUser> userManager,
@@ -213,7 +213,7 @@ public static class PasskeyEndpoints
         });
 
         // 3. Get Login Options
-        _ = paramsGroup.MapPost("/Assertion/Options", async (
+        _ = paramsGroup.MapPost("/assertion/options", async (
             [FromBody] PasskeyLoginOptionsRequest request,
             SignInManager<ApplicationUser> signInManager,
             UserManager<ApplicationUser> userManager) =>
@@ -231,7 +231,7 @@ public static class PasskeyEndpoints
         });
 
         // 4. Login Passkey
-        _ = paramsGroup.MapPost("/Assertion/Result", async (
+        _ = paramsGroup.MapPost("/assertion/result", async (
             [FromBody] RegisterPasskeyRequest request,
             SignInManager<ApplicationUser> signInManager,
             UserManager<ApplicationUser> userManager,
