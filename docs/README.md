@@ -26,7 +26,11 @@ Welcome to the Book Store API documentation. This is an event-sourced book store
 - Docker Desktop (for PostgreSQL)
 
 # Clone and run
-git clone <repository-url>
+# HTTPS
+git clone https://github.com/aalmada/BookStore.git
+# OR SSH
+git clone git@github.com:aalmada/BookStore.git
+
 cd BookStore
 dotnet restore
 aspire run

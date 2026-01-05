@@ -26,7 +26,11 @@ This guide will help you set up and run the complete Book Store application (fro
 ### 1. Clone the Repository
 
 ```bash
-git clone <repository-url>
+# HTTPS
+git clone https://github.com/aalmada/BookStore.git
+# OR SSH
+git clone git@github.com:aalmada/BookStore.git
+
 cd BookStore
 ```
 
@@ -109,6 +113,38 @@ You'll see interactive API documentation where you can:
    - `mt_streams` - Event streams per aggregate
    - `book_search_projection` - Book search read model
    - `author_projection`, `category_projection`, `publisher_projection`
+
+
+
+## Logging In
+
+### 1. Default Admin Account
+
+The application seeds a default administrator account for development:
+
+- **Email**: `admin@bookstore.com`
+- **Password**: `Admin123!`
+
+### 2. Registering a New Account
+
+You can also create a new account:
+1. Click **Register** in the top menu.
+2. Enter an email and password.
+3. Click **Register**.
+
+### 3. Verifying Email (Development)
+
+In the development environment, **emails are not actually sent** to prevent spam. Instead, they are logged to the console/OpenTelemetry. To verify a new account:
+
+1. Open the [Aspire Dashboard](https://localhost:17161).
+2. Go to the **Structured Logs** tab.
+3. In the filter bar, search for `"email"`.
+4. Look for a log entry from `BookStore.ApiService` containing the email body.
+5. Expand the log entry to view the details.
+6. Copy the verification link (e.g., `https://localhost:7260/confirm-email?...`).
+7. Paste the link into your browser to verify the account.
+
+Once verified, you can log in with your new credentials.
 
 ## First API Calls
 

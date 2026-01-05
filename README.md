@@ -7,7 +7,7 @@ Full-stack .NET online book store application with event-sourced backend API and
 
 ## Overview
 
-This project is a demonstration and exploration of modern .NET technologies, designed to be as complete as possible while strictly following architectural best practices, and keeping performance as a core priority. The performance philosophy adopted in this project is described in [A 12% improvement, easily obtained, is never considered marginal](https://aalmada.github.io/posts/Performance-optimizations/).
+This project is a demonstration and exploration of modern .NET technologies, designed to be as complete as possible while strictly following architectural best practices, and keeping performance and scalability as core priorities. 
 
 I am sure a lot may be missing. Opening this code to the public is an opportunity to get feedback and learn from others' contributions.
 
@@ -48,7 +48,11 @@ This serves as a foundational blueprint that scales *with* your needs, allowing 
 # Install Aspire CLI: Follow instructions at https://aspire.dev/get-started/install-cli/
 
 # Clone and run
-git clone <repository-url>
+# HTTPS
+git clone https://github.com/aalmada/BookStore.git
+# OR SSH
+git clone git@github.com:aalmada/BookStore.git
+
 cd BookStore
 dotnet restore
 aspire run
