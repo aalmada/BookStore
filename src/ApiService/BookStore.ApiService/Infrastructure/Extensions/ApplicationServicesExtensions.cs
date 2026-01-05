@@ -101,6 +101,7 @@ public static class ApplicationServicesExtensions
 
             })
             .AddUserStore<Identity.MartenUserStore>()
+            .AddSignInManager() // This registers SignInManager and IPasskeyHandler
             .AddDefaultTokenProviders();
 
         // Configure Passkey options
@@ -110,6 +111,27 @@ public static class ApplicationServicesExtensions
             options.ServerDomain = !string.IsNullOrEmpty(passkeyDomain) ? passkeyDomain : "localhost";
             options.AuthenticatorTimeout = TimeSpan.FromMinutes(2);
             options.ChallengeSize = 32;
+
+            // Configure origin validation to allow Web app origin
+            // By default, ASP.NET Core Identity rejects cross-origin passkey requests
+            // We need to explicitly allow the Web app origin (https://localhost:7260)
+            options.ValidateOrigin = context =>
+            {
+                // Allow same-origin requests (when API is called directly)
+                if (!context.CrossOrigin)
+                {
+                    return ValueTask.FromResult(true);
+                }
+
+                // Allow requests from the Web app (even if marked as same-origin by browser)
+                var allowedOrigins = new[] { "https://localhost:7260", "http://localhost:7260" };
+                if (allowedOrigins.Contains(context.Origin, StringComparer.OrdinalIgnoreCase))
+                {
+                    return ValueTask.FromResult(true);
+                }
+
+                return ValueTask.FromResult(false);
+            };
         });
 
         // Add roles support not needed via AddRoles (which requires IRoleStore), 
@@ -117,9 +139,6 @@ public static class ApplicationServicesExtensions
 
         // Add HttpContextAccessor required for SignInManager
         _ = services.AddHttpContextAccessor();
-
-        // Add SignInManager separately
-        _ = services.AddScoped<Microsoft.AspNetCore.Identity.SignInManager<Models.ApplicationUser>>();
 
         // Add JWT Bearer authentication
         var jwtSettings = configuration.GetSection("Jwt");
@@ -139,7 +158,11 @@ public static class ApplicationServicesExtensions
                 IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(
                         System.Text.Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]!)),
                 ClockSkew = TimeSpan.Zero // Remove default 5 minute clock skew
-            });
+            })
+            // Add cookies required by SignInManager
+            .AddCookie(Microsoft.AspNetCore.Identity.IdentityConstants.ApplicationScheme)
+            .AddCookie(Microsoft.AspNetCore.Identity.IdentityConstants.ExternalScheme)
+            .AddCookie(Microsoft.AspNetCore.Identity.IdentityConstants.TwoFactorUserIdScheme);
 
         // Add JWT token service
         _ = services.AddSingleton<Services.JwtTokenService>();

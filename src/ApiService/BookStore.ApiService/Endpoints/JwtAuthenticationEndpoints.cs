@@ -24,11 +24,11 @@ public static class JwtAuthenticationEndpoints
             .WithName("JwtRegister")
             .WithSummary("Register a new user account");
 
-        _ = group.MapPost("/confirmEmail", ConfirmEmailAsync)
+        _ = group.MapPost("/confirm-email", ConfirmEmailAsync)
             .WithName("ConfirmEmail")
             .WithSummary("Confirm a user's email address using a verification code");
 
-        _ = group.MapPost("/refresh", RefreshTokenAsync)
+        _ = group.MapPost("/refresh-token", RefreshTokenAsync)
             .WithName("JwtRefresh")
             .WithSummary("Refresh an expired access token using a refresh token");
 

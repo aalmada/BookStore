@@ -39,7 +39,8 @@ public class AuthenticationService(
         }
         catch (Refit.ApiException ex)
         {
-            return new LoginResult(false, ex.Content ?? "Login failed", null, null);
+            var errorMessage = ParseError(ex.Content);
+            return new LoginResult(false, errorMessage, null, null);
         }
     }
 
@@ -58,13 +59,69 @@ public class AuthenticationService(
         try
         {
             var request = new RegisterRequest(email, password);
-            await registerEndpoint.Execute(request);
+            _ = await registerEndpoint.Execute(request);
             return new RegisterResult(true, null);
         }
         catch (Refit.ApiException ex)
         {
-            return new RegisterResult(false, ex.Content ?? "Registration failed");
+            var errorMessage = ParseError(ex.Content);
+            return new RegisterResult(false, errorMessage);
         }
+    }
+
+    static string ParseError(string? content)
+    {
+        if (string.IsNullOrEmpty(content))
+        {
+            return "Operation failed";
+        }
+
+        try
+        {
+            // Try to parse standard { "errors": [ { "description": "..." } ] }
+            using var doc = System.Text.Json.JsonDocument.Parse(content);
+            if (doc.RootElement.ValueKind == System.Text.Json.JsonValueKind.Object)
+            {
+                if (doc.RootElement.TryGetProperty("errors", out var errors) && errors.ValueKind == System.Text.Json.JsonValueKind.Array)
+                {
+                    foreach (var error in errors.EnumerateArray())
+                    {
+                        if (error.TryGetProperty("description", out var desc))
+                        {
+                            return desc.GetString() ?? "Unknown error";
+                        }
+                    }
+                }
+                // Try to parse standard ProblemDetails "detail"
+                if (doc.RootElement.TryGetProperty("detail", out var detail))
+                {
+                    return detail.GetString() ?? "Operation failed";
+                }
+            }
+            // If it's a direct array [ { "description": "..." } ] (used in some endpoints)
+            else if (doc.RootElement.ValueKind == System.Text.Json.JsonValueKind.Array)
+            {
+                foreach (var error in doc.RootElement.EnumerateArray())
+                {
+                    if (error.TryGetProperty("description", out var desc))
+                    {
+                        return desc.GetString() ?? "Unknown error";
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // Fallback to raw content if not JSON
+        }
+
+        // Clean up quotes if it's a simple string
+        if (content.StartsWith("\"") && content.EndsWith("\""))
+        {
+            return content.Trim('"');
+        }
+
+        return content;
     }
 
     /// <summary>

@@ -28,14 +28,14 @@ var apiServiceUrl = builder.Configuration["services:apiservice:https:0"]
     ?? "http://localhost:5000";
 
 // Configure Polly policies for resilience
-var retryPolicy = HttpPolicyExtensions
-    .HandleTransientHttpError()
-    .WaitAndRetryAsync(3, retryAttempt =>
-        TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
+// var retryPolicy = HttpPolicyExtensions
+//     .HandleTransientHttpError()
+//     .WaitAndRetryAsync(3, retryAttempt =>
+//         TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
 
-var circuitBreakerPolicy = HttpPolicyExtensions
-    .HandleTransientHttpError()
-    .CircuitBreakerAsync(5, TimeSpan.FromSeconds(30));
+// var circuitBreakerPolicy = HttpPolicyExtensions
+//     .HandleTransientHttpError()
+//     .CircuitBreakerAsync(5, TimeSpan.FromSeconds(30));
 
 // Register AuthorizationMessageHandler for JWT token injection
 builder.Services.AddScoped<AuthorizationMessageHandler>();
@@ -47,7 +47,7 @@ builder.Services.AddBookStoreClient(
 
 // Add authentication services (JWT token-based)
 builder.Services.AddScoped<TokenService>();
-builder.Services.AddHttpClient<PasskeyService>(client => client.BaseAddress = new Uri("https+http://bookstore-api")).AddHttpMessageHandler<AuthorizationMessageHandler>();
+builder.Services.AddHttpClient<PasskeyService>(client => client.BaseAddress = new Uri(apiServiceUrl));
 
 builder.Services.AddScoped<AuthenticationService>();
 builder.Services.AddScoped<JwtAuthenticationStateProvider>();
@@ -57,12 +57,12 @@ builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddAuthorizationCore();
 
 // Add Polly resilience policies to all HTTP clients
-builder.Services.ConfigureHttpClientDefaults(http =>
-{
-    // Cookies are sent automatically by the browser - no need for manual token injection
-    _ = http.AddPolicyHandler(retryPolicy);
-    _ = http.AddPolicyHandler(circuitBreakerPolicy);
-});
+// builder.Services.ConfigureHttpClientDefaults(http =>
+// {
+//     // Cookies are sent automatically by the browser - no need for manual token injection
+//     _ = http.AddPolicyHandler(retryPolicy);
+//     _ = http.AddPolicyHandler(circuitBreakerPolicy);
+// });
 
 // Register SignalR hub service for real-time notifications
 builder.Services.AddSingleton<BookStoreHubService>();

@@ -27,20 +27,35 @@ function bufferToBase64Url(buffer) {
         .replace(/=/g, '');
 }
 
+// Utility to recursive convert object keys to camelCase
+function normalizeKeys(obj) {
+    if (Array.isArray(obj)) {
+        return obj.map(v => normalizeKeys(v));
+    } else if (obj !== null && obj.constructor === Object) {
+        return Object.keys(obj).reduce((result, key) => {
+            const camelKey = key.charAt(0).toLowerCase() + key.slice(1);
+            result[camelKey] = normalizeKeys(obj[key]);
+            return result;
+        }, {});
+    }
+    return obj;
+}
+
 window.passkey = {
     register: async (optionsJson) => {
         try {
-            const options = JSON.parse(optionsJson);
+            let options = JSON.parse(optionsJson);
 
-            // Fix options for WebAuthn
-            options.challenge = base64UrlToUint8Array(options.challenge);
-            if (options.user.id) {
-                options.user.id = base64UrlToUint8Array(options.user.id); // User ID is usually a string in .NET Identity?? 
-                // Wait, .NET Identity PasskeyUserEntity.Id is string. 
-                // But WebAuthn expects Buffer.
-                // We should ensure the server sends a Base64URL string or handle the conversion correctly.
-                // If the server sends a GUID string, we might converts it to UTF8 bytes?
-                // Actually, .NET implementation of MakePasskeyCreationOptionsAsync handles this.
+            // Normalize all keys to camelCase (handling PascalCase from server)
+            options = normalizeKeys(options);
+
+            // Fix options for WebAuthn (Base64Url Strings -> Uint8Array)
+            if (options.challenge) {
+                options.challenge = base64UrlToUint8Array(options.challenge);
+            }
+
+            if (options.user && options.user.id) {
+                options.user.id = base64UrlToUint8Array(options.user.id);
             }
 
             if (options.excludeCredentials) {
@@ -54,14 +69,15 @@ window.passkey = {
                 publicKey: options
             });
 
-            // Convert response back to JSON-friendly format
             const response = {
                 id: credential.id,
                 rawId: bufferToBase64Url(credential.rawId),
                 type: credential.type,
+                clientExtensionResults: credential.getClientExtensionResults(),
                 response: {
                     attestationObject: bufferToBase64Url(credential.response.attestationObject),
-                    clientDataJSON: bufferToBase64Url(credential.response.clientDataJSON)
+                    clientDataJSON: bufferToBase64Url(credential.response.clientDataJSON),
+                    userHandle: credential.response.userHandle ? bufferToBase64Url(credential.response.userHandle) : null
                 }
             };
 
@@ -77,25 +93,10 @@ window.passkey = {
 
     login: async (optionsJson) => {
         try {
-            // Options might be minimal for "conditional" UI or explicit login
-            // For explicit login (we generate options on server with challenge)
-            // But we don't have GetLoginOptions endpoint implemented fully yet (returning Not Implemented)
-            // So we might construct a dummy challenge locally if we rely on "PasskeySignInAsync" without challenge verification?
-            // NO. Passkey signatures SIGN the challenge. The server MUST provide it.
+            let options = JSON.parse(optionsJson);
 
-            // Wait, my /PasskeyLoginOptions endpoint returns "Not Implemented".
-            // So valid login flow is impossible right now without that endpoint!
-            // I must implement /PasskeyLoginOptions on the backend first?
-            // Or I can use client-side discovery?
-            // No, server must verify the signature against a challenge it generated.
-
-            // Re-check backend: /PasskeyLoginOptions returns error.
-            // I should implement it using "MakePasskeyRequestOptionsAsync" if I can find it?
-            // Or I can generate a random challenge manually and store it in session?
-            // But SignInManager expects to verify it.
-
-            // Let's assume optionsJson comes from server.
-            const options = JSON.parse(optionsJson);
+            // Normalize all keys to camelCase
+            options = normalizeKeys(options);
 
             options.challenge = base64UrlToUint8Array(options.challenge);
 
@@ -114,6 +115,7 @@ window.passkey = {
                 id: credential.id,
                 rawId: bufferToBase64Url(credential.rawId),
                 type: credential.type,
+                clientExtensionResults: credential.getClientExtensionResults(),
                 response: {
                     authenticatorData: bufferToBase64Url(credential.response.authenticatorData),
                     clientDataJSON: bufferToBase64Url(credential.response.clientDataJSON),

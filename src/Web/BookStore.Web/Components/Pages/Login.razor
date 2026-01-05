@@ -120,7 +120,6 @@
             Logger.LogInformation("Attempting passkey login");
             
             // 1. Get Options
-            // Note: Currently server might return 501 Not Implemented if method is missing
             var optionsJson = await PasskeyService.GetLoginOptionsAsync(email); 
             if (string.IsNullOrEmpty(optionsJson))
             {
@@ -132,9 +131,9 @@
             var credentialJson = await JS.InvokeAsync<string>("passkey.login", optionsJson);
             
             // 3. Login on Server
-            var result = await PasskeyService.LoginPasskeyAsync(credentialJson);
+            var result = await PasskeyService.LoginWithPasskeyAsync(credentialJson, email);
             
-            if (result != null && !string.IsNullOrEmpty(result.AccessToken))
+            if (result != null && result.Success && !string.IsNullOrEmpty(result.AccessToken))
             {
                  Logger.LogInformation("Passkey login successful");
                  AuthStateProvider.NotifyUserAuthentication(result.AccessToken);
@@ -142,7 +141,7 @@
             }
             else
             {
-                errorMessage = "Passkey login failed.";
+                errorMessage = result?.Error ?? "Passkey login failed.";
             }
         }
         catch (Exception ex)

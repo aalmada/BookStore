@@ -75,7 +75,6 @@ public static class BookStoreClientExtensions
         _ = AddClient<IIdentityRegisterEndpoint>();
         _ = AddClient<IIdentityConfirmEmailEndpoint>();
         _ = AddClient<IIdentityRefreshEndpoint>();
-        _ = AddClient<IIdentityManageInfoEndpoint>();
 
         return services;
     }

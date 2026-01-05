@@ -11,7 +11,7 @@ public interface IIdentityLoginEndpoint
     /// <summary>
     /// Login with email and password
     /// </summary>
-    [Post("/identity/login")]
+    [Post("/account/login")]
     Task<LoginResponse> Execute(
         [Body] LoginRequest request,
         [AliasAs("useCookies")] bool? useCookies = null,
@@ -24,8 +24,8 @@ public interface IIdentityRegisterEndpoint
     /// <summary>
     /// Register a new user
     /// </summary>
-    [Post("/identity/register")]
-    Task Execute(
+    [Post("/account/register")]
+    Task<LoginResponse> Execute(
         [Body] RegisterRequest request,
         CancellationToken cancellationToken = default);
 }
@@ -35,7 +35,7 @@ public interface IIdentityConfirmEmailEndpoint
     /// <summary>
     /// Confirm user email
     /// </summary>
-    [Post("/identity/confirmEmail")]
+    [Post("/account/confirm-email")]
     Task Execute(
         [Query] string userId,
         [Query] string code,
@@ -47,27 +47,9 @@ public interface IIdentityRefreshEndpoint
     /// <summary>
     /// Refresh access token
     /// </summary>
-    [Post("/identity/refresh")]
+    [Post("/account/refresh-token")]
     Task<LoginResponse> Execute(
         [Body] RefreshRequest request,
-        CancellationToken cancellationToken = default);
-}
-
-public interface IIdentityManageInfoEndpoint
-{
-    /// <summary>
-    /// Get user information
-    /// </summary>
-    [Get("/identity/manage/info")]
-    Task<UserInfo> Execute(
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Update user information
-    /// </summary>
-    [Post("/identity/manage/info")]
-    Task<UserInfo> Update(
-        [Body] UpdateUserInfoRequest request,
         CancellationToken cancellationToken = default);
 }
 

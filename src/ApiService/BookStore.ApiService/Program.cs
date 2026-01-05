@@ -17,13 +17,24 @@ builder.AddServiceDefaults();
 builder.AddAzureBlobServiceClient("blobs");
 
 // Add Redis distributed cache
-builder.AddRedisDistributedCache("cache");
+// Add Redis distributed cache
+// builder.AddRedisDistributedCache("cache");
+builder.Services.AddDistributedMemoryCache();
+
+// Add HybridCache (L1 + L2)
+builder.Services.AddHybridCache();
 
 // Configure services
 builder.Services.AddJsonConfiguration(builder.Environment);
 builder.Services.AddApplicationServices(builder.Configuration);
 builder.Services.AddMartenEventStore(builder.Configuration);
 builder.Services.AddWolverineMessaging();
+
+// Add CORS to allow Web app to call API
+builder.Services.AddCors(options => options.AddDefaultPolicy(policy => _ = policy.WithOrigins("https://localhost:7260", "http://localhost:7260")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials()));
 
 // Configure cookie authentication security
 builder.Services.ConfigureApplicationCookie(options =>
@@ -149,6 +160,9 @@ app.UseMartenMetadata();
 // Add logging enricher middleware to add metadata to all logs
 app.UseLoggingEnricher();
 
+// Enable CORS
+app.UseCors();
+
 // Add authentication and authorization
 app.UseAuthentication();
 app.UseAuthorization();
@@ -169,7 +183,8 @@ app.UseResponseCaching();
 app.UseOutputCache();
 
 // Map JWT authentication endpoints
-app.MapGroup("/identity").MapJwtAuthenticationEndpoints();
+app.MapGroup("/account").MapJwtAuthenticationEndpoints();
+app.MapPasskeyEndpoints();
 
 // Map all API endpoints
 app.MapApiEndpoints();

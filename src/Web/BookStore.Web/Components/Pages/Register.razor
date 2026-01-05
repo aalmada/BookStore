@@ -253,20 +253,51 @@
                  return;
             }
             
-            // 2. JS WebAuthn Create
-            var credentialJson = await JS.InvokeAsync<string>("passkey.register", options);
-            
-            // 3. Submit to Server
-            // Refactored PasskeyService.RegisterPasskeyAsync returns LoginResult now
-            var result = await PasskeyService.RegisterPasskeyAsync(credentialJson, email);
-            
-            if (result != null && result.Success && !string.IsNullOrEmpty(result.AccessToken))
+            // Extract userId from the options response
+            string? userId = null;
+            string optionsJson = options;
+            try
             {
-                // Auto-login success
-                AuthStateProvider.NotifyUserAuthentication(result.AccessToken);
-                registrationSuccess = true;
-                await Task.Delay(2000);
-                Navigation.NavigateTo("/");
+                using var doc = System.Text.Json.JsonDocument.Parse(options);
+                if (doc.RootElement.TryGetProperty("userId", out var userIdElem))
+                {
+                    userId = userIdElem.GetString();
+                }
+                
+                // Get the actual options object
+                if (doc.RootElement.TryGetProperty("options", out var optionsElem))
+                {
+                    optionsJson = optionsElem.GetRawText();
+                }
+            }
+            catch
+            {
+                // If parsing fails, use the whole response as options
+            }
+            
+            // 2. JS WebAuthn Create
+            var credentialJson = await JS.InvokeAsync<string>("passkey.register", optionsJson);
+            
+            // 3. Submit to Server with userId
+            var result = await PasskeyService.RegisterPasskeyAsync(credentialJson, email, userId);
+            
+            if (result != null && result.Success)
+            {
+                if (!string.IsNullOrEmpty(result.AccessToken))
+                {
+                    // Auto-login success (when email verification is not required)
+                    AuthStateProvider.NotifyUserAuthentication(result.AccessToken);
+                    registrationSuccess = true;
+                    requiresVerification = false;
+                    await Task.Delay(2000);
+                    Navigation.NavigateTo("/");
+                }
+                else
+                {
+                    // Email verification required
+                    registrationSuccess = true;
+                    requiresVerification = true;
+                }
             }
             else
             {
