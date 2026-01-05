@@ -24,29 +24,29 @@ sequenceDiagram
 
     Note over User,Database: Passkey-First Registration (Sign Up)
     User->>Browser: Click "Register with Passkey"
-    Browser->>API: POST /Account/PasskeyCreationOptions (with Email)
-    API->>API: Generate challenge (User doesn't exist yet)
-    API->>Browser: Return challenge + options
+    Browser->>API: POST /account/Attestation/Options (with Email)
+    API->>API: Generate challenge + userId (User doesn't exist yet)
+    API->>Browser: Return {options, userId}
     Browser->>Device: Request credential creation
     Device->>User: Prompt for biometric/PIN
     User->>Device: Authenticate (Face ID, etc.)
     Device->>Browser: Create credential (private key stays on device)
-    Browser->>API: POST /Account/RegisterPasskey (with Email)
+    Browser->>API: POST /account/Attestation/Result (with userId)
     API->>Database: Create New User & Store public key
     API->>Browser: Success + Auth Token
 
     Note over User,Database: Login Flow
     User->>Browser: Click "Sign in with Passkey"
-    Browser->>API: POST /Account/PasskeyLoginOptions
+    Browser->>API: POST /account/Assertion/Options
     API->>API: Generate challenge
     API->>Browser: Return challenge
     Browser->>Device: Request assertion
     Device->>User: Prompt for biometric/PIN
     User->>Device: Authenticate
     Device->>Browser: Sign challenge with private key
-    Browser->>API: POST /identity/login/passkey
+    Browser->>API: POST /account/Assertion/Result
     API->>API: Verify signature with public key
-    API->>Browser: Issue authentication cookie/JWT
+    API->>Browser: Issue JWT tokens
 ```
 
 ## .NET 10 Built-in Support
@@ -87,32 +87,36 @@ The application exposes the following endpoints for Passkey operations:
 
 ### Creation (Registration)
 
-1.  **POST `/Account/PasskeyCreationOptions`**
+1.  **POST `/account/Attestation/Options`**
     *   **Purpose**: Generates WebAuthn creation options (challenge) for creating a new passkey.
     *   **Request**: `PasskeyCreationRequest { Email: string? }`
+    *   **Response**: `{ options: {...}, userId: "guid" }` - Returns both the WebAuthn options AND the generated user ID
     *   **Logic**:
         *   If user is **Authenticated**: Generates options to add a passkey to the current account.
         *   If user is **Anonymous** (and Email provided): Generates options to register a **new user** with this passkey.
+        *   **Critical**: The `userId` in the response MUST be sent back during attestation to ensure consistency.
 
-2.  **POST `/Account/RegisterPasskey`**
+2.  **POST `/account/Attestation/Result`**
     *   **Purpose**: Completes the registration by verifying the attestation.
-    *   **Request**: `RegisterPasskeyRequest { CredentialJson: string, Email: string? }`
+    *   **Request**: `RegisterPasskeyRequest { CredentialJson: string, Email: string?, UserId: string? }`
     *   **Logic**:
         *   Verifies the WebAuthn attestation.
+        *   Uses the `UserId` from the request (sent by client from options response) to create the user.
         *   If **Authenticated**: Adds passkey to existing user.
-        *   If **Anonymous**: Creates a new `ApplicationUser` with the provided Email (passwordless) and adds the passkey. **Logs the user in immediately.**
+        *   If **Anonymous**: Creates a new `ApplicationUser` with the provided Email and UserId. **Logs the user in immediately.**
+    *   **Critical**: The `UserId` parameter ensures the passkey's embedded user ID matches the database user ID, enabling successful login.
 
 ### Assertion (Login)
 
-1.  **POST `/Account/PasskeyLoginOptions`**
+1.  **POST `/account/Assertion/Options`**
     *   **Purpose**: Generates WebAuthn assertion options (challenge) for login.
     *   **Request**: `PasskeyLoginOptionsRequest { Email: string? }`
     *   **Logic**: Supports both "Discoverable Credentials" (login without username) and username-based flows.
 
-2.  **POST `/Account/LoginPasskey`**
+2.  **POST `/account/Assertion/Result`**
     *   **Purpose**: Verifies the assertion and logs the user in.
     *   **Request**: `{ CredentialJson: string }`
-    *   **Logic**: Verifies signature, finds user by credential ID, and issues JWT access tokens.
+    *   **Logic**: Verifies signature, finds user by credential ID from the `userHandle` in the credential, and issues JWT access tokens.
 
 ## Client-Side Integration
 
@@ -127,6 +131,7 @@ window.passkey = {
         // ... Convert base64 strings to Uint8Array ...
         const credential = await navigator.credentials.create({ publicKey: options });
         // ... Convert ArrayBuffers back to base64 ...
+        // IMPORTANT: Include userHandle in the response
         return JSON.stringify(credentialResponse);
     },
     login: async (optionsJson) => {
@@ -150,16 +155,54 @@ public class PasskeyService
     
     public async Task<(string? Options, string? Error)> GetCreationOptionsAsync(string? email = null)
     {
-         // Calls POST /Account/PasskeyCreationOptions
+         // Calls POST /account/Attestation/Options
+         // Returns JSON with { options: {...}, userId: "guid" }
     }
 
-    public async Task<LoginResult?> RegisterPasskeyAsync(string credentialJson, string? email = null)
+    public async Task<LoginResult?> RegisterPasskeyAsync(string credentialJson, string? email = null, string? userId = null)
     {
-         // Calls POST /Account/RegisterPasskey
+         // Calls POST /account/Attestation/Result
+         // Sends credentialJson, email, AND userId
          // Returns LoginResult (Success + Tokens)
     }
 }
 ```
+
+### Critical Implementation Detail: User ID Consistency
+
+**The passkey's embedded user ID MUST match the database user ID.** This is achieved by:
+
+1.  **Server** generates a user ID in `/account/Attestation/Options` and returns it with the options
+2.  **Client** extracts the `userId` from the response
+3.  **Client** sends the `userId` back in `/account/Attestation/Result`
+4.  **Server** uses this `userId` to create the database user
+
+**Example Client Code** (`Register.razor`):
+```csharp
+// 1. Get options (includes userId)
+var (options, error) = await PasskeyService.GetCreationOptionsAsync(email);
+
+// 2. Extract userId from response
+string? userId = null;
+string optionsJson = options;
+using var doc = System.Text.Json.JsonDocument.Parse(options);
+if (doc.RootElement.TryGetProperty("userId", out var userIdElem))
+{
+    userId = userIdElem.GetString();
+}
+if (doc.RootElement.TryGetProperty("options", out var optionsElem))
+{
+    optionsJson = optionsElem.GetRawText();
+}
+
+// 3. Create passkey with WebAuthn
+var credentialJson = await JS.InvokeAsync<string>("passkey.register", optionsJson);
+
+// 4. Send credential AND userId to server
+var result = await PasskeyService.RegisterPasskeyAsync(credentialJson, email, userId);
+```
+
+This ensures the passkey verification succeeds during login because the user IDs match.
 
 ## Security Considerations
 
