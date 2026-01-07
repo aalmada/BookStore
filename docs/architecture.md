@@ -249,11 +249,11 @@ sequenceDiagram
 ### Backend
 - **ASP.NET Core 10** - Web framework
 - **Minimal APIs** - Endpoint definition
-- **Wolverine 5.9.2** - Command/handler pattern and message bus
-- **Marten 8.17.0** - Event store and document DB
-- **PostgreSQL 16** - Database
+- **Wolverine** - Command/handler pattern and message bus
+- **Marten** - Event store and document DB
+- **PostgreSQL 16** - Database with extensions
 - **Aspire** - [Orchestration](aspire-guide.md) and observability
-- **Scalar 2.11.10** - API documentation
+- **Scalar** - API documentation
 
 ### Features
 - **Event Sourcing** - Marten event store
@@ -270,6 +270,8 @@ sequenceDiagram
 - **PgAdmin** - Database management
 - **OpenTelemetry** - Distributed tracing
 - **Health Checks** - Service monitoring
+- **TUnit** - Modern testing framework with built-in code coverage
+- **Bogus** - Fake data generation for tests
 - **Roslyn Analyzers** - Custom analyzers for Event Sourcing/CQRS patterns ([docs](analyzer-rules.md))
 - **Roslynator.Analyzers** - Enhanced code analysis
 - **Refit** - Type-safe REST library for .NET

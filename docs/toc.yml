@@ -40,6 +40,8 @@
       href: performance-guide.md
     - name: Testing
       href: testing-guide.md
+    - name: Integration Testing
+      href: integration-testing-guide.md
     - name: Aspire Deployment
       href: aspire-deployment-guide.md
     - name: Production Scaling

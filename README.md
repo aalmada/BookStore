@@ -135,7 +135,8 @@ For a detailed breakdown of the project structure, please refer to the [Getting 
 - **[Caching Guide](docs/caching-guide.md)** - Hybrid caching with Redis and localization support
 - **[ETag Support](docs/etag-guide.md)** - Optimistic concurrency and caching
 - **[Performance Guide](docs/performance-guide.md)** - GC optimization and performance tuning
-- **[Testing Guide](docs/testing-guide.md)** - Testing with TUnit, assertions, and best practices
+- **[Testing Guide](docs/testing-guide.md)** - Unit testing with TUnit, assertions, and best practices
+- **[Integration Testing Guide](docs/integration-testing-guide.md)** - End-to-end testing with Aspire and Bogus
 - **[Aspire Deployment Guide](docs/aspire-deployment-guide.md)** - Deploy to Azure and Kubernetes
 - **[Production Scaling Guide](docs/production-scaling-guide.md)** - Scale applications and databases in production
 - **[Contributing Guidelines](CONTRIBUTING.md)** - How to contribute to this project
@@ -151,8 +152,8 @@ For a detailed breakdown of the project structure, please refer to the [Getting 
 ### Backend
 - **ASP.NET Core 10** - Minimal APIs
 - **C# 14** - Latest language features (collection expressions, primary constructors, etc.)
-- **Marten 8.17** - Event store and document DB
-- **Wolverine 5.9** - Mediator, message bus, and SignalR integration
+- **Marten** - Event store and document DB
+- **Wolverine** - Mediator, message bus, and SignalR integration
 - **PostgreSQL 16** - Database with pg_trgm and unaccent extensions
 
 ### Infrastructure
@@ -161,10 +162,10 @@ For a detailed breakdown of the project structure, please refer to the [Getting 
 - **Scalar** - API documentation UI
 - **Docker** - Container runtime
 - **TUnit** - Modern testing framework with built-in code coverage
+- **Bogus** - Fake data generation for tests
 - **Roslyn Analyzers** - Custom analyzers for Event Sourcing/CQRS patterns
-- **Roslynator.Analyzers 4.15.0** - Enhanced code analysis
+- **Roslynator.Analyzers** - Enhanced code analysis
 - **Refit** - Type-safe REST library for .NET
-- **NSwag** - OpenAPI client generation (optional development tool)
 
 ## 📊 API Endpoints
 

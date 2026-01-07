@@ -1,10 +1,13 @@
 # Testing Guide
 
-This guide covers testing practices and tools used in the Book Store project.
+This guide covers **unit testing** practices and tools used in the Book Store project.
+
+> [!NOTE]
+> This guide focuses on **unit testing** with TUnit. For **integration testing** (end-to-end tests with Aspire), see the [Integration Testing Guide](integration-testing-guide.md).
 
 ## Testing Framework
 
-The project uses **TUnit v1.6.28**, a modern testing framework for .NET that provides:
+The project uses **TUnit**, a modern testing framework for .NET that provides:
 
 - **Source-Generated Tests** - Compile-time test discovery for faster execution
 - **Parallel Execution** - Tests run in parallel by default for improved performance
@@ -22,10 +25,10 @@ The project uses **TUnit v1.6.28**, a modern testing framework for .NET that pro
 dotnet test
 
 # Run tests for specific project
-dotnet test --project src/ApiService/BookStore.ApiService.Tests/BookStore.ApiService.Tests.csproj
+dotnet test --project tests/ApiService/BookStore.ApiService.UnitTests/BookStore.ApiService.UnitTests.csproj
 
 # Run tests directly (alternative method)
-dotnet run --project src/ApiService/BookStore.ApiService.Tests/BookStore.ApiService.Tests.csproj
+dotnet run --project tests/ApiService/BookStore.ApiService.UnitTests/BookStore.ApiService.UnitTests.csproj
 ```
 
 ### IDE Support
@@ -41,12 +44,16 @@ TUnit works with all major .NET IDEs:
 ### Test Files
 
 ```
-```
-src/ApiService/BookStore.ApiService.Tests/
+tests/ApiService/BookStore.ApiService.UnitTests/
 ├── Handlers/
-│   └── BookHandlerTests.cs          # Command handler tests
+│   ├── BookHandlerTests.cs          # Book command handler tests
+│   ├── AuthorHandlerTests.cs        # Author command handler tests
+│   ├── CategoryHandlerTests.cs      # Category command handler tests
+│   └── PublisherHandlerTests.cs     # Publisher command handler tests
+├── Infrastructure/
+│   ├── CultureCacheTests.cs         # Culture caching tests
+│   └── LocalizationHelperTests.cs   # Localization helper tests
 └── JsonSerializationTests.cs        # JSON standards verification
-```
 ```
 
 ### Test Anatomy
@@ -146,7 +153,7 @@ await Assert.ThrowsAsync<InvalidOperationException>(async () =>
 
 Test individual command handlers in isolation using mocked dependencies.
 
-**Example**: [BookHandlerTests.cs](file:///Users/antaoalmada/Projects/BookStore/src/ApiService/BookStore.ApiService.Tests/Handlers/BookHandlerTests.cs)
+**Example**: [BookHandlerTests.cs](file:///Users/antaoalmada/Projects/BookStore/tests/ApiService/BookStore.ApiService.UnitTests/Handlers/BookHandlerTests.cs)
 
 ```csharp
 [Test]
@@ -172,7 +179,7 @@ public async Task UpdateBookHandler_WithMissingBook_ShouldReturnNotFound()
 
 Verify that the API follows JSON standards (ISO 8601, camelCase, etc.).
 
-**Example**: [JsonSerializationTests.cs](file:///Users/antaoalmada/Projects/BookStore/src/ApiService/BookStore.ApiService.Tests/JsonSerializationTests.cs)
+**Example**: [JsonSerializationTests.cs](file:///Users/antaoalmada/Projects/BookStore/tests/ApiService/BookStore.ApiService.UnitTests/JsonSerializationTests.cs)
 
 ```csharp
 [Test]
@@ -189,7 +196,10 @@ public async Task DateTimeOffset_Should_Serialize_As_ISO8601_With_UTC()
 
 Test the full application stack using Aspire.Hosting.Testing.
 
-**Example**: [WebTests.cs](file:///Users/antaoalmada/Projects/BookStore/src/Web/BookStore.Web.Tests/BookStore.Web.Tests.csproj)
+> [!TIP]
+> For comprehensive integration testing patterns, strategies, and best practices, see the [Integration Testing Guide](integration-testing-guide.md).
+
+**Example**: [WebTests.cs](file:///Users/antaoalmada/Projects/BookStore/tests/BookStore.AppHost.Tests/WebTests.cs)
 
 ```csharp
 [Test]
@@ -287,7 +297,7 @@ When running in GitHub Actions, TUnit automatically:
   run: dotnet build --no-restore --configuration Release
 
 - name: Run tests
-  run: dotnet test --project src/ApiService/BookStore.ApiService.Tests/BookStore.ApiService.Tests.csproj --configuration Release --no-build ${{ github.event_name == 'pull_request' && '--fail-fast' || '' }}
+  run: dotnet test --configuration Release --no-build ${{ github.event_name == 'pull_request' && '--fail-fast' || '' }}
   # TUnit automatically generates GitHub Actions test summary
   # Results appear in the workflow run summary with collapsible details
   # --fail-fast: Stop on first failure in PRs for quick feedback
@@ -362,10 +372,10 @@ The test project includes:
 </PropertyGroup>
 
 <ItemGroup>
-  <PackageReference Include="TUnit" Version="1.6.28" />
-  <PackageReference Include="TUnit.Assertions" Version="1.6.28" />
-  <PackageReference Include="NSubstitute" Version="5.3.0" />
-  <PackageReference Include="Aspire.Hosting.Testing" Version="13.1.0" />
+  <PackageReference Include="TUnit" />
+  <PackageReference Include="TUnit.Assertions" />
+  <PackageReference Include="NSubstitute" />
+  <PackageReference Include="Aspire.Hosting.Testing" />
 </ItemGroup>
 ```
 
