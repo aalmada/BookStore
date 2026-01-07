@@ -42,10 +42,9 @@ public static class BookEndpoints
         HttpContext context)
     {
         var paging = request.Normalize(paginationOptions.Value);
-
-        // Use the resolved culture as the tenant ID
-        var culture = CultureInfo.CurrentCulture.Name; // e.g. "en-US", "pt", "en"
-        await using var session = store.QuerySession(culture);
+        var culture = CultureInfo.CurrentCulture.Name;
+        var defaultCulture = localizationOptions.Value.DefaultCulture;
+        await using var session = store.QuerySession();
 
         // Dictionaries to hold included documents
         var publishers = new Dictionary<Guid, PublisherProjection>();
@@ -116,14 +115,14 @@ public static class BookEndpoints
             .ToPagedListAsync(paging.Page!.Value, paging.PageSize!.Value);
 #pragma warning restore CS8603
 
-        // Map to DTOs with localized categories, descriptions, and biographies
+        // Map to DTOs with localized descriptions, biographies, and category names
         var bookDtos = pagedList.Select(book => new BookDto(
             book.Id,
             book.Title,
             book.Isbn,
             book.OriginalLanguage,
             CultureInfo.GetCultureInfo(book.OriginalLanguage).DisplayName,
-            book.Description,
+            LocalizationHelper.GetLocalizedValue(book.Descriptions, culture, defaultCulture, ""),
             book.PublicationDate,
             Helpers.BookHelpers.IsPreRelease(book.PublicationDate),
             book.PublisherId.HasValue && publishers.TryGetValue(book.PublisherId.Value, out var pub)
@@ -131,13 +130,18 @@ public static class BookEndpoints
                 : null,
             [.. book.AuthorIds
                 .Select(id => authors.TryGetValue(id, out var author)
-                    ? new AuthorDto(author.Id, author.Name, author.Biography)
+                    ? new AuthorDto(
+                        author.Id, 
+                        author.Name, 
+                        LocalizationHelper.GetLocalizedValue(author.Biographies, culture, defaultCulture, ""))
                     : null)
                 .Where(a => a != null)
                 .Cast<AuthorDto>()],
             [.. book.CategoryIds
                 .Select(id => categories.TryGetValue(id, out var cat)
-                    ? new CategoryDto(cat.Id, cat.Name)
+                    ? new CategoryDto(
+                        cat.Id, 
+                        LocalizationHelper.GetLocalizedValue(cat.Names, culture, defaultCulture, "Unknown"))
                     : null)
                 .Where(c => c != null)
                 .Cast<CategoryDto>()]
@@ -156,9 +160,9 @@ public static class BookEndpoints
         [FromServices] IOptions<LocalizationOptions> localizationOptions,
         HttpContext context)
     {
-        // Use the resolved culture as the tenant ID
         var culture = CultureInfo.CurrentCulture.Name;
-        await using var session = store.QuerySession(culture);
+        var defaultCulture = localizationOptions.Value.DefaultCulture;
+        await using var session = store.QuerySession();
 
         // Dictionaries to hold included documents
         var publishers = new Dictionary<Guid, PublisherProjection>();
@@ -196,14 +200,14 @@ public static class BookEndpoints
             Infrastructure.ETagHelper.AddETagHeader(context, etag);
         }
 
-        // Map to DTO (simple mapping now!)
+        // Map to DTO with localized values
         var bookDto = new BookDto(
             book.Id,
             book.Title,
             book.Isbn,
             book.OriginalLanguage,
             CultureInfo.GetCultureInfo(book.OriginalLanguage).DisplayName,
-            book.Description,
+            LocalizationHelper.GetLocalizedValue(book.Descriptions, culture, defaultCulture, ""),
             book.PublicationDate,
             Helpers.BookHelpers.IsPreRelease(book.PublicationDate),
             book.PublisherId.HasValue && publishers.TryGetValue(book.PublisherId.Value, out var pub)
@@ -211,13 +215,18 @@ public static class BookEndpoints
                 : null,
             [.. book.AuthorIds
                 .Select(id => authors.TryGetValue(id, out var author)
-                    ? new AuthorDto(author.Id, author.Name, author.Biography)
+                    ? new AuthorDto(
+                        author.Id, 
+                        author.Name, 
+                        LocalizationHelper.GetLocalizedValue(author.Biographies, culture, defaultCulture, ""))
                     : null)
                 .Where(a => a != null)
                 .Cast<AuthorDto>()],
             [.. book.CategoryIds
                 .Select(catId => categories.TryGetValue(catId, out var cat)
-                    ? new CategoryDto(cat.Id, cat.Name)
+                    ? new CategoryDto(
+                        catId, 
+                        LocalizationHelper.GetLocalizedValue(cat.Names, culture, defaultCulture, "Unknown"))
                     : null)
                 .Where(c => c != null)
                 .Cast<CategoryDto>()]);

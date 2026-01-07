@@ -35,11 +35,13 @@ public static class CategoryEndpoints
     static async Task<Ok<PagedListDto<CategoryDto>>> GetCategories(
         [FromServices] IDocumentStore store,
         [FromServices] IOptions<PaginationOptions> paginationOptions,
+        [FromServices] IOptions<LocalizationOptions> localizationOptions,
         [AsParameters] OrderedPagedRequest request,
         HttpContext context)
     {
         var culture = CultureInfo.CurrentCulture.Name;
-        await using var session = store.QuerySession(culture);
+        var defaultCulture = localizationOptions.Value.DefaultCulture;
+        await using var session = store.QuerySession();
         var paging = request.Normalize(paginationOptions.Value);
 
         var normalizedSortOrder = request.SortOrder?.ToLowerInvariant() == "desc" ? "desc" : "asc";
@@ -47,21 +49,22 @@ public static class CategoryEndpoints
 
         IQueryable<CategoryProjection> query = session.Query<CategoryProjection>();
 
+        // Note: Cannot sort by localized name since it's in a dictionary
+        // Sorting by ID only
         query = (normalizedSortBy, normalizedSortOrder) switch
         {
-            ("id", "desc") => query
-                .OrderByDescending(c => c.Id),
-            ("id", "asc") => query
-                .OrderBy(c => c.Id),
-            ("name", "desc") => query
-                .OrderByDescending(c => c.Name),
-            _ => query.OrderBy(c => c.Name) // Default to Name asc (changed from ID)
+            ("id", "desc") => query.OrderByDescending(c => c.Id),
+            _ => query.OrderBy(c => c.Id) // Default to ID asc
         };
 
         var pagedList = await query
             .ToPagedListAsync(paging.Page!.Value, paging.PageSize!.Value);
 
-        var items = pagedList.Select(c => new CategoryDto(c.Id, c.Name)).ToList();
+        // Extract localized names using LocalizationHelper
+        var items = pagedList.Select(c => new CategoryDto(
+            c.Id,
+            LocalizationHelper.GetLocalizedValue(c.Names, culture, defaultCulture, "Unknown")
+        )).ToList();
 
         var response = new PagedListDto<CategoryDto>(
             items,
@@ -75,10 +78,12 @@ public static class CategoryEndpoints
     static async Task<Results<Ok<CategoryDto>, NotFound>> GetCategory(
         Guid id,
         [FromServices] IDocumentStore store,
+        [FromServices] IOptions<LocalizationOptions> localizationOptions,
         HttpContext context)
     {
         var culture = CultureInfo.CurrentCulture.Name;
-        await using var session = store.QuerySession(culture);
+        var defaultCulture = localizationOptions.Value.DefaultCulture;
+        await using var session = store.QuerySession();
 
         var category = await session.LoadAsync<CategoryProjection>(id);
         if (category == null)
@@ -86,7 +91,14 @@ public static class CategoryEndpoints
             return TypedResults.NotFound();
         }
 
-        var response = new CategoryDto(category.Id, category.Name);
+        // Extract localized name using LocalizationHelper
+        var localizedName = LocalizationHelper.GetLocalizedValue(
+            category.Names,
+            culture,
+            defaultCulture,
+            "Unknown");
+
+        var response = new CategoryDto(category.Id, localizedName);
         return TypedResults.Ok(response);
     }
 }
