@@ -13,20 +13,20 @@ public class BookSearchProjection
     public string? Isbn { get; set; }
     public string OriginalLanguage { get; set; } = string.Empty;
     public PartialDate? PublicationDate { get; set; }
-    
+
     // Localized field as dictionary (key = culture, value = description)
     public Dictionary<string, string> Descriptions { get; set; } = [];
-    
+
     // Denormalized fields for performance
     public Guid? PublisherId { get; set; }
     public string? PublisherName { get; set; }
     public List<Guid> AuthorIds { get; set; } = [];
     public string AuthorNames { get; set; } = string.Empty; // Concatenated for search
     public List<Guid> CategoryIds { get; set; } = [];
-    
+
     // Computed search text for ngram matching
     public string SearchText { get; set; } = string.Empty;
-    
+
     // SingleStreamProjection methods
     public static BookSearchProjection Create(BookAdded @event, IQuerySession session)
     {
@@ -41,16 +41,16 @@ public class BookSearchProjection
             AuthorIds = @event.AuthorIds,
             CategoryIds = @event.CategoryIds,
             Descriptions = @event.Translations?
-                .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Description) 
+                .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Description)
                 ?? []
         };
-        
+
         LoadDenormalizedData(projection, session);
         UpdateSearchText(projection);
-        
+
         return projection;
     }
-    
+
     public BookSearchProjection Apply(BookUpdated @event, IQuerySession session)
     {
         Title = @event.Title;
@@ -61,17 +61,17 @@ public class BookSearchProjection
         AuthorIds = @event.AuthorIds;
         CategoryIds = @event.CategoryIds;
         Descriptions = @event.Translations?
-            .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Description) 
+            .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Description)
             ?? [];
-        
+
         LoadDenormalizedData(this, session);
         UpdateSearchText(this);
-        
+
         return this;
     }
-    
+
     // Helper methods for denormalization
-    private static void LoadDenormalizedData(BookSearchProjection projection, IQuerySession session)
+    static void LoadDenormalizedData(BookSearchProjection projection, IQuerySession session)
     {
         // Load publisher name
         if (projection.PublisherId.HasValue)
@@ -84,7 +84,7 @@ public class BookSearchProjection
         {
             projection.PublisherName = null;
         }
-        
+
         // Load author names
         if (projection.AuthorIds.Count > 0)
         {
@@ -98,9 +98,6 @@ public class BookSearchProjection
             projection.AuthorNames = string.Empty;
         }
     }
-    
-    private static void UpdateSearchText(BookSearchProjection projection)
-    {
-        projection.SearchText = $"{projection.Title} {projection.Isbn ?? string.Empty} {projection.PublisherName ?? string.Empty} {projection.AuthorNames}".Trim();
-    }
+
+    static void UpdateSearchText(BookSearchProjection projection) => projection.SearchText = $"{projection.Title} {projection.Isbn ?? string.Empty} {projection.PublisherName ?? string.Empty} {projection.AuthorNames}".Trim();
 }

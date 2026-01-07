@@ -400,13 +400,13 @@ api-version: 1.0
 
 The API supports multiple languages as configured in `appsettings.json`.
     
-    Example configuration:
-    ```json
-    "Localization": {
-      "DefaultCulture": "en",
-      "SupportedCultures": ["pt", "en", "fr", "de", "es"]
-    }
-    ```
+Example configuration:
+```json
+"Localization": {
+  "DefaultCulture": "en",
+  "SupportedCultures": ["pt", "en", "fr", "de", "es"]
+}
+```
 
 ### Accept-Language Header
 
@@ -429,9 +429,38 @@ Accept-Language: pt-PT
 
 ### Fallback Strategy
 
-1. Try requested language (e.g., `pt`)
-2. Fall back to default language (`en`)
-3. Fall back to first available translation
+The API uses a **5-step fallback** strategy via `LocalizationHelper`:
+
+1. **Exact culture match** - e.g., "pt-PT"
+2. **Two-letter user culture** - e.g., "pt" from "pt-PT"
+3. **Default culture** - configured in `LocalizationOptions`
+4. **Two-letter default culture** - e.g., "en" from "en-US"
+5. **Fallback value** - empty string or "Unknown"
+
+This ensures users always see content, even if their preferred language isn't available.
+
+### Implementation
+
+Translations are stored in `Dictionary<string, string>` properties within projection documents:
+
+```csharp
+public class CategoryProjection
+{
+    public Dictionary<string, string> Names { get; set; } = [];
+}
+```
+
+Endpoints use `LocalizationHelper` to extract the correct translation:
+
+```csharp
+var localizedName = LocalizationHelper.GetLocalizedValue(
+    category.Names, 
+    culture, 
+    defaultCulture, 
+    "Unknown");
+```
+
+See the [Localization Guide](localization-guide.md) for complete details.
 
 ---
 

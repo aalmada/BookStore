@@ -33,18 +33,18 @@ public static class MartenConfigurationExtensions
 
             var options = new StoreOptions();
             options.Connection(connectionString);
-            
+
             // Configure automatic schema creation/updates based on environment
             // Development: All - creates/updates/drops schema objects as needed
             // Production: CreateOnly - only creates missing objects, never modifies existing
-            options.AutoCreateSchemaObjects = env.IsDevelopment() 
-                ? AutoCreate.All 
+            options.AutoCreateSchemaObjects = env.IsDevelopment()
+                ? AutoCreate.All
                 : AutoCreate.CreateOnly;
 
             ConfigureEventMetadata(options);
             ConfigureJsonSerialization(options);
             RegisterEventTypes(options);
-            RegisterProjections(options, sp);
+            RegisterProjections(options);
             ConfigureIndexes(options);
 
             return options;
@@ -107,14 +107,14 @@ public static class MartenConfigurationExtensions
         _ = options.Events.AddEventType<Events.PublisherRestored>();
     }
 
-    static void RegisterProjections(StoreOptions options, IServiceProvider sp)
+    static void RegisterProjections(StoreOptions options)
     {
         // Configure projections using SingleStreamProjection pattern
         // Async lifecycle means projections run in background, managed by Wolverine
-        options.Projections.Snapshot<CategoryProjection>(SnapshotLifecycle.Async);
-        options.Projections.Snapshot<AuthorProjection>(SnapshotLifecycle.Async);
-        options.Projections.Snapshot<BookSearchProjection>(SnapshotLifecycle.Async);
-        options.Projections.Snapshot<PublisherProjection>(SnapshotLifecycle.Async);
+        _ = options.Projections.Snapshot<CategoryProjection>(SnapshotLifecycle.Async);
+        _ = options.Projections.Snapshot<AuthorProjection>(SnapshotLifecycle.Async);
+        _ = options.Projections.Snapshot<BookSearchProjection>(SnapshotLifecycle.Async);
+        _ = options.Projections.Snapshot<PublisherProjection>(SnapshotLifecycle.Async);
     }
 
     static void ConfigureIndexes(StoreOptions options)

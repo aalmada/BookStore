@@ -6,30 +6,27 @@ namespace BookStore.ApiService.Projections;
 public class CategoryProjection
 {
     public Guid Id { get; set; }
-    
+
     // Localized field as dictionary (key = culture, value = name)
     public Dictionary<string, string> Names { get; set; } = [];
-    
+
     public DateTimeOffset LastModified { get; set; }
-    
+
     // SingleStreamProjection methods
-    public static CategoryProjection Create(CategoryAdded @event)
+    public static CategoryProjection Create(CategoryAdded @event) => new()
     {
-        return new CategoryProjection
-        {
-            Id = @event.Id,
-            LastModified = @event.Timestamp,
-            Names = @event.Translations?
-                .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Name) 
+        Id = @event.Id,
+        LastModified = @event.Timestamp,
+        Names = @event.Translations?
+                .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Name)
                 ?? []
-        };
-    }
-    
+    };
+
     public void Apply(CategoryUpdated @event)
     {
         LastModified = @event.Timestamp;
         Names = @event.Translations?
-            .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Name) 
+            .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Name)
             ?? [];
     }
 }

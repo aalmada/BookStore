@@ -7,12 +7,16 @@ This guide explains how to configure and use localization in the BookStore API.
 The BookStore API supports multiple languages for localized content (category names, book descriptions, author biographies).
 
 **Architecture Strategy:**
-The localization strategy uses **Write-Time Localization** via **Marten's Conjoined Tenancy**.
-- **Events** contain all translations.
-- **Projections** are multi-tenanted, with one document stored per supported language (tenant).
-- **APIs** simply query the tenant corresponding to the user's preferred language.
+The localization strategy uses **dictionary-based storage** with **SingleStreamProjection**.
+- **Events** contain all translations as `Dictionary<string, XTranslation>`.
+- **Projections** store translations in `Dictionary<string, string>` properties (one projection per entity).
+- **Endpoints** use `LocalizationHelper` to extract the correct translation based on the `Accept-Language` header.
 
-This approach ensures high performance by eliminating complex runtime fallback logic during data retrieval.
+This approach ensures:
+- ✅ **Simple architecture** - no multi-tenancy complexity
+- ✅ **High performance** - single document read, no JOINs
+- ✅ **Flexible fallback** - comprehensive 5-step fallback strategy
+- ✅ **Easy to maintain** - all translations in one place
 
 ## Configuration
 
@@ -21,7 +25,6 @@ This approach ensures high performance by eliminating complex runtime fallback l
 The API is configured using **ISO 639-1 language codes**. You can configure either generic codes (e.g., `en`, `pt`) or specific regional cultures (e.g., `en-US`, `pt-PT`).
 
 **Standard Configuration (Generic)**:
-Suitable for applications where a single translation per language works for all regions.
 ```json
 {
   "Localization": {
@@ -32,7 +35,6 @@ Suitable for applications where a single translation per language works for all 
 ```
 
 **Regional Configuration (Specific)**:
-Suitable when you need different content for specific regions (e.g., "Color" vs "Colour" in English, or regional differences between pt-PT, pt-BR, etc.).
 ```json
 {
   "Localization": {
@@ -42,21 +44,9 @@ Suitable when you need different content for specific regions (e.g., "Color" vs 
 }
 ```
 
-### Marten Configuration
-
-Projections are configured as multi-tenanted to support separate documents for each culture. This is defined in `MartenConfigurationExtensions.cs`.
-
-```csharp
-options.Schema.For<BookSearchProjection>().MultiTenanted();
-options.Schema.For<AuthorProjection>().MultiTenanted();
-options.Schema.For<CategoryProjection>().MultiTenanted();
-```
-
-The system iterates through all configured `SupportedCultures` to generate a projection document for each one.
-
 ### Cache Configuration
 
-**Critical**: All localized endpoints must verify the cache by the `Accept-Language` header to ensure users receive the correct language version.
+**Critical**: All localized endpoints must vary the cache by the `Accept-Language` header to ensure users receive the correct language version.
 
 ```csharp
 .CacheOutput(policy => policy
@@ -66,31 +56,89 @@ The system iterates through all configured `SupportedCultures` to generate a pro
 
 ## Translation Storage
 
-Translations are captured at the source in Domain Events using a dictionary.
+### Event Structure
 
-**Mixed Storage Example**:
-You can store both generic and specific keys.
+Translations are stored in events using translation record types:
+
+```csharp
+// Category event with translations
+public record CategoryAdded(
+    Guid Id,
+    Dictionary<string, CategoryTranslation> Translations,
+    DateTimeOffset Timestamp);
+
+public record CategoryTranslation(string Name, string? Description);
+```
+
+**Example event data**:
 ```json
 {
-  "pt": "Desporto",
-  "pt-BR": "Esporte",
-  "en": "Sports"
+  "id": "...",
+  "translations": {
+    "en": { "name": "Sports", "description": null },
+    "pt": { "name": "Desporto", "description": null },
+    "pt-BR": { "name": "Esporte", "description": null }
+  }
 }
 ```
 
-## Fallback Strategy (Write-Time)
+### Projection Structure
 
-The API applies fallback logic **during projection generation** to ensure every supported culture has content.
+Projections extract specific fields into dictionaries:
 
-**Logic sequence for a target culture (e.g., `pt-PT`):**
+```csharp
+public class CategoryProjection
+{
+    public Guid Id { get; set; }
+    public Dictionary<string, string> Names { get; set; } = [];
+    
+    public static CategoryProjection Create(CategoryAdded @event)
+    {
+        return new CategoryProjection
+        {
+            Id = @event.Id,
+            Names = @event.Translations?
+                .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Name) 
+                ?? []
+        };
+    }
+}
+```
 
-1. **Exact Match**: Look for a translation with key `"pt-PT"`.
-2. **Parent Culture**: Look for a translation with key `"pt"`.
-3. **Default Culture**: Look for a translation with the key of the `DefaultCulture`.
-4. **Any**: Use the first available translation.
-5. **Empty**: Fallback to an empty string.
+## Fallback Strategy
 
-This robust fallback ensures that even if a specific translation is missing, the system provides the most relevant available content.
+The `LocalizationHelper.GetLocalizedValue()` method implements a **5-step fallback** at read time:
+
+1. **Exact culture match** - e.g., "pt-PT"
+2. **Two-letter user culture** - e.g., "pt" from "pt-PT"
+3. **Default culture** - configured in `LocalizationOptions`
+4. **Two-letter default culture** - e.g., "en" from "en-US"
+5. **Fallback value** - empty string or "Unknown"
+
+**Example**:
+```csharp
+var localizedName = LocalizationHelper.GetLocalizedValue(
+    category.Names,           // Dictionary<string, string>
+    "pt-PT",                  // Requested culture
+    "en-US",                  // Default culture
+    "Unknown"                 // Fallback
+);
+```
+
+**Fallback flow for `pt-PT` request**:
+```
+Request: pt-PT
+  ↓
+1. Check dictionary["pt-PT"] → Found? Return it
+  ↓ (not found)
+2. Check dictionary["pt"] → Found? Return it
+  ↓ (not found)
+3. Check dictionary["en-US"] → Found? Return it
+  ↓ (not found)
+4. Check dictionary["en"] → Found? Return it
+  ↓ (not found)
+5. Return "Unknown"
+```
 
 ## Usage
 
@@ -99,42 +147,106 @@ This robust fallback ensures that even if a specific translation is missing, the
 Clients request a specific language using the `Accept-Language` header.
 
 ```http
-GET /api/books HTTP/1.1
+GET /api/categories HTTP/1.1
 Accept-Language: pt-PT
 ```
 
-If the requested culture is not supported (e.g., `ja-JP`), the API will automatically fall back to the configured `DefaultCulture`.
+If the requested culture is not in the dictionary, the fallback strategy automatically finds the best available translation.
 
 ### Endpoint Implementation
 
-Endpoints are simplified to purely read operations. They resolve the current culture (handled by ASP.NET Core middleware) and query the corresponding database tenant.
+Endpoints use `LocalizationHelper` to extract localized values:
 
 ```csharp
-// 1. Resolve culture (e.g., "pt-PT")
-var culture = CultureInfo.CurrentCulture.Name;
-
-// 2. Open a session specific to that culture
-await using var session = store.QuerySession(culture);
-
-// 3. Query normally - Marten automatically filters by the tenant
-var books = await session.Query<BookSearchProjection>().ToListAsync();
+static async Task<Ok<PagedListDto<CategoryDto>>> GetCategories(
+    [FromServices] IDocumentStore store,
+    [FromServices] IOptions<LocalizationOptions> localizationOptions,
+    HttpContext context)
+{
+    var culture = CultureInfo.CurrentCulture.Name;
+    var defaultCulture = localizationOptions.Value.DefaultCulture;
+    await using var session = store.QuerySession();
+    
+    var categories = await session.Query<CategoryProjection>().ToListAsync();
+    
+    // Extract localized names using LocalizationHelper
+    var items = categories.Select(c => new CategoryDto(
+        c.Id,
+        LocalizationHelper.GetLocalizedValue(c.Names, culture, defaultCulture, "Unknown")
+    )).ToList();
+    
+    return TypedResults.Ok(items);
+}
 ```
 
 ### Projection Implementation
 
-Projections are responsible for "fanning out" changes to all supported cultures. When an event (like `BookAdded`) occurs, the projection updates the documents for **all** configured tenants.
+Projections use `SingleStreamProjection` with `Create()` and `Apply()` methods:
 
 ```csharp
-foreach (var culture in _localization.SupportedCultures)
+public class CategoryProjection
 {
-    using var tenantSession = session.ForTenant(culture);
+    public Dictionary<string, string> Names { get; set; } = [];
     
-    var projection = new BookSearchProjection
+    public static CategoryProjection Create(CategoryAdded @event)
     {
-        // ... map fields ...
-        Description = GetLocalizedDescription(@event.Data.Translations, culture)
-    };
+        return new CategoryProjection
+        {
+            Id = @event.Id,
+            Names = @event.Translations?
+                .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Name) 
+                ?? []
+        };
+    }
     
-    tenantSession.Store(projection);
+    public void Apply(CategoryUpdated @event)
+    {
+        Names = @event.Translations?
+            .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Name) 
+            ?? [];
+    }
 }
 ```
+
+## Testing
+
+### Test Different Languages
+
+```bash
+# English
+curl -H "Accept-Language: en" http://localhost:5179/categories
+
+# Portuguese (Portugal)
+curl -H "Accept-Language: pt-PT" http://localhost:5179/categories
+
+# Portuguese (generic - should fallback to pt-PT if available)
+curl -H "Accept-Language: pt" http://localhost:5179/categories
+
+# Unsupported language (should fallback to default)
+curl -H "Accept-Language: ja" http://localhost:5179/categories
+```
+
+### Verify Fallback Logic
+
+Test the fallback chain by checking responses for:
+- Exact culture match (e.g., "en-US")
+- Two-letter culture match (e.g., "en" when "en-US" not available)
+- Default culture fallback
+- Fallback value for completely missing translations
+
+## Best Practices
+
+1. **Always provide default culture translations** - ensures fallback always succeeds
+2. **Use generic codes when possible** - reduces duplication (e.g., "en" instead of "en-US", "en-GB")
+3. **Use specific codes for regional differences** - when content truly differs by region
+4. **Cache by Accept-Language** - critical for performance
+5. **Test fallback scenarios** - ensure graceful degradation
+
+## Architecture Benefits
+
+✅ **Simple** - No multi-tenancy, no separate translation tables  
+✅ **Fast** - Single document read, dictionary lookup is O(1)  
+✅ **Flexible** - Easy to add/remove languages  
+✅ **Type-safe** - LINQ queries work normally  
+✅ **Comprehensive fallback** - 5-step strategy ensures users always see content  
+✅ **Idiomatic Marten** - Uses SingleStreamProjection pattern

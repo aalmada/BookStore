@@ -131,8 +131,8 @@ public static class BookEndpoints
             [.. book.AuthorIds
                 .Select(id => authors.TryGetValue(id, out var author)
                     ? new AuthorDto(
-                        author.Id, 
-                        author.Name, 
+                        author.Id,
+                        author.Name,
                         LocalizationHelper.GetLocalizedValue(author.Biographies, culture, defaultCulture, ""))
                     : null)
                 .Where(a => a != null)
@@ -140,7 +140,7 @@ public static class BookEndpoints
             [.. book.CategoryIds
                 .Select(id => categories.TryGetValue(id, out var cat)
                     ? new CategoryDto(
-                        cat.Id, 
+                        cat.Id,
                         LocalizationHelper.GetLocalizedValue(cat.Names, culture, defaultCulture, "Unknown"))
                     : null)
                 .Where(c => c != null)
@@ -216,8 +216,8 @@ public static class BookEndpoints
             [.. book.AuthorIds
                 .Select(id => authors.TryGetValue(id, out var author)
                     ? new AuthorDto(
-                        author.Id, 
-                        author.Name, 
+                        author.Id,
+                        author.Name,
                         LocalizationHelper.GetLocalizedValue(author.Biographies, culture, defaultCulture, ""))
                     : null)
                 .Where(a => a != null)
@@ -225,7 +225,7 @@ public static class BookEndpoints
             [.. book.CategoryIds
                 .Select(catId => categories.TryGetValue(catId, out var cat)
                     ? new CategoryDto(
-                        catId, 
+                        catId,
                         LocalizationHelper.GetLocalizedValue(cat.Names, culture, defaultCulture, "Unknown"))
                     : null)
                 .Where(c => c != null)
