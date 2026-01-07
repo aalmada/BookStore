@@ -137,7 +137,9 @@ public class ApplicationUser
 
 To protect against abuse and Denial of Service (DoS) attacks, all authentication endpoints are protected by the **AuthPolicy**.
 
-- **Limit**: 10 requests per minute per IP address.
+- **Limit**: Configurable via `RateLimit:PermitLimit`.
+    - **Production**: Defaults to 10 requests per minute.
+    - **Development**: Defaults to 1000 requests per minute (to support **parallel integration tests**).
 - **Scope**: Applied globally to all endpoint in the `/account` group (Login, Register, Passkeys, etc.).
 - **Response**: `429 Too Many Requests` when exceeded.
 

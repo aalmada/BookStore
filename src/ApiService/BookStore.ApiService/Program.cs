@@ -37,37 +37,20 @@ builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
+    var rateLimitOptions = new RateLimitOptions();
+    builder.Configuration.GetSection(RateLimitOptions.SectionName).Bind(rateLimitOptions);
+
     // Strict policy for Authentication endpoints (Login, Register, Passkeys)
     _ = options.AddFixedWindowLimiter("AuthPolicy", opt =>
     {
-        opt.PermitLimit = 10;
-        opt.Window = TimeSpan.FromMinutes(1);
+        opt.PermitLimit = rateLimitOptions.PermitLimit;
+        opt.Window = TimeSpan.FromMinutes(rateLimitOptions.WindowInMinutes);
         opt.QueueProcessingOrder = System.Threading.RateLimiting.QueueProcessingOrder.OldestFirst;
-        opt.QueueLimit = 0;
+        opt.QueueLimit = rateLimitOptions.QueueLimit;
     });
 });
 
-// Configure cookie authentication security
-builder.Services.ConfigureApplicationCookie(options =>
-{
-    options.Cookie.HttpOnly = true;
-    options.Cookie.SecurePolicy = Microsoft.AspNetCore.Http.CookieSecurePolicy.Always;
-    options.Cookie.SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Lax; // Lax for Aspire same-domain
-    options.ExpireTimeSpan = TimeSpan.FromHours(24);
-    options.SlidingExpiration = true;
 
-    // API-friendly responses (no redirects)
-    options.Events.OnRedirectToLogin = context =>
-    {
-        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-        return Task.CompletedTask;
-    };
-    options.Events.OnRedirectToAccessDenied = context =>
-    {
-        context.Response.StatusCode = StatusCodes.Status403Forbidden;
-        return Task.CompletedTask;
-    };
-});
 
 var app = builder.Build();
 
