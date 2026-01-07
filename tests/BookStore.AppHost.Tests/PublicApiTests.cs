@@ -68,6 +68,12 @@ public class PublicApiTests
         // Act
         var response = await httpClient.GetAsync("/api/publishers");
 
+        if (response.StatusCode != HttpStatusCode.OK)
+        {
+            var error = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"GetPublishers failed with status {response.StatusCode}: {error}");
+        }
+
         // Assert
         _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
     }

@@ -33,11 +33,11 @@ public static class TestDataGenerators
 
     public static object GenerateFakeAuthorRequest() => new
     {
+        Name = _faker.Name.FullName(),
         Translations = new Dictionary<string, object>
         {
             ["en"] = new
             {
-                Name = _faker.Name.FullName(),
                 Biography = _faker.Lorem.Paragraphs(2)
             }
         }
@@ -57,13 +57,6 @@ public static class TestDataGenerators
 
     public static object GenerateFakePublisherRequest() => new
     {
-        Translations = new Dictionary<string, object>
-        {
-            ["en"] = new
-            {
-                Name = _faker.Company.CompanyName(),
-                Description = _faker.Company.CatchPhrase()
-            }
-        }
+        Name = _faker.Company.CompanyName()
     };
 }

@@ -90,18 +90,31 @@ public static class BookHandlers
             kvp => kvp.Key,
             kvp => new BookTranslation(kvp.Value.Description));
 
-        var @event = BookAggregate.Create(
-            command.Id,
-            command.Title,
-            command.Isbn,
-            command.Language,
-            descriptions,
-            command.PublicationDate,
-            command.PublisherId,
-            [.. command.AuthorIds],
-            [.. command.CategoryIds]);
+        try
+        {
+            var @event = BookAggregate.Create(
+                command.Id,
+                command.Title,
+                command.Isbn,
+                command.Language,
+                descriptions,
+                command.PublicationDate,
+                command.PublisherId,
+                [.. command.AuthorIds],
+                [.. command.CategoryIds]);
 
-        _ = session.Events.StartStream<BookAggregate>(command.Id, @event);
+            _ = session.Events.StartStream<BookAggregate>(command.Id, @event);
+        }
+        catch (ArgumentException ex)
+        {
+            Log.Books.InvalidBookData(logger, command.Id, ex.Message);
+            return (Results.BadRequest(new { error = ex.Message }), null!);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Log.Books.InvalidBookOperation(logger, command.Id, ex.Message);
+            return (Results.BadRequest(new { error = ex.Message }), null!);
+        }
 
         Log.Books.BookCreated(logger, command.Id, command.Title);
 
@@ -123,10 +136,11 @@ public static class BookHandlers
     public static async Task<IResult> Handle(
         UpdateBook command,
         IDocumentSession session,
-        HttpContext context,
+        IHttpContextAccessor contextAccessor,
         IOptions<LocalizationOptions> localizationOptions,
         ILogger logger)
     {
+        var context = contextAccessor.HttpContext!;
         // Validate language code
         if (!CultureValidator.IsValidCultureCode(command.Language))
         {
@@ -211,17 +225,30 @@ public static class BookHandlers
             kvp => kvp.Key,
             kvp => new BookTranslation(kvp.Value.Description));
 
-        var @event = aggregate.Update(
-            command.Title,
-            command.Isbn,
-            command.Language,
-            descriptions,
-            command.PublicationDate,
-            command.PublisherId,
-            [.. command.AuthorIds],
-            [.. command.CategoryIds]);
+        try
+        {
+            var @event = aggregate.Update(
+                command.Title,
+                command.Isbn,
+                command.Language,
+                descriptions,
+                command.PublicationDate,
+                command.PublisherId,
+                [.. command.AuthorIds],
+                [.. command.CategoryIds]);
 
-        _ = session.Events.Append(command.Id, @event);
+            _ = session.Events.Append(command.Id, @event);
+        }
+        catch (ArgumentException ex)
+        {
+            Log.Books.InvalidBookData(logger, command.Id, ex.Message);
+            return Results.BadRequest(new { error = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            Log.Books.InvalidBookOperation(logger, command.Id, ex.Message);
+            return Results.BadRequest(new { error = ex.Message });
+        }
 
         Log.Books.BookUpdated(logger, command.Id);
 
@@ -239,9 +266,10 @@ public static class BookHandlers
     public static async Task<IResult> Handle(
         SoftDeleteBook command,
         IDocumentSession session,
-        HttpContext context,
+        IHttpContextAccessor contextAccessor,
         ILogger logger)
     {
+        var context = contextAccessor.HttpContext!;
         Log.Books.BookSoftDeleting(logger, command.Id);
 
         // Get current stream state for ETag validation
@@ -268,8 +296,16 @@ public static class BookHandlers
             return Results.NotFound();
         }
 
-        var @event = aggregate.SoftDelete();
-        _ = session.Events.Append(command.Id, @event);
+        try
+        {
+            var @event = aggregate.SoftDelete();
+            _ = session.Events.Append(command.Id, @event);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Log.Books.InvalidBookOperation(logger, command.Id, ex.Message);
+            return Results.BadRequest(new { error = ex.Message });
+        }
 
         Log.Books.BookSoftDeleted(logger, command.Id);
 
@@ -287,9 +323,10 @@ public static class BookHandlers
     public static async Task<IResult> Handle(
         RestoreBook command,
         IDocumentSession session,
-        HttpContext context,
+        IHttpContextAccessor contextAccessor,
         ILogger logger)
     {
+        var context = contextAccessor.HttpContext!;
         Log.Books.BookRestoring(logger, command.Id);
 
         // Get current stream state for ETag validation
@@ -316,8 +353,16 @@ public static class BookHandlers
             return Results.NotFound();
         }
 
-        var @event = aggregate.Restore();
-        _ = session.Events.Append(command.Id, @event);
+        try
+        {
+            var @event = aggregate.Restore();
+            _ = session.Events.Append(command.Id, @event);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Log.Books.InvalidBookOperation(logger, command.Id, ex.Message);
+            return Results.BadRequest(new { error = ex.Message });
+        }
 
         Log.Books.BookRestored(logger, command.Id);
 

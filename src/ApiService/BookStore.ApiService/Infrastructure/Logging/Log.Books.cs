@@ -137,5 +137,22 @@ public static partial class Log
             Level = LogLevel.Debug,
             Message = "Retrieving book: Id={BookId}")]
         public static partial void RetrievingBook(ILogger logger, Guid bookId);
+
+        // Domain Validation Errors
+        [LoggerMessage(
+            Level = LogLevel.Warning,
+            Message = "Invalid book data: BookId={BookId}, Error={Error}")]
+        public static partial void InvalidBookData(
+            ILogger logger,
+            Guid bookId,
+            string error);
+
+        [LoggerMessage(
+            Level = LogLevel.Warning,
+            Message = "Invalid book operation: BookId={BookId}, Error={Error}")]
+        public static partial void InvalidBookOperation(
+            ILogger logger,
+            Guid bookId,
+            string error);
     }
 }

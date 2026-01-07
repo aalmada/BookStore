@@ -167,6 +167,8 @@ public class BookHandlerTests
 
         var session = Substitute.For<IDocumentSession>();
         var context = new DefaultHttpContext();
+        var contextAccessor = Substitute.For<IHttpContextAccessor>();
+        _ = contextAccessor.HttpContext.Returns(context);
 
         // Stream doesn't exist
         _ = session.Events.FetchStreamStateAsync(command.Id)
@@ -178,7 +180,7 @@ public class BookHandlerTests
             DefaultCulture = "en",
             SupportedCultures = ["en"]
         });
-        var result = await BookHandlers.Handle(command, session, context, localizationOptions, Substitute.For<ILogger>());
+        var result = await BookHandlers.Handle(command, session, contextAccessor, localizationOptions, Substitute.For<ILogger>());
 
         // Assert
         _ = await Assert.That(result).IsTypeOf<Microsoft.AspNetCore.Http.HttpResults.NotFound>();

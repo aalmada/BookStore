@@ -1,25 +1,32 @@
-using System.Collections;
+using System.Text.Json.Serialization;
 using Marten.Pagination;
 
 namespace BookStore.ApiService.Infrastructure;
 
 /// <summary>
-/// Zero-allocation adapter that wraps Marten's IPagedList for efficient serialization.
-/// This immutable record delegates to the source without copying items, avoiding GC pressure.
+/// DTO for paged list responses that supports serialization/deserialization.
 /// </summary>
-public sealed record PagedListAdapter<T>(IPagedList<T> Source) : IReadOnlyList<T>
+public sealed record PagedListAdapter<T>
 {
-    // Pagination metadata - delegates to source
-    public long PageNumber => Source.PageNumber;
-    public long PageSize => Source.PageSize;
-    public long TotalItemCount => Source.TotalItemCount;
-    public long PageCount => Source.PageCount;
-    public bool HasPreviousPage => Source.HasPreviousPage;
-    public bool HasNextPage => Source.HasNextPage;
+    [JsonConstructor]
+    public PagedListAdapter(IEnumerable<T> items, long pageNumber, long pageSize, long totalItemCount)
+    {
+        Items = items ?? [];
+        PageNumber = pageNumber;
+        PageSize = pageSize;
+        TotalItemCount = totalItemCount;
+    }
 
-    // IReadOnlyList implementation - delegates to source
-    public int Count => (int)Source.Count;
-    public T this[int index] => Source[index];
-    public IEnumerator<T> GetEnumerator() => Source.GetEnumerator();
-    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+    public PagedListAdapter(IPagedList<T> source) : this(source, source.PageNumber, source.PageSize, source.TotalItemCount)
+    {
+    }
+
+    public IEnumerable<T> Items { get; init; }
+    public long PageNumber { get; init; }
+    public long PageSize { get; init; }
+    public long TotalItemCount { get; init; }
+
+    public long PageCount => PageSize > 0 ? (long)Math.Ceiling(TotalItemCount / (double)PageSize) : 0;
+    public bool HasPreviousPage => PageNumber > 1;
+    public bool HasNextPage => PageNumber < PageCount;
 }
