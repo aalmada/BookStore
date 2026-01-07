@@ -46,13 +46,22 @@ The API is configured using **ISO 639-1 language codes**. You can configure eith
 
 ### Cache Configuration
 
-**Critical**: All localized endpoints must vary the cache by the `Accept-Language` header to ensure users receive the correct language version.
+**Critical**: Localized content is cached using `HybridCache` with the `GetOrCreateLocalizedAsync` extension method, which automatically varies the cache by culture.
 
 ```csharp
-.CacheOutput(policy => policy
-    .Expire(TimeSpan.FromMinutes(5))
-    .SetVaryByHeader("Accept-Language"))
+var response = await cache.GetOrCreateLocalizedAsync(
+    $"category:{id}",
+    async cancel => { /* load from database */ },
+    options: new HybridCacheEntryOptions
+    {
+        Expiration = TimeSpan.FromMinutes(5),
+        LocalCacheExpiration = TimeSpan.FromMinutes(2)
+    },
+    tags: [$"category:{id}"],
+    token: cancellationToken);
 ```
+
+The cache key automatically becomes `category:{id}|{culture}` (e.g., `category:123|en-US`, `category:123|pt-PT`).
 
 ## Translation Storage
 

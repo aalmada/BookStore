@@ -348,7 +348,7 @@ sequenceDiagram
 
 ### Performance Optimizations
 
-- **Output Caching**: Public endpoints cached
+- **Hybrid Caching**: Two-tier caching (L1 in-memory + L2 Redis) with localization support
 - **Connection Pooling**: Npgsql connection pooling
 - **Async Projections**: Non-blocking event processing
 - **Denormalization**: Optimized read models

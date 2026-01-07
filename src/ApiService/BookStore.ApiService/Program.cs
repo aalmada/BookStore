@@ -17,13 +17,8 @@ builder.AddServiceDefaults();
 // Add Azure Blob Storage client (Azurite locally, Azure in production)
 builder.AddAzureBlobServiceClient("blobs");
 
-// Add Redis distributed cache
-// Add Redis distributed cache
-// builder.AddRedisDistributedCache("cache");
-builder.Services.AddDistributedMemoryCache();
-
-// Add HybridCache (L1 + L2)
-builder.Services.AddHybridCache();
+// Add Redis distributed cache (L2 for HybridCache)
+builder.AddRedisDistributedCache("cache");
 
 // Configure services
 builder.Services.AddJsonConfiguration(builder.Environment);
@@ -197,9 +192,6 @@ if (app.Environment.IsDevelopment())
             // .WithTheme(ScalarTheme.Purple)
             .WithDefaultHttpClient(ScalarTarget.CSharp, ScalarClient.HttpClient));
 }
-
-app.UseResponseCaching();
-app.UseOutputCache();
 
 // Map JWT authentication endpoints
 app.MapGroup("/account").MapJwtAuthenticationEndpoints();

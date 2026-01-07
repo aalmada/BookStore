@@ -43,13 +43,8 @@ public static class ApplicationServicesExtensions
         _ = services.AddHealthChecks()
             .AddNpgSql(configuration.GetConnectionString("bookstore")!);
 
-        // Add response caching for performance
-        _ = services.AddResponseCaching();
-        _ = services.AddOutputCache();
-
-#pragma warning disable EXTEXP0018 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
+        // Add HybridCache for L1 (in-memory) + L2 (Redis) caching
         _ = services.AddHybridCache();
-#pragma warning restore EXTEXP0018 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 
         // Configure Identity with JWT authentication
         AddIdentityServices(services, configuration);
