@@ -4,9 +4,14 @@
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
     <EnableMicrosoftTestingPlatform>true</EnableMicrosoftTestingPlatform>
+    <CollectCoverage>true</CollectCoverage>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.4">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
     <PackageReference Include="NSubstitute" Version="5.3.0" />
     <PackageReference Include="TUnit" Version="1.8.1" />
     <PackageReference Include="TUnit.Assertions" Version="1.8.1" />

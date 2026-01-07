@@ -103,7 +103,8 @@ public class BookHandlerTests
     [Arguments(0, "978-0132350884")]
     [Arguments(501, "978-0132350884")]
     [Arguments(10, "invalid-isbn")]
-    public async Task CreateBookHandler_WithInvalidDomainValidation_ShouldThrowArgumentException(int titleLength, string isbn)
+
+    public async Task CreateBookHandler_WithInvalidDomainValidation_ShouldReturnBadRequest(int titleLength, string isbn)
     {
         // Arrange
         var title = titleLength == 0 ? "" : new string('a', titleLength);
@@ -129,20 +130,13 @@ public class BookHandlerTests
             SupportedCultures = ["en"]
         });
 
-        // Act & Assert
-        try
-        {
-            _ = BookHandlers.Handle(command, session, localizationOptions, Substitute.For<ILogger>());
-            Assert.Fail("Expected ArgumentException was not thrown");
-        }
-        catch (ArgumentException)
-        {
-            // Expected
-        }
-        catch (Exception ex)
-        {
-            Assert.Fail($"Expected ArgumentException but got {ex.GetType().Name}");
-        }
+        // Act
+        var result = BookHandlers.Handle(command, session, localizationOptions, Substitute.For<ILogger>());
+
+        // Assert
+        _ = await Assert.That(result.Item1).IsAssignableTo<Microsoft.AspNetCore.Http.IStatusCodeHttpResult>();
+        var badRequestResult = (Microsoft.AspNetCore.Http.IStatusCodeHttpResult)result.Item1;
+        _ = await Assert.That(badRequestResult.StatusCode).IsEqualTo(400);
     }
 
     [Test]

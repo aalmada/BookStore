@@ -9,7 +9,7 @@ Full-stack .NET online book store application with event-sourced backend API and
 
 This project is a demonstration and exploration of modern .NET technologies, designed to be as complete as possible while strictly following architectural best practices, and keeping performance and scalability as core priorities. 
 
-I am sure a lot may be missing. Opening this code to the public is an opportunity to get feedback and learn from others' contributions.
+I am sure a lot may be improved. Opening this code to the public is an opportunity to get feedback and learn from others' contributions.
 
 A complete book store management system featuring:
 - **Backend API**: Event-sourced ASP.NET Core Minimal APIs with Marten and PostgreSQL
