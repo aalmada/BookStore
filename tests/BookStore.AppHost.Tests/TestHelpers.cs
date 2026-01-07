@@ -11,12 +11,12 @@ public static class TestHelpers
     {
         var app = GlobalHooks.App!;
         var notificationService = GlobalHooks.NotificationService!;
-        
-        await notificationService.WaitForResourceHealthyAsync("apiservice", CancellationToken.None).WaitAsync(TestConstants.DefaultTimeout);
+
+        _ = await notificationService.WaitForResourceHealthyAsync("apiservice", CancellationToken.None).WaitAsync(TestConstants.DefaultTimeout);
 
         // Create a new HttpClient for this test (to avoid concurrency issues)
         var httpClient = app.CreateHttpClient("apiservice");
-        
+
         // Use the shared admin access token from GlobalSetup
         if (string.IsNullOrEmpty(GlobalHooks.AdminAccessToken))
         {

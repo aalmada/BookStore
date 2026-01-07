@@ -15,6 +15,6 @@ public class CategoryCrudTests
         var createResponse = await httpClient.PostAsJsonAsync("/api/admin/categories", createCategoryRequest);
 
         // Assert
-        await Assert.That(createResponse.IsSuccessStatusCode).IsTrue();
+        _ = await Assert.That(createResponse.IsSuccessStatusCode).IsTrue();
     }
 }

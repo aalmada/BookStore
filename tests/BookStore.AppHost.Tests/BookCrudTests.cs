@@ -16,7 +16,7 @@ public class BookCrudTests
         var createResponse = await httpClient.PostAsJsonAsync("/api/admin/books", createBookRequest);
 
         // Assert
-        await Assert.That(createResponse.IsSuccessStatusCode).IsTrue();
+        _ = await Assert.That(createResponse.IsSuccessStatusCode).IsTrue();
     }
 
     [Test]
@@ -27,17 +27,17 @@ public class BookCrudTests
         var createBookRequest = TestDataGenerators.GenerateFakeBookRequest();
 
         var createResponse = await httpClient.PostAsJsonAsync("/api/admin/books", createBookRequest);
-        await Assert.That(createResponse.IsSuccessStatusCode).IsTrue();
-        
+        _ = await Assert.That(createResponse.IsSuccessStatusCode).IsTrue();
+
         var createdBook = await createResponse.Content.ReadFromJsonAsync<BookResponse>();
-        await Assert.That(createdBook).IsNotNull();
+        _ = await Assert.That(createdBook).IsNotNull();
 
         // Act - Update the book with new fake data
         var updateBookRequest = TestDataGenerators.GenerateFakeBookRequest();
         var updateResponse = await httpClient.PutAsJsonAsync($"/api/admin/books/{createdBook!.Id}", updateBookRequest);
 
         // Assert
-        await Assert.That(updateResponse.IsSuccessStatusCode).IsTrue();
+        _ = await Assert.That(updateResponse.IsSuccessStatusCode).IsTrue();
     }
 
     [Test]
@@ -48,17 +48,17 @@ public class BookCrudTests
         var createBookRequest = TestDataGenerators.GenerateFakeBookRequest();
 
         var createResponse = await httpClient.PostAsJsonAsync("/api/admin/books", createBookRequest);
-        await Assert.That(createResponse.IsSuccessStatusCode).IsTrue();
-        
+        _ = await Assert.That(createResponse.IsSuccessStatusCode).IsTrue();
+
         var createdBook = await createResponse.Content.ReadFromJsonAsync<BookResponse>();
-        await Assert.That(createdBook).IsNotNull();
+        _ = await Assert.That(createdBook).IsNotNull();
 
         // Act - Delete the book
         var deleteResponse = await httpClient.DeleteAsync($"/api/admin/books/{createdBook!.Id}");
 
         // Assert
-        await Assert.That(deleteResponse.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
+        _ = await Assert.That(deleteResponse.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
     }
 
-    private record BookResponse(Guid Id, string Title, string Isbn);
+    record BookResponse(Guid Id, string Title, string Isbn);
 }

@@ -1,5 +1,5 @@
-using Npgsql;
 using Aspire.Hosting;
+using Npgsql;
 
 namespace BookStore.AppHost.Tests;
 
@@ -12,11 +12,11 @@ public class DatabaseTests
         var app = GlobalHooks.App!;
         var notificationService = GlobalHooks.NotificationService!;
 
-        await notificationService.WaitForResourceHealthyAsync("postgres", CancellationToken.None).WaitAsync(TestConstants.DefaultTimeout);
+        _ = await notificationService.WaitForResourceHealthyAsync("postgres", CancellationToken.None).WaitAsync(TestConstants.DefaultTimeout);
 
         var connectionString = await app.GetConnectionStringAsync("postgres", CancellationToken.None);
 
-        await Assert.That(connectionString).IsNotNull();
+        _ = await Assert.That(connectionString).IsNotNull();
 
         await using var connection = new NpgsqlConnection(connectionString);
 
@@ -24,12 +24,12 @@ public class DatabaseTests
         await connection.OpenAsync(CancellationToken.None).WaitAsync(TestConstants.DefaultTimeout);
 
         // Assert
-        await Assert.That(connection.State).IsEqualTo(System.Data.ConnectionState.Open);
-        
+        _ = await Assert.That(connection.State).IsEqualTo(System.Data.ConnectionState.Open);
+
         await using var command = connection.CreateCommand();
         command.CommandText = "SELECT 1";
         var result = await command.ExecuteScalarAsync(CancellationToken.None);
-        
-        await Assert.That(result).IsEqualTo(1);
+
+        _ = await Assert.That(result).IsEqualTo(1);
     }
 }

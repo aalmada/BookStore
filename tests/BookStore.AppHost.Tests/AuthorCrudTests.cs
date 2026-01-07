@@ -15,6 +15,6 @@ public class AuthorCrudTests
         var createResponse = await httpClient.PostAsJsonAsync("/api/admin/authors", createAuthorRequest);
 
         // Assert
-        await Assert.That(createResponse.IsSuccessStatusCode).IsTrue();
+        _ = await Assert.That(createResponse.IsSuccessStatusCode).IsTrue();
     }
 }

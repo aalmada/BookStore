@@ -16,12 +16,12 @@ public class FrontendTests
 
         var httpClient = app.CreateHttpClient("webfrontend");
 
-        await notificationService.WaitForResourceHealthyAsync("webfrontend", CancellationToken.None).WaitAsync(TestConstants.DefaultTimeout);
+        _ = await notificationService.WaitForResourceHealthyAsync("webfrontend", CancellationToken.None).WaitAsync(TestConstants.DefaultTimeout);
 
         // Act
         var response = await httpClient.GetAsync("/health", CancellationToken.None).WaitAsync(TestConstants.DefaultTimeout);
 
         // Assert
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
     }
 }

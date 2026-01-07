@@ -1,8 +1,8 @@
-﻿using Aspire.Hosting;
+using System.Net.Http.Json;
+using Aspire.Hosting;
 using Aspire.Hosting.Testing;
 using Microsoft.Extensions.Logging;
 using Projects;
-using System.Net.Http.Json;
 
 [assembly: Retry(3)]
 [assembly: System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
@@ -20,10 +20,10 @@ public static class GlobalHooks
     public static async Task SetUp()
     {
         var builder = await DistributedApplicationTestingBuilder.CreateAsync<Projects.BookStore_AppHost>();
-        builder.Services.AddLogging(logging =>
+        _ = builder.Services.AddLogging(logging =>
         {
-            logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Information);
-            logging.AddSimpleConsole(options => 
+            _ = logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Information);
+            _ = logging.AddSimpleConsole(options =>
             {
                 options.SingleLine = true;
                 options.TimestampFormat = "[HH:mm:ss] ";
@@ -37,7 +37,7 @@ public static class GlobalHooks
         // });
 
         App = await builder.BuildAsync();
-        
+
         NotificationService = App.Services.GetRequiredService<ResourceNotificationService>();
         await App.StartAsync();
 
@@ -45,7 +45,7 @@ public static class GlobalHooks
         await AuthenticateAdminAsync();
     }
 
-    private static async Task AuthenticateAdminAsync()
+    static async Task AuthenticateAdminAsync()
     {
         if (App == null || NotificationService == null)
         {
@@ -53,11 +53,11 @@ public static class GlobalHooks
         }
 
         var httpClient = App.CreateHttpClient("apiservice");
-        await NotificationService.WaitForResourceHealthyAsync("apiservice", CancellationToken.None).WaitAsync(TestConstants.DefaultTimeout);
+        _ = await NotificationService.WaitForResourceHealthyAsync("apiservice", CancellationToken.None).WaitAsync(TestConstants.DefaultTimeout);
 
         // Retry login mechanism to handle potential Seeding race condition
         HttpResponseMessage? loginResponse = null;
-        for (int i = 0; i < 15; i++)
+        for (var i = 0; i < 15; i++)
         {
             loginResponse = await httpClient.PostAsJsonAsync("/account/login", new
             {
@@ -85,7 +85,7 @@ public static class GlobalHooks
         }
 
         AdminAccessToken = loginResult.AccessToken;
-        
+
         // Configure the shared HttpClient with the admin token
         httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", AdminAccessToken);
         AdminHttpClient = httpClient;
@@ -100,5 +100,5 @@ public static class GlobalHooks
         }
     }
 
-    private record LoginResponse(string AccessToken, string RefreshToken);
+    record LoginResponse(string AccessToken, string RefreshToken);
 }

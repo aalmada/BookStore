@@ -16,6 +16,6 @@ public class InfrastructureTests
         var notificationService = GlobalHooks.NotificationService;
 
         // Act & Assert
-        await notificationService!.WaitForResourceHealthyAsync(resourceName, CancellationToken.None).WaitAsync(TestConstants.DefaultTimeout);
+        _ = await notificationService!.WaitForResourceHealthyAsync(resourceName, CancellationToken.None).WaitAsync(TestConstants.DefaultTimeout);
     }
 }

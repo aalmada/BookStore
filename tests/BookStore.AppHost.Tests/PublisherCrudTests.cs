@@ -15,6 +15,6 @@ public class PublisherCrudTests
         var createResponse = await httpClient.PostAsJsonAsync("/api/admin/publishers", createPublisherRequest);
 
         // Assert
-        await Assert.That(createResponse.IsSuccessStatusCode).IsTrue();
+        _ = await Assert.That(createResponse.IsSuccessStatusCode).IsTrue();
     }
 }

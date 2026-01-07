@@ -16,12 +16,12 @@ public class WebTests
 
         var httpClient = app.CreateHttpClient("apiservice");
 
-        await notificationService.WaitForResourceHealthyAsync("apiservice", CancellationToken.None).WaitAsync(TestConstants.DefaultTimeout);
+        _ = await notificationService.WaitForResourceHealthyAsync("apiservice", CancellationToken.None).WaitAsync(TestConstants.DefaultTimeout);
 
         // Act
         var response = await httpClient.GetAsync("/health", CancellationToken.None).WaitAsync(TestConstants.DefaultTimeout);
 
         // Assert
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
     }
 }

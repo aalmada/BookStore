@@ -16,7 +16,7 @@ public class ErrorScenarioTests
         var createResponse = await httpClient.PostAsJsonAsync("/api/admin/books", createBookRequest);
 
         // Assert
-        await Assert.That(createResponse.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+        _ = await Assert.That(createResponse.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
     [Test]
@@ -24,7 +24,7 @@ public class ErrorScenarioTests
     {
         // Arrange
         var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
-        
+
         var createBookRequest = new
         {
             Title = "", // Invalid: empty title
@@ -36,15 +36,15 @@ public class ErrorScenarioTests
             },
             PublicationDate = new { Year = 2026, Month = 1, Day = 1 },
             PublisherId = (Guid?)null,
-            AuthorIds = new Guid[] {},
-            CategoryIds = new Guid[] {}
+            AuthorIds = new Guid[] { },
+            CategoryIds = new Guid[] { }
         };
 
         // Act
         var createResponse = await httpClient.PostAsJsonAsync("/api/admin/books", createBookRequest);
 
         // Assert
-        await Assert.That(createResponse.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+        _ = await Assert.That(createResponse.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
     }
 
     [Test]
@@ -58,6 +58,6 @@ public class ErrorScenarioTests
         var getResponse = await httpClient.GetAsync($"/api/books/{nonExistentId}");
 
         // Assert
-        await Assert.That(getResponse.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
+        _ = await Assert.That(getResponse.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
     }
 }

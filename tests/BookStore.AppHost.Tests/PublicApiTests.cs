@@ -12,13 +12,13 @@ public class PublicApiTests
         var notificationService = GlobalHooks.NotificationService!;
         var httpClient = app.CreateHttpClient("apiservice");
 
-        await notificationService.WaitForResourceHealthyAsync("apiservice", CancellationToken.None).WaitAsync(TestConstants.DefaultTimeout);
+        _ = await notificationService.WaitForResourceHealthyAsync("apiservice", CancellationToken.None).WaitAsync(TestConstants.DefaultTimeout);
 
         // Act
         var response = await httpClient.GetAsync("/api/books");
 
         // Assert
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
     }
 
     [Test]
@@ -29,13 +29,13 @@ public class PublicApiTests
         var notificationService = GlobalHooks.NotificationService!;
         var httpClient = app.CreateHttpClient("apiservice");
 
-        await notificationService.WaitForResourceHealthyAsync("apiservice", CancellationToken.None).WaitAsync(TestConstants.DefaultTimeout);
+        _ = await notificationService.WaitForResourceHealthyAsync("apiservice", CancellationToken.None).WaitAsync(TestConstants.DefaultTimeout);
 
         // Act
         var response = await httpClient.GetAsync("/api/authors");
 
         // Assert
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
     }
 
     [Test]
@@ -46,13 +46,13 @@ public class PublicApiTests
         var notificationService = GlobalHooks.NotificationService!;
         var httpClient = app.CreateHttpClient("apiservice");
 
-        await notificationService.WaitForResourceHealthyAsync("apiservice", CancellationToken.None).WaitAsync(TestConstants.DefaultTimeout);
+        _ = await notificationService.WaitForResourceHealthyAsync("apiservice", CancellationToken.None).WaitAsync(TestConstants.DefaultTimeout);
 
         // Act
         var response = await httpClient.GetAsync("/api/categories");
 
         // Assert
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
     }
 
     [Test]
@@ -63,12 +63,12 @@ public class PublicApiTests
         var notificationService = GlobalHooks.NotificationService!;
         var httpClient = app.CreateHttpClient("apiservice");
 
-        await notificationService.WaitForResourceHealthyAsync("apiservice", CancellationToken.None).WaitAsync(TestConstants.DefaultTimeout);
+        _ = await notificationService.WaitForResourceHealthyAsync("apiservice", CancellationToken.None).WaitAsync(TestConstants.DefaultTimeout);
 
         // Act
         var response = await httpClient.GetAsync("/api/publishers");
 
         // Assert
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
     }
 }
