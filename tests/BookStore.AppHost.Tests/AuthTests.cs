@@ -1,13 +1,13 @@
-using Bogus;
 using System.Net;
 using System.Net.Http.Json;
+using Bogus;
 
 namespace BookStore.AppHost.Tests;
 
 public class AuthTests
 {
-    private readonly HttpClient _client;
-    private readonly Faker _faker;
+    readonly HttpClient _client;
+    readonly Faker _faker;
 
     public AuthTests()
     {
@@ -40,7 +40,7 @@ public class AuthTests
         var password = _faker.Internet.Password(8, false, "\\w", "Aa1!");
 
         // Register first
-        await _client.PostAsJsonAsync("/account/register", new { Email = email, Password = password });
+        _ = await _client.PostAsJsonAsync("/account/register", new { Email = email, Password = password });
 
         // Act
         var loginResponse = await _client.PostAsJsonAsync("/account/login", new
@@ -51,7 +51,7 @@ public class AuthTests
 
         // Assert
         _ = await Assert.That(loginResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
-        
+
         var loginResult = await loginResponse.Content.ReadFromJsonAsync<LoginResponse>();
         _ = await Assert.That(loginResult).IsNotNull();
         _ = await Assert.That(loginResult!.AccessToken).IsNotNull().And.IsNotEmpty();
@@ -92,7 +92,7 @@ public class AuthTests
 
         var loginResponse = await _client.PostAsJsonAsync("/account/login", new { Email = email, Password = password });
         _ = await Assert.That(loginResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
-        
+
         var loginResult = await loginResponse.Content.ReadFromJsonAsync<LoginResponse>();
 
         var refreshRequest = new
@@ -105,7 +105,7 @@ public class AuthTests
 
         // Assert
         _ = await Assert.That(refreshResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
-        
+
         var refreshResult = await refreshResponse.Content.ReadFromJsonAsync<LoginResponse>();
         _ = await Assert.That(refreshResult).IsNotNull();
         _ = await Assert.That(refreshResult!.AccessToken).IsNotNull().And.IsNotEmpty();

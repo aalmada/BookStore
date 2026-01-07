@@ -50,8 +50,6 @@ builder.Services.AddRateLimiter(options =>
     });
 });
 
-
-
 var app = builder.Build();
 
 // Start seeding in the background (don't block app startup)
