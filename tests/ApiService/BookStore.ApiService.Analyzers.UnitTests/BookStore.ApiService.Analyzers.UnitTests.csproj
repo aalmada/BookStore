@@ -16,7 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\BookStore.ApiService.Analyzers\BookStore.ApiService.Analyzers.csproj" />
+    <ProjectReference Include="..\..\..\src\ApiService\BookStore.ApiService.Analyzers\BookStore.ApiService.Analyzers.csproj" />
   </ItemGroup>
 
   <!-- Include TestData files but don't compile them -->

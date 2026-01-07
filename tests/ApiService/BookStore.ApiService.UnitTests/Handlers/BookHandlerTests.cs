@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 
-namespace BookStore.ApiService.Tests.Handlers;
+namespace BookStore.ApiService.UnitTests.Handlers;
 
 /// <summary>
 /// Unit tests for Book command handlers
@@ -55,6 +55,94 @@ public class BookHandlerTests
             Arg.Is<BookAdded>(e =>
                 e.Title == "Clean Code" &&
                 e.Isbn == "978-0132350884"));
+    }
+
+    [Test]
+    [Category("Unit")]
+    [Arguments("invalid", "en", 10)]
+    [Arguments("en", "invalid", 10)]
+    [Arguments("en", "en", 5001)]
+    public async Task CreateBookHandler_WithInvalidHandlerValidation_ShouldReturnBadRequest(string language, string culture, int descLength)
+    {
+        // Arrange
+        var description = new string('a', descLength);
+
+        var command = new CreateBook(
+            "Clean Code",
+            "978-0132350884",
+            language,
+            new Dictionary<string, BookTranslationDto>
+            {
+                [culture] = new BookTranslationDto(description)
+            },
+            new PartialDate(2008, 8, 1),
+            Guid.CreateVersion7(),
+            [],
+            []
+        );
+
+        var session = Substitute.For<IDocumentSession>();
+
+        // Act
+        var localizationOptions = Options.Create(new LocalizationOptions
+        {
+            DefaultCulture = "en",
+            SupportedCultures = ["en"]
+        });
+
+        var (result, _) = BookHandlers.Handle(command, session, localizationOptions, Substitute.For<ILogger>());
+
+        // Assert
+        _ = await Assert.That(result).IsAssignableTo<Microsoft.AspNetCore.Http.IStatusCodeHttpResult>();
+        var badRequestResult = (Microsoft.AspNetCore.Http.IStatusCodeHttpResult)result;
+        _ = await Assert.That(badRequestResult.StatusCode).IsEqualTo(400);
+    }
+
+    [Test]
+    [Category("Unit")]
+    [Arguments(0, "978-0132350884")]
+    [Arguments(501, "978-0132350884")]
+    [Arguments(10, "invalid-isbn")]
+    public async Task CreateBookHandler_WithInvalidDomainValidation_ShouldThrowArgumentException(int titleLength, string isbn)
+    {
+        // Arrange
+        var title = titleLength == 0 ? "" : new string('a', titleLength);
+
+        var command = new CreateBook(
+            title,
+            isbn,
+            "en",
+            new Dictionary<string, BookTranslationDto>
+            {
+                ["en"] = new BookTranslationDto("Description")
+            },
+            new PartialDate(2008, 8, 1),
+            Guid.CreateVersion7(),
+            [],
+            []
+        );
+
+        var session = Substitute.For<IDocumentSession>();
+        var localizationOptions = Options.Create(new LocalizationOptions
+        {
+            DefaultCulture = "en",
+            SupportedCultures = ["en"]
+        });
+
+        // Act & Assert
+        try
+        {
+            _ = BookHandlers.Handle(command, session, localizationOptions, Substitute.For<ILogger>());
+            Assert.Fail("Expected ArgumentException was not thrown");
+        }
+        catch (ArgumentException)
+        {
+            // Expected
+        }
+        catch (Exception ex)
+        {
+            Assert.Fail($"Expected ArgumentException but got {ex.GetType().Name}");
+        }
     }
 
     [Test]

@@ -1,9 +1,10 @@
 using BookStore.ApiService.Analyzers.Analyzers;
+using BookStore.ApiService.Analyzers.UnitTests.Verifiers;
 using Microsoft.CodeAnalysis.Testing;
-using TUnit.Core;
 using TUnit.Assertions;
+using TUnit.Core;
 
-namespace BookStore.ApiService.Analyzers.Tests.Analyzers;
+namespace BookStore.ApiService.Analyzers.UnitTests.Analyzers;
 
 public class EventMustBeRecordAnalyzerTests
 {
@@ -21,7 +22,7 @@ public class EventMustBeRecordAnalyzerTests
     public async Task Verify_Diagnostics(string path, string typeName, int line, int column)
     {
         var source = await File.ReadAllTextAsync(path);
-        
+
         var expected = CSharpAnalyzerVerifier<EventMustBeRecordAnalyzer>
             .Diagnostic(DiagnosticIds.EventMustBeRecord)
             .WithLocation(line, column)

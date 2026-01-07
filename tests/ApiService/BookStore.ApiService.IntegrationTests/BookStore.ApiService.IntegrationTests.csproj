@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <EnableMicrosoftTestingPlatform>true</EnableMicrosoftTestingPlatform>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.Testing" Version="9.0.0" />
+    <PackageReference Include="KubernetesClient" Version="18.0.5" />
+    <PackageReference Include="TUnit" Version="1.8.1" />
+    <PackageReference Include="TUnit.Assertions" Version="1.8.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\ApiService\BookStore.ApiService\BookStore.ApiService.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="System.Net" />
+    <Using Include="Microsoft.Extensions.DependencyInjection" />
+    <Using Include="TUnit.Core" />
+    <Using Include="TUnit.Assertions" />
+  </ItemGroup>
+
+</Project>

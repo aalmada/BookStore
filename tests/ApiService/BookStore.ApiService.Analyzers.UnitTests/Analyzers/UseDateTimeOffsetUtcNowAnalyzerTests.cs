@@ -1,8 +1,9 @@
 using BookStore.ApiService.Analyzers.Analyzers;
+using BookStore.ApiService.Analyzers.UnitTests.Verifiers;
 using Microsoft.CodeAnalysis.Testing;
 using TUnit.Core;
 
-namespace BookStore.ApiService.Analyzers.Tests.Analyzers;
+namespace BookStore.ApiService.Analyzers.UnitTests.Analyzers;
 
 public class UseDateTimeOffsetUtcNowAnalyzerTests
 {
@@ -21,7 +22,7 @@ public class UseDateTimeOffsetUtcNowAnalyzerTests
     public async Task Verify_Diagnostics(string path, int line, int column, string dateTimeUsage)
     {
         var source = await File.ReadAllTextAsync(path);
-        
+
         var expected = CSharpAnalyzerVerifier<UseDateTimeOffsetUtcNowAnalyzer>
             .Diagnostic(DiagnosticIds.UseDateTimeOffsetUtcNow)
             .WithLocation(line, column)

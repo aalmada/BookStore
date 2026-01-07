@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using BookStore.ApiService.Infrastructure;
 
-namespace BookStore.ApiService.Tests;
+namespace BookStore.ApiService.UnitTests;
 
 /// <summary>
 /// Tests for configuration validation using data annotations

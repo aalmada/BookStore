@@ -1,7 +1,7 @@
 using BookStore.ApiService.Helpers;
 using BookStore.Shared.Models;
 
-namespace BookStore.ApiService.Tests.Helpers;
+namespace BookStore.ApiService.UnitTests.Helpers;
 
 public class BookHelpersTests
 {

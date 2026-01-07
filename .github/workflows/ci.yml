@@ -40,14 +40,18 @@ jobs:
       run: dotnet build --no-restore --configuration Release
       
     - name: Run API unit tests (fast feedback)
-      run: dotnet test --configuration Release --treenode-filter "/**[Category=Unit]" ${{ github.event_name == 'pull_request' && '--fail-fast' || '' }}
-      working-directory: src/ApiService/BookStore.ApiService.Tests
+      run: dotnet test --configuration Release ${{ github.event_name == 'pull_request' && '--fail-fast' || '' }}
+      working-directory: tests/ApiService/BookStore.ApiService.UnitTests
       # TUnit automatically generates GitHub Actions test summary
       # Run fast unit tests first for quick feedback
       
+    - name: Run API integration tests
+      run: dotnet test --configuration Release
+      working-directory: tests/ApiService/BookStore.ApiService.IntegrationTests
+      
     - name: Run analyzer tests
       run: dotnet test --configuration Release
-      working-directory: src/ApiService/BookStore.ApiService.Analyzers.Tests
+      working-directory: tests/ApiService/BookStore.ApiService.Analyzers.UnitTests
       # Verify Roslyn analyzers work correctly
       
   code-quality:

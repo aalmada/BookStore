@@ -16,4 +16,10 @@
     <ProjectReference Include="..\Web\BookStore.Web\BookStore.Web.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>BookStore.AppHost.Tests</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+
 </Project>

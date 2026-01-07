@@ -3,7 +3,7 @@ using Microsoft.CodeAnalysis.CSharp.Testing;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Testing;
 
-namespace BookStore.ApiService.Analyzers.Tests;
+namespace BookStore.ApiService.Analyzers.UnitTests.Verifiers;
 
 /// <summary>
 /// Base class for diagnostic analyzer tests using MSTest

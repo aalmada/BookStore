@@ -190,6 +190,6 @@ public static class ApplicationServicesExtensions
 
         // Add authorization services
         _ = services.AddAuthorizationBuilder()
-            .AddPolicy("Admin", policy => policy.RequireRole("Admin"));
+            .AddPolicy("Admin", policy => policy.RequireRole("Admin", "ADMIN"));
     }
 }

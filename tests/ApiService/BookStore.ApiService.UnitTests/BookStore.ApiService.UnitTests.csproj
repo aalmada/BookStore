@@ -13,7 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\BookStore.ApiService\BookStore.ApiService.csproj" />
+    <ProjectReference Include="..\..\..\src\ApiService\BookStore.ApiService\BookStore.ApiService.csproj" />
   </ItemGroup>
 
   <ItemGroup>
