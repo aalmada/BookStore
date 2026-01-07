@@ -286,10 +286,10 @@ The project uses **TUnit**, a modern testing framework with built-in code covera
 dotnet test
 
 # Run tests for specific project
-dotnet test --project src/BookStore.Tests/BookStore.Tests.csproj
+dotnet test --project tests/ApiService/BookStore.ApiService.UnitTests/BookStore.ApiService.UnitTests.csproj
 
 # Alternative: Run tests directly
-dotnet run --project src/BookStore.Tests/BookStore.Tests.csproj
+dotnet run --project tests/ApiService/BookStore.ApiService.UnitTests/BookStore.ApiService.UnitTests.csproj
 ```
 
 > [!NOTE]

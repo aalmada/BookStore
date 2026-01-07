@@ -194,7 +194,10 @@ public async Task DateTimeOffset_Should_Serialize_As_ISO8601_With_UTC()
 
 ### 3. Integration Tests
 
-Test the full application stack using Aspire.Hosting.Testing.
+The project has two types of integration tests:
+
+1.  **Workload Integration Tests (`BookStore.ApiService.IntegrationTests`)**: Tests the API service behavior with real dependencies (DB, Cache) orchestrated by Aspire.
+2.  **AppHost Tests (`BookStore.AppHost.Tests`)**: Verifies the entire distributed application startup and connectivity.
 
 > [!TIP]
 > For comprehensive integration testing patterns, strategies, and best practices, see the [Integration Testing Guide](integration-testing-guide.md).
