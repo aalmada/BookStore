@@ -124,29 +124,35 @@ var response = await cache.GetOrCreateLocalizedAsync(
 
 ## Cache Invalidation
 
-### Tag-Based Invalidation (Recommended)
+### Automatic Invalidation (Implemented Strategy)
 
-Tags are culture-agnostic and allow clearing all language variants at once.
+The API uses a **`CacheInvalidationListener`** to automatically invalidate cache entries after Marten projections are updated. This ensures that the cache is always fresh and consistent with the read models.
+
+**How it works:**
+1.  **Listens to Marten Changes**: Hooks into the `IDocumentSessionListener` lifecycle.
+2.  **After Commit**: Invalidates cache only after the transaction is successfully committed and projections are updated.
+3.  **Surgical Invalidation**: Uses structure tags to invalidate only what changed.
+
+**Invalidation Logic:**
+- **Updated Entities**: Invalidates the specific item *and* its related lists.
+  - Example: Updating `Category:1` clears `category:1` (all languages) and `categories` list.
+- **New Entities**: Invalidates related lists.
+  - Example: A new `Book` clears `books` list cache.
+
+**Implementation**:
+The listener handles specific projection types. If you add a new projection, you **must** update `CacheInvalidationListener.cs`. A warning log will alert you if a projection is unhandled:
+> *"Cache invalidation not implemented for projection type {ProjectionType}..."*
+
+### Manual Invalidation (If Needed)
+
+You can manually invalidate cache entries using tags if bypassing the automatic listener:
 
 ```csharp
-// When creating/updating a book, tag it
-await cache.GetOrCreateLocalizedAsync(
-    $"book:{id}",
-    factory,
-    tags: [$"book:{id}"]  // Tag with entity ID
-);
+// Invalidate specific entity (all languages)
+await cache.RemoveByTagAsync($"book:{id}");
 
-// Invalidate all language variants
-await cache.RemoveByTagAsync($"book:{id}");  // Clears en-US, pt-PT, etc.
-```
-
-### Direct Removal
-
-Remove specific localized entries:
-
-```csharp
-// Removes "category:{id}|{current_culture}"
-await cache.RemoveLocalizedAsync($"category:{id}");
+// Invalidate lists
+await cache.RemoveByTagAsync("books");
 ```
 
 ## Cache Expiration Strategy

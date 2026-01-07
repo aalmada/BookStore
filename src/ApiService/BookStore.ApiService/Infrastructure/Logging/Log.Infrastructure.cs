@@ -75,5 +75,11 @@ public static partial class Log
             int authorCount,
             int categoryCount,
             int publisherCount);
+
+        // Cache Invalidation
+        [LoggerMessage(
+            Level = LogLevel.Warning,
+            Message = "Cache invalidation not implemented for projection type {ProjectionType}. Consider adding a case to handle this projection.")]
+        public static partial void CacheInvalidationNotImplemented(ILogger logger, string projectionType);
     }
 }

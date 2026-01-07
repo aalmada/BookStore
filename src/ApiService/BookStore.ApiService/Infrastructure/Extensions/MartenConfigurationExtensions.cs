@@ -46,6 +46,7 @@ public static class MartenConfigurationExtensions
             RegisterEventTypes(options);
             RegisterProjections(options);
             ConfigureIndexes(options);
+            RegisterChangeListeners(options, sp);
 
             return options;
         })
@@ -142,5 +143,14 @@ public static class MartenConfigurationExtensions
         _ = options.Schema.For<PublisherProjection>()
             .Index(x => x.Name)         // B-tree index for sorting
             .NgramIndex(x => x.Name);           // NGram search on publisher name
+    }
+
+    static void RegisterChangeListeners(StoreOptions options, IServiceProvider sp)
+    {
+        // Register cache invalidation listener
+        // This ensures cache is cleared AFTER projections are updated
+        var cache = sp.GetRequiredService<Microsoft.Extensions.Caching.Hybrid.HybridCache>();
+        var logger = sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<CacheInvalidationListener>>();
+        options.Listeners.Add(new CacheInvalidationListener(cache, logger));
     }
 }
