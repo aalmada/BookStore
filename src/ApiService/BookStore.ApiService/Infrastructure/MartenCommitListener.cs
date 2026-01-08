@@ -37,7 +37,7 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
     public Task BeforeCommitAsync(IDocumentSession _, IChangeSet __, CancellationToken ___)
         => Task.CompletedTask;
 
-    public async Task AfterCommitAsync(IDocumentSession session, IChangeSet commit, CancellationToken token)
+    public async Task AfterCommitAsync(IDocumentSession _, IChangeSet commit, CancellationToken token)
     {
         // For Async Projections, the 'commit' contains the changes to the Read Models (Documents),
         // not the original Events.
@@ -46,45 +46,10 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
 
         try
         {
-            // Process Inserted Documents
-            foreach (var doc in commit.Inserted)
-            {
-                _logger.LogDebug("Processing Insert: {DocumentType}", doc.GetType().Name);
-                await ProcessDocumentChangeAsync(doc, ChangeType.Insert, token);
-            }
-
-            foreach (var doc in commit.Updated)
-            {
-                try
-                {
-                    switch (doc)
-                    {
-                        case CategoryProjection category:
-                            await HandleCategoryChangeAsync(category, ChangeType.Update, token);
-                            break;
-                        case BookSearchProjection book:
-                            await HandleBookChangeAsync(book, ChangeType.Update, token);
-                            break;
-                        case AuthorProjection author:
-                            await HandleAuthorChangeAsync(author, ChangeType.Update, token);
-                            break;
-                        case PublisherProjection publisher:
-                            await HandlePublisherChangeAsync(publisher, ChangeType.Update, token);
-                            break;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error processing updated document of type {DocumentType}", doc.GetType().Name);
-                }
-            }
-
-            // Process Deleted Documents
-            foreach (var doc in commit.Deleted)
-            {
-                _logger.LogDebug("Processing Delete: {DocumentType}", doc.GetType().Name);
-                await ProcessDocumentChangeAsync(doc, ChangeType.Delete, token);
-            }
+            // Process all document changes with consistent error handling
+            await ProcessDocumentChangesAsync(commit.Inserted, ChangeType.Insert, token);
+            await ProcessDocumentChangesAsync(commit.Updated, ChangeType.Update, token);
+            await ProcessDocumentChangesAsync(commit.Deleted, ChangeType.Delete, token);
         }
         catch (Exception ex)
         {
@@ -92,9 +57,25 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
         }
     }
 
-    public void AfterCommit(IDocumentSession session, IChangeSet commit)
+    public void AfterCommit(IDocumentSession _, IChangeSet __)
     {
         // Sync hook not used
+    }
+
+    async Task ProcessDocumentChangesAsync(IEnumerable<object> documents, ChangeType changeType, CancellationToken token)
+    {
+        foreach (var doc in documents)
+        {
+            try
+            {
+                _logger.LogDebug("Processing {ChangeType}: {DocumentType}", changeType, doc.GetType().Name);
+                await ProcessDocumentChangeAsync(doc, changeType, token);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing {ChangeType} document of type {DocumentType}", changeType, doc.GetType().Name);
+            }
+        }
     }
 
     async Task ProcessDocumentChangeAsync(object document, ChangeType changeType, CancellationToken token)
@@ -119,24 +100,17 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
     async Task HandleCategoryChangeAsync(CategoryProjection category, ChangeType changeType, CancellationToken token)
     {
         // Check for soft delete status if it's an update
-        if (changeType == ChangeType.Update)
-        {
-            if (category.IsDeleted)
-            {
-                changeType = ChangeType.Delete;
-            }
-            // If it was deleted but now IsDeleted is false, we treat it as an Update (or Insert, but cache invalidation is same)
-        }
+        var effectiveChangeType = DetermineEffectiveChangeType(changeType, category.IsDeleted);
 
-        await InvalidateCacheTagsAsync(category.Id, "category", "categories", token);
+        await InvalidateCacheTagsAsync(category.Id, CacheTags.CategoryItemPrefix, CacheTags.CategoryList, token);
 
         var name = category.Names.Values.FirstOrDefault() ?? "Unknown";
-        IDomainEventNotification notification = changeType switch
+        IDomainEventNotification notification = effectiveChangeType switch
         {
             ChangeType.Insert => new CategoryCreatedNotification(category.Id, name, category.LastModified),
             ChangeType.Update => new CategoryUpdatedNotification(category.Id, category.LastModified),
             ChangeType.Delete => new CategoryDeletedNotification(category.Id, category.LastModified),
-            _ => throw new ArgumentOutOfRangeException(nameof(changeType))
+            _ => throw new ArgumentOutOfRangeException(nameof(effectiveChangeType))
         };
 
         await NotifyAsync("Category", notification, token);
@@ -144,21 +118,18 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
 
     async Task HandleBookChangeAsync(BookSearchProjection book, ChangeType changeType, CancellationToken token)
     {
-        if (changeType == ChangeType.Update && book.IsDeleted)
-        {
-            changeType = ChangeType.Delete;
-        }
+        var effectiveChangeType = DetermineEffectiveChangeType(changeType, book.IsDeleted);
 
-        await InvalidateCacheTagsAsync(book.Id, "book", "books", token);
+        await InvalidateCacheTagsAsync(book.Id, CacheTags.BookItemPrefix, CacheTags.BookList, token);
 
-        // For books, we might want to know *which* book updated, but for list invalidation, tag is enough.
-        // For notification, we use the title.
-        IDomainEventNotification notification = changeType switch
+        // Use UtcNow for books as projections don't track LastModified consistently
+        var timestamp = DateTimeOffset.UtcNow;
+        IDomainEventNotification notification = effectiveChangeType switch
         {
-            ChangeType.Insert => new BookCreatedNotification(book.Id, book.Title, DateTimeOffset.UtcNow), // Projections don't always track CreatedAt, so using UtcNow or LastModified
-            ChangeType.Update => new BookUpdatedNotification(book.Id, book.Title, DateTimeOffset.UtcNow),
-            ChangeType.Delete => new BookDeletedNotification(book.Id, DateTimeOffset.UtcNow),
-            _ => throw new ArgumentOutOfRangeException(nameof(changeType))
+            ChangeType.Insert => new BookCreatedNotification(book.Id, book.Title, timestamp),
+            ChangeType.Update => new BookUpdatedNotification(book.Id, book.Title, timestamp),
+            ChangeType.Delete => new BookDeletedNotification(book.Id, timestamp),
+            _ => throw new ArgumentOutOfRangeException(nameof(effectiveChangeType))
         };
 
         await NotifyAsync("Book", notification, token);
@@ -166,19 +137,16 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
 
     async Task HandleAuthorChangeAsync(AuthorProjection author, ChangeType changeType, CancellationToken token)
     {
-        if (changeType == ChangeType.Update && author.IsDeleted)
-        {
-            changeType = ChangeType.Delete;
-        }
+        var effectiveChangeType = DetermineEffectiveChangeType(changeType, author.IsDeleted);
 
-        await InvalidateCacheTagsAsync(author.Id, "author", "authors", token);
+        await InvalidateCacheTagsAsync(author.Id, CacheTags.AuthorItemPrefix, CacheTags.AuthorList, token);
 
-        IDomainEventNotification notification = changeType switch
+        IDomainEventNotification notification = effectiveChangeType switch
         {
             ChangeType.Insert => new AuthorCreatedNotification(author.Id, author.Name, author.LastModified),
             ChangeType.Update => new AuthorUpdatedNotification(author.Id, author.Name, author.LastModified),
             ChangeType.Delete => new AuthorDeletedNotification(author.Id, author.LastModified),
-            _ => throw new ArgumentOutOfRangeException(nameof(changeType))
+            _ => throw new ArgumentOutOfRangeException(nameof(effectiveChangeType))
         };
 
         await NotifyAsync("Author", notification, token);
@@ -186,22 +154,30 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
 
     async Task HandlePublisherChangeAsync(PublisherProjection publisher, ChangeType changeType, CancellationToken token)
     {
-        if (changeType == ChangeType.Update && publisher.IsDeleted)
-        {
-            changeType = ChangeType.Delete;
-        }
+        var effectiveChangeType = DetermineEffectiveChangeType(changeType, publisher.IsDeleted);
 
-        await InvalidateCacheTagsAsync(publisher.Id, "publisher", "publishers", token);
+        await InvalidateCacheTagsAsync(publisher.Id, CacheTags.PublisherItemPrefix, CacheTags.PublisherList, token);
 
-        IDomainEventNotification notification = changeType switch
+        IDomainEventNotification notification = effectiveChangeType switch
         {
             ChangeType.Insert => new PublisherCreatedNotification(publisher.Id, publisher.Name, publisher.LastModified),
             ChangeType.Update => new PublisherUpdatedNotification(publisher.Id, publisher.Name, publisher.LastModified),
             ChangeType.Delete => new PublisherDeletedNotification(publisher.Id, publisher.LastModified),
-            _ => throw new ArgumentOutOfRangeException(nameof(changeType))
+            _ => throw new ArgumentOutOfRangeException(nameof(effectiveChangeType))
         };
 
         await NotifyAsync("Publisher", notification, token);
+    }
+
+    static ChangeType DetermineEffectiveChangeType(ChangeType changeType, bool isDeleted)
+    {
+        // If it's an update but the entity is soft-deleted, treat it as a delete for notifications
+        if (changeType == ChangeType.Update && isDeleted)
+        {
+            return ChangeType.Delete;
+        }
+
+        return changeType;
     }
 
     async Task InvalidateCacheTagsAsync(Guid id, string entityPrefix, string collectionTag, CancellationToken token)

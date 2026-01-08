@@ -75,7 +75,7 @@ public static class PublisherEndpoints
                 Expiration = TimeSpan.FromMinutes(5),
                 LocalCacheExpiration = TimeSpan.FromMinutes(2)
             },
-            tags: ["publishers"],
+            tags: [CacheTags.PublisherList],
             cancellationToken: cancellationToken);
 
         return TypedResults.Ok(response);
@@ -104,7 +104,7 @@ public static class PublisherEndpoints
                 Expiration = TimeSpan.FromMinutes(5),
                 LocalCacheExpiration = TimeSpan.FromMinutes(2)
             },
-            tags: [$"publisher:{id}"],
+            tags: [CacheTags.ForItem(CacheTags.PublisherItemPrefix, id)],
             cancellationToken: cancellationToken);
 
         return response is null ? TypedResults.NotFound() : TypedResults.Ok(response);

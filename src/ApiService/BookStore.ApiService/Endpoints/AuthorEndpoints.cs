@@ -82,7 +82,7 @@ public static class AuthorEndpoints
                 Expiration = TimeSpan.FromMinutes(5),
                 LocalCacheExpiration = TimeSpan.FromMinutes(2)
             },
-            tags: ["authors"],
+            tags: [CacheTags.AuthorList],
             token: cancellationToken);
 
         return TypedResults.Ok(response);
@@ -127,7 +127,7 @@ public static class AuthorEndpoints
                 Expiration = TimeSpan.FromMinutes(5),
                 LocalCacheExpiration = TimeSpan.FromMinutes(2)
             },
-            tags: [$"author:{id}"],
+            tags: [CacheTags.ForItem(CacheTags.AuthorItemPrefix, id)],
             token: cancellationToken);
 
         return response is null ? TypedResults.NotFound() : TypedResults.Ok(response);

@@ -164,7 +164,7 @@ public static class BookEndpoints
                 Expiration = TimeSpan.FromMinutes(2),
                 LocalCacheExpiration = TimeSpan.FromMinutes(1)
             },
-            tags: ["books"],
+            tags: [CacheTags.BookList],
             token: cancellationToken);
 
         return TypedResults.Ok(response);
@@ -259,7 +259,7 @@ public static class BookEndpoints
                 Expiration = TimeSpan.FromMinutes(5),
                 LocalCacheExpiration = TimeSpan.FromMinutes(2)
             },
-            tags: [$"book:{id}"],
+            tags: [CacheTags.ForItem(CacheTags.BookItemPrefix, id)],
             token: cancellationToken);
 
         return response is null ? TypedResults.NotFound() : TypedResults.Ok(response);

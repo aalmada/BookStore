@@ -56,7 +56,6 @@ public static class MartenConfigurationExtensions
         .UseLightweightSessions()
         .AddAsyncDaemon(DaemonMode.Solo)
         .IntegrateWithWolverine();
-        //.IntegrateWithWolverine(cfg => cfg.UseWolverineManagedEventSubscriptionDistribution = true);
 
         return services;
     }
@@ -77,7 +76,7 @@ public static class MartenConfigurationExtensions
             Casing.CamelCase,
             configure: settings =>
                 // Add custom converter for PartialDate to handle nullable values properly
-                settings.Converters.Add(new PartialDateJsonConverter()));// settings.Converters.Add(new PartialDateJsonConverter()));
+                settings.Converters.Add(new PartialDateJsonConverter()));
 
     static void RegisterEventTypes(StoreOptions options)
     {

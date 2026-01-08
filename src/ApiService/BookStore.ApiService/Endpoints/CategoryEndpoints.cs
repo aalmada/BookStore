@@ -83,7 +83,7 @@ public static class CategoryEndpoints
                 Expiration = TimeSpan.FromMinutes(5),
                 LocalCacheExpiration = TimeSpan.FromMinutes(2)
             },
-            tags: ["categories"],
+            tags: [CacheTags.CategoryList],
             token: cancellationToken);
 
         return TypedResults.Ok(response);
@@ -118,7 +118,7 @@ public static class CategoryEndpoints
                 Expiration = TimeSpan.FromMinutes(5),
                 LocalCacheExpiration = TimeSpan.FromMinutes(2)
             },
-            tags: [$"category:{id}"],
+            tags: [CacheTags.ForItem(CacheTags.CategoryItemPrefix, id)],
             token: cancellationToken);
 
         if (projection == null)
