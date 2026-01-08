@@ -26,7 +26,7 @@ public class BookCrudTests
                 _ = await Assert.That(createResponse.IsSuccessStatusCode).IsTrue();
                 createdBook = await createResponse.Content.ReadFromJsonAsync<BookResponse>();
             },
-            TimeSpan.FromSeconds(10));
+            TestConstants.DefaultEventTimeout);
 
         // Assert
         _ = await Assert.That(createdBook).IsNotNull();
@@ -47,7 +47,7 @@ public class BookCrudTests
         _ = await Assert.That(createdBook).IsNotNull();
 
         // Wait for async projection to complete (eventual consistency)
-        await Task.Delay(TimeSpan.FromSeconds(2));
+        await Task.Delay(TestConstants.DefaultProjectionDelay);
 
         // Get the book to retrieve its ETag (with retry for projection delay)
         HttpResponseMessage? getResponse = null;
@@ -59,7 +59,7 @@ public class BookCrudTests
                 break;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(1));
+            await Task.Delay(TestConstants.DefaultRetryDelay);
         }
 
         _ = await Assert.That(getResponse!.IsSuccessStatusCode).IsTrue();
@@ -91,7 +91,7 @@ public class BookCrudTests
 
                 _ = await Assert.That(updateResponse.IsSuccessStatusCode).IsTrue();
             },
-            TimeSpan.FromSeconds(10));
+            TestConstants.DefaultEventTimeout);
 
         // Assert
         _ = await Assert.That(received).IsTrue();
@@ -111,7 +111,7 @@ public class BookCrudTests
         _ = await Assert.That(createdBook).IsNotNull();
 
         // Wait for async projection to complete (eventual consistency)
-        await Task.Delay(TimeSpan.FromSeconds(2));
+        await Task.Delay(TestConstants.DefaultProjectionDelay);
 
         // Get the book to retrieve its ETag (with retry for projection delay)
         HttpResponseMessage? getResponse = null;
@@ -123,7 +123,7 @@ public class BookCrudTests
                 break;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(1));
+            await Task.Delay(TestConstants.DefaultRetryDelay);
         }
 
         _ = await Assert.That(getResponse!.IsSuccessStatusCode).IsTrue();
@@ -150,7 +150,7 @@ public class BookCrudTests
 
                 _ = await Assert.That(deleteResponse.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
             },
-            TimeSpan.FromSeconds(10));
+            TestConstants.DefaultEventTimeout);
 
         // Assert
         _ = await Assert.That(received).IsTrue();
@@ -169,7 +169,7 @@ public class BookCrudTests
         var createdBook = await createResponse.Content.ReadFromJsonAsync<BookResponse>();
 
         // 2. Wait for projection
-        await Task.Delay(TimeSpan.FromSeconds(2));
+        await Task.Delay(TestConstants.DefaultProjectionDelay);
 
         // 3. Get ETag for delete
         var getResponse = await httpClient.GetAsync($"/api/books/{createdBook!.Id}");
@@ -198,7 +198,7 @@ public class BookCrudTests
 
                 _ = await Assert.That(restoreResponse.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
             },
-            TimeSpan.FromSeconds(10));
+            TestConstants.DefaultEventTimeout);
 
         _ = await Assert.That(received).IsTrue();
     }

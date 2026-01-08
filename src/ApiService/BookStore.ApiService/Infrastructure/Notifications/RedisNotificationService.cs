@@ -36,14 +36,12 @@ public class RedisNotificationService : INotificationService, IDisposable
     {
         if (_redis == null || !_redis.IsConnected)
         {
-
             Log.Notifications.RedisNotConnected(_logger);
             return;
         }
 
         _redis.GetSubscriber().Subscribe(RedisChannel.Literal(ChannelName), async (channel, message) =>
         {
-
             try
             {
                 var notification = JsonSerializer.Deserialize<IDomainEventNotification>(
@@ -58,7 +56,6 @@ public class RedisNotificationService : INotificationService, IDisposable
             }
             catch (Exception ex)
             {
-
                 Log.Notifications.FailedToProcessRedisMessage(_logger, ex);
             }
         });
@@ -91,14 +88,12 @@ public class RedisNotificationService : INotificationService, IDisposable
         if (_redis?.IsConnected == true)
         {
             var json = JsonSerializer.Serialize(notification, typeof(IDomainEventNotification));
-
             _ = await _redis.GetSubscriber().PublishAsync(RedisChannel.Literal(ChannelName), json);
 
             Log.Notifications.PublishedToRedis(_logger, notification.EventType, notification.EntityId);
         }
         else
         {
-
             // Fallback: notify local subscribers directly if Redis unavailable
             Log.Notifications.RedisFallback(_logger);
             await BroadcastToLocalSubscribersAsync(notification);

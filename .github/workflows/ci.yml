@@ -48,6 +48,8 @@ jobs:
     - name: Run AppHost integration tests
       run: dotnet test --configuration Release -- --coverage --coverage-output-format cobertura
       working-directory: tests/BookStore.AppHost.Tests
+      env:
+        ASPNETCORE_ENVIRONMENT: Development
       # Tests full application startup and end-to-end scenarios
       
     - name: Run analyzer tests

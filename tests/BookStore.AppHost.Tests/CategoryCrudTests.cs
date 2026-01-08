@@ -60,7 +60,7 @@ public class CategoryCrudTests
 
                 _ = await Assert.That(updateResponse.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
             },
-            TimeSpan.FromSeconds(10));
+            TestConstants.DefaultEventTimeout);
 
         _ = await Assert.That(received).IsTrue();
 
@@ -95,7 +95,7 @@ public class CategoryCrudTests
 
                 _ = await Assert.That(deleteResponse.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
             },
-            TimeSpan.FromSeconds(10));
+            TestConstants.DefaultEventTimeout);
 
         _ = await Assert.That(received).IsTrue();
 
@@ -160,7 +160,7 @@ public class CategoryCrudTests
                 _ = await Assert.That(createResponse.StatusCode).IsEqualTo(HttpStatusCode.Created);
                 res = await createResponse.Content.ReadFromJsonAsync<CategoryDto>();
             },
-            TimeSpan.FromSeconds(10));
+            TestConstants.DefaultEventTimeout);
 
         _ = await Assert.That(res).IsNotNull();
         _ = await Assert.That(received).IsTrue();
@@ -209,7 +209,7 @@ public class CategoryCrudTests
 
                 _ = await Assert.That(restoreResponse.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
             },
-            TimeSpan.FromSeconds(10));
+            TestConstants.DefaultEventTimeout);
 
         _ = await Assert.That(received).IsTrue();
 
@@ -243,7 +243,7 @@ public class CategoryCrudTests
                 }
             }
 
-            await Task.Delay(500);
+            await Task.Delay(TestConstants.DefaultPollingInterval);
         }
 
         throw new Exception($"Category {id} not found in read model (or failed validation) after retries.");
@@ -259,7 +259,7 @@ public class CategoryCrudTests
                 return true;
             }
 
-            await Task.Delay(500);
+            await Task.Delay(TestConstants.DefaultPollingInterval);
         }
 
         return false;

@@ -107,7 +107,7 @@ public static class GlobalHooks
             }
 #pragma warning restore RCS1075
 
-            await Task.Delay(1000);
+            await Task.Delay(TestConstants.DefaultRetryDelay);
         }
 
         if (loginResponse == null || !loginResponse.IsSuccessStatusCode)

@@ -44,7 +44,7 @@ public static class TestHelpers
 
         var app = GlobalHooks.App!;
         using var client = app.CreateHttpClient("apiservice");
-        client.Timeout = TimeSpan.FromMinutes(5); // Prevent Aspire default timeout from killing the stream
+        client.Timeout = TestConstants.DefaultStreamTimeout; // Prevent Aspire default timeout from killing the stream
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", GlobalHooks.AdminAccessToken);
 
         using var cts = new CancellationTokenSource(timeout);
