@@ -153,6 +153,105 @@ public class BookSearchProjection
 }
 ```
 
+### Real-time Notifications with Server-Sent Events (SSE)
+
+The application automatically sends SSE notifications whenever projections are updated, providing real-time updates to connected clients without polling.
+
+**How it Works:**
+
+1. **Mutation occurs** - Client creates/updates/deletes an entity
+2. **Event stored** - Event is appended to Marten event stream
+3. **Projection updates** - Async daemon processes event and updates read model
+4. **Notification sent** - `ProjectionCommitListener` detects projection change and sends SSE notification
+5. **Clients receive** - All connected clients receive the update in real-time
+
+**SSE Flow:**
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API as API Endpoint
+    participant Marten as Event Store
+    participant Daemon as Async Daemon
+    participant Listener as ProjectionCommitListener
+    participant SSE as SSE Stream
+    
+    Client->>API: 1. POST /api/admin/books (Create)
+    API->>Marten: 2. Append BookAdded event
+    Marten-->>API: 3. Event stored
+    API-->>Client: 4. HTTP 201 Created
+    
+    Daemon->>Marten: 5. Poll for new events
+    Daemon->>Daemon: 6. Update BookSearchProjection
+    Daemon->>Listener: 7. AfterCommitAsync (projection change)
+    Listener->>Listener: 8. Invalidate cache tags
+    Listener->>SSE: 9. Broadcast BookCreated notification
+    SSE-->>Client: 10. Push notification via SSE
+```
+
+**Event Types:**
+- `CategoryCreated`, `CategoryUpdated`, `CategoryDeleted`
+- `AuthorCreated`, `AuthorUpdated`, `AuthorDeleted`
+- `PublisherCreated`, `PublisherUpdated`, `PublisherDeleted`
+- `BookCreated`, `BookUpdated`, `BookDeleted`
+
+**Implementation:**
+
+```csharp
+// ProjectionCommitListener.cs
+public class ProjectionCommitListener : IDocumentSessionListener
+{
+    public async Task AfterCommitAsync(IDocumentSession _, IChangeSet commit, CancellationToken token)
+    {
+        // Process all projection changes
+        await ProcessDocumentChangesAsync(commit.Inserted, ChangeType.Insert, token);
+        await ProcessDocumentChangesAsync(commit.Updated, ChangeType.Update, token);  
+        await ProcessDocumentChangesAsync(commit.Deleted, ChangeType.Delete, token);
+    }
+    
+    async Task HandleCategoryChangeAsync(CategoryProjection category, ChangeType changeType)
+    {
+        // Determine notification type based on change and soft-delete status
+        var effectiveChangeType = DetermineEffectiveChangeType(changeType, category.IsDeleted);
+        
+        // Invalidate cache
+        await InvalidateCacheTagsAsync(category.Id, CacheTags.CategoryItemPrefix, CacheTags.CategoryList);
+        
+        // Send SSE notification
+        IDomainEventNotification notification = effectiveChangeType switch
+        {
+            ChangeType.Insert => new CategoryCreatedNotification(...),
+            ChangeType.Update => new CategoryUpdatedNotification(...),
+            ChangeType.Delete => new CategoryDeletedNotification(...)
+        };
+        await _notificationService.NotifyAsync(notification);
+    }
+}
+```
+
+**Benefits:**
+- ✅ **Automatic** - No manual notification code needed
+- ✅ **Reliable** - Tied to projection updates, not API calls
+- ✅ **Efficient** - Single listener handles all entities
+- ✅ **Integrated** - Cache invalidation + SSE in one place
+
+**Client Connection:**
+
+```javascript
+// Connect to SSE endpoint
+const eventSource = new EventSource('/api/notifications/stream');
+
+eventSource.addEventListener('BookUpdated', (event) => {
+    const notification = JSON.parse(event.data);
+    console.log(`Book ${notification.entityId} updated`);
+    // Update UI with fresh data
+});
+```
+
+> [!NOTE]
+> Soft-delete operations appear as `Delete` notifications. Restore operations appear as `Update` notifications (IsDeleted changes from true → false).
+```
+
 ## Domain Model
 
 ### Aggregates
@@ -258,6 +357,7 @@ sequenceDiagram
 ### Features
 - **Event Sourcing** - Marten event store
 - **CQRS** - Separate read/write models
+- **Real-time Notifications** - Server-Sent Events (SSE) for all mutations
 - **Optimistic Concurrency** - ETags with stream versions
 - **Distributed Tracing** - Correlation/causation IDs
 - **Multi-language** - Category translations

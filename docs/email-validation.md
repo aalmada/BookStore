@@ -7,7 +7,7 @@ This guide details the implementation of the email verification feature in the B
 The email verification system ensures that users provide valid email addresses during registration. It supports:
 - **Conditional Validation:** Enabled/Disabled via configuration.
 - **Delivery Methods:** SMTP (Production) or Logging (Development).
-- **Reactive Experience:** Real-time updates via SignalR when verification completes.
+- **Reactive Experience:** Real-time updates via Server-Sent Events (SSE) when verification completes.
 - **Passkey Integration:** Compatible with both password-based and passkey-based registration.
 
 ## Architecture
@@ -26,7 +26,7 @@ The verification process follows an asynchronous, event-driven flow:
 5.  **User Verification:** User clicks the link.
 6.  **Confirmation:** Frontend calls `POST /identity/confirmEmail` with the token.
 7.  **Notification:** Backend verifies the token and publishes a `UserVerifiedNotification` domain event.
-8.  **Real-time Update:** SignalR hub broadcasts the notification to the client, redirecting the user to login automatically.
+8.  **Real-time Update:** SSE stream broadcasts the notification to the client, redirecting the user to login automatically.
 
 ### Component Diagram
 
@@ -37,7 +37,7 @@ sequenceDiagram
     participant API
     participant Wolverine
     participant EmailService
-    participant SignalR
+    participant SSE as SSE Stream
 
     User->>Frontend: Register
     Frontend->>API: POST /register
@@ -52,10 +52,11 @@ sequenceDiagram
     User->>Frontend: Click Link (/verify-email)
     Frontend->>API: POST /confirmEmail
     API->>API: Verify Token
-    API->>SignalR: Publish UserVerifiedNotification
+    API->>SSE: Publish UserVerifiedNotification
     API-->>Frontend: 200 OK
     
-    SignalR-->>Frontend: OnUserVerified
+    Note over Frontend,SSE: Frontend already connected to /api/notifications/stream
+    SSE-->>Frontend: OnUserVerified
     Frontend-->>User: Auto-redirect to Login
 ```
 

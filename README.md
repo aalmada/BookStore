@@ -69,7 +69,7 @@ The Aspire dashboard opens automatically, providing access to:
 ### Frontend (Blazor Web)
 - **Book Catalog** with search and filtering
 - **Book Details** with comprehensive information
-- **Real-time Updates** with SignalR notifications
+- **Real-time Updates** with Server-Sent Events (SSE) for push notifications
 - **Optimistic UI** for instant feedback with eventual consistency
 - **Responsive Design** for desktop and mobile
 - **Type-safe API Client** with BookStore.Client library (Refit-based)
@@ -78,7 +78,7 @@ The Aspire dashboard opens automatically, providing access to:
 ### Backend API
 - **Event Sourcing** with Marten and PostgreSQL
 - **CQRS** with async projections for optimized reads
-- **Real-time Notifications** with SignalR (Wolverine integration)
+- **Real-time Notifications** with Server-Sent Events (SSE) - Automatic push notifications for all mutations
 - **JWT Authentication** - Secure token-based authentication for all clients (Web & Mobile)
 - **Passwordless Support** - Full Passkey support including **Passkey-First Sign Up** (.NET 10)
 - **Role-Based Authorization** - Admin endpoints protected
@@ -128,7 +128,7 @@ For a detailed breakdown of the project structure, please refer to the [Getting 
 - **[API Client Generation](docs/api-client-generation.md)** - Type-safe API client with Refit
 - **[Authentication Guide](docs/authentication-guide.md)** - JWT authentication and role-based authorization
 - **[Passkey Guide](docs/passkey-guide.md)** - Passwordless authentication with WebAuthn/FIDO2
-- **[Real-time Notifications](docs/signalr-guide.md)** - SignalR integration and optimistic updates
+- **[Real-time Notifications](#) <!-- TODO: Create SSE guide -->** - Server-Sent Events (SSE) for push notifications
 - **[Logging Guide](docs/logging-guide.md)** - Structured logging with source-generated log messages
 - **[Correlation & Causation IDs](docs/correlation-causation-guide.md)** - Distributed tracing
 - **[Localization Guide](docs/localization-guide.md)** - Multi-language support
@@ -145,7 +145,7 @@ For a detailed breakdown of the project structure, please refer to the [Getting 
 
 ### Frontend
 - **Blazor Web** - Interactive web UI with Server rendering
-- **SignalR Client** - Real-time notifications
+- **Server-Sent Events (SSE)** - Real-time push notifications from server
 - **BookStore.Client** - Reusable API client library (Refit-based)
 - **Polly** - Resilience and transient fault handling
 
@@ -153,7 +153,7 @@ For a detailed breakdown of the project structure, please refer to the [Getting 
 - **ASP.NET Core 10** - Minimal APIs
 - **C# 14** - Latest language features (collection expressions, primary constructors, etc.)
 - **Marten** - Event store and document DB
-- **Wolverine** - Mediator, message bus, and SignalR integration
+- **Wolverine** - Mediator, message bus, and async projections
 - **PostgreSQL 16** - Database with pg_trgm and unaccent extensions
 
 ### Infrastructure

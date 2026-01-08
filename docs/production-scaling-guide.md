@@ -8,7 +8,7 @@ The BookStore application is designed for horizontal scalability with:
 - **Stateless Services** - API and Web services can scale independently
 - **Event-Sourced Architecture** - Marten with PostgreSQL for reliable event storage
 - **Read Model Projections** - Optimized for read-heavy workloads
-- **Real-time Updates** - SignalR for live notifications
+- **Real-time Updates** - Server-Sent Events (SSE) for live notifications
 
 ## Scaling Strategy Overview
 
@@ -658,41 +658,64 @@ az cdn endpoint create \
 
 ---
 
-## SignalR Scaling
+## Server-Sent Events (SSE) Scaling
 
-For real-time notifications across multiple instances, use Azure SignalR Service or Redis backplane.
+For real-time notifications across multiple instances, SSE connections are stateful and bound to specific server instances. Consider these scaling strategies:
 
-### Azure SignalR Service
+### Load Balancer with Sticky Sessions
 
-```bash
-# Create Azure SignalR Service
-az signalr create \
-  --name bookstore-signalr \
-  --resource-group bookstore-rg \
-  --sku Standard_S1 \
-  --unit-count 2 \
-  --service-mode Default
+```yaml
+# nginx configuration for SSE with sticky sessions
+upstream bookstore_api {
+    ip_hash;  # Ensures same client goes to same server
+    server api1.bookstore.com:5000;
+    server api2.bookstore.com:5000;
+    server api3.bookstore.com:5000;
+}
+
+server {
+    location /api/notifications/stream {
+        proxy_pass http://bookstore_api;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 24h;
+    }
+}
 ```
 
-Update your application:
+### Redis Pub/Sub for Multi-Instance Broadcasting
+
+Use Redis to broadcast notifications across all API instances:
 
 ```csharp
-// In Program.cs
-services.AddSignalR()
-    .AddAzureSignalR(builder.Configuration.GetConnectionString("AzureSignalR"));
-```
-
-### Redis Backplane (Kubernetes)
-
-For Kubernetes deployments:
-
-```csharp
-services.AddSignalR()
-    .AddStackExchangeRedis(builder.Configuration.GetConnectionString("redis"), options =>
+// NotificationService.cs
+public class NotificationService : INotificationService
+{
+    private readonly IConnectionMultiplexer _redis;
+    
+    public async Task NotifyAsync(IDomainEventNotification notification)
     {
-        options.Configuration.ChannelPrefix = "BookStore.SignalR";
-    });
+        // Publish to Redis channel
+        await _redis.GetSubscriber()
+            .PublishAsync("bookstore:notifications", JsonSerializer.Serialize(notification));
+    }
+}
+
+// Program.cs - Subscribe to Redis notifications
+var subscriber = redis.GetSubscriber();
+await subscriber.SubscribeAsync("bookstore:notifications", (channel, message) =>
+{
+    // Broadcast to all connected SSE clients on this instance
+    notificationHub.BroadcastToClients(message);
+});
 ```
+
+**Benefits:**
+- ✅ Horizontal scaling with multiple API instances
+- ✅ All clients receive notifications regardless of which server they're connected to
+- ✅ Redis provides reliable message delivery
 
 ---
 
@@ -885,7 +908,7 @@ spec:
 - [ ] Set up database read replicas
 - [ ] Implement connection pooling (PgBouncer)
 - [ ] Configure distributed caching (Redis)
-- [ ] Set up SignalR backplane for multi-instance deployments
+- [ ] Configure sticky sessions or Redis pub/sub for SSE in multi-instance deployments
 - [ ] Create load testing scenarios
 - [ ] Define monitoring dashboards and alerts
 

@@ -158,6 +158,156 @@ public async Task GetBooks_PublicEndpoint_ShouldReturnOk()
 }
 ```
 
+## Server-Sent Events (SSE) Testing
+
+The application sends real-time notifications via Server-Sent Events when mutations occur. Integration tests verify that SSE events are properly triggered for all CRUD operations.
+
+### SSE Infrastructure
+
+The test helper `ExecuteAndWaitForEventAsync` connects to the SSE stream BEFORE executing mutations, ensuring no race conditions:
+
+```csharp
+// TestHelpers.cs
+public static async Task<bool> ExecuteAndWaitForEventAsync(
+    Guid entityId,
+    string eventType,
+    Func<Task> action,
+    TimeSpan timeout)
+{
+    // 1. Connect to SSE stream
+    // 2. Wait for connection to establish
+    // 3. Execute action (mutation)
+    // 4. Wait for matching SSE event
+    // 5. Return true if event received, false if timeout
+}
+```
+
+**Event Types:**
+- `CategoryCreated`, `CategoryUpdated`, `CategoryDeleted`
+- `AuthorCreated`, `AuthorUpdated`, `AuthorDeleted`
+- `PublisherCreated`, `PublisherUpdated`, `PublisherDeleted`
+- `BookCreated`, `BookUpdated`, `BookDeleted`
+
+> [!NOTE]
+> Creation events often appear as "Updated" due to projection upsert semantics. Restore operations appear as "Updated" events (IsDeleted changes from true → false).
+
+### SSE Test Pattern
+
+```csharp
+[Test]
+public async Task UpdateCategory_ShouldReturnOk()
+{
+    // Arrange
+    var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
+    dynamic createRequest = TestDataGenerators.GenerateFakeCategoryRequest();
+    var createResponse = await httpClient.PostAsJsonAsync("/api/admin/categories", (object)createRequest);
+    _ = await Assert.That(createResponse.StatusCode).IsEqualTo(HttpStatusCode.Created);
+    var createdCategory = await createResponse.Content.ReadFromJsonAsync<CategoryDto>();
+
+    dynamic updateRequest = TestDataGenerators.GenerateFakeCategoryRequest(); // New data
+
+    // Act - Connect to SSE before updating, then wait for notification
+    var received = await TestHelpers.ExecuteAndWaitForEventAsync(
+        createdCategory!.Id,
+        "CategoryUpdated",
+        async () =>
+        {
+            var updateResponse = await httpClient.PutAsJsonAsync($"/api/admin/categories/{createdCategory.Id}", (object)updateRequest);
+            _ = await Assert.That(updateResponse.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
+        },
+        TimeSpan.FromSeconds(10));
+
+    // Assert
+    _ = await Assert.That(received).IsTrue();
+}
+```
+
+### Delete with SSE Verification
+
+```csharp
+[Test]
+public async Task DeletePublisher_ShouldReturnNoContent()
+{
+    // Arrange
+    var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
+    dynamic createRequest = TestDataGenerators.GenerateFakePublisherRequest();
+    var createResponse = await httpClient.PostAsJsonAsync("/api/admin/publishers", (object)createRequest);
+    var createdPublisher = await createResponse.Content.ReadFromJsonAsync<PublisherDto>();
+
+    // Act - Connect to SSE before deleting
+    var received = await TestHelpers.ExecuteAndWaitForEventAsync(
+        createdPublisher!.Id,
+        "PublisherDeleted",
+        async () =>
+        {
+            var deleteResponse = await httpClient.DeleteAsync($"/api/admin/publishers/{createdPublisher.Id}");
+            _ = await Assert.That(deleteResponse.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
+        },
+        TimeSpan.FromSeconds(10));
+
+    _ = await Assert.That(received).IsTrue();
+}
+```
+
+### Restore with SSE Verification
+
+```csharp
+[Test]
+public async Task RestoreAuthor_ShouldReturnOk()
+{
+    // Arrange
+    var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
+    var createRequest = TestDataGenerators.GenerateFakeAuthorRequest();
+    var createResponse = await httpClient.PostAsJsonAsync("/api/admin/authors", createRequest);
+    var createdAuthor = await createResponse.Content.ReadFromJsonAsync<AuthorDto>();
+
+    // Soft delete first
+    var deleteResponse = await httpClient.DeleteAsync($"/api/admin/authors/{createdAuthor!.Id}");
+    _ = await Assert.That(deleteResponse.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
+
+    // Act - Restore appears as "Updated" event (IsDeleted: true → false)
+    var received = await TestHelpers.ExecuteAndWaitForEventAsync(
+        createdAuthor.Id,
+        "AuthorUpdated",
+        async () =>
+        {
+            var restoreResponse = await httpClient.PostAsync($"/api/admin/authors/{createdAuthor.Id}/restore", null);
+            _ = await Assert.That(restoreResponse.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
+        },
+        TimeSpan.FromSeconds(10));
+
+    _ = await Assert.That(received).IsTrue();
+}
+```
+
+### Matching Any Entity ID
+
+Use `Guid.Empty` to match any entity ID (useful for creation tests where the ID is unknown):
+
+```csharp
+var received = await TestHelpers.ExecuteAndWaitForEventAsync(
+    Guid.Empty, // Match any ID
+    "BookUpdated",
+    async () =>
+    {
+        var createResponse = await httpClient.PostAsJsonAsync("/api/admin/books", createBookRequest);
+        createdBook = await createResponse.Content.ReadFromJsonAsync<BookResponse>();
+    },
+    TimeSpan.FromSeconds(10));
+```
+
+### Test Isolation with [NotInParallel]
+
+SSE tests should use the `[NotInParallel]` attribute to prevent connection race conditions:
+
+```csharp
+[NotInParallel]
+public class CategoryCrudTests
+{
+    // Tests run sequentially to avoid SSE connection conflicts
+}
+```
+
 ## Running Tests
 
 ### Run All Tests

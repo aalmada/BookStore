@@ -31,7 +31,7 @@ graph TB
 
 #### Frontend (Blazor Server)
 - **`AuthenticationService`**: High-level service for Login, Register, and Logout operations.
-- **`TokenService`**: Stores Access and Refresh tokens in **Scoped Memory** (per SignalR circuit).
+- **`TokenService`**: Stores Access and Refresh tokens in **Scoped Memory** (per user session).
     - *Security Note*: Tokens are **NOT** stored in LocalStorage or Cookies to prevent XSS attacks.
     - Tokens persist only for the lifetime of the user's session (browser tab).
 - **`JwtAuthenticationStateProvider`**: Custom provider that:
