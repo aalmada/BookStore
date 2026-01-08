@@ -136,7 +136,7 @@
             if (result != null && result.Success && !string.IsNullOrEmpty(result.AccessToken))
             {
                  Logger.LogInformation("Passkey login successful");
-                 AuthStateProvider.NotifyUserAuthentication(result.AccessToken);
+                 await AuthStateProvider.NotifyUserAuthentication(result.AccessToken);
                  Navigation.NavigateTo(ReturnUrl ?? "/");
             }
             else
@@ -182,7 +182,7 @@
                 
                 // Notify the authentication state provider with the new token
                 // This triggers UI updates for AuthorizeView and other auth-dependent components
-                AuthStateProvider.NotifyUserAuthentication(result.AccessToken);
+                await AuthStateProvider.NotifyUserAuthentication(result.AccessToken);
                 
                 // Notify other tabs via BroadcastChannel
                 try

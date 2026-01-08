@@ -36,7 +36,7 @@
         
         // Notify the authentication state provider that the user has logged out
         // This triggers UI updates for AuthorizeView and other auth-dependent components
-        AuthStateProvider.NotifyUserLogout();
+        await AuthStateProvider.NotifyUserLogout();
         
         // Notify other tabs via BroadcastChannel
         try

@@ -59,6 +59,11 @@ public sealed class ApplicationUser
     public ICollection<string> Roles { get; set; } = [];
 
     /// <summary>
+    /// IDs of books marked as favorite by the user
+    /// </summary>
+    public ICollection<Guid> FavoriteBookIds { get; set; } = [];
+
+    /// <summary>
     /// Passkeys registered to this user (WebAuthn/FIDO2)
     /// </summary>
     public IList<UserPasskeyInfo> Passkeys { get; set; } = [];
@@ -67,6 +72,23 @@ public sealed class ApplicationUser
     /// Refresh tokens for maintaining sessions
     /// </summary>
     public IList<RefreshTokenInfo> RefreshTokens { get; set; } = [];
+
+    // Apply methods for Marten Self-Aggregating Snapshot
+    public void Apply(BookStore.Shared.Messages.Events.BookAddedToFavorites @event)
+    {
+        if (!FavoriteBookIds.Contains(@event.BookId))
+        {
+            FavoriteBookIds.Add(@event.BookId);
+        }
+    }
+
+    public void Apply(BookStore.Shared.Messages.Events.BookRemovedFromFavorites @event)
+    {
+        if (FavoriteBookIds.Contains(@event.BookId))
+        {
+            _ = FavoriteBookIds.Remove(@event.BookId);
+        }
+    }
 }
 
 /// <summary>

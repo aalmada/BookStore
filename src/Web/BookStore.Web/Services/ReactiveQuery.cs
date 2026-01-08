@@ -92,5 +92,25 @@ public class ReactiveQuery<T> : IDisposable
         }
     }
 
+    /// <summary>
+    /// Optimistically mutates the current data.
+    /// Use this to apply local changes immediately while waiting for server confirmation.
+    /// </summary>
+    /// <param name="mutator">Function to transform the current data.</param>
+    public void MutateData(Func<T, T> mutator)
+    {
+        if (Data == null) return;
+        
+        try
+        {
+            Data = mutator(Data);
+            _onStateChanged();
+        }
+        catch (Exception ex)
+        {
+             _logger.LogError(ex, "Failed to mutate data optimistically.");
+        }
+    }
+
     public void Dispose() => _eventsService.OnNotificationReceived -= HandleNotification;
 }

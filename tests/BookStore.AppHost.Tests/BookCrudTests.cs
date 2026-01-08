@@ -1,5 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
+using BookStore.Shared.Models;
+using Bogus;
+using System.Net.Http.Headers;
 
 namespace BookStore.AppHost.Tests;
 
@@ -203,5 +206,183 @@ public class BookCrudTests
         _ = await Assert.That(received).IsTrue();
     }
 
+
     record BookResponse(Guid Id, string Title, string Isbn);
+
+    [Test]
+    public async Task AddToFavorites_ShouldReturnNoContent()
+    {
+        // Arrange
+        var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
+        var createBookRequest = TestDataGenerators.GenerateFakeBookRequest();
+
+        // Create book
+        var createResponse = await httpClient.PostAsJsonAsync("/api/admin/books", createBookRequest);
+        _ = await Assert.That(createResponse.IsSuccessStatusCode).IsTrue();
+        var createdBook = await createResponse.Content.ReadFromJsonAsync<BookResponse>();
+        _ = await Assert.That(createdBook).IsNotNull();
+
+        // Wait for projection
+        await Task.Delay(TestConstants.DefaultProjectionDelay);
+
+        // Act
+        var response = await httpClient.PostAsync($"/api/books/{createdBook!.Id}/favorites", null);
+
+        // Assert
+        _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
+
+        // Verify it is marked as favorite
+        var getResponse = await httpClient.GetFromJsonAsync<BookDto>($"/api/books/{createdBook.Id}");
+        _ = await Assert.That(getResponse!.IsFavorite).IsTrue();
+    }
+
+    [Test]
+    public async Task RemoveFromFavorites_ShouldReturnNoContent()
+    {
+        // Arrange
+        var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
+        var createBookRequest = TestDataGenerators.GenerateFakeBookRequest();
+
+        // Create book
+        var createResponse = await httpClient.PostAsJsonAsync("/api/admin/books", createBookRequest);
+        _ = await Assert.That(createResponse.IsSuccessStatusCode).IsTrue();
+        var createdBook = await createResponse.Content.ReadFromJsonAsync<BookResponse>();
+
+        // Wait for projection
+        await Task.Delay(TestConstants.DefaultProjectionDelay);
+
+        // Add to favorites first
+        await httpClient.PostAsync($"/api/books/{createdBook!.Id}/favorites", null);
+        
+        // Verify it IS favorite initially
+        var initialGet = await httpClient.GetFromJsonAsync<BookDto>($"/api/books/{createdBook.Id}");
+        _ = await Assert.That(initialGet!.IsFavorite).IsTrue();
+
+        // Act
+        var response = await httpClient.DeleteAsync($"/api/books/{createdBook.Id}/favorites");
+
+        // Assert
+        _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
+
+        // Verify it is NOT marked as favorite anymore
+        var getResponse = await httpClient.GetFromJsonAsync<BookDto>($"/api/books/{createdBook.Id}");
+        _ = await Assert.That(getResponse!.IsFavorite).IsFalse();
+    }
+
+    [Test]
+    public async Task GetBook_WhenNotAuthenticated_ShouldHaveIsFavoriteFalse()
+    {
+        // Arrange
+        // Create book as admin first
+        var adminClient = await TestHelpers.GetAuthenticatedClientAsync();
+        var createBookRequest = TestDataGenerators.GenerateFakeBookRequest();
+        var createResponse = await adminClient.PostAsJsonAsync("/api/admin/books", createBookRequest);
+        var createdBook = await createResponse.Content.ReadFromJsonAsync<BookResponse>();
+
+        // Wait for projection
+        await Task.Delay(TestConstants.DefaultProjectionDelay);
+
+        // Act - use unauthenticated client
+        var publicClient = TestHelpers.GetUnauthenticatedClient();
+        var getResponse = await publicClient.GetFromJsonAsync<BookDto>($"/api/books/{createdBook!.Id}");
+
+        // Assert
+        _ = await Assert.That(getResponse!.IsFavorite).IsFalse();
+    }
+
+    [Test]
+    public async Task BookLikeCount_ShouldAggregateCorrectly_WhenMultipleUsersLikeBook()
+    {
+        var _faker = new Faker();
+        var _anonClient = TestHelpers.GetUnauthenticatedClient();
+
+        // 1. Arrange: Create a book as Admin
+        var adminClient = await TestHelpers.GetAuthenticatedClientAsync();
+        var createBookRequest = TestDataGenerators.GenerateFakeBookRequest();
+        var createResponse = await adminClient.PostAsJsonAsync("/api/admin/books", createBookRequest);
+        _ = await Assert.That(createResponse.IsSuccessStatusCode).IsTrue();
+        var createdBook = await createResponse.Content.ReadFromJsonAsync<BookResponse>();
+        _ = await Assert.That(createdBook).IsNotNull();
+
+        // Wait for projection
+        await Task.Delay(TestConstants.DefaultProjectionDelay);
+
+        // 2. Arrange: Create User 1 and User 2
+        var user1Client = await CreateAuthenticatedUserAsync(_anonClient, _faker);
+        var user2Client = await CreateAuthenticatedUserAsync(_anonClient, _faker);
+
+        // 3. Act: User 1 Likes Book and wait for statistics update via SSE
+        // The statistics update will trigger a BookUpdatedNotification
+        var received1 = await TestHelpers.ExecuteAndWaitForEventAsync(
+            createdBook!.Id,
+            "BookUpdated",
+            async () =>
+            {
+                var response = await user1Client.PostAsync($"/api/books/{createdBook!.Id}/favorites", null);
+                _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
+            },
+            TestConstants.DefaultEventTimeout);
+            
+        _ = await Assert.That(received1).IsTrue();
+
+        // Assert: Count = 1
+        var bookDto1 = await _anonClient.GetFromJsonAsync<BookDto>($"/api/books/{createdBook.Id}");
+        _ = await Assert.That(bookDto1!.LikeCount).IsEqualTo(1);
+
+        // 4. Act: User 2 Likes Book and wait for SSE
+        var received2 = await TestHelpers.ExecuteAndWaitForEventAsync(
+            createdBook.Id,
+            "BookUpdated",
+            async () =>
+            {
+                var response = await user2Client.PostAsync($"/api/books/{createdBook.Id}/favorites", null);
+                _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
+            },
+            TestConstants.DefaultEventTimeout);
+
+        _ = await Assert.That(received2).IsTrue();
+
+        // Assert: Count = 2
+        var bookDto2 = await _anonClient.GetFromJsonAsync<BookDto>($"/api/books/{createdBook.Id}");
+        _ = await Assert.That(bookDto2!.LikeCount).IsEqualTo(2);
+
+        // 5. Act: User 1 Unlikes Book and wait for SSE
+        var received3 = await TestHelpers.ExecuteAndWaitForEventAsync(
+            createdBook.Id,
+            "BookUpdated",
+            async () =>
+            {
+                var response = await user1Client.DeleteAsync($"/api/books/{createdBook.Id}/favorites");
+                _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
+            },
+            TestConstants.DefaultEventTimeout);
+
+        _ = await Assert.That(received3).IsTrue();
+
+        // Assert: Count = 1
+        var bookDto3 = await _anonClient.GetFromJsonAsync<BookDto>($"/api/books/{createdBook.Id}");
+        _ = await Assert.That(bookDto3!.LikeCount).IsEqualTo(1);
+    }
+
+    private async Task<HttpClient> CreateAuthenticatedUserAsync(HttpClient anonClient, Faker faker)
+    {
+        var email = faker.Internet.Email();
+        var password = faker.Internet.Password(8, false, "\\w", "Aa1!");
+
+        // Register
+        var registerResponse = await anonClient.PostAsJsonAsync("/account/register", new { Email = email, Password = password });
+        _ = await Assert.That(registerResponse.IsSuccessStatusCode).IsTrue();
+
+        // Login
+        var loginResponse = await anonClient.PostAsJsonAsync("/account/login", new { Email = email, Password = password });
+        _ = await Assert.That(loginResponse.IsSuccessStatusCode).IsTrue();
+
+        var loginResult = await loginResponse.Content.ReadFromJsonAsync<LoginResponse>();
+        
+        var client = TestHelpers.GetUnauthenticatedClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", loginResult!.AccessToken);
+        return client;
+    }
+
+    record LoginResponse(string AccessToken, string RefreshToken);
 }

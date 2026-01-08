@@ -12,8 +12,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Options;
 using Npgsql;
-
-namespace BookStore.ApiService.Endpoints;
+using System.Security.Claims; // Need this for ClaimsPrincipal if not implicit
+using Wolverine;
+using BookStore.ApiService.Messages.Commands;
 
 public static class BookEndpoints
 {
@@ -26,6 +27,16 @@ public static class BookEndpoints
         _ = group.MapGet("/{id:guid}", GetBook)
             .WithName("GetBook")
             .WithSummary("Get book by ID");
+
+        _ = group.MapPost("/{id:guid}/favorites", AddFavorite)
+            .WithName("AddFavorite")
+            .WithSummary("Add book to favorites")
+            .RequireAuthorization();
+
+        _ = group.MapDelete("/{id:guid}/favorites", RemoveFavorite)
+            .WithName("RemoveFavorite")
+            .WithSummary("Remove book from favorites")
+            .RequireAuthorization();
 
         return group;
     }
@@ -59,6 +70,7 @@ public static class BookEndpoints
                 var publishers = new Dictionary<Guid, PublisherProjection>();
                 var authors = new Dictionary<Guid, AuthorProjection>();
                 var categories = new Dictionary<Guid, CategoryProjection>();
+                var statistics = new Dictionary<Guid, BookStatistics>();
 
                 // Build query incrementally
 #pragma warning disable CS8603 // Possible null reference return - false positive from Marten's Include API
@@ -119,6 +131,14 @@ public static class BookEndpoints
                 // Execute query with pagination
                 var pagedList = await query
                     .ToPagedListAsync(paging.Page!.Value, paging.PageSize!.Value, cancel);
+
+                // Load statistics explicitly to avoid potential issues with Includes on missing tables/documents
+                var bookIds = pagedList.Select(b => b.Id).ToArray();
+                var loadedStats = await session.LoadManyAsync<BookStatistics>(cancel, bookIds);
+                foreach (var stat in loadedStats)
+                {
+                    statistics[stat.Id] = stat;
+                }
 #pragma warning restore CS8603
 
                 // Map to DTOs with localized descriptions, biographies, and category names
@@ -130,7 +150,7 @@ public static class BookEndpoints
                     CultureInfo.GetCultureInfo(book.OriginalLanguage).DisplayName,
                     LocalizationHelper.GetLocalizedValue(book.Descriptions, culture, defaultCulture, ""),
                     book.PublicationDate,
-                    Helpers.BookHelpers.IsPreRelease(book.PublicationDate),
+                    BookStore.ApiService.Helpers.BookHelpers.IsPreRelease(book.PublicationDate),
                     book.PublisherId.HasValue && publishers.TryGetValue(book.PublisherId.Value, out var pub)
                         ? new PublisherDto(pub.Id, pub.Name)
                         : null,
@@ -150,7 +170,9 @@ public static class BookEndpoints
                                 LocalizationHelper.GetLocalizedValue(cat.Names, culture, defaultCulture, "Unknown"))
                             : null)
                         .Where(c => c != null)
-                        .Cast<CategoryDto>()]
+                        .Cast<CategoryDto>()],
+                    false, // IsFavorite is always false in cache
+                    statistics.TryGetValue(book.Id, out var stats) ? stats.LikeCount : 0
                 )).ToList();
 
                 return new PagedListDto<BookDto>(
@@ -166,6 +188,28 @@ public static class BookEndpoints
             },
             tags: [CacheTags.BookList],
             token: cancellationToken);
+
+        // Overlay user favorites if authenticated
+        // This pattern prevents cache explosion by keeping the cache generic and applying user-specific data at runtime
+        if (context.User.Identity?.IsAuthenticated == true && response.Items.Count > 0)
+        {
+            var userId = context.User.GetUserId();
+            if (userId != Guid.Empty)
+            {
+                await using var userSession = store.QuerySession();
+                var user = await userSession.LoadAsync<ApplicationUser>(userId, cancellationToken);
+                if (user?.FavoriteBookIds.Count > 0)
+                {
+                    var updatedItems = response.Items.Select(b =>
+                        user.FavoriteBookIds.Contains(b.Id)
+                            ? b with { IsFavorite = true }
+                            : b
+                    ).ToList();
+
+                    response = response with { Items = updatedItems };
+                }
+            }
+        }
 
         return TypedResults.Ok(response);
     }
@@ -187,15 +231,15 @@ public static class BookEndpoints
 
         if (streamState != null)
         {
-            var etag = Infrastructure.ETagHelper.GenerateETag(streamState.Version);
+            var etag = BookStore.ApiService.Infrastructure.ETagHelper.GenerateETag(streamState.Version);
 
             // Check If-None-Match for caching
-            if (Infrastructure.ETagHelper.CheckIfNoneMatch(context, etag))
+            if (BookStore.ApiService.Infrastructure.ETagHelper.CheckIfNoneMatch(context, etag))
             {
-                return Infrastructure.ETagHelper.NotModified(etag);
+                return BookStore.ApiService.Infrastructure.ETagHelper.NotModified(etag);
             }
 
-            Infrastructure.ETagHelper.AddETagHeader(context, etag);
+            BookStore.ApiService.Infrastructure.ETagHelper.AddETagHeader(context, etag);
         }
 
         var response = await cache.GetOrCreateLocalizedAsync(
@@ -206,6 +250,7 @@ public static class BookEndpoints
                 var publishers = new Dictionary<Guid, PublisherProjection>();
                 var authors = new Dictionary<Guid, AuthorProjection>();
                 var categories = new Dictionary<Guid, CategoryProjection>();
+                var statistics = new Dictionary<Guid, BookStatistics>();
 
                 // Load book with Include() for related entities
                 // Since session is tenant-scoped, Includes will automatically load for the same tenant!
@@ -214,9 +259,19 @@ public static class BookEndpoints
                     .Include(publishers).On(x => x.PublisherId)!
                     .Include(authors).On(x => x.AuthorIds)!
                     .Include(categories).On(x => x.CategoryIds)!
+                    //.Include(statistics).On(x => x.Id)!
                     .Where(b => b.Id == id)
                     .SingleOrDefaultAsync(cancel);
 #pragma warning restore CS8603
+
+                if (book != null)
+                {
+                    var bookStats = await session.LoadAsync<BookStatistics>(book.Id, cancel);
+                    if (bookStats != null)
+                    {
+                        statistics[book.Id] = bookStats;
+                    }
+                }
 
                 if (book == null)
                 {
@@ -232,7 +287,7 @@ public static class BookEndpoints
                     CultureInfo.GetCultureInfo(book.OriginalLanguage).DisplayName,
                     LocalizationHelper.GetLocalizedValue(book.Descriptions, culture, defaultCulture, ""),
                     book.PublicationDate,
-                    Helpers.BookHelpers.IsPreRelease(book.PublicationDate),
+                    BookStore.ApiService.Helpers.BookHelpers.IsPreRelease(book.PublicationDate),
                     book.PublisherId.HasValue && publishers.TryGetValue(book.PublisherId.Value, out var pub)
                         ? new PublisherDto(pub.Id, pub.Name)
                         : null,
@@ -252,7 +307,10 @@ public static class BookEndpoints
                                 LocalizationHelper.GetLocalizedValue(cat.Names, culture, defaultCulture, "Unknown"))
                             : null)
                         .Where(c => c != null)
-                        .Cast<CategoryDto>()]);
+                        .Cast<CategoryDto>()],
+                    false, // IsFavorite is always false in cache
+                    statistics.TryGetValue(book.Id, out var stats) ? stats.LikeCount : 0
+                    );
             },
             options: new HybridCacheEntryOptions
             {
@@ -262,6 +320,60 @@ public static class BookEndpoints
             tags: [CacheTags.ForItem(CacheTags.BookItemPrefix, id)],
             token: cancellationToken);
 
-        return response is null ? TypedResults.NotFound() : TypedResults.Ok(response);
+        if (response is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        // Overlay user favorites if authenticated
+        if (context.User.Identity?.IsAuthenticated == true)
+        {
+            var userId = context.User.GetUserId();
+            if (userId != Guid.Empty)
+            {
+                await using var userSession = store.QuerySession();
+                var user = await userSession.LoadAsync<ApplicationUser>(userId, cancellationToken);
+                if (user != null && user.FavoriteBookIds.Contains(id))
+                {
+                    response = response with { IsFavorite = true };
+                }
+            }
+        }
+
+        return TypedResults.Ok(response);
+    }
+
+    static async Task<Results<NoContent, NotFound>> AddFavorite(
+        Guid id,
+        [FromServices] IMessageBus bus,
+        HttpContext context,
+        CancellationToken cancellationToken)
+    {
+        var userId = context.User.GetUserId();
+        if (userId == Guid.Empty)
+        {
+            return TypedResults.NotFound();
+        }
+
+        await bus.InvokeAsync(new AddBookToFavorites(userId, id), cancellationToken);
+
+        return TypedResults.NoContent();
+    }
+
+    static async Task<Results<NoContent, NotFound>> RemoveFavorite(
+        Guid id,
+        [FromServices] IMessageBus bus,
+        HttpContext context,
+        CancellationToken cancellationToken)
+    {
+        var userId = context.User.GetUserId();
+        if (userId == Guid.Empty)
+        {
+            return TypedResults.NotFound();
+        }
+
+        await bus.InvokeAsync(new RemoveBookFromFavorites(userId, id), cancellationToken);
+
+        return TypedResults.NoContent();
     }
 }

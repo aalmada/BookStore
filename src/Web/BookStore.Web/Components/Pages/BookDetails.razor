@@ -3,8 +3,13 @@
 @using BookStore.Client
 @using ClientModels = BookStore.Client
 @using BookStore.Shared.Models
+@using Microsoft.AspNetCore.Components.Authorization
 @inject IGetBookEndpoint ApiClient
 @inject NavigationManager Navigation
+@inject IAddBookToFavoritesEndpoint AddFavoriteEndpoint
+@inject IRemoveBookFromFavoritesEndpoint RemoveFavoriteEndpoint
+@inject AuthenticationStateProvider AuthStateProvider
+@inject ISnackbar Snackbar
 @implements IAsyncDisposable
 @rendermode InteractiveServer
 
@@ -62,6 +67,19 @@
                             <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" /> by @string.Join(", ", book.Authors.Select(a => a.Name))
                         </MudText>
                     }
+
+                     @* Favorite Button *@
+                     <AuthorizeView>
+                        <Authorized>
+                            <MudButton Variant="Variant.Outlined" 
+                                       Color="@(book.IsFavorite ? Color.Error : Color.Default)"
+                                       StartIcon="@(book.IsFavorite ? Icons.Material.Filled.Favorite : Icons.Material.Filled.FavoriteBorder)"
+                                       OnClick="@(() => ToggleFavorite(book))"
+                                       Class="mb-4">
+                                @(book.IsFavorite ? "Remove from Favorites" : "Add to Favorites") (@book.LikeCount)
+                            </MudButton>
+                        </Authorized>
+                     </AuthorizeView>
 
                     @* Book Details Card *@
                     <MudCard Elevation="0" Class="mb-4" Style="background-color: rgba(0,0,0,0.02);">
@@ -137,6 +155,9 @@
     private List<BreadcrumbItem> _breadcrumbItems = new();
     
     [Inject] private ILogger<BookDetails> Logger { get; set; } = default!;
+    
+    [CascadingParameter] private Task<AuthenticationState> AuthStateTask { get; set; } = default!;
+    private System.Security.Claims.ClaimsPrincipal? user;
 
     protected override async Task OnInitializedAsync()
     {
@@ -159,6 +180,19 @@
              // Actually OnParametersSetAsync runs on standard parameter set.
              // We'll manage checking inside InitializeQueryAsync logic or just re-init.
              await InitializeQueryAsync();
+
+        }
+
+        var authState = await AuthStateTask;
+        var newUser = authState.User;
+
+        if (user == null || newUser.Identity?.Name != user.Identity?.Name || newUser.Identity?.IsAuthenticated != user.Identity?.IsAuthenticated)
+        {
+             user = newUser;
+             if (user.Identity?.IsAuthenticated == true && bookQuery != null)
+             {
+                 await bookQuery.LoadAsync();
+             }
         }
     }
 
@@ -168,9 +202,23 @@
         bookQuery?.Dispose();
 
         bookQuery = new ReactiveQuery<BookDto?>(
-            queryFn: FetchBookAsync,
-            eventsService: EventsService, // Assuming EventsService is injected in imports or we need to inject it
-            invalidationPredicate: ShouldInvalidate,
+            queryFn: async () => {
+                try 
+                {
+                    return await ApiClient.Execute(
+                        id: Id,
+                        api_version: "1.0",
+                        accept_Language: "en",
+                        x_Correlation_ID: Guid.NewGuid().ToString(),
+                        x_Causation_ID: string.Empty);
+                }
+                catch (Refit.ApiException apiEx) when (apiEx.StatusCode == System.Net.HttpStatusCode.NotFound)
+                {
+                    throw new Exception("Book not found. It may have been removed or the ID is incorrect.");
+                }
+            },
+            eventsService: EventsService,
+            invalidationPredicate: n => (n is BookStore.Shared.Notifications.BookUpdatedNotification or BookStore.Shared.Notifications.BookDeletedNotification or BookStore.Shared.Notifications.BookCoverUpdatedNotification && n.EntityId == Id) || n is BookStore.Shared.Notifications.UserUpdatedNotification,
             onStateChanged: StateHasChanged,
             logger: Logger
         );
@@ -227,6 +275,44 @@
         {
             await bookQuery.LoadAsync();
             UpdateBreadcrumbs();
+        }
+    }
+
+    private async Task ToggleFavorite(BookDto bookToToggle)
+    {
+        var originalState = bookToToggle.IsFavorite;
+
+        // 1. Optimistic
+        bookQuery?.MutateData(current => current == null ? null : current with 
+        { 
+            IsFavorite = !originalState,
+            LikeCount = originalState ? current.LikeCount - 1 : current.LikeCount + 1
+        });
+
+        // 2. API Call
+        try
+        {
+            if (originalState)
+            {
+                await RemoveFavoriteEndpoint.Execute(bookToToggle.Id);
+                Snackbar.Add("Removed from favorites", Severity.Success);
+            }
+            else
+            {
+                await AddFavoriteEndpoint.Execute(bookToToggle.Id);
+                Snackbar.Add("Added to favorites", Severity.Success);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to toggle favorite for book {BookId}", bookToToggle.Id);
+            // 3. Rollback
+            bookQuery?.MutateData(current => current == null ? null : current with 
+            { 
+                IsFavorite = originalState,
+                LikeCount = originalState ? current.LikeCount + 1 : current.LikeCount - 1
+            });
+            Snackbar.Add($"Failed: {ex.Message}", Severity.Error);
         }
     }
     

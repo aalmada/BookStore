@@ -62,6 +62,10 @@ public static class BookStoreClientExtensions
         _ = AddClient<ISoftDeletePublisherEndpoint>();
         _ = AddClient<IRestorePublisherEndpoint>();
 
+        // Favorites endpoints
+        _ = AddClient<IAddBookToFavoritesEndpoint>();
+        _ = AddClient<IRemoveBookFromFavoritesEndpoint>();
+
         // System endpoints
         _ = AddClient<IGetAllBooksAdminEndpoint>();
         _ = AddClient<IRebuildProjectionsEndpoint>();

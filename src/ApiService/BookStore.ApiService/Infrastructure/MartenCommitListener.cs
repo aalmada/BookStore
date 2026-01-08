@@ -1,5 +1,6 @@
 using BookStore.ApiService.Events;
 using BookStore.ApiService.Infrastructure.Notifications;
+using BookStore.ApiService.Models;
 using BookStore.ApiService.Projections;
 using BookStore.Shared.Notifications;
 using Marten;
@@ -94,7 +95,31 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
             case PublisherProjection publisher:
                 await HandlePublisherChangeAsync(publisher, changeType, token);
                 break;
+            case ApplicationUser user:
+                await HandleUserChangeAsync(user, changeType, token);
+                break;
+            case BookStatistics stats:
+                await HandleBookStatisticsChangeAsync(stats, changeType, token);
+                break;
         }
+    }
+
+    async Task HandleUserChangeAsync(ApplicationUser user, ChangeType changeType, CancellationToken token)
+    {
+        // For users, we don't have a generic list cache to invalidate (yet), 
+        // but we might want to invalidate specific user data if cached independently.
+        // For now, simply Notify.
+        
+        // Use UtcNow as fallback
+        var timestamp = DateTimeOffset.UtcNow;
+        
+        // We only care about updates (favorites added/removed) or potentially verifying.
+        // Even if we don't distinguish "UserUpdated" vs "UserVerified" perfectly here, 
+        // "UserUpdated" is a good catch-all for ReactiveQuery invalidation.
+
+        IDomainEventNotification notification = new UserUpdatedNotification(user.Id, timestamp);
+
+        await NotifyAsync("User", notification, token);
     }
 
     async Task HandleCategoryChangeAsync(CategoryProjection category, ChangeType changeType, CancellationToken token)
@@ -168,6 +193,17 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
         };
 
         await NotifyAsync("Publisher", notification, token);
+    }
+
+    async Task HandleBookStatisticsChangeAsync(BookStatistics stats, ChangeType changeType, CancellationToken token)
+    {
+        await InvalidateCacheTagsAsync(stats.Id, CacheTags.BookItemPrefix, CacheTags.BookList, token);
+
+        // Emit BookUpdated so clients refetch the book (including new stats)
+        // Title is unknown here, but usually not critical for simple invalidation signals
+        IDomainEventNotification notification = new BookUpdatedNotification(stats.Id, "Statistics Updated", DateTimeOffset.UtcNow);
+
+        await NotifyAsync("Book", notification, token);
     }
 
     static ChangeType DetermineEffectiveChangeType(ChangeType changeType, bool isDeleted)

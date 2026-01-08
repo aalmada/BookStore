@@ -143,6 +143,33 @@ The API uses a **`CacheInvalidationListener`** to automatically invalidate cache
 The listener handles specific projection types. If you add a new projection, you **must** update `CacheInvalidationListener.cs`. A warning log will alert you if a projection is unhandled:
 > *"Cache invalidation not implemented for projection type {ProjectionType}..."*
 
+### User-Specific Data & Caching (The Overlay Pattern)
+
+Caching personalized data (e.g., "Is this book in my favorites?") presents a challenge:
+- **Naive Approach**: Cache `BookDto` per user (e.g., `book:123:user:456`).
+- **Problem**: This leads to **Cache Explosion** (high cardinality) and makes invalidation nearly impossible.
+
+**Solution: The Overlay Pattern**
+
+We cache the *shared, generic* data and then "overlay" the user-specific data at runtime.
+
+1.  **Cache the content**: `BookDto` is cached with `IsFavorite = false` (shared by all).
+2.  **Fetch user state**: Retrieve lightweight user data (e.g., `FavoriteBookIds`) from the database.
+3.  **Merge at runtime**:
+
+```csharp
+// 1. Get cached book (generic)
+var bookDto = await cache.GetOrCreateLocalizedAsync(...);
+
+// 2. Overlay user specific data
+if (user.FavoriteBookIds.Contains(bookDto.Id))
+{
+    bookDto = bookDto with { IsFavorite = true };
+}
+```
+
+This keeps the cache efficient while delivering personalized experiences.
+
 ### Manual Invalidation (If Needed)
 
 You can manually invalidate cache entries using tags if bypassing the automatic listener:

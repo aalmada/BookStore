@@ -15,4 +15,6 @@ public record BookDto(
     bool IsPreRelease,
     PublisherDto? Publisher,
     IReadOnlyList<AuthorDto> Authors,
-    IReadOnlyList<CategoryDto> Categories);
+    IReadOnlyList<CategoryDto> Categories,
+    bool IsFavorite,
+    int LikeCount = 0);

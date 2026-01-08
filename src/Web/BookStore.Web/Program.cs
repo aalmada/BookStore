@@ -9,6 +9,8 @@ using MudBlazor.Services;
 using Polly;
 using Polly.Extensions.Http;
 using Refit;
+using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
+using Microsoft.Extensions.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,6 +20,9 @@ builder.AddServiceDefaults();
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+builder.Services.AddCascadingAuthenticationState();
+// builder.Services.AddProtectedBrowserStorage();
 
 // Add MudBlazor services
 builder.Services.AddMudServices();
@@ -38,12 +43,77 @@ var apiServiceUrl = builder.Configuration["services:apiservice:https:0"]
 //     .CircuitBreakerAsync(5, TimeSpan.FromSeconds(30));
 
 // Register AuthorizationMessageHandler for JWT token injection
-builder.Services.AddScoped<AuthorizationMessageHandler>();
+builder.Services.AddTransient<AuthorizationMessageHandler>();
 
 // Register BookStore API client with authorization handler
-builder.Services.AddBookStoreClient(
-    new Uri(apiServiceUrl),
-    clientBuilder => clientBuilder.AddHttpMessageHandler<AuthorizationMessageHandler>());
+// Register BookStore API client with authorization handler - MANUAL SCOPED REGISTRATION
+// We must register clients as Scoped to ensure AuthorizationMessageHandler shares the same
+// TokenService instance as the Blazor Circuit.
+RegisterScopedRefitClients(builder.Services, new Uri(apiServiceUrl));
+
+static void RegisterScopedRefitClients(IServiceCollection services, Uri baseAddress)
+{
+    void AddScopedClient<T>() where T : class
+    {
+        services.AddScoped<T>(sp =>
+        {
+            var tokenService = sp.GetRequiredService<TokenService>();
+            var authHandler = new AuthorizationMessageHandler(tokenService);
+            // Ensure we have an InnerHandler
+            authHandler.InnerHandler = new HttpClientHandler();
+            
+            var httpClient = new HttpClient(authHandler) { BaseAddress = baseAddress };
+            return RestService.For<T>(httpClient);
+        });
+    }
+
+    // Register all endpoint interfaces
+    AddScopedClient<IGetBooksEndpoint>();
+    AddScopedClient<IGetBookEndpoint>();
+    AddScopedClient<IGetAuthorsEndpoint>();
+    AddScopedClient<IGetAuthorEndpoint>();
+    AddScopedClient<IGetCategoriesEndpoint>();
+    AddScopedClient<IGetCategoryEndpoint>();
+    AddScopedClient<IGetPublishersEndpoint>();
+    AddScopedClient<IGetPublisherEndpoint>();
+
+    // Admin endpoints
+    AddScopedClient<ICreateBookEndpoint>();
+    AddScopedClient<IUpdateBookEndpoint>();
+    AddScopedClient<ISoftDeleteBookEndpoint>();
+    AddScopedClient<IRestoreBookEndpoint>();
+    AddScopedClient<IUploadBookCoverEndpoint>();
+
+    AddScopedClient<ICreateAuthorEndpoint>();
+    AddScopedClient<IUpdateAuthorEndpoint>();
+    AddScopedClient<ISoftDeleteAuthorEndpoint>();
+    AddScopedClient<IRestoreAuthorEndpoint>();
+
+    AddScopedClient<ICreateCategoryEndpoint>();
+    AddScopedClient<IUpdateCategoryEndpoint>();
+    AddScopedClient<ISoftDeleteCategoryEndpoint>();
+    AddScopedClient<IRestoreCategoryEndpoint>();
+
+    AddScopedClient<ICreatePublisherEndpoint>();
+    AddScopedClient<IUpdatePublisherEndpoint>();
+    AddScopedClient<ISoftDeletePublisherEndpoint>();
+    AddScopedClient<IRestorePublisherEndpoint>();
+
+    // Favorites endpoints
+    AddScopedClient<IAddBookToFavoritesEndpoint>();
+    AddScopedClient<IRemoveBookFromFavoritesEndpoint>();
+
+    // System endpoints
+    AddScopedClient<IGetAllBooksAdminEndpoint>();
+    AddScopedClient<IRebuildProjectionsEndpoint>();
+    AddScopedClient<IGetProjectionStatusEndpoint>();
+
+    // Identity endpoints
+    AddScopedClient<IIdentityLoginEndpoint>();
+    AddScopedClient<IIdentityRegisterEndpoint>();
+    AddScopedClient<IIdentityConfirmEmailEndpoint>();
+    AddScopedClient<IIdentityRefreshEndpoint>();
+}
 
 // Add authentication services (JWT token-based)
 builder.Services.AddScoped<TokenService>();

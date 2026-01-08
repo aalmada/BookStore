@@ -22,6 +22,7 @@ namespace BookStore.Shared.Notifications;
 [JsonDerivedType(typeof(PublisherDeletedNotification), "PublisherDeleted")]
 [JsonDerivedType(typeof(BookCoverUpdatedNotification), "BookCoverUpdated")]
 [JsonDerivedType(typeof(UserVerifiedNotification), "UserVerified")]
+[JsonDerivedType(typeof(UserUpdatedNotification), "UserUpdated")]
 public interface IDomainEventNotification
 {
     Guid EntityId { get; }
@@ -196,4 +197,14 @@ public record PingNotification : IDomainEventNotification
     public Guid EntityId => Guid.Empty;
     public string EventType => "Ping";
     public DateTimeOffset Timestamp => DateTimeOffset.UtcNow;
+}
+
+/// <summary>
+/// Notification when a user is updated
+/// </summary>
+public record UserUpdatedNotification(
+    Guid EntityId,
+    DateTimeOffset Timestamp) : IDomainEventNotification
+{
+    public string EventType => "UserUpdated";
 }

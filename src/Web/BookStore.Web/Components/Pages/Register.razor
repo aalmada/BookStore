@@ -286,7 +286,7 @@
                 if (!string.IsNullOrEmpty(result.AccessToken))
                 {
                     // Auto-login success (when email verification is not required)
-                    AuthStateProvider.NotifyUserAuthentication(result.AccessToken);
+                    await AuthStateProvider.NotifyUserAuthentication(result.AccessToken);
                     registrationSuccess = true;
                     requiresVerification = false;
                     await Task.Delay(2000);

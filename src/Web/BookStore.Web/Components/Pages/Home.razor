@@ -3,9 +3,14 @@
 @using ClientModels = BookStore.Client
 @using BookStore.Shared.Models
 @using BookStore.Web.Services
+@using Microsoft.AspNetCore.Components.Authorization
 @inject IGetBooksEndpoint ApiClient
 @inject BookStoreEventsService EventsService
 @inject OptimisticUpdateService OptimisticService
+@inject IAddBookToFavoritesEndpoint AddFavoriteEndpoint
+@inject IRemoveBookFromFavoritesEndpoint RemoveFavoriteEndpoint
+@inject AuthenticationStateProvider AuthStateProvider
+@inject ISnackbar Snackbar
 @implements IAsyncDisposable
 @rendermode InteractiveServer
 
@@ -111,7 +116,19 @@
             @foreach (var book in pagedBooks.Items)
             {
                 <MudItem xs="12" sm="6" md="4" lg="3">
-                    <MudCard Elevation="2" Class="book-card" Style="height: 100%; border-radius: 12px; transition: all 0.3s ease;">
+                    <MudCard Elevation="2" Class="book-card" Style="height: 100%; border-radius: 12px; transition: all 0.3s ease; position: relative; overflow: hidden;">
+                         @* Heart Overlay *@
+                        <AuthorizeView>
+                            <Authorized>
+                                <MudIconButton Icon="@(book.IsFavorite ? Icons.Material.Filled.Favorite : Icons.Material.Filled.FavoriteBorder)"
+                                               Color="@(book.IsFavorite ? Color.Error : Color.Default)"
+                                               OnClick="@(() => ToggleFavorite(book))"
+                                               Class="favorite-overlay"
+                                               Style="position: absolute; top: 12px; right: 12px; z-index: 10; background-color: rgba(255,255,255,0.8); backdrop-filter: blur(4px);"
+                                               Size="Size.Medium" />
+                            </Authorized>
+                        </AuthorizeView>
+
                         <MudPaper Elevation="0" Height="200px" Style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center;">
                             <MudIcon Icon="@Icons.Material.Filled.MenuBook" Size="Size.Large" Color="Color.Surface" Style="font-size: 4rem;" />
                         </MudPaper>
@@ -139,6 +156,10 @@
                             <MudButton Href="@($"/book/{book.Id}")" Variant="Variant.Text" Color="Color.Primary" FullWidth="true" StartIcon="@Icons.Material.Filled.Visibility">
                                 View Details
                             </MudButton>
+                            <MudSpacer />
+                            <MudChip T="string" Size="Size.Small" Icon="@Icons.Material.Filled.Favorite" Color="Color.Error" Variant="Variant.Text">
+                                @book.LikeCount
+                            </MudChip>
                         </MudCardActions>
                     </MudCard>
                 </MudItem>
@@ -186,6 +207,9 @@
     private System.Threading.Timer? cleanupTimer;
 
     [Inject] private ILogger<Home> Logger { get; set; } = default!;
+    
+    [CascadingParameter] private Task<AuthenticationState> AuthStateTask { get; set; } = default!;
+    private System.Security.Claims.ClaimsPrincipal? user;
 
     protected override async Task OnInitializedAsync()
     {
@@ -209,6 +233,21 @@
         
         // Start cleanup timer for stale optimistic books
         StartCleanupTimer();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var authState = await AuthStateTask;
+        var newUser = authState.User;
+
+        if (user == null || newUser.Identity?.Name != user.Identity?.Name || newUser.Identity?.IsAuthenticated != user.Identity?.IsAuthenticated)
+        {
+             user = newUser;
+             if (user.Identity?.IsAuthenticated == true && bookQuery != null)
+             {
+                 await bookQuery.LoadAsync();
+             }
+        }
     }
 
     private async Task<BookStore.Client.PagedListDtoOfBookDto> FetchBooksAsync()
@@ -278,6 +317,82 @@
         if (bookQuery != null)
         {
             await bookQuery.LoadAsync();
+        }
+    }
+
+    private async Task ToggleFavorite(BookDto book)
+    {
+        var originalState = book.IsFavorite;
+        
+        // 1. Optimistic Update (Immediate Feedback)
+        bookQuery?.MutateData(currentList =>
+        {
+            var items = currentList.Items.ToList();
+            var index = items.FindIndex(b => b.Id == book.Id);
+            if (index != -1)
+            {
+                items[index] = items[index] with 
+                { 
+                    IsFavorite = !originalState,
+                    LikeCount = originalState ? items[index].LikeCount - 1 : items[index].LikeCount + 1
+                };
+            }
+            return new BookStore.Client.PagedListDtoOfBookDto
+            {
+                Items = items,
+                PageNumber = currentList.PageNumber,
+                PageSize = currentList.PageSize,
+                TotalItemCount = currentList.TotalItemCount,
+                PageCount = currentList.PageCount,
+                HasPreviousPage = currentList.HasPreviousPage,
+                HasNextPage = currentList.HasNextPage
+            };
+        });
+
+        // 2. Call API
+        try
+        {
+            if (originalState) // Was favorite, so remove
+            {
+                await RemoveFavoriteEndpoint.Execute(book.Id);
+                Snackbar.Add("Removed from favorites", Severity.Success);
+            }
+            else // Was not favorite, so add
+            {
+                await AddFavoriteEndpoint.Execute(book.Id);
+                 Snackbar.Add("Added to favorites", Severity.Success);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to toggle favorite for book {BookId}", book.Id);
+            
+            // 3. Rollback on failure
+            bookQuery?.MutateData(currentList =>
+            {
+                var items = currentList.Items.ToList();
+                var index = items.FindIndex(b => b.Id == book.Id);
+                if (index != -1)
+                {
+                    items[index] = items[index] with 
+                    { 
+                        IsFavorite = originalState,
+                        LikeCount = originalState ? items[index].LikeCount + 1 : items[index].LikeCount - 1
+                    };
+                }
+                return new BookStore.Client.PagedListDtoOfBookDto
+                {
+                    Items = items,
+                    PageNumber = currentList.PageNumber,
+                    PageSize = currentList.PageSize,
+                    TotalItemCount = currentList.TotalItemCount,
+                    PageCount = currentList.PageCount,
+                    HasPreviousPage = currentList.HasPreviousPage,
+                    HasNextPage = currentList.HasNextPage
+                };
+            });
+            
+             Snackbar.Add($"Failed: {ex.Message}", Severity.Error);
         }
     }
 
