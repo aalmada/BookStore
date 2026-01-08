@@ -13,11 +13,19 @@ public class AuthorCrudTests
         var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
         var createAuthorRequest = TestDataGenerators.GenerateFakeAuthorRequest();
 
-        // Act
-        var createResponse = await httpClient.PostAsJsonAsync("/api/admin/authors", createAuthorRequest);
-
+        // Act - Connect to SSE before creating
+        var received = await TestHelpers.ExecuteAndWaitForEventAsync(
+            Guid.Empty,
+            "AuthorUpdated",
+            async () =>
+            {
+                var createResponse = await httpClient.PostAsJsonAsync("/api/admin/authors", createAuthorRequest);
+                _ = await Assert.That(createResponse.IsSuccessStatusCode).IsTrue();
+            },
+            TestConstants.DefaultEventTimeout);
+        
         // Assert
-        _ = await Assert.That(createResponse.IsSuccessStatusCode).IsTrue();
+        _ = await Assert.That(received).IsTrue();
     }
 
     [Test]

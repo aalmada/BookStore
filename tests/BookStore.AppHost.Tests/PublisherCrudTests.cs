@@ -13,11 +13,19 @@ public class PublisherCrudTests
         var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
         var createPublisherRequest = TestDataGenerators.GenerateFakePublisherRequest();
 
-        // Act
-        var createResponse = await httpClient.PostAsJsonAsync("/api/admin/publishers", createPublisherRequest);
-
+        // Act - Connect to SSE before creating
+        var received = await TestHelpers.ExecuteAndWaitForEventAsync(
+            Guid.Empty,
+            "PublisherUpdated",
+            async () =>
+            {
+                var createResponse = await httpClient.PostAsJsonAsync("/api/admin/publishers", createPublisherRequest);
+                _ = await Assert.That(createResponse.IsSuccessStatusCode).IsTrue();
+            },
+            TestConstants.DefaultEventTimeout);
+        
         // Assert
-        _ = await Assert.That(createResponse.IsSuccessStatusCode).IsTrue();
+        _ = await Assert.That(received).IsTrue();
     }
 
     [Test]

@@ -22,13 +22,21 @@ public class CategoryCrudTests
         var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
         var createCategoryRequest = TestDataGenerators.GenerateFakeCategoryRequest();
 
-        // Act
-        var createResponse = await httpClient.PostAsJsonAsync("/api/admin/categories", createCategoryRequest);
-
+        // Act - Connect to SSE before creating
+        CategoryDto? category = null;
+        var received = await TestHelpers.ExecuteAndWaitForEventAsync(
+            Guid.Empty,
+            "CategoryUpdated",
+            async () =>
+            {
+                var createResponse = await httpClient.PostAsJsonAsync("/api/admin/categories", createCategoryRequest);
+                _ = await Assert.That(createResponse.StatusCode).IsEqualTo(HttpStatusCode.Created);
+                category = await createResponse.Content.ReadFromJsonAsync<CategoryDto>();
+            },
+            TestConstants.DefaultEventTimeout);
+        
         // Assert
-        _ = await Assert.That(createResponse.StatusCode).IsEqualTo(HttpStatusCode.Created);
-
-        var category = await createResponse.Content.ReadFromJsonAsync<CategoryDto>();
+        _ = await Assert.That(received).IsTrue();
         _ = await Assert.That(category).IsNotNull();
         _ = await Assert.That(category!.Id).IsNotEqualTo(Guid.Empty);
     }
@@ -64,10 +72,13 @@ public class CategoryCrudTests
 
         _ = await Assert.That(received).IsTrue();
 
-        // Verify update in public API (with retry for eventual consistency)
+        // Verify update in public API (data should be consistent now)
         var expectedName = (string)updateRequest.Translations["en"].Name;
-        var updatedCategory = await RetryGetCategoryAsync(httpClient, createdCategory.Id, null, c => c.Name == expectedName);
-        _ = await Assert.That(updatedCategory.Name).IsEqualTo(expectedName);
+        // Verify English
+        httpClient.DefaultRequestHeaders.AcceptLanguage.Clear();
+        httpClient.DefaultRequestHeaders.AcceptLanguage.Add(new StringWithQualityHeaderValue("en"));
+        var updatedCategory = await httpClient.GetFromJsonAsync<CategoryDto>($"/api/categories/{createdCategory.Id}");
+        _ = await Assert.That(updatedCategory!.Name).IsEqualTo(expectedName);
     }
 
     [Test]
@@ -99,9 +110,9 @@ public class CategoryCrudTests
 
         _ = await Assert.That(received).IsTrue();
 
-        // Verify it's gone from public API (with retry to ensure projection caught up)
-        var isGone = await RetryExpectNotFoundAsync(httpClient, createdCategory.Id);
-        _ = await Assert.That(isGone).IsTrue();
+        // Verify it's gone from public API
+        var getResponse = await httpClient.GetAsync($"/api/categories/{createdCategory.Id}");
+        _ = await Assert.That(getResponse.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
     }
 
     [Test]
@@ -166,11 +177,15 @@ public class CategoryCrudTests
         _ = await Assert.That(received).IsTrue();
 
         // Assert (English - Default)
-        var enCategory = await RetryGetCategoryAsync(httpClient, res.Id, "en");
+        httpClient.DefaultRequestHeaders.AcceptLanguage.Clear();
+        httpClient.DefaultRequestHeaders.AcceptLanguage.Add(new StringWithQualityHeaderValue("en"));
+        var enCategory = await httpClient.GetFromJsonAsync<CategoryDto>($"/api/categories/{res.Id}");
         _ = await Assert.That(enCategory!.Name).IsEqualTo(enName);
 
         // Assert (Portuguese)
-        var ptCategory = await RetryGetCategoryAsync(httpClient, res.Id, "pt");
+        httpClient.DefaultRequestHeaders.AcceptLanguage.Clear();
+        httpClient.DefaultRequestHeaders.AcceptLanguage.Add(new StringWithQualityHeaderValue("pt"));
+        var ptCategory = await httpClient.GetFromJsonAsync<CategoryDto>($"/api/categories/{res.Id}");
         _ = await Assert.That(ptCategory!.Name).IsEqualTo(ptName);
     }
 
@@ -219,51 +234,7 @@ public class CategoryCrudTests
         // _ = await Assert.That(restoredCategory).IsNotNull();
     }
 
-    // Retry helper for eventual consistency
-    async Task<CategoryDto> RetryGetCategoryAsync(HttpClient client, Guid id, string? lang = null, Func<CategoryDto, bool>? validator = null)
-    {
-        for (var i = 0; i < 120; i++)
-        {
-            if (lang != null)
-            {
-                client.DefaultRequestHeaders.AcceptLanguage.Clear();
-                client.DefaultRequestHeaders.AcceptLanguage.Add(new StringWithQualityHeaderValue(lang));
-            }
 
-            var response = await client.GetAsync($"/api/categories/{id}");
-            if (response.StatusCode == HttpStatusCode.OK)
-            {
-                var content = await response.Content.ReadFromJsonAsync<CategoryDto>();
-                if (content != null)
-                {
-                    if (validator == null || validator(content))
-                    {
-                        return content;
-                    }
-                }
-            }
-
-            await Task.Delay(TestConstants.DefaultPollingInterval);
-        }
-
-        throw new Exception($"Category {id} not found in read model (or failed validation) after retries.");
-    }
-
-    async Task<bool> RetryExpectNotFoundAsync(HttpClient client, Guid id)
-    {
-        for (var i = 0; i < 120; i++)
-        {
-            var response = await client.GetAsync($"/api/categories/{id}");
-            if (response.StatusCode == HttpStatusCode.NotFound)
-            {
-                return true;
-            }
-
-            await Task.Delay(TestConstants.DefaultPollingInterval);
-        }
-
-        return false;
-    }
 
     record CategoryDto(Guid Id, string Name);
 }

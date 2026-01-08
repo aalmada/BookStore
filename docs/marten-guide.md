@@ -1003,6 +1003,43 @@ public class BookSearchProjectionBuilder : MultiStreamProjection<BookSearchProje
 options.Projections.Add<BookSearchProjectionBuilder>(ProjectionLifecycle.Async);
 ```
 
+### Registration: Snapshot vs Add
+
+Marten provides two main ways to register projections, depending on their type:
+
+| Method | Usage | Description | Example |
+|--------|-------|-------------|---------|
+| `.Snapshot<T>()` | **Single Stream** | The document `T` represents the current state of a **single event stream**. There is a 1-to-1 mapping between the stream and the document. | `CategoryProjection`, `AuthorProjection` |
+| `.Add<T>()` | **Multi-Stream** | The document aggregates events from **multiple different streams** (e.g., counting likes from many User streams into one Book document). | `BookStatisticsProjection` |
+
+**Code Example**:
+```csharp
+// Single Stream: One Category stream -> One Category document
+options.Projections.Snapshot<CategoryProjection>(SnapshotLifecycle.Async);
+
+// Multi-Stream: Many User streams -> One BookStatistics document
+options.Projections.Add<BookStatisticsProjection>(ProjectionLifecycle.Async);
+```
+
+#### Why is `BookStatisticsProjection` Multi-Stream?
+
+Crucially, **aggregate streams must happen in one place**.
+-   **User A** likes Book X -> Event stored in `User A` stream.
+-   **User B** likes Book X -> Event stored in `User B` stream.
+
+If `BookStatistics` were a single-stream projection on the "Book" stream, it would never see these events, because they live in User streams!
+
+`MultiStreamProjection` allows us to "fan-in" events from thousands of different User streams into a single `BookStatistics` document by slicing the data differently:
+
+```csharp
+public BookStatisticsProjection()
+{
+    // "Hey Marten, whenever you see a BookAddedToFavorites event in ANY stream (e.g. User A),
+    // grab the BookId from it and update the statistics for THAT book."
+    Identity<BookAddedToFavorites>(e => e.BookId);
+}
+```
+
 ### Querying Projections
 
 ```csharp
