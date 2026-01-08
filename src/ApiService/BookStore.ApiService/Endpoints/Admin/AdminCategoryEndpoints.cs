@@ -40,43 +40,47 @@ namespace BookStore.ApiService.Endpoints.Admin
 
         static Task<IResult> CreateCategory(
             [FromBody] Commands.CreateCategoryRequest request,
-            [FromServices] IMessageBus bus)
+            [FromServices] IMessageBus bus,
+            CancellationToken cancellationToken)
         {
             var translations = request.Translations ?? (IReadOnlyDictionary<string, CategoryTranslationDto>)ImmutableDictionary<string, CategoryTranslationDto>.Empty;
             var command = new Commands.CreateCategory(translations);
-            return bus.InvokeAsync<IResult>(command);
+            return bus.InvokeAsync<IResult>(command, cancellationToken);
         }
 
         static Task<IResult> UpdateCategory(
             Guid id,
             [FromBody] Commands.UpdateCategoryRequest request,
             [FromServices] IMessageBus bus,
-            HttpContext context)
+            HttpContext context,
+            CancellationToken cancellationToken)
         {
             var etag = context.Request.Headers["If-Match"].FirstOrDefault();
             var translations = request.Translations ?? (IReadOnlyDictionary<string, CategoryTranslationDto>)ImmutableDictionary<string, CategoryTranslationDto>.Empty;
             var command = new Commands.UpdateCategory(id, translations) { ETag = etag };
-            return bus.InvokeAsync<IResult>(command);
+            return bus.InvokeAsync<IResult>(command, cancellationToken);
         }
 
         static Task<IResult> SoftDeleteCategory(
             Guid id,
             [FromServices] IMessageBus bus,
-            HttpContext context)
+            HttpContext context,
+            CancellationToken cancellationToken)
         {
             var etag = context.Request.Headers["If-Match"].FirstOrDefault();
             var command = new Commands.SoftDeleteCategory(id) { ETag = etag };
-            return bus.InvokeAsync<IResult>(command);
+            return bus.InvokeAsync<IResult>(command, cancellationToken);
         }
 
         static Task<IResult> RestoreCategory(
             Guid id,
             [FromServices] IMessageBus bus,
-            HttpContext context)
+            HttpContext context,
+            CancellationToken cancellationToken)
         {
             var etag = context.Request.Headers["If-Match"].FirstOrDefault();
             var command = new Commands.RestoreCategory(id) { ETag = etag };
-            return bus.InvokeAsync<IResult>(command);
+            return bus.InvokeAsync<IResult>(command, cancellationToken);
         }
     }
 }

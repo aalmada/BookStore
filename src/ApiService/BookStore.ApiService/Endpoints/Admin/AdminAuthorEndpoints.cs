@@ -35,41 +35,45 @@ namespace BookStore.ApiService.Endpoints.Admin
 
         static Task<IResult> CreateAuthor(
             [FromBody] Commands.CreateAuthorRequest request,
-            [FromServices] IMessageBus bus)
+            [FromServices] IMessageBus bus,
+            CancellationToken cancellationToken)
         {
             var command = new Commands.CreateAuthor(request.Name, request.Translations);
-            return bus.InvokeAsync<IResult>(command);
+            return bus.InvokeAsync<IResult>(command, cancellationToken);
         }
 
         static Task<IResult> UpdateAuthor(
             Guid id,
             [FromBody] Commands.UpdateAuthorRequest request,
             [FromServices] IMessageBus bus,
-            HttpContext context)
+            HttpContext context,
+            CancellationToken cancellationToken)
         {
             var etag = context.Request.Headers["If-Match"].FirstOrDefault();
             var command = new Commands.UpdateAuthor(id, request.Name, request.Translations) { ETag = etag };
-            return bus.InvokeAsync<IResult>(command);
+            return bus.InvokeAsync<IResult>(command, cancellationToken);
         }
 
         static Task<IResult> SoftDeleteAuthor(
             Guid id,
             [FromServices] IMessageBus bus,
-            HttpContext context)
+            HttpContext context,
+            CancellationToken cancellationToken)
         {
             var etag = context.Request.Headers["If-Match"].FirstOrDefault();
             var command = new Commands.SoftDeleteAuthor(id) { ETag = etag };
-            return bus.InvokeAsync<IResult>(command);
+            return bus.InvokeAsync<IResult>(command, cancellationToken);
         }
 
         static Task<IResult> RestoreAuthor(
             Guid id,
             [FromServices] IMessageBus bus,
-            HttpContext context)
+            HttpContext context,
+            CancellationToken cancellationToken)
         {
             var etag = context.Request.Headers["If-Match"].FirstOrDefault();
             var command = new Commands.RestoreAuthor(id) { ETag = etag };
-            return bus.InvokeAsync<IResult>(command);
+            return bus.InvokeAsync<IResult>(command, cancellationToken);
         }
     }
 }

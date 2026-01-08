@@ -323,6 +323,44 @@ GET /api/books?page=2&pageSize=20&search=architecture
 
 ---
 
+## Request Cancellation Standards
+
+### Propagate CancellationToken
+
+**Rule**: All async API endpoints and handlers MUST accept and propagate `CancellationToken`.
+
+✅ **Correct**:
+```csharp
+static async Task<Ok<BookDto>> GetBook(
+    Guid id,
+    [FromServices] IDocumentStore store,
+    CancellationToken cancellationToken) // ✅ Accepted
+{
+    await using var session = store.QuerySession();
+    var book = await session.LoadAsync<BookProjection>(id, cancellationToken); // ✅ Propagated
+    return TypedResults.Ok(book);
+}
+```
+
+❌ **Incorrect**:
+```csharp
+static async Task<Ok<BookDto>> GetBook(
+    Guid id,
+    [FromServices] IDocumentStore store) // ❌ Missing parameter
+{
+    await using var session = store.QuerySession();
+    var book = await session.LoadAsync<BookProjection>(id); // ❌ Not propagated
+    return TypedResults.Ok(book);
+}
+```
+
+**Benefits**:
+- ✅ **Resource Hygiene**: Frees up database connections and memory immediately when a client disconnects.
+- ✅ **Responsiveness**: Prevents ghost processes from consuming CPU for abandoned requests.
+- ✅ **Throughput**: Improves overall system capacity under load.
+
+---
+
 ## HTTP Header Standards
 
 ### Standard Headers
@@ -793,6 +831,7 @@ public void Guid_Should_Be_Version7()
 9. ✅ Use `X-Correlation-ID` and `X-Causation-ID` for tracing
 10. ✅ Use `Accept-Language` header for localization
 11. ✅ Use Problem Details (RFC 7807) for error responses
+12. ✅ Propagate `CancellationToken` in all async methods
 
 These standards ensure the API is:
 - **Consistent**: Same format everywhere

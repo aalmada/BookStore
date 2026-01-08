@@ -40,7 +40,8 @@ public static class JwtAuthenticationEndpoints
         UserManager<ApplicationUser> userManager,
         SignInManager<ApplicationUser> signInManager,
         JwtTokenService jwtTokenService,
-        ILogger<Program> logger)
+        ILogger<Program> logger,
+        CancellationToken cancellationToken)
     {
         logger.LogInformation("JWT login attempt for {Email}", request.Email);
 
@@ -106,7 +107,8 @@ public static class JwtAuthenticationEndpoints
         JwtTokenService jwtTokenService,
         Wolverine.IMessageBus bus,
         IOptions<Infrastructure.Email.EmailOptions> emailOptions,
-        ILogger<Program> logger)
+        ILogger<Program> logger,
+        CancellationToken cancellationToken)
     {
         logger.LogInformation("JWT registration attempt for {Email}", request.Email);
 
@@ -169,7 +171,8 @@ public static class JwtAuthenticationEndpoints
         string userId,
         string code,
         UserManager<ApplicationUser> userManager,
-        Wolverine.IMessageBus bus)
+        Wolverine.IMessageBus bus,
+        CancellationToken cancellationToken)
     {
         var user = await userManager.FindByIdAsync(userId);
         if (user == null)
@@ -193,12 +196,13 @@ public static class JwtAuthenticationEndpoints
         JwtTokenService jwtTokenService,
         UserManager<ApplicationUser> userManager,
         Marten.IDocumentSession session,
-        ILogger<Program> logger)
+        ILogger<Program> logger,
+        CancellationToken cancellationToken)
     {
         // 1. Find user with this refresh token
         // Since we store tokens in the user document, we need to query based on the token
         var user = await session.Query<ApplicationUser>()
-            .FirstOrDefaultAsync(u => u.RefreshTokens.Any(rt => rt.Token == request.RefreshToken));
+            .FirstOrDefaultAsync(u => u.RefreshTokens.Any(rt => rt.Token == request.RefreshToken), cancellationToken);
 
         if (user == null)
         {

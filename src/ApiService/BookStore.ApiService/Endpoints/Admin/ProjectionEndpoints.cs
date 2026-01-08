@@ -24,20 +24,22 @@ public static class ProjectionEndpoints
     }
 
     static async Task<Ok<RebuildResponse>> RebuildProjections(
-        [FromServices] IDocumentStore store)
+        [FromServices] IDocumentStore store,
+        CancellationToken cancellationToken)
     {
         // Rebuild all async projections
         var daemon = await store.BuildProjectionDaemonAsync();
-        await daemon.RebuildProjectionAsync<Projections.BookSearchProjection>(CancellationToken.None);
-        await daemon.RebuildProjectionAsync<Projections.AuthorProjection>(CancellationToken.None);
-        await daemon.RebuildProjectionAsync<Projections.CategoryProjection>(CancellationToken.None);
-        await daemon.RebuildProjectionAsync<Projections.PublisherProjection>(CancellationToken.None);
+        await daemon.RebuildProjectionAsync<Projections.BookSearchProjection>(cancellationToken);
+        await daemon.RebuildProjectionAsync<Projections.AuthorProjection>(cancellationToken);
+        await daemon.RebuildProjectionAsync<Projections.CategoryProjection>(cancellationToken);
+        await daemon.RebuildProjectionAsync<Projections.PublisherProjection>(cancellationToken);
 
         return TypedResults.Ok(new RebuildResponse("Projection rebuild initiated"));
     }
 
     static async Task<Ok<ProjectionStatusResponse>> GetProjectionStatus(
-        [FromServices] IDocumentStore store)
+        [FromServices] IDocumentStore store,
+        CancellationToken cancellationToken)
     {
         try
         {

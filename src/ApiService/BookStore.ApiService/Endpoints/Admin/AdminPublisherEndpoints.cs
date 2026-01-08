@@ -35,41 +35,45 @@ namespace BookStore.ApiService.Endpoints.Admin
 
         static Task<IResult> CreatePublisher(
             [FromBody] Commands.CreatePublisherRequest request,
-            [FromServices] IMessageBus bus)
+            [FromServices] IMessageBus bus,
+            CancellationToken cancellationToken)
         {
             var command = new Commands.CreatePublisher(request.Name);
-            return bus.InvokeAsync<IResult>(command);
+            return bus.InvokeAsync<IResult>(command, cancellationToken);
         }
 
         static Task<IResult> UpdatePublisher(
             Guid id,
             [FromBody] Commands.UpdatePublisherRequest request,
             [FromServices] IMessageBus bus,
-            HttpContext context)
+            HttpContext context,
+            CancellationToken cancellationToken)
         {
             var etag = context.Request.Headers["If-Match"].FirstOrDefault();
             var command = new Commands.UpdatePublisher(id, request.Name) { ETag = etag };
-            return bus.InvokeAsync<IResult>(command);
+            return bus.InvokeAsync<IResult>(command, cancellationToken);
         }
 
         static Task<IResult> SoftDeletePublisher(
             Guid id,
             [FromServices] IMessageBus bus,
-            HttpContext context)
+            HttpContext context,
+            CancellationToken cancellationToken)
         {
             var etag = context.Request.Headers["If-Match"].FirstOrDefault();
             var command = new Commands.SoftDeletePublisher(id) { ETag = etag };
-            return bus.InvokeAsync<IResult>(command);
+            return bus.InvokeAsync<IResult>(command, cancellationToken);
         }
 
         static Task<IResult> RestorePublisher(
             Guid id,
             [FromServices] IMessageBus bus,
-            HttpContext context)
+            HttpContext context,
+            CancellationToken cancellationToken)
         {
             var etag = context.Request.Headers["If-Match"].FirstOrDefault();
             var command = new Commands.RestorePublisher(id) { ETag = etag };
-            return bus.InvokeAsync<IResult>(command);
+            return bus.InvokeAsync<IResult>(command, cancellationToken);
         }
     }
 }

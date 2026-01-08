@@ -17,7 +17,8 @@ public static class PasskeyEndpoints
             HttpContext context,
             [FromBody] PasskeyCreationRequest request,
             UserManager<ApplicationUser> userManager,
-            SignInManager<ApplicationUser> signInManager) =>
+            SignInManager<ApplicationUser> signInManager,
+            CancellationToken cancellationToken) =>
         {
             var user = await userManager.GetUserAsync(context.User);
 
@@ -78,7 +79,8 @@ public static class PasskeyEndpoints
             BookStore.ApiService.Services.JwtTokenService tokenService,
             Wolverine.IMessageBus bus,
             ILogger<Program> logger,
-            Microsoft.Extensions.Options.IOptions<Infrastructure.Email.EmailOptions> emailOptions) =>
+            Microsoft.Extensions.Options.IOptions<Infrastructure.Email.EmailOptions> emailOptions,
+            CancellationToken cancellationToken) =>
         {
             var user = await userManager.GetUserAsync(context.User);
             var verificationRequired = emailOptions.Value.DeliveryMethod != "None";
@@ -94,7 +96,7 @@ public static class PasskeyEndpoints
 
                 if (userStore is IUserPasskeyStore<ApplicationUser> passkeyStore)
                 {
-                    await passkeyStore.AddOrUpdatePasskeyAsync(user, attestation.Passkey, CancellationToken.None);
+                    await passkeyStore.AddOrUpdatePasskeyAsync(user, attestation.Passkey, cancellationToken);
                 }
 
                 return Results.Ok(new { Message = "Passkey added." });
@@ -172,7 +174,7 @@ public static class PasskeyEndpoints
             {
                 if (attestationNew.Passkey != null)
                 {
-                    await ps.AddOrUpdatePasskeyAsync(newUser, attestationNew.Passkey, CancellationToken.None);
+                    await ps.AddOrUpdatePasskeyAsync(newUser, attestationNew.Passkey, cancellationToken);
 
                     // Persist the changes (the added passkey) to the database
                     var updateResult = await userManager.UpdateAsync(newUser);
@@ -216,7 +218,8 @@ public static class PasskeyEndpoints
         _ = paramsGroup.MapPost("/assertion/options", async (
             [FromBody] PasskeyLoginOptionsRequest request,
             SignInManager<ApplicationUser> signInManager,
-            UserManager<ApplicationUser> userManager) =>
+            UserManager<ApplicationUser> userManager,
+            CancellationToken cancellationToken) =>
         {
             ApplicationUser? user = null;
             if (!string.IsNullOrEmpty(request.Email))
@@ -237,7 +240,8 @@ public static class PasskeyEndpoints
             UserManager<ApplicationUser> userManager,
             IUserStore<ApplicationUser> userStore,
             ILogger<Program> logger,
-            BookStore.ApiService.Services.JwtTokenService tokenService) =>
+            BookStore.ApiService.Services.JwtTokenService tokenService,
+            CancellationToken cancellationToken) =>
         {
             try
             {
@@ -297,7 +301,7 @@ public static class PasskeyEndpoints
 
                                 if (userStore is IUserPasskeyStore<ApplicationUser> passkeyStore)
                                 {
-                                    var user = await passkeyStore.FindByPasskeyIdAsync(credentialId, CancellationToken.None);
+                                    var user = await passkeyStore.FindByPasskeyIdAsync(credentialId, cancellationToken);
                                     if (user is not null)
                                     {
                                         return await IssueTokens(user, tokenService, userManager);
