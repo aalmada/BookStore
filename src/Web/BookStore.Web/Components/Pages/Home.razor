@@ -174,56 +174,71 @@
 </MudContainer>
 
 @code {
-    private BookStore.Client.PagedListDtoOfBookDto? pagedBooks;
+    private ReactiveQuery<BookStore.Client.PagedListDtoOfBookDto>? bookQuery;
+    private BookStore.Client.PagedListDtoOfBookDto? pagedBooks => bookQuery?.Data;
+    private bool isLoading => bookQuery?.IsLoading ?? true;
+    private string? errorMessage => bookQuery?.Error;
+
     private string searchQuery = string.Empty;
-    private string? errorMessage;
-    private bool isLoading = true;
     private int currentPage = 1;
     private const int pageSize = 20;
     private System.Threading.Timer? debounceTimer;
+    private System.Threading.Timer? cleanupTimer;
+
+    [Inject] private ILogger<Home> Logger { get; set; } = default!;
 
     protected override async Task OnInitializedAsync()
     {
-        // Subscribe to real-time book notifications
-        EventsService.OnNotificationReceived += HandleNotification;
-        
         // Subscribe to optimistic update changes
         OptimisticService.OnBooksChanged += HandleOptimisticBooksChanged;
         
         // Start SSE listening
         EventsService.StartListening();
+
+        // Initialize ReactiveQuery
+        bookQuery = new ReactiveQuery<BookStore.Client.PagedListDtoOfBookDto>(
+            queryFn: FetchBooksAsync,
+            eventsService: EventsService,
+            invalidationPredicate: ShouldInvalidate,
+            onStateChanged: StateHasChanged,
+            logger: Logger
+        );
         
-        // Load initial books
-        await LoadBooksAsync();
+        // Initial load
+        await bookQuery.LoadAsync();
         
         // Start cleanup timer for stale optimistic books
         StartCleanupTimer();
     }
 
-    private async Task LoadBooksAsync()
+    private async Task<BookStore.Client.PagedListDtoOfBookDto> FetchBooksAsync()
     {
-        isLoading = true;
-        errorMessage = null;
-        
-        try
+        return await ApiClient.Execute(
+            page: currentPage,
+            pageSize: pageSize,
+            search: string.IsNullOrWhiteSpace(searchQuery) ? string.Empty : searchQuery,
+            api_version: "1.0",
+            accept_Language: "en",
+            x_Correlation_ID: Guid.NewGuid().ToString(),
+            x_Causation_ID: string.Empty);
+    }
+
+    private bool ShouldInvalidate(BookStore.Shared.Notifications.IDomainEventNotification notification)
+    {
+        // Side effect: Confirm optimistic book if created
+        if (notification is BookStore.Shared.Notifications.BookCreatedNotification bookCreated)
         {
-            pagedBooks = await ApiClient.Execute(
-                page: currentPage,
-                pageSize: pageSize,
-                search: string.IsNullOrWhiteSpace(searchQuery) ? string.Empty : searchQuery,
-                api_version: "1.0",
-                accept_Language: "en",
-                x_Correlation_ID: Guid.NewGuid().ToString(),
-                x_Causation_ID: string.Empty);
+            OptimisticService.ConfirmBook(bookCreated.EntityId);
+            return true;
         }
-        catch (Exception ex)
-        {
-            errorMessage = $"Failed to load books: {ex.Message}";
-        }
-        finally
-        {
-            isLoading = false;
-        }
+
+        // Invalidate on any book or author/publisher change that might affect the list
+        return notification is 
+            BookStore.Shared.Notifications.BookUpdatedNotification or
+            BookStore.Shared.Notifications.BookDeletedNotification or
+            BookStore.Shared.Notifications.BookCoverUpdatedNotification or
+            BookStore.Shared.Notifications.AuthorCreatedNotification or // Might affect search results or filters? Maybe overkill but safe.
+            BookStore.Shared.Notifications.PublisherCreatedNotification;
     }
 
     private void OnSearchKeyUp(KeyboardEventArgs e)
@@ -245,7 +260,10 @@
     private async Task SearchBooks()
     {
         currentPage = 1;
-        await LoadBooksAsync();
+        if (bookQuery != null)
+        {
+            await bookQuery.LoadAsync();
+        }
     }
 
     private void ClearSearch()
@@ -257,12 +275,18 @@
     private async Task LoadPage(int page)
     {
         currentPage = page;
-        await LoadBooksAsync();
+        if (bookQuery != null)
+        {
+            await bookQuery.LoadAsync();
+        }
     }
 
     private async Task RetryLoad()
     {
-        await LoadBooksAsync();
+        if (bookQuery != null)
+        {
+            await bookQuery.LoadAsync();
+        }
     }
 
     public void Dispose()
@@ -270,29 +294,11 @@
         debounceTimer?.Dispose();
     }
     
-    private void HandleNotification(BookStore.Shared.Notifications.IDomainEventNotification notification)
-    {
-        if (notification is BookStore.Shared.Notifications.BookCreatedNotification bookCreated)
-        {
-            // Confirm optimistic book (remove from optimistic list)
-            OptimisticService.ConfirmBook(bookCreated.EntityId);
-            
-            // Refresh book list to show actual server data
-            InvokeAsync(async () =>
-            {
-                await LoadBooksAsync();
-                StateHasChanged();
-            });
-        }
-    }
-    
     private void HandleOptimisticBooksChanged()
     {
         // Refresh UI when optimistic books change
         InvokeAsync(StateHasChanged);
     }
-    
-    private System.Threading.Timer? cleanupTimer;
     
     private void StartCleanupTimer()
     {
@@ -305,8 +311,7 @@
     
     public async ValueTask DisposeAsync()
     {
-        // Unsubscribe from events
-        EventsService.OnNotificationReceived -= HandleNotification;
+        bookQuery?.Dispose();
         OptimisticService.OnBooksChanged -= HandleOptimisticBooksChanged;
         
         // Dispose timers

@@ -5,6 +5,7 @@
 @using BookStore.Shared.Models
 @inject IGetBookEndpoint ApiClient
 @inject NavigationManager Navigation
+@implements IAsyncDisposable
 @rendermode InteractiveServer
 
 <PageTitle>@(book?.Title ?? "Book Details") - BookStore</PageTitle>
@@ -129,63 +130,111 @@
     [Parameter]
     public Guid Id { get; set; }
 
-    private BookDto? book;
-    private string? errorMessage;
-    private bool isLoading = true;
+    private ReactiveQuery<BookDto?>? bookQuery;
+    private BookDto? book => bookQuery?.Data;
+    private string? errorMessage => bookQuery?.Error;
+    private bool isLoading => bookQuery?.IsLoading ?? true;
     private List<BreadcrumbItem> _breadcrumbItems = new();
+    
+    [Inject] private ILogger<BookDetails> Logger { get; set; } = default!;
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadBookAsync();
+        // Start SSE listening (ensure it's started if specific page loaded directly)
+        EventsService.StartListening();
+        
+        await InitializeQueryAsync();
     }
 
     protected override async Task OnParametersSetAsync()
     {
         // Reload when ID parameter changes
-        if (book?.Id != Id)
+        // Note: queryFn captures 'Id', so we need to reload if Id changes.
+        // But ReactiveQuery caches the function. We strictly should allow updating the function or creating new query.
+        // Easiest is to recreate the query if ID changes.
+        if (bookQuery != null) // If checking existing query
         {
-            await LoadBookAsync();
+             // We can just rely on the fact that if OnParametersSetAsync runs, Id might have changed.
+             // But we need to check if it actually changed to avoid loop?
+             // Actually OnParametersSetAsync runs on standard parameter set.
+             // We'll manage checking inside InitializeQueryAsync logic or just re-init.
+             await InitializeQueryAsync();
         }
     }
 
-    private async Task LoadBookAsync()
+    private async Task InitializeQueryAsync()
     {
-        isLoading = true;
-        errorMessage = null;
-        book = null;
+        // Dispose previous if exists
+        bookQuery?.Dispose();
 
-        try
+        bookQuery = new ReactiveQuery<BookDto?>(
+            queryFn: FetchBookAsync,
+            eventsService: EventsService, // Assuming EventsService is injected in imports or we need to inject it
+            invalidationPredicate: ShouldInvalidate,
+            onStateChanged: StateHasChanged,
+            logger: Logger
+        );
+
+        await bookQuery.LoadAsync();
+        UpdateBreadcrumbs();
+    }
+
+    private async Task<BookDto?> FetchBookAsync()
+    {
+        try 
         {
-            book = await ApiClient.Execute(
+            return await ApiClient.Execute(
                 id: Id,
                 api_version: "1.0",
                 accept_Language: "en",
                 x_Correlation_ID: Guid.NewGuid().ToString(),
                 x_Causation_ID: string.Empty);
-            
-            // Update breadcrumbs
+        }
+        catch (Refit.ApiException apiEx) when (apiEx.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+             throw new Exception("Book not found. It may have been removed or the ID is incorrect.");
+        }
+    }
+
+    private bool ShouldInvalidate(BookStore.Shared.Notifications.IDomainEventNotification notification)
+    {
+        // Only invalidate if the event is about THIS book
+        if (notification is BookStore.Shared.Notifications.BookUpdatedNotification updated && updated.EntityId == Id) return true;
+        if (notification is BookStore.Shared.Notifications.BookCoverUpdatedNotification coverUpdated && coverUpdated.EntityId == Id) return true;
+        
+        // If deleted, we should probably handle that... 
+        // bookQuery will just fail to fetch or return null?
+        if (notification is BookStore.Shared.Notifications.BookDeletedNotification deleted && deleted.EntityId == Id) return true;
+
+        return false;
+    }
+
+    private void UpdateBreadcrumbs()
+    {
+        if (book != null)
+        {
             _breadcrumbItems = new List<BreadcrumbItem>
             {
                 new BreadcrumbItem("Home", href: "/", icon: Icons.Material.Filled.Home),
                 new BreadcrumbItem(book.Title ?? "Book", href: null, disabled: true)
             };
         }
-        catch (Refit.ApiException apiEx) when (apiEx.StatusCode == System.Net.HttpStatusCode.NotFound)
-        {
-            errorMessage = "Book not found. It may have been removed or the ID is incorrect.";
-        }
-        catch (Exception ex)
-        {
-            errorMessage = $"Failed to load book details: {ex.Message}";
-        }
-        finally
-        {
-            isLoading = false;
-        }
     }
 
     private async Task RetryLoad()
     {
-        await LoadBookAsync();
+        if (bookQuery != null)
+        {
+            await bookQuery.LoadAsync();
+            UpdateBreadcrumbs();
+        }
+    }
+    
+    // Inject EventsService which wasn't injected before
+    [Inject] private BookStoreEventsService EventsService { get; set; } = default!;
+    
+    public async ValueTask DisposeAsync()
+    {
+        bookQuery?.Dispose();
     }
 }
