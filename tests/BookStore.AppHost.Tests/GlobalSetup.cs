@@ -20,7 +20,7 @@ public static class GlobalHooks
     public static async Task SetUp()
     {
         Console.WriteLine("[GLOBAL-SETUP] Starting SetUp...");
-        
+
         try
         {
             var builder = await DistributedApplicationTestingBuilder.CreateAsync<Projects.BookStore_AppHost>();
@@ -39,7 +39,7 @@ public static class GlobalHooks
 
             Console.WriteLine("[GLOBAL-SETUP] Getting ResourceNotificationService...");
             NotificationService = App.Services.GetRequiredService<ResourceNotificationService>();
-            
+
             Console.WriteLine("[GLOBAL-SETUP] Starting application...");
             await App.StartAsync();
 
@@ -65,11 +65,11 @@ public static class GlobalHooks
 
         var httpClient = App.CreateHttpClient("apiservice");
         Console.WriteLine("[GLOBAL-SETUP] Waiting for apiservice to be healthy...");
-        
+
         try
         {
             using var healthCts = new CancellationTokenSource(TimeSpan.FromSeconds(120));
-            await NotificationService.WaitForResourceHealthyAsync("apiservice", healthCts.Token);
+            _ = await NotificationService.WaitForResourceHealthyAsync("apiservice", healthCts.Token);
             Console.WriteLine("[GLOBAL-SETUP] apiservice is healthy.");
         }
         catch (Exception ex)
@@ -83,7 +83,7 @@ public static class GlobalHooks
         for (var i = 0; i < 15; i++)
         {
             Console.WriteLine($"[GLOBAL-SETUP] Login attempt {i + 1}/15...");
-            try 
+            try
             {
                 loginResponse = await httpClient.PostAsJsonAsync("/account/login", new
                 {
@@ -96,16 +96,16 @@ public static class GlobalHooks
                     Console.WriteLine("[GLOBAL-SETUP] Login successful.");
                     break;
                 }
-                
+
                 var errorContent = await loginResponse.Content.ReadAsStringAsync();
                 Console.WriteLine($"[GLOBAL-SETUP] Login failed with status: {loginResponse.StatusCode}, body: {errorContent}");
             }
-            #pragma warning disable RCS1075 // Avoid empty catch clause
+#pragma warning disable RCS1075 // Avoid empty catch clause
             catch (Exception)
             {
                 // Ignore login failures during retry loop
             }
-            #pragma warning restore RCS1075
+#pragma warning restore RCS1075
 
             await Task.Delay(1000);
         }

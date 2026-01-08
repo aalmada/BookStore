@@ -71,15 +71,9 @@ public class BookSearchProjection
         return this;
     }
 
-    public void Apply(BookSoftDeleted @event)
-    {
-        IsDeleted = true;
-    }
+    public void Apply(BookSoftDeleted _) => IsDeleted = true;
 
-    public void Apply(BookRestored @event)
-    {
-        IsDeleted = false;
-    }
+    public void Apply(BookRestored _) => IsDeleted = false;
 
     // Helper methods for denormalization
     static void LoadDenormalizedData(BookSearchProjection projection, IQuerySession session)

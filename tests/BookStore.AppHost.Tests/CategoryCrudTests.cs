@@ -1,19 +1,19 @@
 using System.Net;
-using System.Net.Http.Json;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Text.Json;
 using Bogus;
 using BookStore.AppHost.Tests;
-using TUnit.Core.Interfaces;
-using Microsoft.Extensions.Logging;
 using BookStore.Shared.Notifications;
+using Microsoft.Extensions.Logging;
+using TUnit.Core.Interfaces;
 
 namespace BookStore.AppHost.Tests;
 
 [NotInParallel]
 public class CategoryCrudTests
 {
-    private readonly Faker _faker = new();
+    readonly Faker _faker = new();
 
     [Test]
     public async Task CreateCategory_EndToEndFlow_ShouldReturnOk()
@@ -27,7 +27,7 @@ public class CategoryCrudTests
 
         // Assert
         _ = await Assert.That(createResponse.StatusCode).IsEqualTo(HttpStatusCode.Created);
-        
+
         var category = await createResponse.Content.ReadFromJsonAsync<CategoryDto>();
         _ = await Assert.That(category).IsNotNull();
         _ = await Assert.That(category!.Id).IsNotEqualTo(Guid.Empty);
@@ -57,10 +57,11 @@ public class CategoryCrudTests
                     var error = await updateResponse.Content.ReadAsStringAsync();
                     Console.WriteLine($"UpdateCategory Failed with {updateResponse.StatusCode}: {error}");
                 }
+
                 _ = await Assert.That(updateResponse.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
             },
             TimeSpan.FromSeconds(10));
-        
+
         _ = await Assert.That(received).IsTrue();
 
         // Verify update in public API (with retry for eventual consistency)
@@ -91,12 +92,13 @@ public class CategoryCrudTests
                     var error = await deleteResponse.Content.ReadAsStringAsync();
                     Console.WriteLine($"DeleteCategory Failed with {deleteResponse.StatusCode}: {error}");
                 }
+
                 _ = await Assert.That(deleteResponse.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
             },
             TimeSpan.FromSeconds(10));
-        
+
         _ = await Assert.That(received).IsTrue();
-        
+
         // Verify it's gone from public API (with retry to ensure projection caught up)
         var isGone = await RetryExpectNotFoundAsync(httpClient, createdCategory.Id);
         _ = await Assert.That(isGone).IsTrue();
@@ -135,7 +137,7 @@ public class CategoryCrudTests
         var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
         var enName = _faker.Commerce.Department();
         var ptName = _faker.Commerce.Department();
-        
+
         var request = new
         {
             Translations = new Dictionary<string, object>
@@ -146,7 +148,7 @@ public class CategoryCrudTests
         };
 
         CategoryDto? res = null;
-        
+
         // Execute create and wait for SSE notification (match any CategoryCreated event)
         // Note: Creation often comes as CategoryUpdated due to projection upsert semantics.
         var received = await TestHelpers.ExecuteAndWaitForEventAsync(
@@ -159,10 +161,10 @@ public class CategoryCrudTests
                 res = await createResponse.Content.ReadFromJsonAsync<CategoryDto>();
             },
             TimeSpan.FromSeconds(10));
-        
+
         _ = await Assert.That(res).IsNotNull();
         _ = await Assert.That(received).IsTrue();
-        
+
         // Assert (English - Default)
         var enCategory = await RetryGetCategoryAsync(httpClient, res.Id, "en");
         _ = await Assert.That(enCategory!.Name).IsEqualTo(enName);
@@ -177,13 +179,13 @@ public class CategoryCrudTests
     {
         // Arrange
         var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
-        
+
         // 1. Create Category
         var createRequest = TestDataGenerators.GenerateFakeCategoryRequest();
         var createResponse = await httpClient.PostAsJsonAsync("/api/admin/categories", createRequest);
         _ = await Assert.That(createResponse.StatusCode).IsEqualTo(HttpStatusCode.Created);
         var createdCategory = await createResponse.Content.ReadFromJsonAsync<CategoryDto>();
-        
+
         // 2. Soft Delete Category
         var deleteResponse = await httpClient.DeleteAsync($"/api/admin/categories/{createdCategory!.Id}");
         _ = await Assert.That(deleteResponse.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
@@ -194,7 +196,7 @@ public class CategoryCrudTests
         // changes to IsDeleted=false are treated as Updates by the listener.
         var received = await TestHelpers.ExecuteAndWaitForEventAsync(
             createdCategory.Id,
-            "CategoryUpdated", 
+            "CategoryUpdated",
             async () =>
             {
                 var restoreResponse = await httpClient.PostAsync($"/api/admin/categories/{createdCategory.Id}/restore", null);
@@ -204,10 +206,11 @@ public class CategoryCrudTests
                     Console.WriteLine($"[SSE-TEST] Restore failed: {restoreResponse.StatusCode} - {error}");
 
                 }
+
                 _ = await Assert.That(restoreResponse.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
             },
             TimeSpan.FromSeconds(10));
-        
+
         _ = await Assert.That(received).IsTrue();
 
         // 5. Verify Read Model (with retry for eventual consistency)
@@ -217,9 +220,9 @@ public class CategoryCrudTests
     }
 
     // Retry helper for eventual consistency
-    private async Task<CategoryDto> RetryGetCategoryAsync(HttpClient client, Guid id, string? lang = null, Func<CategoryDto, bool>? validator = null)
+    async Task<CategoryDto> RetryGetCategoryAsync(HttpClient client, Guid id, string? lang = null, Func<CategoryDto, bool>? validator = null)
     {
-        for (int i = 0; i < 120; i++)
+        for (var i = 0; i < 120; i++)
         {
             if (lang != null)
             {
@@ -239,21 +242,26 @@ public class CategoryCrudTests
                     }
                 }
             }
-            
+
             await Task.Delay(500);
         }
-        
+
         throw new Exception($"Category {id} not found in read model (or failed validation) after retries.");
     }
 
-    private async Task<bool> RetryExpectNotFoundAsync(HttpClient client, Guid id)
+    async Task<bool> RetryExpectNotFoundAsync(HttpClient client, Guid id)
     {
-        for (int i = 0; i < 120; i++)
+        for (var i = 0; i < 120; i++)
         {
             var response = await client.GetAsync($"/api/categories/{id}");
-            if (response.StatusCode == HttpStatusCode.NotFound) return true;
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                return true;
+            }
+
             await Task.Delay(500);
         }
+
         return false;
     }
 

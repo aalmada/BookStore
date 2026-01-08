@@ -1,8 +1,8 @@
 using BookStore.ApiService.Aggregates;
 using BookStore.ApiService.Commands;
-using BookStore.Shared.Notifications;
 using BookStore.ApiService.Infrastructure;
 using BookStore.ApiService.Services;
+using BookStore.Shared.Notifications;
 using Marten;
 
 namespace BookStore.ApiService.Handlers.Books;

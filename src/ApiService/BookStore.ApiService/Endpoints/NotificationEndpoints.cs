@@ -1,7 +1,7 @@
 using System.Net.ServerSentEvents;
-using BookStore.Shared.Notifications;
-using BookStore.ApiService.Infrastructure.Notifications;
 using BookStore.ApiService.Infrastructure.Logging;
+using BookStore.ApiService.Infrastructure.Notifications;
+using BookStore.Shared.Notifications;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace BookStore.ApiService.Endpoints;
@@ -24,11 +24,11 @@ public static class NotificationEndpoints
         CancellationToken cancellationToken)
     {
         Log.Notifications.ClientConnected(logger);
-        
+
         Log.Notifications.CreatingSubscription(logger);
         var stream = notificationService.Subscribe(cancellationToken);
         Log.Notifications.SubscriptionCreated(logger);
-        
+
         return TypedResults.ServerSentEvents(stream);
     }
 }

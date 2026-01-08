@@ -91,7 +91,7 @@ public class CategoryHandlerTests
         var session = Substitute.For<IDocumentSession>();
         var httpContext = new DefaultHttpContext();
         var httpContextAccessor = Substitute.For<IHttpContextAccessor>();
-        httpContextAccessor.HttpContext.Returns(httpContext);
+        _ = httpContextAccessor.HttpContext.Returns(httpContext);
 
         // Mock Stream State
         _ = session.Events.FetchStreamStateAsync(command.Id).Returns(new Marten.Events.StreamState { Version = 1 });
@@ -123,7 +123,7 @@ public class CategoryHandlerTests
         var session = Substitute.For<IDocumentSession>();
         var httpContext = new DefaultHttpContext();
         var httpContextAccessor = Substitute.For<IHttpContextAccessor>();
-        httpContextAccessor.HttpContext.Returns(httpContext);
+        _ = httpContextAccessor.HttpContext.Returns(httpContext);
 
         // Mock Stream State
         _ = session.Events.FetchStreamStateAsync(id).Returns(new Marten.Events.StreamState { Version = 1 });
@@ -153,7 +153,7 @@ public class CategoryHandlerTests
         var session = Substitute.For<IDocumentSession>();
         var httpContext = new DefaultHttpContext();
         var httpContextAccessor = Substitute.For<IHttpContextAccessor>();
-        httpContextAccessor.HttpContext.Returns(httpContext);
+        _ = httpContextAccessor.HttpContext.Returns(httpContext);
 
         // Mock Stream State
         _ = session.Events.FetchStreamStateAsync(id).Returns(new Marten.Events.StreamState { Version = 1 });

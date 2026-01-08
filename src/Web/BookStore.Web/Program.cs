@@ -64,7 +64,6 @@ builder.Services.AddAuthorizationCore();
 //     _ = http.AddPolicyHandler(circuitBreakerPolicy);
 // });
 
-
 // Register optimistic update service for eventual consistency
 builder.Services.AddSingleton<OptimisticUpdateService>();
 

@@ -70,18 +70,14 @@ public static class MartenConfigurationExtensions
     }
 
     static void ConfigureJsonSerialization(StoreOptions options)
-    {
         // Configure JSON serialization for Marten (database storage)
         // Enums stored as strings for readability and camelCase for JSON properties
-        options.UseSystemTextJsonForSerialization(
+        => options.UseSystemTextJsonForSerialization(
             EnumStorage.AsString,
             Casing.CamelCase,
             configure: settings =>
                 // Add custom converter for PartialDate to handle nullable values properly
-                settings.Converters.Add(new PartialDateJsonConverter()));
-
-        // settings.Converters.Add(new PartialDateJsonConverter()));
-    }
+                settings.Converters.Add(new PartialDateJsonConverter()));// settings.Converters.Add(new PartialDateJsonConverter()));
 
     static void RegisterEventTypes(StoreOptions options)
     {

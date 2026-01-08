@@ -10,10 +10,10 @@ namespace BookStore.Web.Services;
 /// </summary>
 public class BookStoreEventsService : IAsyncDisposable
 {
-    private readonly HttpClient _httpClient;
-    private readonly ILogger<BookStoreEventsService> _logger;
-    private CancellationTokenSource? _cts;
-    private Task? _listenerTask;
+    readonly HttpClient _httpClient;
+    readonly ILogger<BookStoreEventsService> _logger;
+    CancellationTokenSource? _cts;
+    Task? _listenerTask;
 
     public event Action<IDomainEventNotification>? OnNotificationReceived;
 
@@ -25,13 +25,16 @@ public class BookStoreEventsService : IAsyncDisposable
 
     public void StartListening()
     {
-        if (_listenerTask != null) return;
+        if (_listenerTask != null)
+        {
+            return;
+        }
 
         _cts = new CancellationTokenSource();
         _listenerTask = ListenToStreamAsync(_cts.Token);
     }
 
-    private async Task ListenToStreamAsync(CancellationToken ct)
+    async Task ListenToStreamAsync(CancellationToken ct)
     {
         while (!ct.IsCancellationRequested)
         {
@@ -39,13 +42,16 @@ public class BookStoreEventsService : IAsyncDisposable
             {
                 // Use the relative path as the base address is already configured
                 using var response = await _httpClient.GetAsync("/api/notifications/stream", HttpCompletionOption.ResponseHeadersRead, ct);
-                response.EnsureSuccessStatusCode();
+                _ = response.EnsureSuccessStatusCode();
 
                 using var stream = await response.Content.ReadAsStreamAsync(ct);
-                
+
                 await foreach (var item in SseParser.Create(stream).EnumerateAsync(ct))
                 {
-                    if (string.IsNullOrEmpty(item.Data)) continue;
+                    if (string.IsNullOrEmpty(item.Data))
+                    {
+                        continue;
+                    }
 
                     try
                     {
@@ -69,10 +75,10 @@ public class BookStoreEventsService : IAsyncDisposable
         }
     }
 
-    private IDomainEventNotification? DeserializeNotification(string eventType, string data)
+    IDomainEventNotification? DeserializeNotification(string eventType, string data)
     {
         var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-        
+
         return eventType switch
         {
             "BookCreated" => JsonSerializer.Deserialize<BookCreatedNotification>(data, options),

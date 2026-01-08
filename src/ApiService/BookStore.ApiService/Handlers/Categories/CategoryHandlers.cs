@@ -76,7 +76,7 @@ public static class CategoryHandlers
             translations);
 
         _ = session.Events.StartStream<CategoryAggregate>(command.Id, @event);
-        
+
         return Results.Created(
             $"/api/admin/categories/{command.Id}",
             new { id = command.Id, correlationId = session.CorrelationId });
@@ -168,12 +168,15 @@ public static class CategoryHandlers
 
         var @event = aggregate.UpdateEvent(translations);
         _ = session.Events.Append(command.Id, @event);
-        
+
         Log.Categories.CategoryUpdated(logger, command.Id);
 
         var newStreamState = await session.Events.FetchStreamStateAsync(command.Id);
         var newETag = ETagHelper.GenerateETag(newStreamState!.Version);
-        if (context != null) ETagHelper.AddETagHeader(context, newETag);
+        if (context != null)
+        {
+            ETagHelper.AddETagHeader(context, newETag);
+        }
 
         return Results.NoContent();
     }
@@ -210,12 +213,15 @@ public static class CategoryHandlers
 
         var @event = aggregate.SoftDeleteEvent();
         _ = session.Events.Append(command.Id, @event);
-        
+
         Log.Categories.CategorySoftDeleted(logger, command.Id);
 
         var newStreamState = await session.Events.FetchStreamStateAsync(command.Id);
         var newETag = ETagHelper.GenerateETag(newStreamState!.Version);
-        if (context != null) ETagHelper.AddETagHeader(context, newETag);
+        if (context != null)
+        {
+            ETagHelper.AddETagHeader(context, newETag);
+        }
 
         return Results.NoContent();
     }
@@ -252,12 +258,15 @@ public static class CategoryHandlers
 
         var @event = aggregate.RestoreEvent();
         _ = session.Events.Append(command.Id, @event);
-        
+
         Log.Categories.CategoryRestored(logger, command.Id);
 
         var newStreamState = await session.Events.FetchStreamStateAsync(command.Id);
         var newETag = ETagHelper.GenerateETag(newStreamState!.Version);
-        if (context != null) ETagHelper.AddETagHeader(context, newETag);
+        if (context != null)
+        {
+            ETagHelper.AddETagHeader(context, newETag);
+        }
 
         return Results.NoContent();
     }

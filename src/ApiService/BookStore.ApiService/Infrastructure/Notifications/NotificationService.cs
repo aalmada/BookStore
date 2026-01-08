@@ -25,13 +25,10 @@ public interface INotificationService
 
 public class NotificationService : INotificationService
 {
-    private readonly ConcurrentDictionary<Guid, Channel<SseItem<IDomainEventNotification>>> _subscribers = new();
-    private readonly ILogger<NotificationService> _logger;
+    readonly ConcurrentDictionary<Guid, Channel<SseItem<IDomainEventNotification>>> _subscribers = new();
+    readonly ILogger<NotificationService> _logger;
 
-    public NotificationService(ILogger<NotificationService> logger)
-    {
-        _logger = logger;
-    }
+    public NotificationService(ILogger<NotificationService> logger) => _logger = logger;
 
     public async ValueTask NotifyAsync(IDomainEventNotification notification, CancellationToken ct = default)
     {
@@ -47,7 +44,7 @@ public class NotificationService : INotificationService
             catch (Exception ex)
             {
                 Log.Notifications.FailedToSend(_logger, ex, subscriber.Key);
-                _subscribers.TryRemove(subscriber.Key, out _);
+                _ = _subscribers.TryRemove(subscriber.Key, out _);
             }
         }
     }
@@ -61,7 +58,7 @@ public class NotificationService : INotificationService
             SingleWriter = true
         });
 
-        _subscribers.TryAdd(id, channel);
+        _ = _subscribers.TryAdd(id, channel);
         Log.Notifications.ClientSubscribed(_logger, id, _subscribers.Count);
 
         try
@@ -74,7 +71,7 @@ public class NotificationService : INotificationService
         }
         finally
         {
-            _subscribers.TryRemove(id, out _);
+            _ = _subscribers.TryRemove(id, out _);
             Log.Notifications.ClientUnsubscribed(_logger, id, _subscribers.Count);
         }
     }

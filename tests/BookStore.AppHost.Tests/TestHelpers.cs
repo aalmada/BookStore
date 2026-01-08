@@ -1,7 +1,7 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Text.Json;
 using System.Net.ServerSentEvents;
+using System.Text.Json;
 using Aspire.Hosting;
 
 namespace BookStore.AppHost.Tests;
@@ -38,10 +38,10 @@ public static class TestHelpers
         TimeSpan timeout)
     {
         var matchAnyId = entityId == Guid.Empty;
-        Console.WriteLine($"[SSE-TEST] Setting up listener for {eventType}" + 
-            (matchAnyId ? " (any ID)" : $" on {entityId}") + 
+        Console.WriteLine($"[SSE-TEST] Setting up listener for {eventType}" +
+            (matchAnyId ? " (any ID)" : $" on {entityId}") +
             $" (timeout: {timeout.TotalSeconds}s)...");
-        
+
         var app = GlobalHooks.App!;
         using var client = app.CreateHttpClient("apiservice");
         client.Timeout = TimeSpan.FromMinutes(5); // Prevent Aspire default timeout from killing the stream
@@ -58,16 +58,19 @@ public static class TestHelpers
             {
                 Console.WriteLine("[SSE-TEST] Connecting to /api/notifications/stream...");
                 using var response = await client.GetAsync("/api/notifications/stream", HttpCompletionOption.ResponseHeadersRead, cts.Token);
-                response.EnsureSuccessStatusCode();
+                _ = response.EnsureSuccessStatusCode();
                 Console.WriteLine("[SSE-TEST] Connected. Waiting for action to complete before reading stream...");
-                connectedTcs.TrySetResult();
+                _ = connectedTcs.TrySetResult();
 
                 using var stream = await response.Content.ReadAsStreamAsync(cts.Token);
 
                 await foreach (var item in SseParser.Create(stream).EnumerateAsync(cts.Token))
                 {
                     Console.WriteLine($"[SSE-TEST] Received SSE: EventType={item.EventType}, Data={item.Data}");
-                    if (string.IsNullOrEmpty(item.Data)) continue;
+                    if (string.IsNullOrEmpty(item.Data))
+                    {
+                        continue;
+                    }
 
                     if (item.EventType == eventType)
                     {
@@ -78,7 +81,7 @@ public static class TestHelpers
                             if (matchAnyId || receivedId == entityId)
                             {
                                 Console.WriteLine($"[SSE-TEST] Match found for {eventType} on {receivedId}!");
-                                tcs.TrySetResult(true);
+                                _ = tcs.TrySetResult(true);
                                 return;
                             }
                         }
@@ -88,21 +91,21 @@ public static class TestHelpers
             catch (OperationCanceledException)
             {
                 Console.WriteLine($"[SSE-TEST] Timeout reached waiting for {eventType}.");
-                tcs.TrySetResult(false);
+                _ = tcs.TrySetResult(false);
             }
             catch (Exception ex)
             {
-               Console.WriteLine($"[SSE-TEST] Background listener exception: {ex.Message}");
-                tcs.TrySetException(ex);
-                connectedTcs.TrySetResult(); // Ensure we don't block
+                Console.WriteLine($"[SSE-TEST] Background listener exception: {ex.Message}");
+                _ = tcs.TrySetException(ex);
+                _ = connectedTcs.TrySetResult(); // Ensure we don't block
             }
         }, cts.Token);
 
         // Wait for connection to be established
         if (await Task.WhenAny(connectedTcs.Task, Task.Delay(15000)) != connectedTcs.Task)
         {
-             Console.WriteLine("[SSE-TEST] Timed out waiting for SSE connection.");
-             // Proceed anyway? Or fail? proceeding might miss event.
+            Console.WriteLine("[SSE-TEST] Timed out waiting for SSE connection.");
+            // Proceed anyway? Or fail? proceeding might miss event.
         }
 
         // Execute the action that should trigger the event
@@ -113,7 +116,7 @@ public static class TestHelpers
         // Wait for either the event or timeout
         var result = await tcs.Task;
         cts.Cancel(); // Stop listening
-        
+
         try
         {
             await listenTask; // Ensure cleanup logic runs and we catch any final exceptions
@@ -122,12 +125,12 @@ public static class TestHelpers
         {
             // Expected
         }
-        #pragma warning disable RCS1075 // Avoid empty catch clause
+#pragma warning disable RCS1075 // Avoid empty catch clause
         catch (Exception)
         {
             // Valid to ignore here during cleanup
         }
-        #pragma warning restore RCS1075
+#pragma warning restore RCS1075
 
         return result;
     }
@@ -149,15 +152,18 @@ public static class TestHelpers
         {
             // Console.WriteLine("[SSE-TEST] Connecting to /api/notifications/stream...");
             using var response = await client.GetAsync("/api/notifications/stream", HttpCompletionOption.ResponseHeadersRead, cts.Token);
-            response.EnsureSuccessStatusCode();
+            _ = response.EnsureSuccessStatusCode();
             Console.WriteLine("[SSE-TEST] Connected. Reading stream...");
 
             using var stream = await response.Content.ReadAsStreamAsync(cts.Token);
-            
+
             await foreach (var item in SseParser.Create(stream).EnumerateAsync(cts.Token))
             {
                 Console.WriteLine($"[SSE-TEST] Received item: {item.EventType}");
-                if (string.IsNullOrEmpty(item.Data)) continue;
+                if (string.IsNullOrEmpty(item.Data))
+                {
+                    continue;
+                }
 
                 if (item.EventType == eventType)
                 {

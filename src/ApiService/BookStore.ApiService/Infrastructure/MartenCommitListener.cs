@@ -1,10 +1,10 @@
 using BookStore.ApiService.Events;
+using BookStore.ApiService.Infrastructure.Notifications;
 using BookStore.ApiService.Projections;
+using BookStore.Shared.Notifications;
 using Marten;
 using Marten.Services;
 using Microsoft.Extensions.Caching.Hybrid;
-using BookStore.ApiService.Infrastructure.Notifications;
-using BookStore.Shared.Notifications;
 
 namespace BookStore.ApiService.Infrastructure;
 
@@ -14,12 +14,12 @@ namespace BookStore.ApiService.Infrastructure;
 /// </summary>
 public class ProjectionCommitListener : IDocumentSessionListener, IChangeListener
 {
-    private readonly HybridCache _cache;
-    private readonly INotificationService _notificationService;
-    private readonly ILogger<ProjectionCommitListener> _logger;
+    readonly HybridCache _cache;
+    readonly INotificationService _notificationService;
+    readonly ILogger<ProjectionCommitListener> _logger;
 
     public ProjectionCommitListener(
-        HybridCache cache, 
+        HybridCache cache,
         INotificationService notificationService,
         ILogger<ProjectionCommitListener> logger)
     {
@@ -28,13 +28,13 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
         _logger = logger;
     }
 
-    public Task BeforeSaveChangesAsync(IDocumentSession session, CancellationToken token)
+    public Task BeforeSaveChangesAsync(IDocumentSession _, CancellationToken __)
         => Task.CompletedTask;
 
-    public Task AfterSaveChangesAsync(IDocumentSession session, CancellationToken token)
+    public Task AfterSaveChangesAsync(IDocumentSession _, CancellationToken __)
         => Task.CompletedTask;
 
-    public Task BeforeCommitAsync(IDocumentSession session, IChangeSet commit, CancellationToken token)
+    public Task BeforeCommitAsync(IDocumentSession _, IChangeSet __, CancellationToken ___)
         => Task.CompletedTask;
 
     public async Task AfterCommitAsync(IDocumentSession session, IChangeSet commit, CancellationToken token)
@@ -97,7 +97,7 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
         // Sync hook not used
     }
 
-    private async Task ProcessDocumentChangeAsync(object document, ChangeType changeType, CancellationToken token)
+    async Task ProcessDocumentChangeAsync(object document, ChangeType changeType, CancellationToken token)
     {
         switch (document)
         {
@@ -116,12 +116,15 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
         }
     }
 
-    private async Task HandleCategoryChangeAsync(CategoryProjection category, ChangeType changeType, CancellationToken token)
+    async Task HandleCategoryChangeAsync(CategoryProjection category, ChangeType changeType, CancellationToken token)
     {
         // Check for soft delete status if it's an update
         if (changeType == ChangeType.Update)
         {
-            if (category.IsDeleted) changeType = ChangeType.Delete;
+            if (category.IsDeleted)
+            {
+                changeType = ChangeType.Delete;
+            }
             // If it was deleted but now IsDeleted is false, we treat it as an Update (or Insert, but cache invalidation is same)
         }
 
@@ -139,7 +142,7 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
         await NotifyAsync("Category", notification, token);
     }
 
-    private async Task HandleBookChangeAsync(BookSearchProjection book, ChangeType changeType, CancellationToken token)
+    async Task HandleBookChangeAsync(BookSearchProjection book, ChangeType changeType, CancellationToken token)
     {
         if (changeType == ChangeType.Update && book.IsDeleted)
         {
@@ -161,9 +164,9 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
         await NotifyAsync("Book", notification, token);
     }
 
-    private async Task HandleAuthorChangeAsync(AuthorProjection author, ChangeType changeType, CancellationToken token)
+    async Task HandleAuthorChangeAsync(AuthorProjection author, ChangeType changeType, CancellationToken token)
     {
-         if (changeType == ChangeType.Update && author.IsDeleted)
+        if (changeType == ChangeType.Update && author.IsDeleted)
         {
             changeType = ChangeType.Delete;
         }
@@ -181,9 +184,9 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
         await NotifyAsync("Author", notification, token);
     }
 
-    private async Task HandlePublisherChangeAsync(PublisherProjection publisher, ChangeType changeType, CancellationToken token)
+    async Task HandlePublisherChangeAsync(PublisherProjection publisher, ChangeType changeType, CancellationToken token)
     {
-         if (changeType == ChangeType.Update && publisher.IsDeleted)
+        if (changeType == ChangeType.Update && publisher.IsDeleted)
         {
             changeType = ChangeType.Delete;
         }
@@ -201,7 +204,7 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
         await NotifyAsync("Publisher", notification, token);
     }
 
-    private async Task InvalidateCacheTagsAsync(Guid id, string entityPrefix, string collectionTag, CancellationToken token)
+    async Task InvalidateCacheTagsAsync(Guid id, string entityPrefix, string collectionTag, CancellationToken token)
     {
         var itemTag = $"{entityPrefix}:{id}";
         await _cache.RemoveByTagAsync(itemTag, token);
@@ -209,21 +212,21 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
         _logger.LogDebug("Invalidated cache {ItemTag} and {ListTag}", itemTag, collectionTag);
     }
 
-    private async Task NotifyAsync(string entityType, IDomainEventNotification notification, CancellationToken token)
+    async Task NotifyAsync(string entityType, IDomainEventNotification notification, CancellationToken token)
     {
         _logger.LogInformation("Sending {NotificationType} for {EntityType}", notification.GetType().Name, entityType);
         await _notificationService.NotifyAsync(notification, token);
     }
 
-    private enum ChangeType
+    enum ChangeType
     {
         Insert,
         Update,
         Delete
     }
 
-    public void BeforeSaveChanges(IDocumentSession session) { }
-    public void AfterSaveChanges(IDocumentSession session) { }
-    public void DocumentLoaded(object id, object document) { }
-    public void DocumentAddedForStorage(object id, object document) { }
+    public void BeforeSaveChanges(IDocumentSession _) { }
+    public void AfterSaveChanges(IDocumentSession _) { }
+    public void DocumentLoaded(object _, object __) { }
+    public void DocumentAddedForStorage(object _, object __) { }
 }
