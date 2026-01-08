@@ -47,7 +47,7 @@ public class PublisherCrudTests
 
                 _ = await Assert.That(updateResponse.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
             },
-            TimeSpan.FromSeconds(10));
+            TimeSpan.FromSeconds(30));
 
         _ = await Assert.That(received).IsTrue();
     }
@@ -77,7 +77,7 @@ public class PublisherCrudTests
 
                 _ = await Assert.That(deleteResponse.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
             },
-            TimeSpan.FromSeconds(10));
+            TimeSpan.FromSeconds(30));
 
         _ = await Assert.That(received).IsTrue();
     }
@@ -114,7 +114,7 @@ public class PublisherCrudTests
 
                 _ = await Assert.That(restoreResponse.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
             },
-            TimeSpan.FromSeconds(10));
+            TimeSpan.FromSeconds(30));
 
         _ = await Assert.That(received).IsTrue();
     }

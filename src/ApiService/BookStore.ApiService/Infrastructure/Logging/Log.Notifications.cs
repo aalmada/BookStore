@@ -54,5 +54,41 @@ public static partial class Log
             Level = LogLevel.Information,
             Message = "Subscription created, returning SSE stream")]
         public static partial void SubscriptionCreated(ILogger logger);
+
+        [LoggerMessage(
+            EventId = 6009,
+            Level = LogLevel.Information,
+            Message = "Subscribed to Redis channel: {Channel}")]
+        public static partial void SubscribedToRedis(ILogger logger, string channel);
+
+        [LoggerMessage(
+            EventId = 6010,
+            Level = LogLevel.Information,
+            Message = "Published {EventType} for entity {EntityId} to Redis")]
+        public static partial void PublishedToRedis(ILogger logger, string eventType, Guid entityId);
+
+        [LoggerMessage(
+            EventId = 6011,
+            Level = LogLevel.Warning,
+            Message = "Redis not connected, SSE will work in single-instance mode only")]
+        public static partial void RedisNotConnected(ILogger logger);
+
+        [LoggerMessage(
+            EventId = 6012,
+            Level = LogLevel.Warning,
+            Message = "Redis unavailable, falling back to local subscribers")]
+        public static partial void RedisFallback(ILogger logger);
+
+        [LoggerMessage(
+            EventId = 6013,
+            Level = LogLevel.Error,
+            Message = "Failed to process Redis notification")]
+        public static partial void FailedToProcessRedisMessage(ILogger logger, Exception ex);
+
+        [LoggerMessage(
+            EventId = 6014,
+            Level = LogLevel.Information,
+            Message = "Unsubscribed from Redis channel: {Channel}")]
+        public static partial void UnsubscribedFromRedis(ILogger logger, string channel);
     }
 }

@@ -26,7 +26,7 @@ public static class PublisherHandlers
     public static async Task<IResult> Handle(
         UpdatePublisher command,
         IDocumentSession session,
-        HttpContext context,
+        IHttpContextAccessor httpContextAccessor,
         ILogger logger)
     {
         var streamState = await session.Events.FetchStreamStateAsync(command.Id);
@@ -36,6 +36,7 @@ public static class PublisherHandlers
             return Results.NotFound();
         }
 
+        var context = httpContextAccessor.HttpContext!;
         var currentETag = ETagHelper.GenerateETag(streamState.Version);
         if (!string.IsNullOrEmpty(command.ETag) &&
             !ETagHelper.CheckIfMatch(context, currentETag))
@@ -68,7 +69,7 @@ public static class PublisherHandlers
     public static async Task<IResult> Handle(
         SoftDeletePublisher command,
         IDocumentSession session,
-        HttpContext context,
+        IHttpContextAccessor httpContextAccessor,
         ILogger logger)
     {
         Log.Publishers.PublisherSoftDeleting(logger, command.Id);
@@ -80,6 +81,7 @@ public static class PublisherHandlers
             return Results.NotFound();
         }
 
+        var context = httpContextAccessor.HttpContext!;
         var currentETag = ETagHelper.GenerateETag(streamState.Version);
         if (!string.IsNullOrEmpty(command.ETag) &&
             !ETagHelper.CheckIfMatch(context, currentETag))
@@ -109,7 +111,7 @@ public static class PublisherHandlers
     public static async Task<IResult> Handle(
         RestorePublisher command,
         IDocumentSession session,
-        HttpContext context,
+        IHttpContextAccessor httpContextAccessor,
         ILogger logger)
     {
         Log.Publishers.PublisherRestoring(logger, command.Id);
@@ -121,6 +123,7 @@ public static class PublisherHandlers
             return Results.NotFound();
         }
 
+        var context = httpContextAccessor.HttpContext!;
         var currentETag = ETagHelper.GenerateETag(streamState.Version);
         if (!string.IsNullOrEmpty(command.ETag) &&
             !ETagHelper.CheckIfMatch(context, currentETag))

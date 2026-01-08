@@ -99,6 +99,8 @@ public class AuthorHandlerTests
 
         var session = Substitute.For<IDocumentSession>();
         var httpContext = new DefaultHttpContext();
+        var httpContextAccessor = Substitute.For<IHttpContextAccessor>();
+        _ = httpContextAccessor.HttpContext.Returns(httpContext);
 
         var localizationOptions = Options.Create(new LocalizationOptions
         {
@@ -114,7 +116,7 @@ public class AuthorHandlerTests
         _ = session.Events.AggregateStreamAsync<AuthorAggregate>(command.Id).Returns(existingAggregate);
 
         // Act
-        var result = await AuthorHandlers.Handle(command, session, httpContext, localizationOptions, Substitute.For<ILogger<UpdateAuthor>>());
+        var result = await AuthorHandlers.Handle(command, session, httpContextAccessor, localizationOptions, Substitute.For<ILogger<UpdateAuthor>>());
 
         // Assert
         _ = await Assert.That(result).IsTypeOf<Microsoft.AspNetCore.Http.HttpResults.NoContent>();
@@ -134,6 +136,8 @@ public class AuthorHandlerTests
 
         var session = Substitute.For<IDocumentSession>();
         var httpContext = new DefaultHttpContext();
+        var httpContextAccessor = Substitute.For<IHttpContextAccessor>();
+        _ = httpContextAccessor.HttpContext.Returns(httpContext);
 
         // Mock Stream State
         _ = session.Events.FetchStreamStateAsync(id).Returns(new Marten.Events.StreamState { Version = 1 });
@@ -143,7 +147,7 @@ public class AuthorHandlerTests
         _ = session.Events.AggregateStreamAsync<AuthorAggregate>(id).Returns(existingAggregate);
 
         // Act
-        var result = await AuthorHandlers.Handle(command, session, httpContext, Substitute.For<ILogger<SoftDeleteAuthor>>());
+        var result = await AuthorHandlers.Handle(command, session, httpContextAccessor, Substitute.For<ILogger<SoftDeleteAuthor>>());
 
         // Assert
         _ = await Assert.That(result).IsTypeOf<Microsoft.AspNetCore.Http.HttpResults.NoContent>();
@@ -162,6 +166,8 @@ public class AuthorHandlerTests
 
         var session = Substitute.For<IDocumentSession>();
         var httpContext = new DefaultHttpContext();
+        var httpContextAccessor = Substitute.For<IHttpContextAccessor>();
+        _ = httpContextAccessor.HttpContext.Returns(httpContext);
 
         // Mock Stream State
         _ = session.Events.FetchStreamStateAsync(id).Returns(new Marten.Events.StreamState { Version = 1 });
@@ -171,7 +177,7 @@ public class AuthorHandlerTests
         _ = session.Events.AggregateStreamAsync<AuthorAggregate>(id).Returns(existingAggregate);
 
         // Act
-        var result = await AuthorHandlers.Handle(command, session, httpContext, Substitute.For<ILogger<RestoreAuthor>>());
+        var result = await AuthorHandlers.Handle(command, session, httpContextAccessor, Substitute.For<ILogger<RestoreAuthor>>());
 
         // Assert
         _ = await Assert.That(result).IsTypeOf<Microsoft.AspNetCore.Http.HttpResults.NoContent>();

@@ -34,7 +34,15 @@ public static class ApplicationServicesExtensions
         AddLocalization(services, configuration);
 
         // Add SSE for real-time notifications
-        _ = services.AddSingleton<Infrastructure.Notifications.INotificationService, Infrastructure.Notifications.NotificationService>();
+        // Uses Redis pub/sub when available (Aspire), falls back to in-memory gracefully
+        _ = services.AddSingleton<Infrastructure.Notifications.INotificationService>(sp =>
+        {
+            // Try to get Redis connection - it may not be available in test environments
+            var redis = sp.GetService<StackExchange.Redis.IConnectionMultiplexer>();
+            var logger = sp.GetRequiredService<ILogger<Infrastructure.Notifications.RedisNotificationService>>();
+
+            return new Infrastructure.Notifications.RedisNotificationService(redis!, logger);
+        });
 
         // Add Blob Storage service
         _ = services.AddSingleton<Services.BlobStorageService>();

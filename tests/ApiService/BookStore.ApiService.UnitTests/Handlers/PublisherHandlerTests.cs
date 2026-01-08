@@ -50,6 +50,8 @@ public class PublisherHandlerTests
 
         var session = Substitute.For<IDocumentSession>();
         var httpContext = new DefaultHttpContext();
+        var httpContextAccessor = Substitute.For<IHttpContextAccessor>();
+        _ = httpContextAccessor.HttpContext.Returns(httpContext);
 
         // Mock Stream State
         _ = session.Events.FetchStreamStateAsync(command.Id).Returns(new Marten.Events.StreamState { Version = 1 });
@@ -59,7 +61,7 @@ public class PublisherHandlerTests
         _ = session.Events.AggregateStreamAsync<PublisherAggregate>(command.Id).Returns(existingAggregate);
 
         // Act
-        var result = await PublisherHandlers.Handle(command, session, httpContext, Substitute.For<ILogger<UpdatePublisher>>());
+        var result = await PublisherHandlers.Handle(command, session, httpContextAccessor, Substitute.For<ILogger<UpdatePublisher>>());
 
         // Assert
         _ = await Assert.That(result).IsTypeOf<Microsoft.AspNetCore.Http.HttpResults.NoContent>();
@@ -79,6 +81,8 @@ public class PublisherHandlerTests
 
         var session = Substitute.For<IDocumentSession>();
         var httpContext = new DefaultHttpContext();
+        var httpContextAccessor = Substitute.For<IHttpContextAccessor>();
+        _ = httpContextAccessor.HttpContext.Returns(httpContext);
 
         // Mock Stream State
         _ = session.Events.FetchStreamStateAsync(id).Returns(new Marten.Events.StreamState { Version = 1 });
@@ -88,7 +92,7 @@ public class PublisherHandlerTests
         _ = session.Events.AggregateStreamAsync<PublisherAggregate>(id).Returns(existingAggregate);
 
         // Act
-        var result = await PublisherHandlers.Handle(command, session, httpContext, Substitute.For<ILogger<SoftDeletePublisher>>());
+        var result = await PublisherHandlers.Handle(command, session, httpContextAccessor, Substitute.For<ILogger<SoftDeletePublisher>>());
 
         // Assert
         _ = await Assert.That(result).IsTypeOf<Microsoft.AspNetCore.Http.HttpResults.NoContent>();
@@ -107,6 +111,8 @@ public class PublisherHandlerTests
 
         var session = Substitute.For<IDocumentSession>();
         var httpContext = new DefaultHttpContext();
+        var httpContextAccessor = Substitute.For<IHttpContextAccessor>();
+        _ = httpContextAccessor.HttpContext.Returns(httpContext);
 
         // Mock Stream State
         _ = session.Events.FetchStreamStateAsync(id).Returns(new Marten.Events.StreamState { Version = 1 });
@@ -116,7 +122,7 @@ public class PublisherHandlerTests
         _ = session.Events.AggregateStreamAsync<PublisherAggregate>(id).Returns(existingAggregate);
 
         // Act
-        var result = await PublisherHandlers.Handle(command, session, httpContext, Substitute.For<ILogger<RestorePublisher>>());
+        var result = await PublisherHandlers.Handle(command, session, httpContextAccessor, Substitute.For<ILogger<RestorePublisher>>());
 
         // Assert
         _ = await Assert.That(result).IsTypeOf<Microsoft.AspNetCore.Http.HttpResults.NoContent>();

@@ -27,8 +27,21 @@ public static class NotificationEndpoints
 
         Log.Notifications.CreatingSubscription(logger);
         var stream = notificationService.Subscribe(cancellationToken);
+
+        // Wrap stream to send immediate initial event to force header flush
+        var streamWithInit = EmitInitialEvent(stream);
+
         Log.Notifications.SubscriptionCreated(logger);
 
-        return TypedResults.ServerSentEvents(stream);
+        return TypedResults.ServerSentEvents(streamWithInit);
+    }
+
+    static async IAsyncEnumerable<SseItem<IDomainEventNotification>> EmitInitialEvent(IAsyncEnumerable<SseItem<IDomainEventNotification>> source)
+    {
+        yield return new SseItem<IDomainEventNotification>(new PingNotification(), "Connected");
+        await foreach (var item in source)
+        {
+            yield return item;
+        }
     }
 }

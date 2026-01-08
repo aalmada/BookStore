@@ -81,7 +81,7 @@ public static class AuthorHandlers
     public static async Task<IResult> Handle(
         UpdateAuthor command,
         IDocumentSession session,
-        HttpContext context,
+        IHttpContextAccessor httpContextAccessor,
         IOptions<LocalizationOptions> localizationOptions,
         ILogger logger)
     {
@@ -132,6 +132,7 @@ public static class AuthorHandlers
             return Results.NotFound();
         }
 
+        var context = httpContextAccessor.HttpContext!;
         var currentETag = ETagHelper.GenerateETag(streamState.Version);
         if (!string.IsNullOrEmpty(command.ETag) &&
             !ETagHelper.CheckIfMatch(context, currentETag))
@@ -165,7 +166,7 @@ public static class AuthorHandlers
     public static async Task<IResult> Handle(
         SoftDeleteAuthor command,
         IDocumentSession session,
-        HttpContext context,
+        IHttpContextAccessor httpContextAccessor,
         ILogger logger)
     {
         Log.Authors.AuthorSoftDeleting(logger, command.Id);
@@ -177,6 +178,7 @@ public static class AuthorHandlers
             return Results.NotFound();
         }
 
+        var context = httpContextAccessor.HttpContext!;
         var currentETag = ETagHelper.GenerateETag(streamState.Version);
         if (!string.IsNullOrEmpty(command.ETag) &&
             !ETagHelper.CheckIfMatch(context, currentETag))
@@ -206,7 +208,7 @@ public static class AuthorHandlers
     public static async Task<IResult> Handle(
         RestoreAuthor command,
         IDocumentSession session,
-        HttpContext context,
+        IHttpContextAccessor httpContextAccessor,
         ILogger logger)
     {
         Log.Authors.AuthorRestoring(logger, command.Id);
@@ -218,6 +220,7 @@ public static class AuthorHandlers
             return Results.NotFound();
         }
 
+        var context = httpContextAccessor.HttpContext!;
         var currentETag = ETagHelper.GenerateETag(streamState.Version);
         if (!string.IsNullOrEmpty(command.ETag) &&
             !ETagHelper.CheckIfMatch(context, currentETag))

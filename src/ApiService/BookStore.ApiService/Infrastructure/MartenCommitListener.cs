@@ -149,6 +149,7 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
             _ => throw new ArgumentOutOfRangeException(nameof(effectiveChangeType))
         };
 
+        Console.WriteLine($"[DEBUG] Calling NotifyAsync for {notification.EventType} (Id: {notification.EntityId})");
         await NotifyAsync("Author", notification, token);
     }
 

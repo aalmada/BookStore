@@ -1,8 +1,27 @@
+using System.Text.Json.Serialization;
+
 namespace BookStore.Shared.Notifications;
 
 /// <summary>
 /// Base interface for domain event notifications sent via real-time stream (SSE)
 /// </summary>
+[JsonPolymorphic(TypeDiscriminatorPropertyName = "NotificationType")]
+[JsonDerivedType(typeof(PingNotification), "Ping")]
+[JsonDerivedType(typeof(BookCreatedNotification), "BookCreated")]
+[JsonDerivedType(typeof(BookUpdatedNotification), "BookUpdated")]
+[JsonDerivedType(typeof(BookDeletedNotification), "BookDeleted")]
+[JsonDerivedType(typeof(AuthorCreatedNotification), "AuthorCreated")]
+[JsonDerivedType(typeof(AuthorUpdatedNotification), "AuthorUpdated")]
+[JsonDerivedType(typeof(AuthorDeletedNotification), "AuthorDeleted")]
+[JsonDerivedType(typeof(CategoryCreatedNotification), "CategoryCreated")]
+[JsonDerivedType(typeof(CategoryUpdatedNotification), "CategoryUpdated")]
+[JsonDerivedType(typeof(CategoryDeletedNotification), "CategoryDeleted")]
+[JsonDerivedType(typeof(CategoryRestoredNotification), "CategoryRestored")]
+[JsonDerivedType(typeof(PublisherCreatedNotification), "PublisherCreated")]
+[JsonDerivedType(typeof(PublisherUpdatedNotification), "PublisherUpdated")]
+[JsonDerivedType(typeof(PublisherDeletedNotification), "PublisherDeleted")]
+[JsonDerivedType(typeof(BookCoverUpdatedNotification), "BookCoverUpdated")]
+[JsonDerivedType(typeof(UserVerifiedNotification), "UserVerified")]
 public interface IDomainEventNotification
 {
     Guid EntityId { get; }
@@ -167,4 +186,14 @@ public record PublisherDeletedNotification(
     DateTimeOffset Timestamp) : IDomainEventNotification
 {
     public string EventType => "PublisherDeleted";
+}
+
+/// <summary>
+/// Notification for ping/connection keep-alive
+/// </summary>
+public record PingNotification : IDomainEventNotification
+{
+    public Guid EntityId => Guid.Empty;
+    public string EventType => "Ping";
+    public DateTimeOffset Timestamp => DateTimeOffset.UtcNow;
 }

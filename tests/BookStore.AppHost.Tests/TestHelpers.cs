@@ -102,7 +102,7 @@ public static class TestHelpers
         }, cts.Token);
 
         // Wait for connection to be established
-        if (await Task.WhenAny(connectedTcs.Task, Task.Delay(15000)) != connectedTcs.Task)
+        if (await Task.WhenAny(connectedTcs.Task, Task.Delay(timeout)) != connectedTcs.Task)
         {
             Console.WriteLine("[SSE-TEST] Timed out waiting for SSE connection.");
             // Proceed anyway? Or fail? proceeding might miss event.

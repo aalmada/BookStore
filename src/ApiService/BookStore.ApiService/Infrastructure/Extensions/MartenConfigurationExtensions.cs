@@ -109,11 +109,12 @@ public static class MartenConfigurationExtensions
     static void RegisterProjections(StoreOptions options)
     {
         // Configure projections using SingleStreamProjection pattern
-        // Async lifecycle means projections run in background, managed by Wolverine
-        _ = options.Projections.Snapshot<CategoryProjection>(SnapshotLifecycle.Async);
-        _ = options.Projections.Snapshot<AuthorProjection>(SnapshotLifecycle.Async);
+        // Simple projections use Inline lifecycle for immediate consistency (important for UI updates/SSE)
+        // BookSearchProjection remains Async as it's more complex (indexes, heavy processing)
+        _ = options.Projections.Snapshot<CategoryProjection>(SnapshotLifecycle.Inline);
+        _ = options.Projections.Snapshot<AuthorProjection>(SnapshotLifecycle.Inline);
         _ = options.Projections.Snapshot<BookSearchProjection>(SnapshotLifecycle.Async);
-        _ = options.Projections.Snapshot<PublisherProjection>(SnapshotLifecycle.Async);
+        _ = options.Projections.Snapshot<PublisherProjection>(SnapshotLifecycle.Inline);
     }
 
     static void ConfigureIndexes(StoreOptions options)

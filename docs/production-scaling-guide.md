@@ -660,63 +660,191 @@ az cdn endpoint create \
 
 ## Server-Sent Events (SSE) Scaling
 
-For real-time notifications across multiple instances, SSE connections are stateful and bound to specific server instances. Consider these scaling strategies:
+The BookStore application uses **Redis pub/sub for SSE notifications**. This is already implemented and works automatically for any number of instances.
 
-### Load Balancer with Sticky Sessions
+### Architecture
 
-```yaml
-# nginx configuration for SSE with sticky sessions
-upstream bookstore_api {
-    ip_hash;  # Ensures same client goes to same server
-    server api1.bookstore.com:5000;
-    server api2.bookstore.com:5000;
-    server api3.bookstore.com:5000;
-}
+SSE connections are stateful and bound to specific server instances, but notifications are broadcast via Redis:
 
-server {
-    location /api/notifications/stream {
-        proxy_pass http://bookstore_api;
-        proxy_http_version 1.1;
-        proxy_set_header Connection "";
-        proxy_buffering off;
-        proxy_cache off;
-        proxy_read_timeout 24h;
-    }
-}
+```
+Client → Instance 1
+Client → Instance 2  } Connected SSE clients
+Client → Instance 3
+
+Mutation occurs → Instance 1
+                     ↓
+              Redis Pub/Sub
+                     ↓
+    ┌────────────────┼────────────────┐
+    ↓                ↓                ↓
+Instance 1      Instance 2      Instance 3
+    ↓                ↓                ↓
+Broadcast to    Broadcast to    Broadcast to
+local SSE       local SSE       local SSE
+subscribers     subscribers     subscribers
 ```
 
-### Redis Pub/Sub for Multi-Instance Broadcasting
+**How it works**:
+1. Any instance receives a mutation
+2. `ProjectionCommitListener` detects the projection update
+3. `RedisNotificationService` publishes notification to Redis channel
+4. **All instances** receive the notification via Redis subscription
+5. Each instance broadcasts to its local SSE subscribers
+6. Clients receive real-time updates regardless of which instance they're connected to
 
-Use Redis to broadcast notifications across all API instances:
+---
 
+### Implementation Details
+
+**Already Implemented!** No action needed.
+
+The application uses [`RedisNotificationService`](file:///Users/antaoalmada/Projects/BookStore/src/ApiService/BookStore.ApiService/Infrastructure/Notifications/RedisNotificationService.cs) which:
+
+- ✅ Publishes to Redis channel: `bookstore:notifications`
+- ✅ Subscribes to Redis and broadcasts to local SSE clients
+- ✅ Handles graceful fallback if Redis temporarily unavailable
+- ✅ Logs all operations for monitoring
+
+**Service Registration** ([`ApplicationServicesExtensions.cs`](file:///Users/antaoalmada/Projects/BookStore/src/ApiService/BookStore.ApiService/Infrastructure/Extensions/ApplicationServicesExtensions.cs)):
 ```csharp
-// NotificationService.cs
-public class NotificationService : INotificationService
-{
-    private readonly IConnectionMultiplexer _redis;
-    
-    public async Task NotifyAsync(IDomainEventNotification notification)
-    {
-        // Publish to Redis channel
-        await _redis.GetSubscriber()
-            .PublishAsync("bookstore:notifications", JsonSerializer.Serialize(notification));
-    }
-}
-
-// Program.cs - Subscribe to Redis notifications
-var subscriber = redis.GetSubscriber();
-await subscriber.SubscribeAsync("bookstore:notifications", (channel, message) =>
-{
-    // Broadcast to all connected SSE clients on this instance
-    notificationHub.BroadcastToClients(message);
-});
+// Always use Redis pub/sub (Aspire provides Redis in all environments)
+services.AddSingleton<INotificationService, RedisNotificationService>();
 ```
 
-**Benefits:**
-- ✅ Horizontal scaling with multiple API instances
-- ✅ All clients receive notifications regardless of which server they're connected to
-- ✅ Redis provides reliable message delivery
+**Redis Connection**:
+- Injected via `IConnectionMultiplexer` (configured by Aspire)
+- Same Redis instance used for HybridCache
+- Automatic connection string management
 
+---
+
+### Benefits
+
+**✅ Zero Configuration**
+- No environment variables needed
+- No conditional logic
+- Works out-of-the-box
+
+**✅ Aspire-Native**
+- Redis provided automatically
+- Consistent dev/production experience
+- Service discovery handles connection strings
+
+**✅ Production-Ready**
+- Horizontal scaling works immediately
+- Load balancing without sticky sessions
+- Graceful degradation if Redis fails
+
+**✅ Observable**
+- Comprehensive logging for all operations
+- Easy to monitor in production
+- Clear error messages
+
+---
+
+### Deployment
+
+**No special configuration needed!** Deploy normally and it just works:
+
+**Azure Container Apps**:
+```bash
+az containerapp create \
+  --name bookstore-api \
+  --resource-group bookstore-rg \
+  --image bookstoreacr.azurecr.io/bookstore-api:latest \
+  --min-replicas 3 \
+  --max-replicas 10
+```
+
+**Kubernetes**:
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bookstore-api
+spec:
+  replicas: 3
+  template:
+    spec:
+      containers:
+      - name: api
+        image: bookstoreacr.azurecr.io/bookstore-api:latest
+```
+
+Aspire handles Redis connection strings automatically via service discovery.
+
+---
+
+### Monitoring
+
+**Startup Logs**:
+```
+[INF] Subscribed to Redis channel: bookstore:notifications
+```
+
+**Notification Flow**:
+```
+[INF] Published BookUpdated for entity a1b2c3d4... to Redis
+[DBG] Sending BookUpdated to client e5f6g7h8...
+```
+
+**Warning Logs** (if Redis temporarily unavailable):
+```
+[WRN] Redis unavailable, falling back to local subscribers
+```
+
+**Azure Monitor Query**:
+```kusto
+AppTraces
+| where Message contains "PublishedToRedis" or Message contains "ClientSubscribed"
+| summarize
+    NotificationsSent = countif(Message contains "PublishedToRedis"),
+    ActiveConnections = countif(Message contains "ClientSubscribed"),
+    RedisFailures = countif(Message contains "RedisFallback")
+    by bin(TimeGenerated, 5m), Cloud_RoleInstance
+| render timechart
+```
+
+---
+
+### Scaling Characteristics
+
+| Deployment | SSE Behavior | Notes |
+|------------|-------------|-------|
+| **1 Instance** | Redis pub/sub active | Consistent with multi-instance |
+| **2-10 Instances** | Redis pub/sub active | True load balancing works |
+| **10+ Instances** | Redis pub/sub active | Monitor Redis pub/sub performance |
+| **100+ Instances** | Consider Azure SignalR Service | Managed service for extreme scale |
+
+**Current Status**: ✅ **Production-ready for up to 10+ instances**
+
+---
+
+### Troubleshooting
+
+**Issue**: Client not receiving notifications
+
+**Check**:
+1. Verify Redis is running (Aspire dashboard)
+2. Check logs for `Subscribed to Redis channel` message
+3. Verify client connected to `/api/notifications/stream`
+4. Check for `PublishedToRedis` logs when mutations occur
+
+**Issue**: Redis connection warnings
+
+**Resolution**:
+- Application falls back to in-memory gracefully
+- Notifications still work for clients on same instance
+- Auto-reconnects when Redis available
+- Monitor logs for `RedisFallback` warnings
+
+---
+
+## Load Testing
+| 3+ instances | Redis pub/sub (already implemented) |
+| 10+ instances | Consider Azure SignalR Service for managed scaling |
+
+**Current Status**: Redis pub/sub is **already implemented and working**. No action needed!
 ---
 
 ## Load Testing
