@@ -21,7 +21,7 @@ public static class BookHandlers
     /// Wolverine automatically manages the Marten session and commits the transaction
     /// Returns a notification that will be published to SignalR
     /// </summary>
-    public static (IResult, BookStore.ApiService.Events.Notifications.BookCreatedNotification) Handle(
+    public static IResult Handle(
         CreateBook command,
         IDocumentSession session,
         IOptions<LocalizationOptions> localizationOptions,
@@ -33,12 +33,12 @@ public static class BookHandlers
         if (!CultureValidator.IsValidCultureCode(command.Language))
         {
             Log.Books.InvalidLanguageCode(logger, command.Id, command.Language);
-            return (Results.BadRequest(new
+            return Results.BadRequest(new
             {
                 error = "Invalid language code",
                 languageCode = command.Language,
                 message = $"The language code '{command.Language}' is not valid. Must be a valid ISO 639-1 (e.g., 'en'), ISO 639-3 (e.g., 'fil'), or culture code (e.g., 'en-US')"
-            }), null!);
+            });
         }
 
         // Validate language codes in descriptions if provided
@@ -47,12 +47,12 @@ public static class BookHandlers
             if (!CultureValidator.ValidateTranslations(command.Translations, out var invalidCodes))
             {
                 Log.Books.InvalidTranslationCodes(logger, command.Id, string.Join(", ", invalidCodes));
-                return (Results.BadRequest(new
+                return Results.BadRequest(new
                 {
                     error = "Invalid language codes in descriptions",
                     invalidCodes,
                     message = $"The following language codes are not valid: {string.Join(", ", invalidCodes)}"
-                }), null!);
+                });
             }
         }
 
@@ -61,11 +61,11 @@ public static class BookHandlers
         if (command.Translations is null || !command.Translations.ContainsKey(defaultLanguage))
         {
             Log.Books.MissingDefaultTranslation(logger, command.Id, defaultLanguage);
-            return (Results.BadRequest(new
+            return Results.BadRequest(new
             {
                 error = "Default language translation required",
                 message = $"A description translation for the default language '{defaultLanguage}' must be provided"
-            }), null!);
+            });
         }
 
         // Validate description lengths
@@ -74,14 +74,14 @@ public static class BookHandlers
             if (translation.Description.Length > BookAggregate.MaxDescriptionLength)
             {
                 Log.Books.DescriptionTooLong(logger, command.Id, languageCode, BookAggregate.MaxDescriptionLength, translation.Description.Length);
-                return (Results.BadRequest(new
+                return Results.BadRequest(new
                 {
                     error = "Description too long",
                     languageCode,
                     maxLength = BookAggregate.MaxDescriptionLength,
                     actualLength = translation.Description.Length,
                     message = $"Description for language '{languageCode}' cannot exceed {BookAggregate.MaxDescriptionLength} characters"
-                }), null!);
+                });
             }
         }
 
@@ -92,7 +92,7 @@ public static class BookHandlers
 
         try
         {
-            var @event = BookAggregate.Create(
+            var @event = BookAggregate.CreateEvent(
                 command.Id,
                 command.Title,
                 command.Isbn,
@@ -108,26 +108,20 @@ public static class BookHandlers
         catch (ArgumentException ex)
         {
             Log.Books.InvalidBookData(logger, command.Id, ex.Message);
-            return (Results.BadRequest(new { error = ex.Message }), null!);
+            return Results.BadRequest(new { error = ex.Message });
         }
         catch (InvalidOperationException ex)
         {
             Log.Books.InvalidBookOperation(logger, command.Id, ex.Message);
-            return (Results.BadRequest(new { error = ex.Message }), null!);
+            return Results.BadRequest(new { error = ex.Message });
         }
 
         Log.Books.BookCreated(logger, command.Id, command.Title);
 
-        // Create notification for SignalR (will be published as cascading message)
-        var notification = new BookStore.ApiService.Events.Notifications.BookCreatedNotification(
-            command.Id,
-            command.Title,
-            DateTimeOffset.UtcNow);
-
-        // Wolverine automatically calls SaveChangesAsync and publishes the notification
-        return (Results.Created(
+        // Wolverine automatically calls SaveChangesAsync and publishes the event to the stream
+        return Results.Created(
             $"/api/admin/books/{command.Id}",
-            new { id = command.Id, correlationId = session.CorrelationId }), notification);
+            new { id = command.Id, correlationId = session.CorrelationId });
     }
 
     /// <summary>
@@ -227,7 +221,7 @@ public static class BookHandlers
 
         try
         {
-            var @event = aggregate.Update(
+            var @event = aggregate.UpdateEvent(
                 command.Title,
                 command.Isbn,
                 command.Language,
@@ -298,7 +292,7 @@ public static class BookHandlers
 
         try
         {
-            var @event = aggregate.SoftDelete();
+            var @event = aggregate.SoftDeleteEvent();
             _ = session.Events.Append(command.Id, @event);
         }
         catch (InvalidOperationException ex)
@@ -355,7 +349,7 @@ public static class BookHandlers
 
         try
         {
-            var @event = aggregate.Restore();
+            var @event = aggregate.RestoreEvent();
             _ = session.Events.Append(command.Id, @event);
         }
         catch (InvalidOperationException ex)

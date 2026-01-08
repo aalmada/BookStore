@@ -31,9 +31,6 @@ public static class EndpointMappingExtensions
         // Map default endpoints (health checks, metrics, etc.)
         _ = app.MapDefaultEndpoints();
 
-        // Map SignalR hub for real-time notifications
-        _ = app.MapHub<Wolverine.SignalR.WolverineHub>("/hub/bookstore");
-
         return app;
     }
 
@@ -58,6 +55,10 @@ public static class EndpointMappingExtensions
         _ = publicApi.MapGroup("/publishers")
             .MapPublisherEndpoints()
             .WithTags("Publishers");
+
+        _ = publicApi.MapGroup("/notifications")
+            .MapNotificationEndpoints()
+            .WithTags("Notifications");
     }
 
     static void MapAdminEndpoints(WebApplication app, Asp.Versioning.Builder.ApiVersionSet apiVersionSet)

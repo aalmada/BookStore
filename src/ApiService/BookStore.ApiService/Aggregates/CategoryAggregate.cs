@@ -27,7 +27,7 @@ public class CategoryAggregate
     void Apply(CategoryRestored _) => IsDeleted = false;
 
     // Command methods
-    public static CategoryAdded Create(Guid id, Dictionary<string, CategoryTranslation> translations)
+    public static CategoryAdded CreateEvent(Guid id, Dictionary<string, CategoryTranslation> translations)
     {
         ArgumentNullException.ThrowIfNull(translations);
 
@@ -58,7 +58,7 @@ public class CategoryAggregate
         return new CategoryAdded(id, translations, DateTimeOffset.UtcNow);
     }
 
-    public CategoryUpdated Update(Dictionary<string, CategoryTranslation> translations)
+    public CategoryUpdated UpdateEvent(Dictionary<string, CategoryTranslation> translations)
     {
         if (IsDeleted)
         {
@@ -94,7 +94,7 @@ public class CategoryAggregate
         return new CategoryUpdated(Id, translations, DateTimeOffset.UtcNow);
     }
 
-    public CategorySoftDeleted SoftDelete()
+    public CategorySoftDeleted SoftDeleteEvent()
     {
         if (IsDeleted)
         {
@@ -104,7 +104,7 @@ public class CategoryAggregate
         return new CategorySoftDeleted(Id, DateTimeOffset.UtcNow);
     }
 
-    public CategoryRestored Restore()
+    public CategoryRestored RestoreEvent()
     {
         if (!IsDeleted)
         {

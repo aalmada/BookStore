@@ -1,5 +1,5 @@
+using BookStore.Shared.Notifications;
 using Wolverine;
-using Wolverine.SignalR;
 
 namespace BookStore.ApiService.Infrastructure.Extensions;
 
@@ -9,7 +9,7 @@ namespace BookStore.ApiService.Infrastructure.Extensions;
 public static class WolverineConfigurationExtensions
 {
     /// <summary>
-    /// Configures Wolverine with command/handler pattern and SignalR integration
+    /// Configures Wolverine with command/handler pattern
     /// </summary>
     public static IServiceCollection AddWolverineMessaging(this IServiceCollection services)
     {
@@ -20,12 +20,6 @@ public static class WolverineConfigurationExtensions
 
             // Explicitly include static handler classes for discovery
             RegisterHandlers(opts);
-
-            // Enable SignalR transport for real-time notifications
-            _ = opts.UseSignalR();
-
-            // Route domain event notifications to SignalR
-            ConfigureEventPublishing(opts);
 
             // Policies for automatic behavior
             opts.Policies.AutoApplyTransactions();
@@ -43,10 +37,4 @@ public static class WolverineConfigurationExtensions
         _ = opts.Discovery.IncludeType(typeof(Handlers.Publishers.PublisherHandlers));
         _ = opts.Discovery.IncludeType(typeof(Handlers.Notifications.EmailHandlers));
     }
-
-    static void ConfigureEventPublishing(WolverineOptions opts) => opts.Publish(x =>
-                                                                        {
-                                                                            x.MessagesImplementing<Events.Notifications.IDomainEventNotification>();
-                                                                            _ = x.ToSignalR();
-                                                                        });
 }

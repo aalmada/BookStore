@@ -33,15 +33,11 @@ public static class ApplicationServicesExtensions
         // Configure localization
         AddLocalization(services, configuration);
 
-        // Add SignalR for real-time notifications
-        _ = services.AddSignalR();
+        // Add SSE for real-time notifications
+        _ = services.AddSingleton<Infrastructure.Notifications.INotificationService, Infrastructure.Notifications.NotificationService>();
 
         // Add Blob Storage service
         _ = services.AddSingleton<Services.BlobStorageService>();
-
-        // Add Marten health checks
-        _ = services.AddHealthChecks()
-            .AddNpgSql(configuration.GetConnectionString("bookstore")!);
 
         // Add HybridCache for L1 (in-memory) + L2 (Redis) caching
         _ = services.AddHybridCache();

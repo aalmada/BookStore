@@ -26,6 +26,7 @@ builder.Services.AddApplicationServices(builder.Configuration);
 builder.Services.AddMartenEventStore(builder.Configuration);
 builder.Services.AddWolverineMessaging();
 
+
 // Add CORS to allow Web app to call API
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy => _ = policy.WithOrigins("https://localhost:7260", "http://localhost:7260")
               .AllowAnyHeader()

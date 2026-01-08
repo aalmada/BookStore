@@ -13,6 +13,7 @@ public class BookSearchProjection
     public string? Isbn { get; set; }
     public string OriginalLanguage { get; set; } = string.Empty;
     public PartialDate? PublicationDate { get; set; }
+    public bool IsDeleted { get; set; }
 
     // Localized field as dictionary (key = culture, value = description)
     public Dictionary<string, string> Descriptions { get; set; } = [];
@@ -68,6 +69,16 @@ public class BookSearchProjection
         UpdateSearchText(this);
 
         return this;
+    }
+
+    public void Apply(BookSoftDeleted @event)
+    {
+        IsDeleted = true;
+    }
+
+    public void Apply(BookRestored @event)
+    {
+        IsDeleted = false;
     }
 
     // Helper methods for denormalization

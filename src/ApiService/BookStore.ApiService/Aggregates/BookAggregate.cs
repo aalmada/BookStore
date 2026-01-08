@@ -53,7 +53,7 @@ public class BookAggregate
     void Apply(BookCoverUpdated @event) => CoverImageUrl = @event.CoverImageUrl;
 
     // Command methods
-    public static BookAdded Create(
+    public static BookAdded CreateEvent(
         Guid id,
         string title,
         string? isbn,
@@ -82,7 +82,7 @@ public class BookAggregate
             categoryIds);
     }
 
-    public BookUpdated Update(
+    public BookUpdated UpdateEvent(
         string title,
         string? isbn,
         string language,
@@ -214,7 +214,7 @@ public class BookAggregate
         }
     }
 
-    public BookSoftDeleted SoftDelete()
+    public BookSoftDeleted SoftDeleteEvent()
     {
         if (IsDeleted)
         {
@@ -224,7 +224,7 @@ public class BookAggregate
         return new BookSoftDeleted(Id);
     }
 
-    public BookRestored Restore()
+    public BookRestored RestoreEvent()
     {
         if (!IsDeleted)
         {

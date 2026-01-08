@@ -4,7 +4,7 @@
 @using BookStore.Shared.Models
 @using BookStore.Web.Services
 @inject IGetBooksEndpoint ApiClient
-@inject BookStoreHubService HubService
+@inject BookStoreEventsService EventsService
 @inject OptimisticUpdateService OptimisticService
 @implements IAsyncDisposable
 @rendermode InteractiveServer
@@ -185,13 +185,13 @@
     protected override async Task OnInitializedAsync()
     {
         // Subscribe to real-time book notifications
-        HubService.OnBookCreated += HandleBookCreated;
+        EventsService.OnNotificationReceived += HandleNotification;
         
         // Subscribe to optimistic update changes
         OptimisticService.OnBooksChanged += HandleOptimisticBooksChanged;
         
-        // Start SignalR connection
-        await HubService.StartAsync();
+        // Start SSE listening
+        EventsService.StartListening();
         
         // Load initial books
         await LoadBooksAsync();
@@ -270,17 +270,20 @@
         debounceTimer?.Dispose();
     }
     
-    private void HandleBookCreated(BookNotification notification)
+    private void HandleNotification(BookStore.Shared.Notifications.IDomainEventNotification notification)
     {
-        // Confirm optimistic book (remove from optimistic list)
-        OptimisticService.ConfirmBook(notification.EntityId);
-        
-        // Refresh book list to show actual server data
-        InvokeAsync(async () =>
+        if (notification is BookStore.Shared.Notifications.BookCreatedNotification bookCreated)
         {
-            await LoadBooksAsync();
-            StateHasChanged();
-        });
+            // Confirm optimistic book (remove from optimistic list)
+            OptimisticService.ConfirmBook(bookCreated.EntityId);
+            
+            // Refresh book list to show actual server data
+            InvokeAsync(async () =>
+            {
+                await LoadBooksAsync();
+                StateHasChanged();
+            });
+        }
     }
     
     private void HandleOptimisticBooksChanged()
@@ -303,7 +306,7 @@
     public async ValueTask DisposeAsync()
     {
         // Unsubscribe from events
-        HubService.OnBookCreated -= HandleBookCreated;
+        EventsService.OnNotificationReceived -= HandleNotification;
         OptimisticService.OnBooksChanged -= HandleOptimisticBooksChanged;
         
         // Dispose timers

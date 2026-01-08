@@ -14,7 +14,6 @@ namespace BookStore.ApiService.Endpoints;
 
 public static class CategoryEndpoints
 {
-
     public static RouteGroupBuilder MapCategoryEndpoints(this RouteGroupBuilder group)
     {
         _ = group.MapGet("/", GetCategories)
@@ -53,7 +52,8 @@ public static class CategoryEndpoints
             {
                 await using var session = store.QuerySession();
 
-                IQueryable<CategoryProjection> query = session.Query<CategoryProjection>();
+                IQueryable<CategoryProjection> query = session.Query<CategoryProjection>()
+                    .Where(c => !c.IsDeleted);
 
                 // Note: Cannot sort by localized name since it's in a dictionary
                 // Sorting by ID only
@@ -100,25 +100,17 @@ public static class CategoryEndpoints
         var culture = CultureInfo.CurrentCulture.Name;
         var defaultCulture = localizationOptions.Value.DefaultCulture;
 
-        var response = await cache.GetOrCreateLocalizedAsync(
-            $"category:{id}",
+        var projection = await cache.GetOrCreateLocalizedAsync(
+            $"category:projection:{id}",
             async cancel =>
             {
                 await using var session = store.QuerySession();
                 var category = await session.LoadAsync<CategoryProjection>(id, cancel);
-                if (category == null)
+                if (category == null || category.IsDeleted)
                 {
-                    return (CategoryDto?)null;
+                    return (CategoryProjection?)null;
                 }
-
-                // Extract localized name using LocalizationHelper
-                var localizedName = LocalizationHelper.GetLocalizedValue(
-                    category.Names,
-                    culture,
-                    defaultCulture,
-                    "Unknown");
-
-                return new CategoryDto(category.Id, localizedName);
+                return category;
             },
             options: new HybridCacheEntryOptions
             {
@@ -128,7 +120,18 @@ public static class CategoryEndpoints
             tags: [$"category:{id}"],
             token: cancellationToken);
 
-        return response is null ? TypedResults.NotFound() : TypedResults.Ok(response);
+        if (projection == null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        // Extract localized name using LocalizationHelper
+        var localizedName = LocalizationHelper.GetLocalizedValue(
+            projection.Names,
+            culture,
+            defaultCulture,
+            "Unknown");
+
+        return TypedResults.Ok(new CategoryDto(projection.Id, localizedName));
     }
 }
-

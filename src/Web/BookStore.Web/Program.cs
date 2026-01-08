@@ -64,11 +64,12 @@ builder.Services.AddAuthorizationCore();
 //     _ = http.AddPolicyHandler(circuitBreakerPolicy);
 // });
 
-// Register SignalR hub service for real-time notifications
-builder.Services.AddSingleton<BookStoreHubService>();
 
 // Register optimistic update service for eventual consistency
 builder.Services.AddSingleton<OptimisticUpdateService>();
+
+// Register SSE events service
+builder.Services.AddHttpClient<BookStoreEventsService>(client => client.BaseAddress = new Uri(apiServiceUrl));
 
 builder.Services.AddOutputCache();
 

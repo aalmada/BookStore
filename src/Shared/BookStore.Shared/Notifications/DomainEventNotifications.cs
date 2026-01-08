@@ -1,7 +1,7 @@
-namespace BookStore.ApiService.Events.Notifications;
+namespace BookStore.Shared.Notifications;
 
 /// <summary>
-/// Base interface for domain event notifications sent via SignalR
+/// Base interface for domain event notifications sent via real-time stream (SSE)
 /// </summary>
 public interface IDomainEventNotification
 {
@@ -65,6 +65,36 @@ public record CategoryCreatedNotification(
 }
 
 /// <summary>
+/// Notification when a category is updated
+/// </summary>
+public record CategoryUpdatedNotification(
+    Guid EntityId,
+    DateTimeOffset Timestamp) : IDomainEventNotification
+{
+    public string EventType => "CategoryUpdated";
+}
+
+/// <summary>
+/// Notification when a category is deleted
+/// </summary>
+public record CategoryDeletedNotification(
+    Guid EntityId,
+    DateTimeOffset Timestamp) : IDomainEventNotification
+{
+    public string EventType => "CategoryDeleted";
+}
+
+/// <summary>
+/// Notification when a category is restored
+/// </summary>
+public record CategoryRestoredNotification(
+    Guid EntityId,
+    DateTimeOffset Timestamp) : IDomainEventNotification
+{
+    public string EventType => "CategoryRestored";
+}
+
+/// <summary>
 /// Notification when a publisher is created
 /// </summary>
 public record PublisherCreatedNotification(
@@ -95,4 +125,46 @@ public record UserVerifiedNotification(
     DateTimeOffset Timestamp) : IDomainEventNotification
 {
     public string EventType => "UserVerified";
+}
+
+/// <summary>
+/// Notification when an author is updated
+/// </summary>
+public record AuthorUpdatedNotification(
+    Guid EntityId,
+    string Name,
+    DateTimeOffset Timestamp) : IDomainEventNotification
+{
+    public string EventType => "AuthorUpdated";
+}
+
+/// <summary>
+/// Notification when an author is deleted
+/// </summary>
+public record AuthorDeletedNotification(
+    Guid EntityId,
+    DateTimeOffset Timestamp) : IDomainEventNotification
+{
+    public string EventType => "AuthorDeleted";
+}
+
+/// <summary>
+/// Notification when a publisher is updated
+/// </summary>
+public record PublisherUpdatedNotification(
+    Guid EntityId,
+    string Name,
+    DateTimeOffset Timestamp) : IDomainEventNotification
+{
+    public string EventType => "PublisherUpdated";
+}
+
+/// <summary>
+/// Notification when a publisher is deleted
+/// </summary>
+public record PublisherDeletedNotification(
+    Guid EntityId,
+    DateTimeOffset Timestamp) : IDomainEventNotification
+{
+    public string EventType => "PublisherDeleted";
 }

@@ -1,6 +1,6 @@
 using BookStore.ApiService.Aggregates;
 using BookStore.ApiService.Commands;
-using BookStore.ApiService.Events.Notifications;
+using BookStore.Shared.Notifications;
 using BookStore.ApiService.Infrastructure;
 using BookStore.ApiService.Services;
 using Marten;

@@ -3,13 +3,14 @@ using BookStore.ApiService.Commands;
 using BookStore.ApiService.Events;
 using BookStore.ApiService.Infrastructure;
 using BookStore.ApiService.Infrastructure.Logging;
+using BookStore.Shared.Notifications;
 using Marten;
 
 namespace BookStore.ApiService.Handlers.Categories;
 
 public static class CategoryHandlers
 {
-    public static IResult Handle(CreateCategory command, IDocumentSession session, ILogger logger)
+    public static IResult Handle(CreateCategory command, IDocumentSession session, ILogger<CreateCategory> logger)
     {
         Log.Categories.CategoryCreating(logger, command.Id, session.CorrelationId ?? "none");
         // Validate language codes in CategoryTranslation
@@ -27,6 +28,17 @@ public static class CategoryHandlers
         // Validate name and description lengths
         foreach (var (languageCode, translation) in command.Translations)
         {
+            if (string.IsNullOrWhiteSpace(translation.Name))
+            {
+                Log.Categories.InvalidTranslationCodes(logger, command.Id, languageCode);
+                return Results.BadRequest(new
+                {
+                    error = "Category name required",
+                    languageCode,
+                    message = $"Category name for language '{languageCode}' cannot be empty"
+                });
+            }
+
             if (translation.Name.Length > CategoryAggregate.MaxNameLength)
             {
                 Log.Categories.NameTooLong(logger, command.Id, languageCode, CategoryAggregate.MaxNameLength, translation.Name.Length);
@@ -59,14 +71,12 @@ public static class CategoryHandlers
             kvp => kvp.Key,
             kvp => new CategoryTranslation(kvp.Value.Name, kvp.Value.Description));
 
-        var @event = CategoryAggregate.Create(
+        var @event = CategoryAggregate.CreateEvent(
             command.Id,
             translations);
 
         _ = session.Events.StartStream<CategoryAggregate>(command.Id, @event);
-
-        Log.Categories.CategoryCreated(logger, command.Id);
-
+        
         return Results.Created(
             $"/api/admin/categories/{command.Id}",
             new { id = command.Id, correlationId = session.CorrelationId });
@@ -75,8 +85,8 @@ public static class CategoryHandlers
     public static async Task<IResult> Handle(
         UpdateCategory command,
         IDocumentSession session,
-        HttpContext context,
-        ILogger logger)
+        IHttpContextAccessor httpContextAccessor,
+        ILogger<UpdateCategory> logger)
     {
         // Validate language codes in CategoryTranslation
         if (!CultureValidator.ValidateTranslations(command.Translations, out var invalidCodes))
@@ -92,6 +102,16 @@ public static class CategoryHandlers
         // Validate name and description lengths
         foreach (var (languageCode, translation) in command.Translations)
         {
+            if (string.IsNullOrWhiteSpace(translation.Name))
+            {
+                return Results.BadRequest(new
+                {
+                    error = "Category name required",
+                    languageCode,
+                    message = $"Category name for language '{languageCode}' cannot be empty"
+                });
+            }
+
             if (translation.Name.Length > CategoryAggregate.MaxNameLength)
             {
                 return Results.BadRequest(new
@@ -124,8 +144,9 @@ public static class CategoryHandlers
             return Results.NotFound();
         }
 
+        var context = httpContextAccessor.HttpContext;
         var currentETag = ETagHelper.GenerateETag(streamState.Version);
-        if (!string.IsNullOrEmpty(command.ETag) &&
+        if (context != null && !string.IsNullOrEmpty(command.ETag) &&
             !ETagHelper.CheckIfMatch(context, currentETag))
         {
             Log.Categories.ETagMismatch(logger, command.Id, currentETag, command.ETag);
@@ -145,14 +166,14 @@ public static class CategoryHandlers
             kvp => kvp.Key,
             kvp => new CategoryTranslation(kvp.Value.Name, kvp.Value.Description));
 
-        var @event = aggregate.Update(translations);
+        var @event = aggregate.UpdateEvent(translations);
         _ = session.Events.Append(command.Id, @event);
-
+        
         Log.Categories.CategoryUpdated(logger, command.Id);
 
         var newStreamState = await session.Events.FetchStreamStateAsync(command.Id);
         var newETag = ETagHelper.GenerateETag(newStreamState!.Version);
-        ETagHelper.AddETagHeader(context, newETag);
+        if (context != null) ETagHelper.AddETagHeader(context, newETag);
 
         return Results.NoContent();
     }
@@ -160,8 +181,8 @@ public static class CategoryHandlers
     public static async Task<IResult> Handle(
         SoftDeleteCategory command,
         IDocumentSession session,
-        HttpContext context,
-        ILogger logger)
+        IHttpContextAccessor httpContextAccessor,
+        ILogger<SoftDeleteCategory> logger)
     {
         Log.Categories.CategorySoftDeleting(logger, command.Id);
 
@@ -172,8 +193,9 @@ public static class CategoryHandlers
             return Results.NotFound();
         }
 
+        var context = httpContextAccessor.HttpContext;
         var currentETag = ETagHelper.GenerateETag(streamState.Version);
-        if (!string.IsNullOrEmpty(command.ETag) &&
+        if (context != null && !string.IsNullOrEmpty(command.ETag) &&
             !ETagHelper.CheckIfMatch(context, currentETag))
         {
             return ETagHelper.PreconditionFailed();
@@ -186,14 +208,14 @@ public static class CategoryHandlers
             return Results.NotFound();
         }
 
-        var @event = aggregate.SoftDelete();
+        var @event = aggregate.SoftDeleteEvent();
         _ = session.Events.Append(command.Id, @event);
-
+        
         Log.Categories.CategorySoftDeleted(logger, command.Id);
 
         var newStreamState = await session.Events.FetchStreamStateAsync(command.Id);
         var newETag = ETagHelper.GenerateETag(newStreamState!.Version);
-        ETagHelper.AddETagHeader(context, newETag);
+        if (context != null) ETagHelper.AddETagHeader(context, newETag);
 
         return Results.NoContent();
     }
@@ -201,8 +223,8 @@ public static class CategoryHandlers
     public static async Task<IResult> Handle(
         RestoreCategory command,
         IDocumentSession session,
-        HttpContext context,
-        ILogger logger)
+        IHttpContextAccessor httpContextAccessor,
+        ILogger<RestoreCategory> logger)
     {
         Log.Categories.CategoryRestoring(logger, command.Id);
 
@@ -213,8 +235,9 @@ public static class CategoryHandlers
             return Results.NotFound();
         }
 
+        var context = httpContextAccessor.HttpContext;
         var currentETag = ETagHelper.GenerateETag(streamState.Version);
-        if (!string.IsNullOrEmpty(command.ETag) &&
+        if (context != null && !string.IsNullOrEmpty(command.ETag) &&
             !ETagHelper.CheckIfMatch(context, currentETag))
         {
             return ETagHelper.PreconditionFailed();
@@ -227,14 +250,14 @@ public static class CategoryHandlers
             return Results.NotFound();
         }
 
-        var @event = aggregate.Restore();
+        var @event = aggregate.RestoreEvent();
         _ = session.Events.Append(command.Id, @event);
-
+        
         Log.Categories.CategoryRestored(logger, command.Id);
 
         var newStreamState = await session.Events.FetchStreamStateAsync(command.Id);
         var newETag = ETagHelper.GenerateETag(newStreamState!.Version);
-        ETagHelper.AddETagHeader(context, newETag);
+        if (context != null) ETagHelper.AddETagHeader(context, newETag);
 
         return Results.NoContent();
     }

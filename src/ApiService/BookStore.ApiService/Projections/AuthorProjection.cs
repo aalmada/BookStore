@@ -12,6 +12,7 @@ public class AuthorProjection
     public Dictionary<string, string> Biographies { get; set; } = [];
 
     public DateTimeOffset LastModified { get; set; }
+    public bool IsDeleted { get; set; }
 
     // SingleStreamProjection methods
     public static AuthorProjection Create(AuthorAdded @event) => new()
@@ -31,5 +32,17 @@ public class AuthorProjection
         Biographies = @event.Translations?
             .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Biography)
             ?? [];
+    }
+
+    public void Apply(AuthorSoftDeleted @event)
+    {
+        LastModified = @event.Timestamp;
+        IsDeleted = true;
+    }
+
+    public void Apply(AuthorRestored @event)
+    {
+        LastModified = @event.Timestamp;
+        IsDeleted = false;
     }
 }

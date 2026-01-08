@@ -425,7 +425,7 @@ public class DatabaseSeeder(IDocumentStore store)
         foreach (var book in books)
         {
             var bookId = Guid.CreateVersion7();
-            var @event = BookAggregate.Create(
+            var @event = BookAggregate.CreateEvent(
                 bookId,
                 book.Title,
                 book.Isbn,

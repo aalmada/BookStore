@@ -30,10 +30,12 @@ public class CategoryHandlerTests
         _ = session.CorrelationId.Returns("test-correlation-id");
 
         // Act
-        var result = CategoryHandlers.Handle(command, session, Substitute.For<ILogger>());
+        var result = CategoryHandlers.Handle(command, session, Substitute.For<ILogger<CreateCategory>>());
 
         // Assert
         _ = await Assert.That(result).IsNotNull();
+        // Notification verification via listener not applicable here as unit test invokes handler directly?
+        // Wait, handler appends event. We check session.Events.StartStream. That is enough.
         _ = session.Events.Received(1).StartStream<CategoryAggregate>(
             command.Id,
             Arg.Is<CategoryAdded>(e =>
@@ -61,7 +63,8 @@ public class CategoryHandlerTests
         var session = Substitute.For<IDocumentSession>();
 
         // Act
-        var result = CategoryHandlers.Handle(command, session, Substitute.For<ILogger>());
+        // Act
+        var result = CategoryHandlers.Handle(command, session, Substitute.For<ILogger<CreateCategory>>());
 
         // Assert
         _ = await Assert.That(result).IsAssignableTo<Microsoft.AspNetCore.Http.IStatusCodeHttpResult>();
@@ -86,7 +89,9 @@ public class CategoryHandlerTests
         };
 
         var session = Substitute.For<IDocumentSession>();
-        var context = new DefaultHttpContext();
+        var httpContext = new DefaultHttpContext();
+        var httpContextAccessor = Substitute.For<IHttpContextAccessor>();
+        httpContextAccessor.HttpContext.Returns(httpContext);
 
         // Mock Stream State
         _ = session.Events.FetchStreamStateAsync(command.Id).Returns(new Marten.Events.StreamState { Version = 1 });
@@ -96,7 +101,8 @@ public class CategoryHandlerTests
         _ = session.Events.AggregateStreamAsync<CategoryAggregate>(command.Id).Returns(existingAggregate);
 
         // Act
-        var result = await CategoryHandlers.Handle(command, session, context, Substitute.For<ILogger>());
+        // Act
+        var result = await CategoryHandlers.Handle(command, session, httpContextAccessor, Substitute.For<ILogger<UpdateCategory>>());
 
         // Assert
         _ = await Assert.That(result).IsTypeOf<Microsoft.AspNetCore.Http.HttpResults.NoContent>();
@@ -115,7 +121,9 @@ public class CategoryHandlerTests
         var command = new SoftDeleteCategory(id);
 
         var session = Substitute.For<IDocumentSession>();
-        var context = new DefaultHttpContext();
+        var httpContext = new DefaultHttpContext();
+        var httpContextAccessor = Substitute.For<IHttpContextAccessor>();
+        httpContextAccessor.HttpContext.Returns(httpContext);
 
         // Mock Stream State
         _ = session.Events.FetchStreamStateAsync(id).Returns(new Marten.Events.StreamState { Version = 1 });
@@ -125,7 +133,7 @@ public class CategoryHandlerTests
         _ = session.Events.AggregateStreamAsync<CategoryAggregate>(id).Returns(existingAggregate);
 
         // Act
-        var result = await CategoryHandlers.Handle(command, session, context, Substitute.For<ILogger>());
+        var result = await CategoryHandlers.Handle(command, session, httpContextAccessor, Substitute.For<ILogger<SoftDeleteCategory>>());
 
         // Assert
         _ = await Assert.That(result).IsTypeOf<Microsoft.AspNetCore.Http.HttpResults.NoContent>();
@@ -143,7 +151,9 @@ public class CategoryHandlerTests
         var command = new RestoreCategory(id);
 
         var session = Substitute.For<IDocumentSession>();
-        var context = new DefaultHttpContext();
+        var httpContext = new DefaultHttpContext();
+        var httpContextAccessor = Substitute.For<IHttpContextAccessor>();
+        httpContextAccessor.HttpContext.Returns(httpContext);
 
         // Mock Stream State
         _ = session.Events.FetchStreamStateAsync(id).Returns(new Marten.Events.StreamState { Version = 1 });
@@ -153,7 +163,7 @@ public class CategoryHandlerTests
         _ = session.Events.AggregateStreamAsync<CategoryAggregate>(id).Returns(existingAggregate);
 
         // Act
-        var result = await CategoryHandlers.Handle(command, session, context, Substitute.For<ILogger>());
+        var result = await CategoryHandlers.Handle(command, session, httpContextAccessor, Substitute.For<ILogger<RestoreCategory>>());
 
         // Assert
         _ = await Assert.That(result).IsTypeOf<Microsoft.AspNetCore.Http.HttpResults.NoContent>();

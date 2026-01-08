@@ -1,6 +1,7 @@
 <Project>
   <PropertyGroup>
     <!-- General -->
+    <NoWarn>$(NoWarn);EXTEXP0018;NU1608</NoWarn>
     <TargetFramework>net10.0</TargetFramework>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>

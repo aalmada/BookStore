@@ -1,11 +1,9 @@
 using BookStore.ApiService.Projections;
 using BookStore.Shared.Infrastructure.Json;
 using BookStore.Shared.Models;
-using JasperFx;
-using JasperFx.Events;
-using JasperFx.Events.Projections;
 using Marten;
 using Marten.Events.Daemon;
+using Marten.Events.Daemon.Resiliency;
 using Marten.Events.Projections;
 using Microsoft.Extensions.Options;
 using Weasel.Core;
@@ -28,7 +26,12 @@ public static class MartenConfigurationExtensions
         _ = services.AddMarten(sp =>
         {
             // Get connection string from Aspire
-            var connectionString = configuration.GetConnectionString("bookstore")!;
+            var connectionString = configuration.GetConnectionString("bookstore");
+            if (string.IsNullOrEmpty(connectionString))
+            {
+                throw new InvalidOperationException("Connection string 'bookstore' not found. Please ensure the 'postgres' resource is correctly referenced.");
+            }
+
             var env = sp.GetRequiredService<IHostEnvironment>();
 
             var options = new StoreOptions();
@@ -51,7 +54,9 @@ public static class MartenConfigurationExtensions
             return options;
         })
         .UseLightweightSessions()
-        .IntegrateWithWolverine(cfg => cfg.UseWolverineManagedEventSubscriptionDistribution = true);
+        .AddAsyncDaemon(DaemonMode.Solo)
+        .IntegrateWithWolverine();
+        //.IntegrateWithWolverine(cfg => cfg.UseWolverineManagedEventSubscriptionDistribution = true);
 
         return services;
     }
@@ -75,9 +80,7 @@ public static class MartenConfigurationExtensions
                 // Add custom converter for PartialDate to handle nullable values properly
                 settings.Converters.Add(new PartialDateJsonConverter()));
 
-        // Enable NGram search with unaccent for multilingual text search
-        // This automatically enables pg_trgm and unaccent extensions
-        options.Advanced.UseNGramSearchWithUnaccent = true;
+        // settings.Converters.Add(new PartialDateJsonConverter()));
     }
 
     static void RegisterEventTypes(StoreOptions options)
@@ -125,7 +128,7 @@ public static class MartenConfigurationExtensions
 
         // BookSearchProjection indexes
         _ = options.Schema.For<BookSearchProjection>()
-            .Index(x => x.PublisherId)  // Standard B-tree index for exact matches
+            .Index(x => x.PublisherId!)  // Standard B-tree index for exact matches
             .Index(x => x.Title)        // B-tree index for sorting
             .GinIndexJsonData()        // GIN index for JSON fields
             .NgramIndex(x => x.Title)           // NGram search on title
@@ -147,10 +150,13 @@ public static class MartenConfigurationExtensions
 
     static void RegisterChangeListeners(StoreOptions options, IServiceProvider sp)
     {
-        // Register cache invalidation listener
-        // This ensures cache is cleared AFTER projections are updated
+        // Register commit listener for cache invalidation and SSE notifications
+        // This ensures actions are taken AFTER read models are updated
         var cache = sp.GetRequiredService<Microsoft.Extensions.Caching.Hybrid.HybridCache>();
-        var logger = sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<CacheInvalidationListener>>();
-        options.Listeners.Add(new CacheInvalidationListener(cache, logger));
+        var notificationService = sp.GetRequiredService<Notifications.INotificationService>();
+        var logger = sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ProjectionCommitListener>>();
+        var listener = new ProjectionCommitListener(cache, notificationService, logger);
+        options.Listeners.Add(listener);
+        options.Projections.AsyncListeners.Add(listener);
     }
 }

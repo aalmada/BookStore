@@ -12,7 +12,7 @@ public static class PublisherHandlers
     {
         Log.Publishers.PublisherCreating(logger, command.Id, command.Name, session.CorrelationId ?? "none");
 
-        var @event = PublisherAggregate.Create(command.Id, command.Name);
+        var @event = PublisherAggregate.CreateEvent(command.Id, command.Name);
 
         _ = session.Events.StartStream<PublisherAggregate>(command.Id, @event);
 
@@ -53,7 +53,7 @@ public static class PublisherHandlers
 
         Log.Publishers.PublisherUpdating(logger, command.Id, command.Name, streamState.Version);
 
-        var @event = aggregate.Update(command.Name);
+        var @event = aggregate.UpdateEvent(command.Name);
         _ = session.Events.Append(command.Id, @event);
 
         Log.Publishers.PublisherUpdated(logger, command.Id);
@@ -94,7 +94,7 @@ public static class PublisherHandlers
             return Results.NotFound();
         }
 
-        var @event = aggregate.SoftDelete();
+        var @event = aggregate.SoftDeleteEvent();
         _ = session.Events.Append(command.Id, @event);
 
         Log.Publishers.PublisherSoftDeleted(logger, command.Id);
@@ -135,7 +135,7 @@ public static class PublisherHandlers
             return Results.NotFound();
         }
 
-        var @event = aggregate.Restore();
+        var @event = aggregate.RestoreEvent();
         _ = session.Events.Append(command.Id, @event);
 
         Log.Publishers.PublisherRestored(logger, command.Id);

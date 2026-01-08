@@ -23,14 +23,14 @@ public class PublisherAggregate
     void Apply(PublisherRestored _) => IsDeleted = false;
 
     // Command methods
-    public static PublisherAdded Create(Guid id, string name)
+    public static PublisherAdded CreateEvent(Guid id, string name)
     {
         ValidateName(name);
 
         return new PublisherAdded(id, name, DateTimeOffset.UtcNow);
     }
 
-    public PublisherUpdated Update(string name)
+    public PublisherUpdated UpdateEvent(string name)
     {
         // Business rule: cannot update deleted publisher
         if (IsDeleted)
@@ -57,7 +57,7 @@ public class PublisherAggregate
         }
     }
 
-    public PublisherSoftDeleted SoftDelete()
+    public PublisherSoftDeleted SoftDeleteEvent()
     {
         if (IsDeleted)
         {
@@ -67,7 +67,7 @@ public class PublisherAggregate
         return new PublisherSoftDeleted(Id, DateTimeOffset.UtcNow);
     }
 
-    public PublisherRestored Restore()
+    public PublisherRestored RestoreEvent()
     {
         if (!IsDeleted)
         {

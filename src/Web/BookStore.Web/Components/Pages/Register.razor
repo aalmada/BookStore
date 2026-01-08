@@ -4,7 +4,7 @@
 @inject PasskeyService PasskeyService
 @inject JwtAuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Navigation
-@inject BookStoreHubService HubService
+@inject BookStoreEventsService EventsService
 @implements IDisposable
 @inject IJSRuntime JS
 @using Microsoft.JSInterop
@@ -318,27 +318,31 @@
 
     protected override void OnInitialized()
     {
-        HubService.OnUserVerified += HandleUserVerified;
+        EventsService.OnNotificationReceived += HandleNotification;
+        EventsService.StartListening();
     }
 
-    void HandleUserVerified(UserVerifiedNotification notification)
+    void HandleNotification(BookStore.Shared.Notifications.IDomainEventNotification notification)
     {
-        if (notification.Email.Equals(email, StringComparison.OrdinalIgnoreCase))
+        if (notification is BookStore.Shared.Notifications.UserVerifiedNotification userVerified)
         {
-            InvokeAsync(async () =>
+            if (userVerified.Email.Equals(email, StringComparison.OrdinalIgnoreCase))
             {
-                registrationSuccess = true;
-                requiresVerification = false;
-                StateHasChanged();
-                await Task.Delay(2000);
-                Navigation.NavigateTo("/login");
-            });
+                InvokeAsync(async () =>
+                {
+                    registrationSuccess = true;
+                    requiresVerification = false;
+                    StateHasChanged();
+                    await Task.Delay(2000);
+                    Navigation.NavigateTo("/login");
+                });
+            }
         }
     }
 
     public void Dispose()
     {
-        HubService.OnUserVerified -= HandleUserVerified;
+        EventsService.OnNotificationReceived -= HandleNotification;
     }
 
     void ValidatePasswordStrength()

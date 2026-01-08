@@ -181,7 +181,7 @@ public static class JwtAuthenticationEndpoints
         var result = await userManager.ConfirmEmailAsync(user, code);
         if (result.Succeeded)
         {
-            await bus.PublishAsync(new BookStore.ApiService.Events.Notifications.UserVerifiedNotification(user.Id, user.Email!, DateTimeOffset.UtcNow));
+            await bus.PublishAsync(new BookStore.Shared.Notifications.UserVerifiedNotification(user.Id, user.Email!, DateTimeOffset.UtcNow));
             return Results.Ok("Email confirmed successfully.");
         }
 

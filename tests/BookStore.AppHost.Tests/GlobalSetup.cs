@@ -19,30 +19,41 @@ public static class GlobalHooks
     [Before(TestSession)]
     public static async Task SetUp()
     {
-        var builder = await DistributedApplicationTestingBuilder.CreateAsync<Projects.BookStore_AppHost>();
-        _ = builder.Services.AddLogging(logging =>
+        Console.WriteLine("[GLOBAL-SETUP] Starting SetUp...");
+        
+        try
         {
-            _ = logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Information);
-            _ = logging.AddSimpleConsole(options =>
+            var builder = await DistributedApplicationTestingBuilder.CreateAsync<Projects.BookStore_AppHost>();
+            _ = builder.Services.AddLogging(logging =>
             {
-                options.SingleLine = true;
-                options.TimestampFormat = "[HH:mm:ss] ";
+                _ = logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Information);
+                _ = logging.AddSimpleConsole(options =>
+                {
+                    options.SingleLine = true;
+                    options.TimestampFormat = "[HH:mm:ss] ";
+                });
             });
-        });
 
-        // Disable resilience handler for tests to avoid circuit breaker issues during parallel execution
-        // builder.Services.ConfigureHttpClientDefaults(clientBuilder =>
-        // {
-        //     clientBuilder.AddStandardResilienceHandler();
-        // });
+            Console.WriteLine("[GLOBAL-SETUP] Building application...");
+            App = await builder.BuildAsync();
 
-        App = await builder.BuildAsync();
+            Console.WriteLine("[GLOBAL-SETUP] Getting ResourceNotificationService...");
+            NotificationService = App.Services.GetRequiredService<ResourceNotificationService>();
+            
+            Console.WriteLine("[GLOBAL-SETUP] Starting application...");
+            await App.StartAsync();
 
-        NotificationService = App.Services.GetRequiredService<ResourceNotificationService>();
-        await App.StartAsync();
-
-        // Authenticate once and cache the token for all tests
-        await AuthenticateAdminAsync();
+            Console.WriteLine("[GLOBAL-SETUP] Authenticating admin...");
+            // Authenticate once and cache the token for all tests
+            await AuthenticateAdminAsync();
+            Console.WriteLine("[GLOBAL-SETUP] SetUp completed successfully.");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[GLOBAL-SETUP] FATAL ERROR: {ex.Message}");
+            Console.WriteLine($"[GLOBAL-SETUP] Stack trace: {ex.StackTrace}");
+            throw;
+        }
     }
 
     static async Task AuthenticateAdminAsync()
@@ -53,29 +64,55 @@ public static class GlobalHooks
         }
 
         var httpClient = App.CreateHttpClient("apiservice");
-        _ = await NotificationService.WaitForResourceHealthyAsync("apiservice", CancellationToken.None).WaitAsync(TestConstants.DefaultTimeout);
+        Console.WriteLine("[GLOBAL-SETUP] Waiting for apiservice to be healthy...");
+        
+        try
+        {
+            using var healthCts = new CancellationTokenSource(TimeSpan.FromSeconds(120));
+            await NotificationService.WaitForResourceHealthyAsync("apiservice", healthCts.Token);
+            Console.WriteLine("[GLOBAL-SETUP] apiservice is healthy.");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[GLOBAL-SETUP] Health check failed: {ex.Message}");
+            throw new InvalidOperationException("apiservice failed to become healthy", ex);
+        }
 
         // Retry login mechanism to handle potential Seeding race condition
         HttpResponseMessage? loginResponse = null;
         for (var i = 0; i < 15; i++)
         {
-            loginResponse = await httpClient.PostAsJsonAsync("/account/login", new
+            Console.WriteLine($"[GLOBAL-SETUP] Login attempt {i + 1}/15...");
+            try 
             {
-                Email = "admin@bookstore.com",
-                Password = "Admin123!"
-            });
+                loginResponse = await httpClient.PostAsJsonAsync("/account/login", new
+                {
+                    Email = "admin@bookstore.com",
+                    Password = "Admin123!"
+                });
 
-            if (loginResponse.IsSuccessStatusCode)
-            {
-                break;
+                if (loginResponse.IsSuccessStatusCode)
+                {
+                    Console.WriteLine("[GLOBAL-SETUP] Login successful.");
+                    break;
+                }
+                
+                var errorContent = await loginResponse.Content.ReadAsStringAsync();
+                Console.WriteLine($"[GLOBAL-SETUP] Login failed with status: {loginResponse.StatusCode}, body: {errorContent}");
             }
+            #pragma warning disable RCS1075 // Avoid empty catch clause
+            catch (Exception)
+            {
+                // Ignore login failures during retry loop
+            }
+            #pragma warning restore RCS1075
 
             await Task.Delay(1000);
         }
 
         if (loginResponse == null || !loginResponse.IsSuccessStatusCode)
         {
-            throw new InvalidOperationException("Failed to authenticate admin user");
+            throw new InvalidOperationException("Failed to authenticate admin user after 15 attempts");
         }
 
         var loginResult = await loginResponse.Content.ReadFromJsonAsync<LoginResponse>();
@@ -85,6 +122,7 @@ public static class GlobalHooks
         }
 
         AdminAccessToken = loginResult.AccessToken;
+        Console.WriteLine("[GLOBAL-SETUP] Admin access token retrieved.");
 
         // Configure the shared HttpClient with the admin token
         httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", AdminAccessToken);
@@ -94,6 +132,7 @@ public static class GlobalHooks
     [After(TestSession)]
     public static async Task CleanUp()
     {
+        Console.WriteLine("[GLOBAL-SETUP] Cleaning up...");
         if (App is not null)
         {
             await App.DisposeAsync();

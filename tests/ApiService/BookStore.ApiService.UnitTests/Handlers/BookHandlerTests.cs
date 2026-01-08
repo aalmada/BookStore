@@ -46,7 +46,7 @@ public class BookHandlerTests
             DefaultCulture = "en",
             SupportedCultures = ["en"]
         });
-        var (result, notification) = BookHandlers.Handle(command, session, localizationOptions, Substitute.For<ILogger>());
+        var result = BookHandlers.Handle(command, session, localizationOptions, Substitute.For<ILogger<CreateBook>>());
 
         // Assert
         _ = await Assert.That(result).IsNotNull();
@@ -90,7 +90,7 @@ public class BookHandlerTests
             SupportedCultures = ["en"]
         });
 
-        var (result, _) = BookHandlers.Handle(command, session, localizationOptions, Substitute.For<ILogger>());
+        var result = BookHandlers.Handle(command, session, localizationOptions, Substitute.For<ILogger<CreateBook>>());
 
         // Assert
         _ = await Assert.That(result).IsAssignableTo<Microsoft.AspNetCore.Http.IStatusCodeHttpResult>();
@@ -131,11 +131,11 @@ public class BookHandlerTests
         });
 
         // Act
-        var result = BookHandlers.Handle(command, session, localizationOptions, Substitute.For<ILogger>());
+        var result = BookHandlers.Handle(command, session, localizationOptions, Substitute.For<ILogger<CreateBook>>());
 
         // Assert
-        _ = await Assert.That(result.Item1).IsAssignableTo<Microsoft.AspNetCore.Http.IStatusCodeHttpResult>();
-        var badRequestResult = (Microsoft.AspNetCore.Http.IStatusCodeHttpResult)result.Item1;
+        _ = await Assert.That(result).IsAssignableTo<Microsoft.AspNetCore.Http.IStatusCodeHttpResult>();
+        var badRequestResult = (Microsoft.AspNetCore.Http.IStatusCodeHttpResult)result;
         _ = await Assert.That(badRequestResult.StatusCode).IsEqualTo(400);
     }
 
@@ -174,7 +174,7 @@ public class BookHandlerTests
             DefaultCulture = "en",
             SupportedCultures = ["en"]
         });
-        var result = await BookHandlers.Handle(command, session, contextAccessor, localizationOptions, Substitute.For<ILogger>());
+        var result = await BookHandlers.Handle(command, session, contextAccessor, localizationOptions, Substitute.For<ILogger<UpdateBook>>());
 
         // Assert
         _ = await Assert.That(result).IsTypeOf<Microsoft.AspNetCore.Http.HttpResults.NotFound>();

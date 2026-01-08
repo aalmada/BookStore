@@ -30,7 +30,7 @@ public class AuthorAggregate
     void Apply(AuthorRestored _) => IsDeleted = false;
 
     // Command methods
-    public static AuthorAdded Create(Guid id, string name, Dictionary<string, AuthorTranslation> translations)
+    public static AuthorAdded CreateEvent(Guid id, string name, Dictionary<string, AuthorTranslation> translations)
     {
         ValidateName(name);
         ValidateTranslations(translations);
@@ -38,7 +38,7 @@ public class AuthorAggregate
         return new AuthorAdded(id, name, translations, DateTimeOffset.UtcNow);
     }
 
-    public AuthorUpdated Update(string name, Dictionary<string, AuthorTranslation> translations)
+    public AuthorUpdated UpdateEvent(string name, Dictionary<string, AuthorTranslation> translations)
     {
         // Business rule: cannot update deleted author
         if (IsDeleted)
@@ -113,7 +113,7 @@ public class AuthorAggregate
         }
     }
 
-    public AuthorSoftDeleted SoftDelete()
+    public AuthorSoftDeleted SoftDeleteEvent()
     {
         if (IsDeleted)
         {
@@ -123,7 +123,7 @@ public class AuthorAggregate
         return new AuthorSoftDeleted(Id, DateTimeOffset.UtcNow);
     }
 
-    public AuthorRestored Restore()
+    public AuthorRestored RestoreEvent()
     {
         if (!IsDeleted)
         {

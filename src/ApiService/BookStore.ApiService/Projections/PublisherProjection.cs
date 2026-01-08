@@ -8,6 +8,7 @@ public class PublisherProjection
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public DateTimeOffset LastModified { get; set; }
+    public bool IsDeleted { get; set; }
 
     // SingleStreamProjection methods
     public static PublisherProjection Create(PublisherAdded @event) => new()
@@ -23,6 +24,15 @@ public class PublisherProjection
         LastModified = @event.Timestamp;
     }
 
-    // Note: Projection will be deleted on PublisherSoftDeleted
-    // and recreated on PublisherRestored by replaying the stream
+    public void Apply(PublisherSoftDeleted @event)
+    {
+        LastModified = @event.Timestamp;
+        IsDeleted = true;
+    }
+
+    public void Apply(PublisherRestored @event)
+    {
+        LastModified = @event.Timestamp;
+        IsDeleted = false;
+    }
 }

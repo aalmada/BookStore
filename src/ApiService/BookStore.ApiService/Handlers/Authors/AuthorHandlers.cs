@@ -64,7 +64,7 @@ public static class AuthorHandlers
             kvp => kvp.Key,
             kvp => new AuthorTranslation(kvp.Value.Biography));
 
-        var @event = AuthorAggregate.Create(
+        var @event = AuthorAggregate.CreateEvent(
             command.Id,
             command.Name,
             biographies);
@@ -150,7 +150,7 @@ public static class AuthorHandlers
             kvp => kvp.Key,
             kvp => new AuthorTranslation(kvp.Value.Biography));
 
-        var @event = aggregate.Update(command.Name, biographies);
+        var @event = aggregate.UpdateEvent(command.Name, biographies);
         _ = session.Events.Append(command.Id, @event);
 
         Log.Authors.AuthorUpdated(logger, command.Id);
@@ -191,7 +191,7 @@ public static class AuthorHandlers
             return Results.NotFound();
         }
 
-        var @event = aggregate.SoftDelete();
+        var @event = aggregate.SoftDeleteEvent();
         _ = session.Events.Append(command.Id, @event);
 
         Log.Authors.AuthorSoftDeleted(logger, command.Id);
@@ -232,7 +232,7 @@ public static class AuthorHandlers
             return Results.NotFound();
         }
 
-        var @event = aggregate.Restore();
+        var @event = aggregate.RestoreEvent();
         _ = session.Events.Append(command.Id, @event);
 
         Log.Authors.AuthorRestored(logger, command.Id);

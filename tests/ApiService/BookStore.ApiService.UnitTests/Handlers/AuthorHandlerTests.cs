@@ -37,7 +37,7 @@ public class AuthorHandlerTests
         });
 
         // Act
-        var result = AuthorHandlers.Handle(command, session, localizationOptions, Substitute.For<ILogger>());
+        var result = AuthorHandlers.Handle(command, session, localizationOptions, Substitute.For<ILogger<CreateAuthor>>());
 
         // Assert
         _ = await Assert.That(result).IsNotNull();
@@ -71,7 +71,7 @@ public class AuthorHandlerTests
         });
 
         // Act
-        var result = AuthorHandlers.Handle(command, session, localizationOptions, Substitute.For<ILogger>());
+        var result = AuthorHandlers.Handle(command, session, localizationOptions, Substitute.For<ILogger<CreateAuthor>>());
 
         // Assert
         // Assert
@@ -98,7 +98,8 @@ public class AuthorHandlerTests
         };
 
         var session = Substitute.For<IDocumentSession>();
-        var context = new DefaultHttpContext();
+        var httpContext = new DefaultHttpContext();
+
         var localizationOptions = Options.Create(new LocalizationOptions
         {
             DefaultCulture = "en",
@@ -113,7 +114,7 @@ public class AuthorHandlerTests
         _ = session.Events.AggregateStreamAsync<AuthorAggregate>(command.Id).Returns(existingAggregate);
 
         // Act
-        var result = await AuthorHandlers.Handle(command, session, context, localizationOptions, Substitute.For<ILogger>());
+        var result = await AuthorHandlers.Handle(command, session, httpContext, localizationOptions, Substitute.For<ILogger<UpdateAuthor>>());
 
         // Assert
         _ = await Assert.That(result).IsTypeOf<Microsoft.AspNetCore.Http.HttpResults.NoContent>();
@@ -132,7 +133,7 @@ public class AuthorHandlerTests
         var command = new SoftDeleteAuthor(id);
 
         var session = Substitute.For<IDocumentSession>();
-        var context = new DefaultHttpContext();
+        var httpContext = new DefaultHttpContext();
 
         // Mock Stream State
         _ = session.Events.FetchStreamStateAsync(id).Returns(new Marten.Events.StreamState { Version = 1 });
@@ -142,7 +143,7 @@ public class AuthorHandlerTests
         _ = session.Events.AggregateStreamAsync<AuthorAggregate>(id).Returns(existingAggregate);
 
         // Act
-        var result = await AuthorHandlers.Handle(command, session, context, Substitute.For<ILogger>());
+        var result = await AuthorHandlers.Handle(command, session, httpContext, Substitute.For<ILogger<SoftDeleteAuthor>>());
 
         // Assert
         _ = await Assert.That(result).IsTypeOf<Microsoft.AspNetCore.Http.HttpResults.NoContent>();
@@ -160,7 +161,7 @@ public class AuthorHandlerTests
         var command = new RestoreAuthor(id);
 
         var session = Substitute.For<IDocumentSession>();
-        var context = new DefaultHttpContext();
+        var httpContext = new DefaultHttpContext();
 
         // Mock Stream State
         _ = session.Events.FetchStreamStateAsync(id).Returns(new Marten.Events.StreamState { Version = 1 });
@@ -170,7 +171,7 @@ public class AuthorHandlerTests
         _ = session.Events.AggregateStreamAsync<AuthorAggregate>(id).Returns(existingAggregate);
 
         // Act
-        var result = await AuthorHandlers.Handle(command, session, context, Substitute.For<ILogger>());
+        var result = await AuthorHandlers.Handle(command, session, httpContext, Substitute.For<ILogger<RestoreAuthor>>());
 
         // Assert
         _ = await Assert.That(result).IsTypeOf<Microsoft.AspNetCore.Http.HttpResults.NoContent>();

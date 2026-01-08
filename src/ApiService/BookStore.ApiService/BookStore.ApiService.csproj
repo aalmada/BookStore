@@ -14,6 +14,8 @@
     <!-- Dynamic PGO: Profile-guided optimization for hot paths -->
     <TieredCompilation>true</TieredCompilation>
     <TieredCompilationQuickJit>true</TieredCompilationQuickJit>
+    <NoWarn>$(NoWarn);EXTEXP0018</NoWarn>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
@@ -22,29 +24,24 @@
 
   <ItemGroup>
     <PackageReference Include="Asp.Versioning.Http" Version="8.1.1" />
+    <PackageReference Include="AspNetCore.HealthChecks.NpgSql" Version="9.0.0" />
     <PackageReference Include="Aspire.Azure.Storage.Blobs" Version="13.1.0" />
     <PackageReference Include="Aspire.StackExchange.Redis.DistributedCaching" Version="13.1.0" />
-    <PackageReference Include="AspNetCore.HealthChecks.NpgSql" Version="9.0.0" />
-    <PackageReference Include="MailKit" Version="4.14.1" />
-    <PackageReference Include="Marten" Version="8.17.0" />
-    <PackageReference Include="Marten.AspNetCore" Version="8.17.0" />
+    <PackageReference Include="Bogus" Version="35.6.5" />
+    <PackageReference Include="JasperFx.Core" Version="1.12.0" />
+    <PackageReference Include="Marten" Version="7.37.2" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.1" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.1" />
-    <PackageReference Include="Microsoft.Extensions.Caching.Hybrid" Version="10.1.0" />
-    <PackageReference Include="Microsoft.OpenApi" Version="2.0.0" />
-    <PackageReference Include="Npgsql.OpenTelemetry" Version="10.0.1" />
-    <PackageReference Include="Scalar.AspNetCore" Version="2.11.10" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Hybrid" Version="9.2.0-preview.1.25105.6" />
+    <PackageReference Include="Scalar.AspNetCore" Version="2.0.18" />
+    <PackageReference Include="WolverineFx.Http" Version="3.9.1" />
+    <PackageReference Include="WolverineFx.Marten" Version="3.9.1" />
+    <PackageReference Include="MailKit" Version="4.10.0" />
+    <PackageReference Include="MimeKit" Version="4.10.0" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.15.0" />
-    <PackageReference Include="WolverineFx" Version="5.9.2" />
-    <PackageReference Include="WolverineFx.Marten" Version="5.9.2" />
-    <PackageReference Include="WolverineFx.SignalR" Version="5.9.2" />
+    <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.15.0" />
+    <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.15.0" />
   </ItemGroup>
-
-  <PropertyGroup>
-    <!-- Build-time OpenAPI generation runs the app (requires database) -->
-    <!-- We generate at runtime and use update script instead -->
-    <OpenApiGenerateDocuments>false</OpenApiGenerateDocuments>
-  </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\BookStore.ApiService.Analyzers\BookStore.ApiService.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
