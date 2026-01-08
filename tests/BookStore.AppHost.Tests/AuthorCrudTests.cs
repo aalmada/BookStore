@@ -1,7 +1,9 @@
+using System.Net;
 using System.Net.Http.Json;
 
 namespace BookStore.AppHost.Tests;
 
+[NotInParallel]
 public class AuthorCrudTests
 {
     [Test]
@@ -17,4 +19,105 @@ public class AuthorCrudTests
         // Assert
         _ = await Assert.That(createResponse.IsSuccessStatusCode).IsTrue();
     }
+
+    [Test]
+    public async Task UpdateAuthor_ShouldReturnOk()
+    {
+        // Arrange
+        var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
+        dynamic createRequest = TestDataGenerators.GenerateFakeAuthorRequest();
+        var createResponse = await httpClient.PostAsJsonAsync("/api/admin/authors", (object)createRequest);
+        _ = await Assert.That(createResponse.StatusCode).IsEqualTo(HttpStatusCode.Created);
+        var createdAuthor = await createResponse.Content.ReadFromJsonAsync<AuthorDto>();
+
+        dynamic updateRequest = TestDataGenerators.GenerateFakeAuthorRequest(); // New data
+
+        // Act - Connect to SSE before updating, then wait for notification
+        var received = await TestHelpers.ExecuteAndWaitForEventAsync(
+            createdAuthor!.Id,
+            "AuthorUpdated",
+            async () =>
+            {
+                var updateResponse = await httpClient.PutAsJsonAsync($"/api/admin/authors/{createdAuthor.Id}", (object)updateRequest);
+                if (updateResponse.StatusCode != HttpStatusCode.NoContent)
+                {
+                    var error = await updateResponse.Content.ReadAsStringAsync();
+                    Console.WriteLine($"UpdateAuthor Failed with {updateResponse.StatusCode}: {error}");
+                }
+
+                _ = await Assert.That(updateResponse.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
+            },
+            TimeSpan.FromSeconds(10));
+
+        _ = await Assert.That(received).IsTrue();
+    }
+
+    [Test]
+    public async Task DeleteAuthor_ShouldReturnNoContent()
+    {
+        // Arrange
+        var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
+        dynamic createRequest = TestDataGenerators.GenerateFakeAuthorRequest();
+        var createResponse = await httpClient.PostAsJsonAsync("/api/admin/authors", (object)createRequest);
+        _ = await Assert.That(createResponse.StatusCode).IsEqualTo(HttpStatusCode.Created);
+        var createdAuthor = await createResponse.Content.ReadFromJsonAsync<AuthorDto>();
+
+        // Act - Connect to SSE before deleting, then wait for notification
+        var received = await TestHelpers.ExecuteAndWaitForEventAsync(
+            createdAuthor!.Id,
+            "AuthorDeleted",
+            async () =>
+            {
+                var deleteResponse = await httpClient.DeleteAsync($"/api/admin/authors/{createdAuthor.Id}");
+                if (deleteResponse.StatusCode != HttpStatusCode.NoContent)
+                {
+                    var error = await deleteResponse.Content.ReadAsStringAsync();
+                    Console.WriteLine($"DeleteAuthor Failed with {deleteResponse.StatusCode}: {error}");
+                }
+
+                _ = await Assert.That(deleteResponse.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
+            },
+            TimeSpan.FromSeconds(10));
+
+        _ = await Assert.That(received).IsTrue();
+    }
+
+    [Test]
+    public async Task RestoreAuthor_ShouldReturnOk()
+    {
+        // Arrange
+        var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
+
+        // 1. Create Author
+        var createRequest = TestDataGenerators.GenerateFakeAuthorRequest();
+        var createResponse = await httpClient.PostAsJsonAsync("/api/admin/authors", createRequest);
+        _ = await Assert.That(createResponse.StatusCode).IsEqualTo(HttpStatusCode.Created);
+        var createdAuthor = await createResponse.Content.ReadFromJsonAsync<AuthorDto>();
+
+        // 2. Soft Delete Author
+        var deleteResponse = await httpClient.DeleteAsync($"/api/admin/authors/{createdAuthor!.Id}");
+        _ = await Assert.That(deleteResponse.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
+
+        // Act - Connect to SSE before restoring, then wait for notification
+        // Note: Projecting a restore is seen as an Update (IsDeleted goes from true -> false)
+        var received = await TestHelpers.ExecuteAndWaitForEventAsync(
+            createdAuthor.Id,
+            "AuthorUpdated",
+            async () =>
+            {
+                var restoreResponse = await httpClient.PostAsync($"/api/admin/authors/{createdAuthor.Id}/restore", null);
+                if (!restoreResponse.IsSuccessStatusCode)
+                {
+                    var error = await restoreResponse.Content.ReadAsStringAsync();
+                    Console.WriteLine($"[SSE-TEST] Restore failed: {restoreResponse.StatusCode} - {error}");
+                }
+
+                _ = await Assert.That(restoreResponse.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
+            },
+            TimeSpan.FromSeconds(10));
+
+        _ = await Assert.That(received).IsTrue();
+    }
+
+    record AuthorDto(Guid Id, string Name);
 }
