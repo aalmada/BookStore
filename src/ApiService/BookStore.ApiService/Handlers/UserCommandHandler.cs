@@ -56,10 +56,7 @@ public static class UserCommandHandler
 
         // Always append event (either new rating or update)
         // The Apply method will handle updating the existing rating
-        if (user is not null or null) // Always append for valid ratings
-        {
-            _ = session.Events.Append(command.UserId, new BookRated(command.BookId, command.Rating));
-        }
+        _ = session.Events.Append(command.UserId, new BookRated(command.BookId, command.Rating));
     }
 
     public static async Task Handle(RemoveBookRating command, IDocumentSession session)
