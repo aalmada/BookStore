@@ -1,7 +1,9 @@
 using System.Globalization;
+using System.Security.Claims; // Need this for ClaimsPrincipal if not implicit
 using BookStore.ApiService.Aggregates;
 using BookStore.ApiService.Infrastructure;
 using BookStore.ApiService.Infrastructure.Extensions;
+using BookStore.ApiService.Messages.Commands;
 using BookStore.ApiService.Models;
 using BookStore.ApiService.Projections;
 using BookStore.Shared.Models;
@@ -12,9 +14,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Options;
 using Npgsql;
-using System.Security.Claims; // Need this for ClaimsPrincipal if not implicit
 using Wolverine;
-using BookStore.ApiService.Messages.Commands;
 
 public static class BookEndpoints
 {

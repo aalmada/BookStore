@@ -23,7 +23,7 @@ public class PublisherCrudTests
                 _ = await Assert.That(createResponse.IsSuccessStatusCode).IsTrue();
             },
             TestConstants.DefaultEventTimeout);
-        
+
         // Assert
         _ = await Assert.That(received).IsTrue();
     }

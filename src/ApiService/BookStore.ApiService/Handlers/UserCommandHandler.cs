@@ -16,7 +16,7 @@ public static class UserCommandHandler
 
         if (user != null && !user.FavoriteBookIds.Contains(command.BookId))
         {
-            session.Events.Append(command.UserId, new BookAddedToFavorites(command.BookId));
+            _ = session.Events.Append(command.UserId, new BookAddedToFavorites(command.BookId));
             // No need to save changes, Wolverine + Marten integration handles it if configured
             // But usually we return the event or explicitly append
         }
@@ -30,17 +30,17 @@ public static class UserCommandHandler
             // HOWEVER: ApplicationUser document ALREADY exists (via Identity).
             // We need to ensure that appending events to this stream ID will UPDATING the existing document helper
             // via the Snapshot<ApplicationUser>(Inline) we registered.
-            session.Events.Append(command.UserId, new BookAddedToFavorites(command.BookId));
+            _ = session.Events.Append(command.UserId, new BookAddedToFavorites(command.BookId));
         }
     }
 
     public static async Task Handle(RemoveBookFromFavorites command, IDocumentSession session)
     {
-         var user = await session.Events.AggregateStreamAsync<ApplicationUser>(command.UserId);
+        var user = await session.Events.AggregateStreamAsync<ApplicationUser>(command.UserId);
 
         if (user != null && user.FavoriteBookIds.Contains(command.BookId))
         {
-            session.Events.Append(command.UserId, new BookRemovedFromFavorites(command.BookId));
+            _ = session.Events.Append(command.UserId, new BookRemovedFromFavorites(command.BookId));
         }
     }
 }

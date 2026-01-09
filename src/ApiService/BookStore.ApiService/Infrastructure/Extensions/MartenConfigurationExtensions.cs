@@ -105,7 +105,7 @@ public static class MartenConfigurationExtensions
         _ = options.Events.AddEventType<Events.PublisherSoftDeleted>();
         _ = options.Events.AddEventType<Events.PublisherSoftDeleted>();
         _ = options.Events.AddEventType<Events.PublisherRestored>();
-        
+
         // User events
         _ = options.Events.AddEventType<BookStore.Shared.Messages.Events.BookAddedToFavorites>();
         _ = options.Events.AddEventType<BookStore.Shared.Messages.Events.BookRemovedFromFavorites>();

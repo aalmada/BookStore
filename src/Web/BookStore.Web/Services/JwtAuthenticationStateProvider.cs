@@ -60,7 +60,7 @@ public class JwtAuthenticationStateProvider : AuthenticationStateProvider
 
             if (jwtToken.ValidTo < DateTime.UtcNow)
             {
-                 // Token expired
+                // Token expired
                 _tokenService.ClearTokens();
                 var anonymous = new ClaimsPrincipal(new ClaimsIdentity());
                 return new AuthenticationState(anonymous);
@@ -115,10 +115,10 @@ public class JwtAuthenticationStateProvider : AuthenticationStateProvider
     public async Task NotifyUserLogout()
     {
         _tokenService.ClearTokens();
-        
+
         try
         {
-             await _localStorage.DeleteAsync("accessToken");
+            await _localStorage.DeleteAsync("accessToken");
         }
         catch { }
 

@@ -99,8 +99,11 @@ public class ReactiveQuery<T> : IDisposable
     /// <param name="mutator">Function to transform the current data.</param>
     public void MutateData(Func<T, T> mutator)
     {
-        if (Data == null) return;
-        
+        if (Data == null)
+        {
+            return;
+        }
+
         try
         {
             Data = mutator(Data);
@@ -108,7 +111,7 @@ public class ReactiveQuery<T> : IDisposable
         }
         catch (Exception ex)
         {
-             _logger.LogError(ex, "Failed to mutate data optimistically.");
+            _logger.LogError(ex, "Failed to mutate data optimistically.");
         }
     }
 

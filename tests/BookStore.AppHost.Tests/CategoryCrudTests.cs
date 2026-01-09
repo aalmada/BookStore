@@ -34,7 +34,7 @@ public class CategoryCrudTests
                 category = await createResponse.Content.ReadFromJsonAsync<CategoryDto>();
             },
             TestConstants.DefaultEventTimeout);
-        
+
         // Assert
         _ = await Assert.That(received).IsTrue();
         _ = await Assert.That(category).IsNotNull();
@@ -233,8 +233,6 @@ public class CategoryCrudTests
         // var restoredCategory = await RetryGetCategoryAsync(httpClient, createdCategory.Id);
         // _ = await Assert.That(restoredCategory).IsNotNull();
     }
-
-
 
     record CategoryDto(Guid Id, string Name);
 }

@@ -5,12 +5,12 @@ using BookStore.Web;
 using BookStore.Web.Components;
 using BookStore.Web.Services;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
+using Microsoft.Extensions.DependencyInjection;
 using MudBlazor.Services;
 using Polly;
 using Polly.Extensions.Http;
 using Refit;
-using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
-using Microsoft.Extensions.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -53,19 +53,16 @@ RegisterScopedRefitClients(builder.Services, new Uri(apiServiceUrl));
 
 static void RegisterScopedRefitClients(IServiceCollection services, Uri baseAddress)
 {
-    void AddScopedClient<T>() where T : class
-    {
-        services.AddScoped<T>(sp =>
-        {
-            var tokenService = sp.GetRequiredService<TokenService>();
-            var authHandler = new AuthorizationMessageHandler(tokenService);
-            // Ensure we have an InnerHandler
-            authHandler.InnerHandler = new HttpClientHandler();
-            
-            var httpClient = new HttpClient(authHandler) { BaseAddress = baseAddress };
-            return RestService.For<T>(httpClient);
-        });
-    }
+    void AddScopedClient<T>() where T : class => _ = services.AddScoped<T>(sp =>
+                                                      {
+                                                          var tokenService = sp.GetRequiredService<TokenService>();
+                                                          var authHandler = new AuthorizationMessageHandler(tokenService);
+                                                          // Ensure we have an InnerHandler
+                                                          authHandler.InnerHandler = new HttpClientHandler();
+
+                                                          var httpClient = new HttpClient(authHandler) { BaseAddress = baseAddress };
+                                                          return RestService.For<T>(httpClient);
+                                                      });
 
     // Register all endpoint interfaces
     AddScopedClient<IGetBooksEndpoint>();

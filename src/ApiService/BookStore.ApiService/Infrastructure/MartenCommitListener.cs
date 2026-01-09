@@ -104,15 +104,15 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
         }
     }
 
-    async Task HandleUserChangeAsync(ApplicationUser user, ChangeType changeType, CancellationToken token)
+    async Task HandleUserChangeAsync(ApplicationUser user, ChangeType _, CancellationToken token)
     {
         // For users, we don't have a generic list cache to invalidate (yet), 
         // but we might want to invalidate specific user data if cached independently.
         // For now, simply Notify.
-        
+
         // Use UtcNow as fallback
         var timestamp = DateTimeOffset.UtcNow;
-        
+
         // We only care about updates (favorites added/removed) or potentially verifying.
         // Even if we don't distinguish "UserUpdated" vs "UserVerified" perfectly here, 
         // "UserUpdated" is a good catch-all for ReactiveQuery invalidation.
@@ -195,7 +195,7 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
         await NotifyAsync("Publisher", notification, token);
     }
 
-    async Task HandleBookStatisticsChangeAsync(BookStatistics stats, ChangeType changeType, CancellationToken token)
+    async Task HandleBookStatisticsChangeAsync(BookStatistics stats, ChangeType _, CancellationToken token)
     {
         await InvalidateCacheTagsAsync(stats.Id, CacheTags.BookItemPrefix, CacheTags.BookList, token);
 

@@ -1,8 +1,8 @@
 using System.Net;
-using System.Net.Http.Json;
-using BookStore.Shared.Models;
-using Bogus;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using Bogus;
+using BookStore.Shared.Models;
 
 namespace BookStore.AppHost.Tests;
 
@@ -204,7 +204,6 @@ public class BookCrudTests
         _ = await Assert.That(received).IsTrue();
     }
 
-
     record BookResponse(Guid Id, string Title, string Isbn);
 
     [Test]
@@ -235,14 +234,13 @@ public class BookCrudTests
             "UserUpdated",
             async () =>
             {
-                 var response = await httpClient.PostAsync($"/api/books/{createdBook!.Id}/favorites", null);
-                 _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
+                var response = await httpClient.PostAsync($"/api/books/{createdBook!.Id}/favorites", null);
+                _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
             },
              TestConstants.DefaultEventTimeout);
         _ = await Assert.That(receivedFav).IsTrue();
-             
-        HttpResponseMessage response = new(HttpStatusCode.NoContent); // Fake response to satisfy strict replacement if reused below, but act is done inside waiter.
 
+        HttpResponseMessage response = new(HttpStatusCode.NoContent); // Fake response to satisfy strict replacement if reused below, but act is done inside waiter.
 
         // Assert
         _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
@@ -277,13 +275,10 @@ public class BookCrudTests
         var receivedFav = await TestHelpers.ExecuteAndWaitForEventAsync(
              Guid.Empty,
              "UserUpdated",
-             async () =>
-             {
-                 await httpClient.PostAsync($"/api/books/{createdBook!.Id}/favorites", null);
-             },
+             async () => _ = await httpClient.PostAsync($"/api/books/{createdBook!.Id}/favorites", null),
              TestConstants.DefaultEventTimeout);
         _ = await Assert.That(receivedFav).IsTrue();
-        
+
         // Verify it IS favorite initially
         var initialGet = await httpClient.GetFromJsonAsync<BookDto>($"/api/books/{createdBook!.Id}");
         _ = await Assert.That(initialGet!.IsFavorite).IsTrue();
@@ -302,7 +297,7 @@ public class BookCrudTests
             },
             TestConstants.DefaultEventTimeout);
         _ = await Assert.That(receivedRemove).IsTrue();
-        
+
         var response = new HttpResponseMessage(HttpStatusCode.NoContent); // satisfy variable if used below
 
         // Assert
@@ -382,7 +377,7 @@ public class BookCrudTests
                 _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
             },
             TestConstants.DefaultEventTimeout);
-            
+
         _ = await Assert.That(received1).IsTrue();
 
         // Assert: Count = 1
@@ -424,7 +419,7 @@ public class BookCrudTests
         _ = await Assert.That(bookDto3!.LikeCount).IsEqualTo(1);
     }
 
-    private async Task<HttpClient> CreateAuthenticatedUserAsync(HttpClient anonClient, Faker faker)
+    async Task<HttpClient> CreateAuthenticatedUserAsync(HttpClient anonClient, Faker faker)
     {
         var email = faker.Internet.Email();
         var password = faker.Internet.Password(8, false, "\\w", "Aa1!");
@@ -438,7 +433,7 @@ public class BookCrudTests
         _ = await Assert.That(loginResponse.IsSuccessStatusCode).IsTrue();
 
         var loginResult = await loginResponse.Content.ReadFromJsonAsync<LoginResponse>();
-        
+
         var client = TestHelpers.GetUnauthenticatedClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", loginResult!.AccessToken);
         return client;
