@@ -31,7 +31,7 @@ public class UseGenericMathAnalyzer : DiagnosticAnalyzer
         context.RegisterSyntaxNodeAction(AnalyzeInvocation, SyntaxKind.InvocationExpression);
     }
 
-    private void AnalyzeInvocation(SyntaxNodeAnalysisContext context)
+    void AnalyzeInvocation(SyntaxNodeAnalysisContext context)
     {
         var invocation = (InvocationExpressionSyntax)context.Node;
 
@@ -42,15 +42,15 @@ public class UseGenericMathAnalyzer : DiagnosticAnalyzer
 
         // Check if invoking on System.Math
         // We do a quick check on the textual representation first to avoid expensive symbol lookups
-        if (memberAccess.Expression.ToString() != "Math" && memberAccess.Expression.ToString() != "System.Math")
+        if (memberAccess.Expression.ToString() is not "Math" and not "System.Math")
         {
-             // It might be a static using, or alias.
-             // Symbol check below will confirm.
+            // It might be a static using, or alias.
+            // Symbol check below will confirm.
         }
 
         var symbolInfo = context.SemanticModel.GetSymbolInfo(memberAccess.Expression, context.CancellationToken);
         var typeSymbol = symbolInfo.Symbol as ITypeSymbol;
-        
+
         if (typeSymbol?.ToDisplayString() != "System.Math")
         {
             return;
@@ -81,16 +81,14 @@ public class UseGenericMathAnalyzer : DiagnosticAnalyzer
         var diagnostic = Diagnostic.Create(
             Rule,
             memberAccess.GetLocation(),
-            argumentType.Name, 
+            argumentType.Name,
             methodName);
-            
+
         context.ReportDiagnostic(diagnostic);
     }
 
-    private bool HasStaticMethod(ITypeSymbol typeSymbol, string methodName)
-    {
+    bool HasStaticMethod(ITypeSymbol typeSymbol, string methodName)
         // Check if the type has a static method with the given name
-        return typeSymbol.GetMembers(methodName)
+        => typeSymbol.GetMembers(methodName)
             .Any(m => m.IsStatic && m.Kind == SymbolKind.Method);
-    }
 }

@@ -14,10 +14,10 @@ public class BookStatisticsProjection : MultiStreamProjection<BookStatistics, Gu
     }
 
 #pragma warning disable IDE0060 // Remove unused parameter
-    public void Apply(BookAddedToFavorites @event, BookStatistics stats) 
+    public void Apply(BookAddedToFavorites @event, BookStatistics stats)
         => stats.LikeCount++;
 
-    public void Apply(BookRemovedFromFavorites @event, BookStatistics stats) 
+    public void Apply(BookRemovedFromFavorites @event, BookStatistics stats)
         => stats.LikeCount = int.Max(0, stats.LikeCount - 1);
 #pragma warning restore IDE0060 // Remove unused parameter
 }

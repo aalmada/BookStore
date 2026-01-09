@@ -99,7 +99,7 @@ class Program
     [Test]
     public async Task SystemMathMax_Int_ShouldReportDiagnostic()
     {
-         var code = @"
+        var code = @"
 class Program
 {
     void M()
@@ -160,14 +160,11 @@ class Program
         var x = Math.Sqrt(4); // passed as int, converted to double
     }
 }";
-        
+
         await Verify.VerifyAnalyzerAsync(code);
     }
 
-    private static DiagnosticResult CreateDiagnostic(string method, string typeName, int line, int column)
-    {
-        return Verify.Diagnostic(DiagnosticIds.UseGenericMath)
+    static DiagnosticResult CreateDiagnostic(string method, string typeName, int line, int column) => Verify.Diagnostic(DiagnosticIds.UseGenericMath)
             .WithLocation(line, column)
             .WithArguments(typeName, method);
-    }
 }
