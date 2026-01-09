@@ -53,7 +53,7 @@ public static class BookCoverHandlers
         // Get new stream state and return new ETag
         var newStreamState = await session.Events.FetchStreamStateAsync(command.BookId);
         var newETag = ETagHelper.GenerateETag(newStreamState!.Version);
-        
+
         if (context is not null)
         {
             ETagHelper.AddETagHeader(context, newETag);

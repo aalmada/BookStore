@@ -1,6 +1,6 @@
 using System.Net;
-using System.Net.Http.Json;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 
 namespace BookStore.AppHost.Tests;
 
@@ -183,6 +183,7 @@ public class AuthorCrudTests
                 authorDto = await response.Content.ReadFromJsonAsync<AuthorDto>();
                 break;
             }
+
             await Task.Delay(500);
         }
 

@@ -195,6 +195,7 @@ public class CategoryCrudTests
                 categoryDto = await response.Content.ReadFromJsonAsync<CategoryDto>();
                 break;
             }
+
             await Task.Delay(500);
         }
 

@@ -1,11 +1,11 @@
 using BookStore.ApiService.Aggregates;
+using BookStore.ApiService.Commands;
 using BookStore.ApiService.Events;
 using BookStore.ApiService.Projections;
+using BookStore.ApiService.Services;
 using BookStore.Shared.Models;
 using Marten;
-using BookStore.ApiService.Services;
 using Microsoft.Extensions.Options;
-using BookStore.ApiService.Commands;
 using Wolverine;
 
 namespace BookStore.ApiService.Infrastructure;
@@ -13,7 +13,6 @@ namespace BookStore.ApiService.Infrastructure;
 /// <summary>
 /// Seeds the database with sample data using event sourcing
 /// </summary>
-
 
 /// <summary>
 /// Seeds the database with sample data using event sourcing
@@ -36,9 +35,9 @@ public class DatabaseSeeder(IDocumentStore store, IMessageBus bus)
         var publisherIds = SeedPublishers(session);
         var authorIds = SeedAuthors(session);
         var categoryIds = SeedCategories(session);
-        
+
         await session.SaveChangesAsync();
-        
+
         await SeedBooksAsync(store, bus, publisherIds, authorIds, categoryIds);
     }
 
@@ -168,7 +167,7 @@ public class DatabaseSeeder(IDocumentStore store, IMessageBus bus)
     }
 
     async Task SeedBooksAsync(
-        IDocumentStore store, 
+        IDocumentStore store,
         IMessageBus bus,
         Dictionary<string, PublisherAdded> publishers,
         Dictionary<string, AuthorAdded> authors,
@@ -232,9 +231,9 @@ public class DatabaseSeeder(IDocumentStore store, IMessageBus bus)
         foreach (var book in books)
         {
             var bookId = Guid.CreateVersion7();
-            
+
             // Handle new authors dynamically if missing from seeded map, or map to existing
-            var authorId = authors.TryGetValue(book.Author, out var author) ? author.Id : authors.Values.First().Id; 
+            var authorId = authors.TryGetValue(book.Author, out var author) ? author.Id : authors.Values.First().Id;
             var authorName = author?.Name ?? "Unknown Author";
 
             var categoryId = categories.TryGetValue(book.Category, out var category) ? category.Id : categories.Values.First().Id;
@@ -253,8 +252,8 @@ public class DatabaseSeeder(IDocumentStore store, IMessageBus bus)
             );
 
             _ = bookSession.Events.StartStream<BookAggregate>(bookId, bookAdded);
-            
-            try 
+
+            try
             {
                 // Use full author name and NO category
                 var coverImage = CoverGenerator.GenerateCover(book.Title, authorName);
@@ -265,7 +264,7 @@ public class DatabaseSeeder(IDocumentStore store, IMessageBus bus)
                 Console.WriteLine($"Failed to generate cover for {book.Title}: {ex.Message}");
             }
         }
-        
+
         await bookSession.SaveChangesAsync();
 
         foreach (var cmd in bookCommands)

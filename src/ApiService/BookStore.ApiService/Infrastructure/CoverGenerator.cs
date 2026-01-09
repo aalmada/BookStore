@@ -19,7 +19,7 @@ public static class CoverGenerator
         // 4. Draw Pattern (optional, to make it less flat)
         using (var paint = new SKPaint { Color = SKColors.White.WithAlpha(20), IsAntialias = true })
         {
-            for (int i = 0; i < 400; i += 40)
+            for (var i = 0; i < 400; i += 40)
             {
                 canvas.DrawLine(i, 0, i, 600, paint);
             }
@@ -44,14 +44,14 @@ public static class CoverGenerator
         using (var textPaint = new SKPaint { Color = SKColors.White.WithAlpha(200), IsAntialias = true })
         {
             canvas.DrawText("by", 200, 480, SKTextAlign.Center, authorFont, textPaint);
-            
+
             // Wrap author name if too long
             var authorLines = WrapText(author, authorFont, 380);
             float authorY = 510;
             foreach (var line in authorLines)
             {
-                 canvas.DrawText(line, 200, authorY, SKTextAlign.Center, authorFont, textPaint);
-                 authorY += 30;
+                canvas.DrawText(line, 200, authorY, SKTextAlign.Center, authorFont, textPaint);
+                authorY += 30;
             }
         }
 
@@ -60,13 +60,13 @@ public static class CoverGenerator
         return data.ToArray();
     }
 
-    static SKColor GetDeterministicColor(string text) 
+    static SKColor GetDeterministicColor(string text)
     {
         var hash = text.GetHashCode();
-        var colors = new[] 
-        { 
-            SKColors.DarkSlateBlue, SKColors.Maroon, SKColors.Indigo, 
-            SKColors.DarkSlateGray, SKColors.MidnightBlue, SKColors.DeepPink, 
+        var colors = new[]
+        {
+            SKColors.DarkSlateBlue, SKColors.Maroon, SKColors.Indigo,
+            SKColors.DarkSlateGray, SKColors.MidnightBlue, SKColors.DeepPink,
             SKColors.DarkRed, SKColors.SaddleBrown, SKColors.DarkOliveGreen,
             SKColors.Teal, SKColors.Purple, SKColors.DarkCyan
         };
@@ -79,7 +79,7 @@ public static class CoverGenerator
         var lines = new List<string>();
         var currentLine = words[0];
 
-        for (int i = 1; i < words.Length; i++)
+        for (var i = 1; i < words.Length; i++)
         {
             var word = words[i];
             var width = font.MeasureText(currentLine + " " + word);
@@ -93,6 +93,7 @@ public static class CoverGenerator
                 currentLine = word;
             }
         }
+
         lines.Add(currentLine);
         return lines;
     }

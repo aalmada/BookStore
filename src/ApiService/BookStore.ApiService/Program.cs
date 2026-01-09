@@ -85,7 +85,7 @@ if (true)
             // Wait for async projections to process the seeded events
             // In production, projections run continuously in the background
             await WaitForProjectionsAsync(store, logger);
-            
+
             logger.LogInformation("Database seeding completed successfully.");
         }
         catch (Exception ex)
