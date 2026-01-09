@@ -1,7 +1,11 @@
 # Book Store
 
 [![CI](https://github.com/aalmada/BookStore/actions/workflows/ci.yml/badge.svg)](https://github.com/aalmada/BookStore/actions/workflows/ci.yml)
+[![Nightly Integration Tests](https://github.com/aalmada/BookStore/actions/workflows/nightly-integration.yml/badge.svg)](https://github.com/aalmada/BookStore/actions/workflows/nightly-integration.yml)
+[![Documentation](https://github.com/aalmada/BookStore/actions/workflows/docs.yml/badge.svg)](https://github.com/aalmada/BookStore/actions/workflows/docs.yml)
 [![CodeQL](https://github.com/aalmada/BookStore/actions/workflows/codeql.yml/badge.svg)](https://github.com/aalmada/BookStore/actions/workflows/codeql.yml)
+[![License](https://img.shields.io/github/license/aalmada/BookStore)](LICENSE)
+[![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)](https://dotnet.microsoft.com/download/dotnet/10.0)
 
 Full-stack .NET online book store application with event-sourced backend API and Blazor frontend, orchestrated by Aspire.
 
