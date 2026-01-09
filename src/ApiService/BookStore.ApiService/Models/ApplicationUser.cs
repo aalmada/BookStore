@@ -118,6 +118,7 @@ public sealed class ApplicationUser
         }
     }
 
+#pragma warning disable IDE0060 // Remove unused parameter
     public void Apply(BookStore.Shared.Messages.Events.BookRemovedFromCart @event)
         => _ = ShoppingCartItems.Remove(@event.BookId);
 
@@ -126,6 +127,7 @@ public sealed class ApplicationUser
 
     public void Apply(BookStore.Shared.Messages.Events.ShoppingCartCleared @event)
         => ShoppingCartItems.Clear();
+#pragma warning restore IDE0060 // Remove unused parameter
 }
 
 /// <summary>

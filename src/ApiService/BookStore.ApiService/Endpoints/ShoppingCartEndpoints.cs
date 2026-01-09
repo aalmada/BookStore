@@ -145,5 +145,4 @@ public static class ShoppingCartEndpoints
 
         return TypedResults.NoContent();
     }
-
 }
