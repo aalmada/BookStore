@@ -18,8 +18,8 @@ This guide will help you set up and run the complete Book Store application (fro
 ### Recommended Tools
 
 - **Visual Studio 2024** or **VS Code** with C# extension
-- **Postman** or **curl** for API testing
-- **pgAdmin** (included in Docker setup) for database inspection
+- **Scalar** (provided with the project, accessible via Aspire dashboard) or **curl** for API testing
+- **pgAdmin** (provided with the project, accessible via Aspire dashboard) for database inspection
 
 ## Installation
 

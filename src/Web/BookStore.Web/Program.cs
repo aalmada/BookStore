@@ -28,8 +28,8 @@ builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddMudServices();
 
 // Get API base URL from service discovery (Aspire)
-var apiServiceUrl = builder.Configuration["services:apiservice:https:0"]
-    ?? builder.Configuration["services:apiservice:http:0"]
+var apiServiceUrl = builder.Configuration[$"services:{BookStore.ServiceDefaults.ResourceNames.ApiService}:https:0"]
+    ?? builder.Configuration[$"services:{BookStore.ServiceDefaults.ResourceNames.ApiService}:http:0"]
     ?? "http://localhost:5000";
 
 // Configure Polly policies for resilience

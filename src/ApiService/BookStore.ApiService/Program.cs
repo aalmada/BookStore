@@ -15,10 +15,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
 
 // Add Azure Blob Storage client (Azurite locally, Azure in production)
-builder.AddAzureBlobServiceClient("blobs");
+builder.AddAzureBlobServiceClient(BookStore.ServiceDefaults.ResourceNames.Blobs);
 
 // Add Redis distributed cache (L2 for HybridCache)
-builder.AddRedisDistributedCache("cache");
+builder.AddRedisDistributedCache(BookStore.ServiceDefaults.ResourceNames.Cache);
 
 // Configure services
 builder.Services.AddJsonConfiguration(builder.Environment);

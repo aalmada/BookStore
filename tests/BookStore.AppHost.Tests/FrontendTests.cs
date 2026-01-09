@@ -1,6 +1,7 @@
 using System.Net;
 using Aspire.Hosting;
 using Aspire.Hosting.Testing;
+using BookStore.ServiceDefaults;
 using Projects;
 
 namespace BookStore.AppHost.Tests;
@@ -14,12 +15,12 @@ public class FrontendTests
         var app = GlobalHooks.App!;
         var notificationService = GlobalHooks.NotificationService!;
 
-        var httpClient = app.CreateHttpClient("webfrontend");
+        var httpClient = app.CreateHttpClient(ResourceNames.WebFrontend);
 
-        _ = await notificationService.WaitForResourceHealthyAsync("webfrontend", CancellationToken.None).WaitAsync(TestConstants.DefaultTimeout);
+        _ = await notificationService.WaitForResourceHealthyAsync(ResourceNames.WebFrontend, CancellationToken.None).WaitAsync(TestConstants.DefaultTimeout);
 
         // Act
-        var response = await httpClient.GetAsync("/health", CancellationToken.None).WaitAsync(TestConstants.DefaultTimeout);
+        var response = await httpClient.GetAsync(ResourceNames.HealthCheckEndpoint, CancellationToken.None).WaitAsync(TestConstants.DefaultTimeout);
 
         // Assert
         _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -32,9 +33,9 @@ public class FrontendTests
         var app = GlobalHooks.App!;
         var notificationService = GlobalHooks.NotificationService!;
 
-        var httpClient = app.CreateHttpClient("webfrontend");
+        var httpClient = app.CreateHttpClient(ResourceNames.WebFrontend);
 
-        _ = await notificationService.WaitForResourceHealthyAsync("webfrontend", CancellationToken.None).WaitAsync(TestConstants.DefaultTimeout);
+        _ = await notificationService.WaitForResourceHealthyAsync(ResourceNames.WebFrontend, CancellationToken.None).WaitAsync(TestConstants.DefaultTimeout);
 
         // Act
         var response = await httpClient.GetAsync("/", CancellationToken.None).WaitAsync(TestConstants.DefaultTimeout);

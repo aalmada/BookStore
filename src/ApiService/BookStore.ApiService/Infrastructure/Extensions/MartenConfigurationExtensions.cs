@@ -26,10 +26,10 @@ public static class MartenConfigurationExtensions
         _ = services.AddMarten(sp =>
         {
             // Get connection string from Aspire
-            var connectionString = configuration.GetConnectionString("bookstore");
+            var connectionString = configuration.GetConnectionString(BookStore.ServiceDefaults.ResourceNames.BookStoreDb);
             if (string.IsNullOrEmpty(connectionString))
             {
-                throw new InvalidOperationException("Connection string 'bookstore' not found. Please ensure the 'postgres' resource is correctly referenced.");
+                throw new InvalidOperationException($"Connection string '{BookStore.ServiceDefaults.ResourceNames.BookStoreDb}' not found. Please ensure the '{BookStore.ServiceDefaults.ResourceNames.Postgres}' resource is correctly referenced.");
             }
 
             var env = sp.GetRequiredService<IHostEnvironment>();
