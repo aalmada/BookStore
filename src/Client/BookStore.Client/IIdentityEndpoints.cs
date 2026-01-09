@@ -12,10 +12,10 @@ public interface IIdentityLoginEndpoint
     /// Login with email and password
     /// </summary>
     [Post("/account/login")]
-    Task<LoginResponse> Execute(
+    Task<LoginResponse> LoginAsync(
         [Body] LoginRequest request,
-        [Query, AliasAs("useCookies")] bool? useCookies = null,
-        [Query, AliasAs("useSessionCookies")] bool? useSessionCookies = null,
+        [Query] bool? useCookies = null,
+        [Query] bool? useSessionCookies = null,
         CancellationToken cancellationToken = default);
 }
 
@@ -25,7 +25,7 @@ public interface IIdentityRegisterEndpoint
     /// Register a new user
     /// </summary>
     [Post("/account/register")]
-    Task<LoginResponse> Execute(
+    Task<LoginResponse> RegisterAsync(
         [Body] RegisterRequest request,
         CancellationToken cancellationToken = default);
 }
@@ -36,7 +36,7 @@ public interface IIdentityConfirmEmailEndpoint
     /// Confirm user email
     /// </summary>
     [Post("/account/confirm-email")]
-    Task Execute(
+    Task ConfirmEmailAsync(
         [Query] string userId,
         [Query] string code,
         CancellationToken cancellationToken = default);
@@ -48,7 +48,7 @@ public interface IIdentityRefreshEndpoint
     /// Refresh access token
     /// </summary>
     [Post("/account/refresh-token")]
-    Task<LoginResponse> Execute(
+    Task<LoginResponse> RefreshTokenAsync(
         [Body] RefreshRequest request,
         CancellationToken cancellationToken = default);
 }

@@ -44,13 +44,23 @@ public static class ShoppingCartEndpoints
             return TypedResults.NotFound();
         }
 
-        var user = await session.Events.AggregateStreamAsync<ApplicationUser>(userId, token: cancellationToken);
-        if (user == null || user.ShoppingCartItems.Count == 0)
+        // Read from the UserProfile projection document (same pattern as Books/Categories)
+        // The async projection has updated this document after processing cart events
+        var profile = await session.LoadAsync<UserProfile>(userId, cancellationToken);
+
+        if (profile == null)
+        {
+            // UserProfile doesn't exist - shouldn't happen for authenticated users
+            // Return empty cart for now
+            return TypedResults.Ok(new ShoppingCartDto([], 0));
+        }
+
+        if (profile.ShoppingCartItems?.Count == 0)
         {
             return TypedResults.Ok(new ShoppingCartDto([], 0));
         }
 
-        var bookIds = user.ShoppingCartItems.Keys.ToList();
+        var bookIds = profile.ShoppingCartItems!.Keys.ToList();
         var books = await session.Query<BookSearchProjection>()
             .Where(b => bookIds.Contains(b.Id) && !b.IsDeleted)
             .ToListAsync(cancellationToken);
@@ -59,7 +69,7 @@ public static class ShoppingCartEndpoints
             book.Id,
             book.Title ?? "Unknown",
             book.Isbn,
-            user.ShoppingCartItems[book.Id])).ToList();
+            profile.ShoppingCartItems[book.Id])).ToList();
 
         var cart = new ShoppingCartDto(
             items,

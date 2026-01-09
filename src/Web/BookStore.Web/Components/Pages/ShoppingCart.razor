@@ -80,6 +80,7 @@
 
     [Inject] private ILogger<ShoppingCart> Logger { get; set; } = default!;
     [Inject] private BookStoreEventsService EventsService { get; set; } = default!;
+    [Inject] private QueryInvalidationService InvalidationService { get; set; } = default!;
 
     protected override async Task OnInitializedAsync()
     {
@@ -99,7 +100,7 @@
             {
                 try 
                 {
-                    return await ((IGetShoppingCartEndpoint)CartClient).Execute();
+                    return await CartClient.GetShoppingCartAsync();
                 }
                 catch (Refit.ApiException apiEx) when (apiEx.StatusCode == System.Net.HttpStatusCode.Unauthorized)
                 {
@@ -107,7 +108,8 @@
                 }
             },
             eventsService: EventsService,
-            invalidationPredicate: n => n is BookStore.Shared.Notifications.UserUpdatedNotification,
+            invalidationService: InvalidationService,
+            queryKeys: new[] { "User" },
             onStateChanged: StateHasChanged,
             logger: Logger
         );
@@ -136,7 +138,7 @@
         // 2. API Call
         try
         {
-            await ((IUpdateCartItemEndpoint)CartClient).Execute(bookId, new UpdateCartItemClientRequest(newQuantity));
+            await CartClient.UpdateCartItemAsync(bookId, new UpdateCartItemClientRequest(newQuantity));
             Snackbar.Add("Quantity updated", Severity.Success);
         }
         catch (Exception ex)
@@ -169,7 +171,7 @@
         // 2. API Call
         try
         {
-            await ((IRemoveFromCartEndpoint)CartClient).Execute(bookId);
+            await CartClient.RemoveFromCartAsync(bookId);
             Snackbar.Add("Item removed from cart", Severity.Success);
         }
         catch (Exception ex)
@@ -196,7 +198,7 @@
         // 2. API Call
         try
         {
-            await ((IClearCartEndpoint)CartClient).Execute();
+            await CartClient.ClearCartAsync();
             Snackbar.Add("Cart cleared", Severity.Success);
         }
         catch (Exception ex)

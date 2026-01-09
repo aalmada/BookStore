@@ -20,7 +20,7 @@ namespace BookStore.Client
     {
         [Multipart]
         [Post("/api/admin/books/{id}/cover")]
-        Task Execute(System.Guid id, [Header("api-version")] object api_version, [Header("Accept-Language")] object accept_Language, [Header("X-Correlation-ID")] object x_Correlation_ID, [Header("X-Causation-ID")] object x_Causation_ID, StreamPart file, CancellationToken cancellationToken = default);
+        Task UploadBookCoverAsync(System.Guid id, StreamPart file, [Header("api-version")] object api_version, [Header("Accept-Language")] object accept_Language, [Header("X-Correlation-ID")] object x_Correlation_ID, [Header("X-Causation-ID")] object x_Causation_ID, CancellationToken cancellationToken = default);
     }
 
 }

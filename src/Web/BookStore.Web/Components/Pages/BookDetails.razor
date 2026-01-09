@@ -235,6 +235,7 @@
     private List<BreadcrumbItem> _breadcrumbItems = new();
     
     [Inject] private ILogger<BookDetails> Logger { get; set; } = default!;
+    [Inject] private QueryInvalidationService InvalidationService { get; set; } = default!;
     
     [CascadingParameter] private Task<AuthenticationState> AuthStateTask { get; set; } = default!;
     private System.Security.Claims.ClaimsPrincipal? user;
@@ -246,7 +247,7 @@
         
         try
         {
-            await ((IAddToCartEndpoint)CartClient).Execute(new BookStore.Client.AddToCartClientRequest(book.Id, quantity));
+            await CartClient.AddToCartAsync(new BookStore.Client.AddToCartClientRequest(book.Id, quantity));
             Snackbar.Add($"Added {quantity} copy(ies) to cart", Severity.Success);
             quantity = 1; // Reset quantity
         }
@@ -303,7 +304,7 @@
             queryFn: async () => {
                 try 
                 {
-                    return await ((IGetBookEndpoint)BooksClient).Execute(
+                    return await BooksClient.GetBookAsync(
                         id: Id,
                         api_version: "1.0",
                         accept_Language: "en",
@@ -316,7 +317,8 @@
                 }
             },
             eventsService: EventsService,
-            invalidationPredicate: n => ((n is BookStore.Shared.Notifications.BookUpdatedNotification or BookStore.Shared.Notifications.BookDeletedNotification or BookStore.Shared.Notifications.BookCoverUpdatedNotification) && n.EntityId == Id) || n is BookStore.Shared.Notifications.UserUpdatedNotification,
+            invalidationService: InvalidationService,
+            queryKeys: new[] { $"Book:{Id}", "User" },
             onStateChanged: StateHasChanged,
             logger: Logger
         );
@@ -329,7 +331,7 @@
     {
         try 
         {
-            return await ((IGetBookEndpoint)BooksClient).Execute(
+            return await BooksClient.GetBookAsync(
                 id: Id,
                 api_version: "1.0",
                 accept_Language: "en",
@@ -340,19 +342,6 @@
         {
              throw new Exception("Book not found. It may have been removed or the ID is incorrect.");
         }
-    }
-
-    private bool ShouldInvalidate(BookStore.Shared.Notifications.IDomainEventNotification notification)
-    {
-        // Only invalidate if the event is about THIS book
-        if (notification is BookStore.Shared.Notifications.BookUpdatedNotification updated && updated.EntityId == Id) return true;
-        if (notification is BookStore.Shared.Notifications.BookCoverUpdatedNotification coverUpdated && coverUpdated.EntityId == Id) return true;
-        
-        // If deleted, we should probably handle that... 
-        // bookQuery will just fail to fetch or return null?
-        if (notification is BookStore.Shared.Notifications.BookDeletedNotification deleted && deleted.EntityId == Id) return true;
-
-        return false;
     }
 
     private void UpdateBreadcrumbs()
@@ -392,12 +381,12 @@
         {
             if (originalState)
             {
-                await ((IRemoveBookFromFavoritesEndpoint)BooksClient).Execute(bookToToggle.Id);
+                await BooksClient.RemoveBookFromFavoritesAsync(bookToToggle.Id);
                 Snackbar.Add("Removed from favorites", Severity.Success);
             }
             else
             {
-                await ((IAddBookToFavoritesEndpoint)BooksClient).Execute(bookToToggle.Id);
+                await BooksClient.AddBookToFavoritesAsync(bookToToggle.Id);
                 Snackbar.Add("Added to favorites", Severity.Success);
             }
         }
@@ -429,7 +418,7 @@
         // 2. API Call
         try
         {
-            await ((IRateBookEndpoint)BooksClient).Execute(book.Id, new BookStore.Client.RateBookRequest(rating));
+            await BooksClient.RateBookAsync(book.Id, new BookStore.Client.RateBookRequest(rating));
             Snackbar.Add($"Rated {rating} stars", Severity.Success);
         }
         catch (Exception ex)
@@ -459,7 +448,7 @@
         // 2. API Call
         try
         {
-            await ((IRemoveBookRatingEndpoint)BooksClient).Execute(book.Id);
+            await BooksClient.RemoveBookRatingAsync(book.Id);
             Snackbar.Add("Rating removed", Severity.Success);
         }
         catch (Exception ex)

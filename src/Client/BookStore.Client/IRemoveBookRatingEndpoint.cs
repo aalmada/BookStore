@@ -6,5 +6,5 @@ namespace BookStore.Client;
 public partial interface IRemoveBookRatingEndpoint
 {
     [Delete("/api/books/{id}/rating")]
-    Task Execute(Guid id);
+    Task RemoveBookRatingAsync(Guid id);
 }

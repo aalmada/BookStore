@@ -9,5 +9,5 @@ public partial interface IRemoveBookFromFavoritesEndpoint
 {
     [Headers("Accept: application/json")]
     [Delete("/api/books/{id}/favorites")]
-    Task Execute([AliasAs("id")] Guid id, CancellationToken cancellationToken = default);
+    Task RemoveBookFromFavoritesAsync(Guid id, CancellationToken cancellationToken = default);
 }

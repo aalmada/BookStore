@@ -109,6 +109,12 @@ public static class MartenConfigurationExtensions
         // User events
         _ = options.Events.AddEventType<BookStore.Shared.Messages.Events.BookAddedToFavorites>();
         _ = options.Events.AddEventType<BookStore.Shared.Messages.Events.BookRemovedFromFavorites>();
+        _ = options.Events.AddEventType<BookStore.Shared.Messages.Events.BookRated>();
+        _ = options.Events.AddEventType<BookStore.Shared.Messages.Events.BookRatingRemoved>();
+        _ = options.Events.AddEventType<BookStore.Shared.Messages.Events.BookAddedToCart>();
+        _ = options.Events.AddEventType<BookStore.Shared.Messages.Events.BookRemovedFromCart>();
+        _ = options.Events.AddEventType<BookStore.Shared.Messages.Events.CartItemQuantityUpdated>();
+        _ = options.Events.AddEventType<BookStore.Shared.Messages.Events.ShoppingCartCleared>();
     }
 
     static void RegisterProjections(StoreOptions options)
@@ -120,7 +126,7 @@ public static class MartenConfigurationExtensions
         _ = options.Projections.Snapshot<AuthorProjection>(SnapshotLifecycle.Async);
         _ = options.Projections.Snapshot<BookSearchProjection>(SnapshotLifecycle.Async);
         _ = options.Projections.Snapshot<PublisherProjection>(SnapshotLifecycle.Async);
-        _ = options.Projections.Snapshot<Models.ApplicationUser>(SnapshotLifecycle.Async);
+        _ = options.Projections.Snapshot<UserProfile>(SnapshotLifecycle.Async);
         options.Projections.Add<BookStatisticsProjection>(ProjectionLifecycle.Async);
     }
 

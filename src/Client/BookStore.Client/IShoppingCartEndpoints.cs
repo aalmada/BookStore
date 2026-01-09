@@ -6,35 +6,35 @@ namespace BookStore.Client;
 public partial interface IGetShoppingCartEndpoint
 {
     [Get("/api/cart")]
-    Task<ShoppingCartResponse> Execute(CancellationToken cancellationToken = default);
+    Task<ShoppingCartResponse> GetShoppingCartAsync(CancellationToken cancellationToken = default);
 }
 
 [Headers("api-version: 1.0")]
 public partial interface IAddToCartEndpoint
 {
     [Post("/api/cart/items")]
-    Task Execute([Body] AddToCartClientRequest request, CancellationToken cancellationToken = default);
+    Task AddToCartAsync([Body] AddToCartClientRequest request, CancellationToken cancellationToken = default);
 }
 
 [Headers("api-version: 1.0")]
 public partial interface IUpdateCartItemEndpoint
 {
     [Put("/api/cart/items/{bookId}")]
-    Task Execute(Guid bookId, [Body] UpdateCartItemClientRequest request, CancellationToken cancellationToken = default);
+    Task UpdateCartItemAsync(Guid bookId, [Body] UpdateCartItemClientRequest request, CancellationToken cancellationToken = default);
 }
 
 [Headers("api-version: 1.0")]
 public partial interface IRemoveFromCartEndpoint
 {
     [Delete("/api/cart/items/{bookId}")]
-    Task Execute(Guid bookId, CancellationToken cancellationToken = default);
+    Task RemoveFromCartAsync(Guid bookId, CancellationToken cancellationToken = default);
 }
 
 [Headers("api-version: 1.0")]
 public partial interface IClearCartEndpoint
 {
     [Delete("/api/cart")]
-    Task Execute(CancellationToken cancellationToken = default);
+    Task ClearCartAsync(CancellationToken cancellationToken = default);
 }
 
 public record ShoppingCartResponse(

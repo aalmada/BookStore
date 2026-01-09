@@ -210,18 +210,18 @@ public static class BookEndpoints
             if (userId != Guid.Empty)
             {
                 await using var userSession = store.QuerySession();
-                var user = await userSession.LoadAsync<ApplicationUser>(userId, cancellationToken);
-                if (user != null)
+                var profile = await userSession.LoadAsync<UserProfile>(userId, cancellationToken);
+                if (profile != null)
                 {
                     var updatedItems = response.Items.Select(b =>
                     {
                         var result = b;
-                        if (user.FavoriteBookIds.Contains(b.Id))
+                        if (profile.FavoriteBookIds.Contains(b.Id))
                         {
                             result = result with { IsFavorite = true };
                         }
 
-                        if (user.BookRatings.TryGetValue(b.Id, out var rating))
+                        if (profile.BookRatings.TryGetValue(b.Id, out var rating))
                         {
                             result = result with { UserRating = rating };
                         }
@@ -358,8 +358,8 @@ public static class BookEndpoints
             if (userId != Guid.Empty)
             {
                 await using var userSession = store.QuerySession();
-                var user = await userSession.LoadAsync<ApplicationUser>(userId, cancellationToken);
-                if (user != null && user.FavoriteBookIds.Contains(id))
+                var profile = await userSession.LoadAsync<UserProfile>(userId, cancellationToken);
+                if (profile != null && profile.FavoriteBookIds.Contains(id))
                 {
                     response = response with { IsFavorite = true };
                 }
@@ -373,7 +373,7 @@ public static class BookEndpoints
             if (userId != Guid.Empty)
             {
                 await using var userSession = store.QuerySession();
-                var user = await userSession.LoadAsync<ApplicationUser>(userId, cancellationToken);
+                var user = await userSession.LoadAsync<UserProfile>(userId, cancellationToken);
                 if (user != null)
                 {
                     if (user.BookRatings.TryGetValue(id, out var rating))

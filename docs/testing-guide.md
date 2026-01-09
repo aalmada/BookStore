@@ -376,7 +376,6 @@ The test project includes:
 
 <ItemGroup>
   <PackageReference Include="TUnit" />
-  <PackageReference Include="TUnit.Assertions" />
   <PackageReference Include="NSubstitute" />
   <PackageReference Include="Aspire.Hosting.Testing" />
 </ItemGroup>

@@ -12,7 +12,7 @@ public class AuthenticationService(IIdentityClient identityClient)
     {
         try
         {
-            await ((IIdentityConfirmEmailEndpoint)identityClient).Execute(userId, code);
+            await identityClient.ConfirmEmailAsync(userId, code);
             return true;
         }
         catch
@@ -29,7 +29,7 @@ public class AuthenticationService(IIdentityClient identityClient)
         {
             var request = new LoginRequest(email, password);
             // useCookies=false - we want JWT tokens, not cookies
-            var response = await ((IIdentityLoginEndpoint)identityClient).Execute(request, useCookies: false);
+            var response = await identityClient.LoginAsync(request, useCookies: false);
 
             // Return the access token so caller can store it
             return new LoginResult(true, null, response.AccessToken, response.RefreshToken);
@@ -56,7 +56,7 @@ public class AuthenticationService(IIdentityClient identityClient)
         try
         {
             var request = new RegisterRequest(email, password);
-            _ = await ((IIdentityRegisterEndpoint)identityClient).Execute(request);
+            _ = await identityClient.RegisterAsync(request);
             return new RegisterResult(true, null);
         }
         catch (Refit.ApiException ex)

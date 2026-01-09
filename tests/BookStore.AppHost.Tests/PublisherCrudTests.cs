@@ -11,7 +11,7 @@ public class PublisherCrudTests
     {
         // Arrange
         var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
-        var createPublisherRequest = TestDataGenerators.GenerateFakePublisherRequest();
+        var createPublisherRequest = TestHelpers.GenerateFakePublisherRequest();
 
         // Act - Connect to SSE before creating
         var received = await TestHelpers.ExecuteAndWaitForEventAsync(
@@ -33,12 +33,12 @@ public class PublisherCrudTests
     {
         // Arrange
         var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
-        dynamic createRequest = TestDataGenerators.GenerateFakePublisherRequest();
+        dynamic createRequest = TestHelpers.GenerateFakePublisherRequest();
         var createResponse = await httpClient.PostAsJsonAsync("/api/admin/publishers", (object)createRequest);
         _ = await Assert.That(createResponse.StatusCode).IsEqualTo(HttpStatusCode.Created);
         var createdPublisher = await createResponse.Content.ReadFromJsonAsync<PublisherDto>();
 
-        dynamic updateRequest = TestDataGenerators.GenerateFakePublisherRequest(); // New data
+        dynamic updateRequest = TestHelpers.GenerateFakePublisherRequest(); // New data
 
         // Act - Connect to SSE before updating, then wait for notification
         var received = await TestHelpers.ExecuteAndWaitForEventAsync(
@@ -65,7 +65,7 @@ public class PublisherCrudTests
     {
         // Arrange
         var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
-        dynamic createRequest = TestDataGenerators.GenerateFakePublisherRequest();
+        dynamic createRequest = TestHelpers.GenerateFakePublisherRequest();
         var createResponse = await httpClient.PostAsJsonAsync("/api/admin/publishers", (object)createRequest);
         _ = await Assert.That(createResponse.StatusCode).IsEqualTo(HttpStatusCode.Created);
         var createdPublisher = await createResponse.Content.ReadFromJsonAsync<PublisherDto>();
@@ -97,7 +97,7 @@ public class PublisherCrudTests
         var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
 
         // 1. Create Publisher
-        var createRequest = TestDataGenerators.GenerateFakePublisherRequest();
+        var createRequest = TestHelpers.GenerateFakePublisherRequest();
         var createResponse = await httpClient.PostAsJsonAsync("/api/admin/publishers", createRequest);
         _ = await Assert.That(createResponse.StatusCode).IsEqualTo(HttpStatusCode.Created);
         var createdPublisher = await createResponse.Content.ReadFromJsonAsync<PublisherDto>();

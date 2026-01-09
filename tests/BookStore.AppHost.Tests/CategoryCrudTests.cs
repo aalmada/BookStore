@@ -20,7 +20,7 @@ public class CategoryCrudTests
     {
         // Arrange
         var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
-        var createCategoryRequest = TestDataGenerators.GenerateFakeCategoryRequest();
+        var createCategoryRequest = TestHelpers.GenerateFakeCategoryRequest();
 
         // Act - Connect to SSE before creating
         CategoryDto? category = null;
@@ -46,12 +46,12 @@ public class CategoryCrudTests
     {
         // Arrange
         var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
-        dynamic createRequest = TestDataGenerators.GenerateFakeCategoryRequest();
+        dynamic createRequest = TestHelpers.GenerateFakeCategoryRequest();
         var createResponse = await httpClient.PostAsJsonAsync("/api/admin/categories", (object)createRequest);
         _ = await Assert.That(createResponse.StatusCode).IsEqualTo(HttpStatusCode.Created);
         var createdCategory = await createResponse.Content.ReadFromJsonAsync<CategoryDto>();
 
-        dynamic updateRequest = TestDataGenerators.GenerateFakeCategoryRequest(); // New data
+        dynamic updateRequest = TestHelpers.GenerateFakeCategoryRequest(); // New data
 
         // Act - Connect to SSE before updating, then wait for notification
         var received = await TestHelpers.ExecuteAndWaitForEventAsync(
@@ -86,7 +86,7 @@ public class CategoryCrudTests
     {
         // Arrange
         var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
-        dynamic createRequest = TestDataGenerators.GenerateFakeCategoryRequest();
+        dynamic createRequest = TestHelpers.GenerateFakeCategoryRequest();
         var createResponse = await httpClient.PostAsJsonAsync("/api/admin/categories", (object)createRequest);
         _ = await Assert.That(createResponse.StatusCode).IsEqualTo(HttpStatusCode.Created);
         var createdCategory = await createResponse.Content.ReadFromJsonAsync<CategoryDto>();
@@ -196,7 +196,7 @@ public class CategoryCrudTests
         var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
 
         // 1. Create Category
-        var createRequest = TestDataGenerators.GenerateFakeCategoryRequest();
+        var createRequest = TestHelpers.GenerateFakeCategoryRequest();
         var createResponse = await httpClient.PostAsJsonAsync("/api/admin/categories", createRequest);
         _ = await Assert.That(createResponse.StatusCode).IsEqualTo(HttpStatusCode.Created);
         var createdCategory = await createResponse.Content.ReadFromJsonAsync<CategoryDto>();

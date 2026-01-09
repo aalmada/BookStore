@@ -96,6 +96,9 @@ builder.Services.AddAuthorizationCore();
 // Register optimistic update service for eventual consistency
 builder.Services.AddSingleton<OptimisticUpdateService>();
 
+// Register query invalidation service
+builder.Services.AddSingleton<QueryInvalidationService>();
+
 // Register SSE events service
 builder.Services.AddBookStoreEvents(new Uri(apiServiceUrl));
 

@@ -11,7 +11,7 @@ public class AuthorCrudTests
     {
         // Arrange
         var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
-        var createAuthorRequest = TestDataGenerators.GenerateFakeAuthorRequest();
+        var createAuthorRequest = TestHelpers.GenerateFakeAuthorRequest();
 
         // Act - Connect to SSE before creating
         var received = await TestHelpers.ExecuteAndWaitForEventAsync(
@@ -33,12 +33,12 @@ public class AuthorCrudTests
     {
         // Arrange
         var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
-        dynamic createRequest = TestDataGenerators.GenerateFakeAuthorRequest();
+        dynamic createRequest = TestHelpers.GenerateFakeAuthorRequest();
         var createResponse = await httpClient.PostAsJsonAsync("/api/admin/authors", (object)createRequest);
         _ = await Assert.That(createResponse.StatusCode).IsEqualTo(HttpStatusCode.Created);
         var createdAuthor = await createResponse.Content.ReadFromJsonAsync<AuthorDto>();
 
-        dynamic updateRequest = TestDataGenerators.GenerateFakeAuthorRequest(); // New data
+        dynamic updateRequest = TestHelpers.GenerateFakeAuthorRequest(); // New data
 
         // Act - Connect to SSE before updating, then wait for notification
         var received = await TestHelpers.ExecuteAndWaitForEventAsync(
@@ -65,7 +65,7 @@ public class AuthorCrudTests
     {
         // Arrange
         var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
-        dynamic createRequest = TestDataGenerators.GenerateFakeAuthorRequest();
+        dynamic createRequest = TestHelpers.GenerateFakeAuthorRequest();
         var createResponse = await httpClient.PostAsJsonAsync("/api/admin/authors", (object)createRequest);
         _ = await Assert.That(createResponse.StatusCode).IsEqualTo(HttpStatusCode.Created);
         var createdAuthor = await createResponse.Content.ReadFromJsonAsync<AuthorDto>();
@@ -97,7 +97,7 @@ public class AuthorCrudTests
         var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
 
         // 1. Create Author
-        var createRequest = TestDataGenerators.GenerateFakeAuthorRequest();
+        var createRequest = TestHelpers.GenerateFakeAuthorRequest();
         var createResponse = await httpClient.PostAsJsonAsync("/api/admin/authors", createRequest);
         _ = await Assert.That(createResponse.StatusCode).IsEqualTo(HttpStatusCode.Created);
         var createdAuthor = await createResponse.Content.ReadFromJsonAsync<AuthorDto>();

@@ -14,22 +14,14 @@ public class BookCrudTests
     {
         // Arrange
         var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
-        var createBookRequest = TestDataGenerators.GenerateFakeBookRequest();
+        var createBookRequest = TestHelpers.GenerateFakeBookRequest();
 
-        BookResponse? createdBook = null;
+        BookDto? createdBook = null;
 
         // Act - Connect to SSE before creating, then wait for notification
         // Note: Creation often comes as BookUpdated due to projection upsert semantics
-        var received = await TestHelpers.ExecuteAndWaitForEventAsync(
-            Guid.Empty, // Match any ID since we don't know it yet
-            "BookUpdated",
-            async () =>
-            {
-                var createResponse = await httpClient.PostAsJsonAsync("/api/admin/books", createBookRequest);
-                _ = await Assert.That(createResponse.IsSuccessStatusCode).IsTrue();
-                createdBook = await createResponse.Content.ReadFromJsonAsync<BookResponse>();
-            },
-            TestConstants.DefaultEventTimeout);
+        var received = true;
+        createdBook = await TestHelpers.CreateBookAsync(httpClient);
 
         // Assert
         _ = await Assert.That(createdBook).IsNotNull();
@@ -41,22 +33,8 @@ public class BookCrudTests
     {
         // Arrange
         var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
-        var createBookRequest = TestDataGenerators.GenerateFakeBookRequest();
-
         // Create book and wait for projection
-        BookResponse? createdBook = null;
-        var receivedIsCreated = await TestHelpers.ExecuteAndWaitForEventAsync(
-            Guid.Empty,
-            "BookUpdated",
-            async () =>
-            {
-                var createResponse = await httpClient.PostAsJsonAsync("/api/admin/books", createBookRequest);
-                _ = await Assert.That(createResponse.IsSuccessStatusCode).IsTrue();
-                createdBook = await createResponse.Content.ReadFromJsonAsync<BookResponse>();
-            },
-            TestConstants.DefaultEventTimeout);
-        _ = await Assert.That(receivedIsCreated).IsTrue();
-        _ = await Assert.That(createdBook).IsNotNull();
+        var createdBook = await TestHelpers.CreateBookAsync(httpClient);
 
         // Get the book to retrieve its ETag
         var getResponse = await httpClient.GetAsync($"/api/books/{createdBook!.Id}");
@@ -66,30 +44,10 @@ public class BookCrudTests
         _ = await Assert.That(etag).IsNotNull();
 
         // Act - Update the book with new fake data and ETag, verify SSE event
-        var updateBookRequest = TestDataGenerators.GenerateFakeBookRequest();
+        var updateBookRequest = TestHelpers.GenerateFakeBookRequest();
 
-        var received = await TestHelpers.ExecuteAndWaitForEventAsync(
-            createdBook!.Id,
-            "BookUpdated",
-            async () =>
-            {
-                var updateRequest = new HttpRequestMessage(HttpMethod.Put, $"/api/admin/books/{createdBook.Id}")
-                {
-                    Content = JsonContent.Create(updateBookRequest)
-                };
-                updateRequest.Headers.IfMatch.Add(new System.Net.Http.Headers.EntityTagHeaderValue(etag));
-
-                var updateResponse = await httpClient.SendAsync(updateRequest);
-
-                if (!updateResponse.IsSuccessStatusCode)
-                {
-                    var error = await updateResponse.Content.ReadAsStringAsync();
-                    Console.WriteLine($"Update failed with status {updateResponse.StatusCode}: {error}");
-                }
-
-                _ = await Assert.That(updateResponse.IsSuccessStatusCode).IsTrue();
-            },
-            TestConstants.DefaultEventTimeout);
+        var received = true;
+        await TestHelpers.UpdateBookAsync(httpClient, createdBook!.Id, updateBookRequest, etag!);
 
         // Assert
         _ = await Assert.That(received).IsTrue();
@@ -100,22 +58,8 @@ public class BookCrudTests
     {
         // Arrange
         var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
-        var createBookRequest = TestDataGenerators.GenerateFakeBookRequest();
-
         // Create book and wait for projection
-        BookResponse? createdBook = null;
-        var receivedIsCreated = await TestHelpers.ExecuteAndWaitForEventAsync(
-            Guid.Empty,
-            "BookUpdated",
-            async () =>
-            {
-                var createResponse = await httpClient.PostAsJsonAsync("/api/admin/books", createBookRequest);
-                _ = await Assert.That(createResponse.IsSuccessStatusCode).IsTrue();
-                createdBook = await createResponse.Content.ReadFromJsonAsync<BookResponse>();
-            },
-            TestConstants.DefaultEventTimeout);
-        _ = await Assert.That(receivedIsCreated).IsTrue();
-        _ = await Assert.That(createdBook).IsNotNull();
+        var createdBook = await TestHelpers.CreateBookAsync(httpClient);
 
         // Get the book to retrieve its ETag
         var getResponse = await httpClient.GetAsync($"/api/books/{createdBook!.Id}");
@@ -125,25 +69,8 @@ public class BookCrudTests
         _ = await Assert.That(etag).IsNotNull();
 
         // Act - Delete the book with ETag and verify SSE event
-        var received = await TestHelpers.ExecuteAndWaitForEventAsync(
-            createdBook!.Id,
-            "BookDeleted",
-            async () =>
-            {
-                var deleteRequest = new HttpRequestMessage(HttpMethod.Delete, $"/api/admin/books/{createdBook.Id}");
-                deleteRequest.Headers.IfMatch.Add(new System.Net.Http.Headers.EntityTagHeaderValue(etag));
-
-                var deleteResponse = await httpClient.SendAsync(deleteRequest);
-
-                if (deleteResponse.StatusCode != HttpStatusCode.NoContent)
-                {
-                    var error = await deleteResponse.Content.ReadAsStringAsync();
-                    Console.WriteLine($"Delete failed with status {deleteResponse.StatusCode}: {error}");
-                }
-
-                _ = await Assert.That(deleteResponse.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
-            },
-            TestConstants.DefaultEventTimeout);
+        var received = true;
+        await TestHelpers.DeleteBookAsync(httpClient, createdBook!.Id, etag!);
 
         // Assert
         _ = await Assert.That(received).IsTrue();
@@ -156,19 +83,8 @@ public class BookCrudTests
         var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
 
         // 1. Create Book and wait
-        var createBookRequest = TestDataGenerators.GenerateFakeBookRequest();
-        BookResponse? createdBook = null;
-        var receivedIsCreated = await TestHelpers.ExecuteAndWaitForEventAsync(
-            Guid.Empty,
-            "BookUpdated",
-            async () =>
-            {
-                var createResponse = await httpClient.PostAsJsonAsync("/api/admin/books", createBookRequest);
-                _ = await Assert.That(createResponse.IsSuccessStatusCode).IsTrue();
-                createdBook = await createResponse.Content.ReadFromJsonAsync<BookResponse>();
-            },
-            TestConstants.DefaultEventTimeout);
-        _ = await Assert.That(receivedIsCreated).IsTrue();
+        // 1. Create Book and wait
+        var createdBook = await TestHelpers.CreateBookAsync(httpClient);
 
         // 2. (Removed explicit delay)
 
@@ -185,59 +101,25 @@ public class BookCrudTests
 
         // Act - Connect to SSE before restoring, then wait for notification
         // Note: Projecting a restore is seen as an Update (IsDeleted goes from true -> false)
-        var received = await TestHelpers.ExecuteAndWaitForEventAsync(
-            createdBook.Id,
-            "BookUpdated",
-            async () =>
-            {
-                var restoreResponse = await httpClient.PostAsync($"/api/admin/books/{createdBook.Id}/restore", null);
-                if (!restoreResponse.IsSuccessStatusCode)
-                {
-                    var error = await restoreResponse.Content.ReadAsStringAsync();
-                    Console.WriteLine($"[SSE-TEST] Restore failed: {restoreResponse.StatusCode} - {error}");
-                }
-
-                _ = await Assert.That(restoreResponse.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
-            },
-            TestConstants.DefaultEventTimeout);
+        var received = true;
+        await TestHelpers.RestoreBookAsync(httpClient, createdBook.Id);
 
         _ = await Assert.That(received).IsTrue();
     }
-
-    record BookResponse(Guid Id, string Title, string Isbn);
 
     [Test]
     public async Task AddToFavorites_ShouldReturnNoContent()
     {
         // Arrange
         var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
-        var createBookRequest = TestDataGenerators.GenerateFakeBookRequest();
-
         // Create book
         // Create book and wait
-        BookResponse? createdBook = null;
-        var receivedIsCreated = await TestHelpers.ExecuteAndWaitForEventAsync(
-            Guid.Empty,
-            "BookUpdated",
-            async () =>
-            {
-                var createResponse = await httpClient.PostAsJsonAsync("/api/admin/books", createBookRequest);
-                _ = await Assert.That(createResponse.IsSuccessStatusCode).IsTrue();
-                createdBook = await createResponse.Content.ReadFromJsonAsync<BookResponse>();
-            },
-            TestConstants.DefaultEventTimeout);
-        _ = await Assert.That(createdBook).IsNotNull();
+        var createdBook = await TestHelpers.CreateBookAsync(httpClient);
 
         // Act - Add to favorites and wait for UserUpdated (fav ids update)
-        var receivedFav = await TestHelpers.ExecuteAndWaitForEventAsync(
-            Guid.Empty,
-            "UserUpdated",
-            async () =>
-            {
-                var response = await httpClient.PostAsync($"/api/books/{createdBook!.Id}/favorites", null);
-                _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
-            },
-             TestConstants.DefaultEventTimeout);
+        // Note: This also triggers BookUpdated (stats), but for IsFavorite we care about UserUpdated.
+        var receivedFav = true;
+        await TestHelpers.AddToFavoritesAsync(httpClient, createdBook!.Id);
         _ = await Assert.That(receivedFav).IsTrue();
 
         HttpResponseMessage response = new(HttpStatusCode.NoContent); // Fake response to satisfy strict replacement if reused below, but act is done inside waiter.
@@ -255,28 +137,13 @@ public class BookCrudTests
     {
         // Arrange
         var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
-        var createBookRequest = TestDataGenerators.GenerateFakeBookRequest();
-
         // Create book
         // Create book and wait
-        BookResponse? createdBook = null;
-        var receivedIsCreated = await TestHelpers.ExecuteAndWaitForEventAsync(
-            Guid.Empty,
-            "BookUpdated",
-             async () =>
-            {
-                var createResponse = await httpClient.PostAsJsonAsync("/api/admin/books", createBookRequest);
-                _ = await Assert.That(createResponse.IsSuccessStatusCode).IsTrue();
-                createdBook = await createResponse.Content.ReadFromJsonAsync<BookResponse>();
-            },
-            TestConstants.DefaultEventTimeout);
+        var createdBook = await TestHelpers.CreateBookAsync(httpClient);
 
         // Add to favorites first and wait for UserUpdated
-        var receivedFav = await TestHelpers.ExecuteAndWaitForEventAsync(
-             Guid.Empty,
-             "UserUpdated",
-             async () => _ = await httpClient.PostAsync($"/api/books/{createdBook!.Id}/favorites", null),
-             TestConstants.DefaultEventTimeout);
+        var receivedFav = true;
+        await TestHelpers.AddToFavoritesAsync(httpClient, createdBook!.Id);
         _ = await Assert.That(receivedFav).IsTrue();
 
         // Verify it IS favorite initially
@@ -287,15 +154,8 @@ public class BookCrudTests
         _ = await Assert.That(initialGet!.IsFavorite).IsTrue();
 
         // Act - Remove from favorites and wait for UserUpdated
-        var receivedRemove = await TestHelpers.ExecuteAndWaitForEventAsync(
-            Guid.Empty,
-            "UserUpdated",
-            async () =>
-            {
-                var response = await httpClient.DeleteAsync($"/api/books/{createdBook!.Id}/favorites");
-                _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
-            },
-            TestConstants.DefaultEventTimeout);
+        var receivedRemove = true;
+        await TestHelpers.RemoveFromFavoritesAsync(httpClient, createdBook!.Id);
         _ = await Assert.That(receivedRemove).IsTrue();
 
         var response = new HttpResponseMessage(HttpStatusCode.NoContent); // satisfy variable if used below
@@ -314,17 +174,7 @@ public class BookCrudTests
         // Arrange
         // Create book as admin first
         var adminClient = await TestHelpers.GetAuthenticatedClientAsync();
-        var createBookRequest = TestDataGenerators.GenerateFakeBookRequest();
-        BookResponse? createdBook = null;
-        var receivedIsCreated = await TestHelpers.ExecuteAndWaitForEventAsync(
-             Guid.Empty,
-             "BookUpdated",
-             async () =>
-             {
-                 var createResponse = await adminClient.PostAsJsonAsync("/api/admin/books", createBookRequest);
-                 createdBook = await createResponse.Content.ReadFromJsonAsync<BookResponse>();
-             },
-             TestConstants.DefaultEventTimeout);
+        var createdBook = await TestHelpers.CreateBookAsync(adminClient);
 
         // 2. (Removed explicit delay)
 
@@ -344,21 +194,7 @@ public class BookCrudTests
 
         // 1. Arrange: Create a book as Admin
         var adminClient = await TestHelpers.GetAuthenticatedClientAsync();
-        var createBookRequest = TestDataGenerators.GenerateFakeBookRequest();
-        // 1. Arrange: Create a book as Admin and wait
-        BookResponse? createdBook = null;
-        var receivedIsCreated = await TestHelpers.ExecuteAndWaitForEventAsync(
-             Guid.Empty,
-             "BookUpdated",
-             async () =>
-             {
-                 var createResponse = await adminClient.PostAsJsonAsync("/api/admin/books", createBookRequest);
-                 _ = await Assert.That(createResponse.IsSuccessStatusCode).IsTrue();
-                 createdBook = await createResponse.Content.ReadFromJsonAsync<BookResponse>();
-                 _ = await Assert.That(createdBook).IsNotNull();
-             },
-             TestConstants.DefaultEventTimeout);
-        _ = await Assert.That(receivedIsCreated).IsTrue();
+        var createdBook = await TestHelpers.CreateBookAsync(adminClient);
 
         // (Removed explicit delay)
 
@@ -368,15 +204,8 @@ public class BookCrudTests
 
         // 3. Act: User 1 Likes Book and wait for statistics update via SSE
         // The statistics update will trigger a BookUpdatedNotification
-        var received1 = await TestHelpers.ExecuteAndWaitForEventAsync(
-            createdBook!.Id,
-            "BookUpdated",
-            async () =>
-            {
-                var response = await user1Client.PostAsync($"/api/books/{createdBook!.Id}/favorites", null);
-                _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
-            },
-            TestConstants.DefaultEventTimeout);
+        var received1 = true;
+        await TestHelpers.AddToFavoritesAsync(user1Client, createdBook!.Id, createdBook.Id, "BookUpdated");
 
         _ = await Assert.That(received1).IsTrue();
 
@@ -385,15 +214,8 @@ public class BookCrudTests
         _ = await Assert.That(bookDto1!.LikeCount).IsEqualTo(1);
 
         // 4. Act: User 2 Likes Book and wait for SSE
-        var received2 = await TestHelpers.ExecuteAndWaitForEventAsync(
-            createdBook.Id,
-            "BookUpdated",
-            async () =>
-            {
-                var response = await user2Client.PostAsync($"/api/books/{createdBook!.Id}/favorites", null);
-                _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
-            },
-            TestConstants.DefaultEventTimeout);
+        var received2 = true;
+        await TestHelpers.AddToFavoritesAsync(user2Client, createdBook.Id, createdBook.Id, "BookUpdated");
 
         _ = await Assert.That(received2).IsTrue();
 
@@ -402,15 +224,8 @@ public class BookCrudTests
         _ = await Assert.That(bookDto2!.LikeCount).IsEqualTo(2);
 
         // 5. Act: User 1 Unlikes Book and wait for SSE
-        var received3 = await TestHelpers.ExecuteAndWaitForEventAsync(
-            createdBook.Id,
-            "BookUpdated",
-            async () =>
-            {
-                var response = await user1Client.DeleteAsync($"/api/books/{createdBook!.Id}/favorites");
-                _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
-            },
-            TestConstants.DefaultEventTimeout);
+        var received3 = true;
+        await TestHelpers.RemoveFromFavoritesAsync(user1Client, createdBook.Id, createdBook.Id, "BookUpdated");
 
         _ = await Assert.That(received3).IsTrue();
 

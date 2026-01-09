@@ -10,7 +10,7 @@ public class ErrorScenarioTests
     {
         // Arrange
         var httpClient = TestHelpers.GetUnauthenticatedClient();
-        var createBookRequest = TestDataGenerators.GenerateFakeBookRequest();
+        var createBookRequest = TestHelpers.GenerateFakeBookRequest();
 
         // Act
         var createResponse = await httpClient.PostAsJsonAsync("/api/admin/books", createBookRequest);

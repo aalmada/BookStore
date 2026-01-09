@@ -20,7 +20,7 @@ namespace BookStore.Client
     {
         [Headers("Accept: application/json")]
         [Get("/api/publishers")]
-        Task<ICollection<PublisherDto>> Execute([Query, AliasAs("Page")] int? page, [Query, AliasAs("PageSize")] int? pageSize, [Header("api-version")] object api_version, [Header("Accept-Language")] object accept_Language, [Header("X-Correlation-ID")] object x_Correlation_ID, [Header("X-Causation-ID")] object x_Causation_ID, CancellationToken cancellationToken = default);
+        Task<ICollection<PublisherDto>> GetPublishersAsync([Query, AliasAs("Page")] int? page, [Query, AliasAs("PageSize")] int? pageSize, [Header("api-version")] object api_version, [Header("Accept-Language")] object accept_Language, [Header("X-Correlation-ID")] object x_Correlation_ID, [Header("X-Causation-ID")] object x_Causation_ID, CancellationToken cancellationToken = default);
     }
 
 }

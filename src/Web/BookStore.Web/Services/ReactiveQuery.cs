@@ -12,9 +12,10 @@ public class ReactiveQuery<T> : IDisposable
 {
     readonly Func<Task<T>> _queryFn;
     readonly BookStoreEventsService _eventsService;
-    readonly Func<IDomainEventNotification, bool> _invalidationPredicate;
+    readonly QueryInvalidationService _invalidationService;
     readonly Action _onStateChanged;
     readonly ILogger _logger;
+    readonly HashSet<string> _queryKeys;
 
     /// <summary>
     /// Gets the current data.
@@ -39,13 +40,15 @@ public class ReactiveQuery<T> : IDisposable
     public ReactiveQuery(
         Func<Task<T>> queryFn,
         BookStoreEventsService eventsService,
-        Func<IDomainEventNotification, bool> invalidationPredicate,
+        QueryInvalidationService invalidationService,
+        IEnumerable<string> queryKeys,
         Action onStateChanged,
         ILogger logger)
     {
         _queryFn = queryFn;
         _eventsService = eventsService;
-        _invalidationPredicate = invalidationPredicate;
+        _invalidationService = invalidationService;
+        _queryKeys = [.. queryKeys];
         _onStateChanged = onStateChanged;
         _logger = logger;
 
@@ -85,9 +88,9 @@ public class ReactiveQuery<T> : IDisposable
 
     void HandleNotification(IDomainEventNotification notification)
     {
-        if (_invalidationPredicate(notification))
+        if (_invalidationService.ShouldInvalidate(notification, _queryKeys))
         {
-            _logger.LogInformation("ReactiveQuery invalidating due to event: {EventType}", notification.GetType().Name);
+            _logger.LogInformation("ReactiveQuery invalidating due to event: {EventType}. Matched Keys: {Keys}", notification.GetType().Name, string.Join(", ", _queryKeys));
             // Fire and forget reload
             _ = LoadAsync();
         }

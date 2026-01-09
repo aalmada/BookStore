@@ -59,21 +59,6 @@ public sealed class ApplicationUser
     public ICollection<string> Roles { get; set; } = [];
 
     /// <summary>
-    /// IDs of books marked as favorite by the user
-    /// </summary>
-    public ICollection<Guid> FavoriteBookIds { get; set; } = [];
-
-    /// <summary>
-    /// Book ratings by the user (BookId -> Rating 1-5)
-    /// </summary>
-    public IDictionary<Guid, int> BookRatings { get; set; } = new Dictionary<Guid, int>();
-
-    /// <summary>
-    /// Shopping cart items (BookId -> Quantity)
-    /// </summary>
-    public IDictionary<Guid, int> ShoppingCartItems { get; set; } = new Dictionary<Guid, int>();
-
-    /// <summary>
     /// Passkeys registered to this user (WebAuthn/FIDO2)
     /// </summary>
     public IList<UserPasskeyInfo> Passkeys { get; set; } = [];
@@ -82,52 +67,6 @@ public sealed class ApplicationUser
     /// Refresh tokens for maintaining sessions
     /// </summary>
     public IList<RefreshTokenInfo> RefreshTokens { get; set; } = [];
-
-    // Apply methods for Marten Self-Aggregating Snapshot
-    public void Apply(BookStore.Shared.Messages.Events.BookAddedToFavorites @event)
-    {
-        if (!FavoriteBookIds.Contains(@event.BookId))
-        {
-            FavoriteBookIds.Add(@event.BookId);
-        }
-    }
-
-    public void Apply(BookStore.Shared.Messages.Events.BookRemovedFromFavorites @event)
-    {
-        if (FavoriteBookIds.Contains(@event.BookId))
-        {
-            _ = FavoriteBookIds.Remove(@event.BookId);
-        }
-    }
-
-    public void Apply(BookStore.Shared.Messages.Events.BookRated @event)
-        => BookRatings[@event.BookId] = @event.Rating;
-
-    public void Apply(BookStore.Shared.Messages.Events.BookRatingRemoved @event)
-        => _ = BookRatings.Remove(@event.BookId);
-
-    public void Apply(BookStore.Shared.Messages.Events.BookAddedToCart @event)
-    {
-        if (ShoppingCartItems.ContainsKey(@event.BookId))
-        {
-            ShoppingCartItems[@event.BookId] += @event.Quantity;
-        }
-        else
-        {
-            ShoppingCartItems[@event.BookId] = @event.Quantity;
-        }
-    }
-
-#pragma warning disable IDE0060 // Remove unused parameter
-    public void Apply(BookStore.Shared.Messages.Events.BookRemovedFromCart @event)
-        => _ = ShoppingCartItems.Remove(@event.BookId);
-
-    public void Apply(BookStore.Shared.Messages.Events.CartItemQuantityUpdated @event)
-        => ShoppingCartItems[@event.BookId] = @event.Quantity;
-
-    public void Apply(BookStore.Shared.Messages.Events.ShoppingCartCleared @event)
-        => ShoppingCartItems.Clear();
-#pragma warning restore IDE0060 // Remove unused parameter
 }
 
 /// <summary>

@@ -95,8 +95,8 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
             case PublisherProjection publisher:
                 await HandlePublisherChangeAsync(publisher, changeType, token);
                 break;
-            case ApplicationUser user:
-                await HandleUserChangeAsync(user, changeType, token);
+            case UserProfile profile:
+                await HandleUserChangeAsync(profile, changeType, token);
                 break;
             case BookStatistics stats:
                 await HandleBookStatisticsChangeAsync(stats, changeType, token);
@@ -104,7 +104,7 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
         }
     }
 
-    async Task HandleUserChangeAsync(ApplicationUser user, ChangeType _, CancellationToken token)
+    async Task HandleUserChangeAsync(UserProfile profile, ChangeType _, CancellationToken token)
     {
         // For users, we don't have a generic list cache to invalidate (yet), 
         // but we might want to invalidate specific user data if cached independently.
@@ -119,7 +119,7 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
         // - Shopping cart operations: BookAddedToCart, BookRemovedFromCart, CartItemQuantityUpdated, ShoppingCartCleared
         // "UserUpdated" is a good catch-all for ReactiveQuery invalidation.
 
-        IDomainEventNotification notification = new UserUpdatedNotification(user.Id, timestamp);
+        IDomainEventNotification notification = new UserUpdatedNotification(profile.Id, timestamp);
 
         await NotifyAsync("User", notification, token);
     }

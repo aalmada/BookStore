@@ -19,7 +19,7 @@ namespace BookStore.Client
     public partial interface ISoftDeleteBookEndpoint
     {
         [Delete("/api/admin/books/{id}")]
-        Task Execute(System.Guid id, [Header("api-version")] object api_version, [Header("Accept-Language")] object accept_Language, [Header("X-Correlation-ID")] object x_Correlation_ID, [Header("X-Causation-ID")] object x_Causation_ID, CancellationToken cancellationToken = default);
+        Task SoftDeleteBookAsync(System.Guid id, [Header("api-version")] object api_version, [Header("Accept-Language")] object accept_Language, [Header("X-Correlation-ID")] object x_Correlation_ID, [Header("X-Causation-ID")] object x_Causation_ID, CancellationToken cancellationToken = default);
     }
 
 }

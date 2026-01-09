@@ -212,6 +212,7 @@
     private System.Threading.Timer? cleanupTimer;
 
     [Inject] private ILogger<Home> Logger { get; set; } = default!;
+    [Inject] private QueryInvalidationService InvalidationService { get; set; } = default!;
     
     [CascadingParameter] private Task<AuthenticationState> AuthStateTask { get; set; } = default!;
     private System.Security.Claims.ClaimsPrincipal? user;
@@ -223,12 +224,14 @@
         
         // Start SSE listening
         EventsService.StartListening();
+        EventsService.OnNotificationReceived += HandleNotification;
 
         // Initialize ReactiveQuery
         bookQuery = new ReactiveQuery<BookStore.Client.PagedListDtoOfBookDto>(
             queryFn: FetchBooksAsync,
             eventsService: EventsService,
-            invalidationPredicate: ShouldInvalidate,
+            invalidationService: InvalidationService,
+            queryKeys: new[] { "Books", "Authors", "Publishers" }, 
             onStateChanged: StateHasChanged,
             logger: Logger
         );
@@ -257,7 +260,7 @@
 
     private async Task<BookStore.Client.PagedListDtoOfBookDto> FetchBooksAsync()
     {
-        return await ((IGetBooksEndpoint)BooksClient).Execute(
+        return await BooksClient.GetBooksAsync(
             page: currentPage,
             pageSize: pageSize,
             search: string.IsNullOrWhiteSpace(searchQuery) ? string.Empty : searchQuery,
@@ -267,22 +270,13 @@
             x_Causation_ID: string.Empty);
     }
 
-    private bool ShouldInvalidate(BookStore.Shared.Notifications.IDomainEventNotification notification)
+    private void HandleNotification(BookStore.Shared.Notifications.IDomainEventNotification notification)
     {
         // Side effect: Confirm optimistic book if created
         if (notification is BookStore.Shared.Notifications.BookCreatedNotification bookCreated)
         {
             OptimisticService.ConfirmBook(bookCreated.EntityId);
-            return true;
         }
-
-        // Invalidate on any book or author/publisher change that might affect the list
-        return notification is 
-            BookStore.Shared.Notifications.BookUpdatedNotification or
-            BookStore.Shared.Notifications.BookDeletedNotification or
-            BookStore.Shared.Notifications.BookCoverUpdatedNotification or
-            BookStore.Shared.Notifications.AuthorCreatedNotification or // Might affect search results or filters? Maybe overkill but safe.
-            BookStore.Shared.Notifications.PublisherCreatedNotification;
     }
 
     private void OnSearchKeyUp(KeyboardEventArgs e)
@@ -359,12 +353,12 @@
         {
             if (originalState) // Was favorite, so remove
             {
-                await ((IRemoveBookFromFavoritesEndpoint)BooksClient).Execute(book.Id);
+                await BooksClient.RemoveBookFromFavoritesAsync(book.Id);
                 Snackbar.Add("Removed from favorites", Severity.Success);
             }
             else // Was not favorite, so add
             {
-                await ((IAddBookToFavoritesEndpoint)BooksClient).Execute(book.Id);
+                await BooksClient.AddBookToFavoritesAsync(book.Id);
                 Snackbar.Add("Added to favorites", Severity.Success);
             }
         }
@@ -433,6 +427,7 @@
     {
         bookQuery?.Dispose();
         OptimisticService.OnBooksChanged -= HandleOptimisticBooksChanged;
+        EventsService.OnNotificationReceived -= HandleNotification;
         
         // Dispose timers
         debounceTimer?.Dispose();

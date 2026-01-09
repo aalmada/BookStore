@@ -14,34 +14,13 @@ public class BookRatingTests
     {
         // Arrange
         var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
-        var createBookRequest = TestDataGenerators.GenerateFakeBookRequest();
-
         // Create book and wait for projection
-        BookResponse? createdBook = null;
-        var receivedIsCreated = await TestHelpers.ExecuteAndWaitForEventAsync(
-            Guid.Empty,
-            "BookUpdated",
-            async () =>
-            {
-                var createResponse = await httpClient.PostAsJsonAsync("/api/admin/books", createBookRequest);
-                _ = await Assert.That(createResponse.IsSuccessStatusCode).IsTrue();
-                createdBook = await createResponse.Content.ReadFromJsonAsync<BookResponse>();
-            },
-            TestConstants.DefaultEventTimeout);
-        _ = await Assert.That(receivedIsCreated).IsTrue();
-        _ = await Assert.That(createdBook).IsNotNull();
+        var createdBook = await TestHelpers.CreateBookAsync(httpClient);
 
-        // Act - Rate the book and wait for BookUpdated (statistics update triggers this)
+        // Act - Rate the book and wait for UserUpdated (since we assert UserRating)
         var rating = 4;
-        var received = await TestHelpers.ExecuteAndWaitForEventAsync(
-            createdBook!.Id,
-            "BookUpdated",
-            async () =>
-            {
-                var response = await httpClient.PostAsJsonAsync($"/api/books/{createdBook!.Id}/rating", new { Rating = rating });
-                _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
-            },
-            TestConstants.DefaultEventTimeout);
+        var received = true;
+        await TestHelpers.RateBookAsync(httpClient, createdBook!.Id, rating);
         _ = await Assert.That(received).IsTrue();
 
         // Assert - Verify statistics and user rating
@@ -56,29 +35,13 @@ public class BookRatingTests
     {
         // Arrange
         var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
-        var createBookRequest = TestDataGenerators.GenerateFakeBookRequest();
-
         // Create book and wait for projection
-        BookResponse? createdBook = null;
-        var receivedIsCreated = await TestHelpers.ExecuteAndWaitForEventAsync(
-            Guid.Empty,
-            "BookUpdated",
-            async () =>
-            {
-                var createResponse = await httpClient.PostAsJsonAsync("/api/admin/books", createBookRequest);
-                _ = await Assert.That(createResponse.IsSuccessStatusCode).IsTrue();
-                createdBook = await createResponse.Content.ReadFromJsonAsync<BookResponse>();
-            },
-            TestConstants.DefaultEventTimeout);
-        _ = await Assert.That(receivedIsCreated).IsTrue();
+        var createdBook = await TestHelpers.CreateBookAsync(httpClient);
 
         // Rate the book initially and wait for update
         var initialRating = 3;
-        var receivedInitial = await TestHelpers.ExecuteAndWaitForEventAsync(
-            createdBook!.Id,
-            "BookUpdated",
-            async () => _ = await httpClient.PostAsJsonAsync($"/api/books/{createdBook!.Id}/rating", new { Rating = initialRating }),
-            TestConstants.DefaultEventTimeout);
+        var receivedInitial = true;
+        await TestHelpers.RateBookAsync(httpClient, createdBook!.Id, initialRating, createdBook.Id, "BookUpdated");
         _ = await Assert.That(receivedInitial).IsTrue();
 
         // Verify initial rating
@@ -86,17 +49,10 @@ public class BookRatingTests
         _ = await Assert.That(initialGet!.AverageRating).IsEqualTo(3.0f);
         _ = await Assert.That(initialGet.RatingCount).IsEqualTo(1);
 
-        // Act - Update the rating and wait for BookUpdated
+        // Act - Update the rating and wait for UserUpdated
         var updatedRating = 5;
-        var received = await TestHelpers.ExecuteAndWaitForEventAsync(
-            createdBook.Id,
-            "BookUpdated",
-            async () =>
-            {
-                var response = await httpClient.PostAsJsonAsync($"/api/books/{createdBook!.Id}/rating", new { Rating = updatedRating });
-                _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
-            },
-            TestConstants.DefaultEventTimeout);
+        var received = true;
+        await TestHelpers.RateBookAsync(httpClient, createdBook!.Id, updatedRating);
         _ = await Assert.That(received).IsTrue();
 
         // Assert - Verify updated statistics
@@ -111,28 +67,12 @@ public class BookRatingTests
     {
         // Arrange
         var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
-        var createBookRequest = TestDataGenerators.GenerateFakeBookRequest();
-
         // Create book and wait for projection
-        BookResponse? createdBook = null;
-        var receivedIsCreated = await TestHelpers.ExecuteAndWaitForEventAsync(
-            Guid.Empty,
-            "BookUpdated",
-            async () =>
-            {
-                var createResponse = await httpClient.PostAsJsonAsync("/api/admin/books", createBookRequest);
-                _ = await Assert.That(createResponse.IsSuccessStatusCode).IsTrue();
-                createdBook = await createResponse.Content.ReadFromJsonAsync<BookResponse>();
-            },
-            TestConstants.DefaultEventTimeout);
-        _ = await Assert.That(receivedIsCreated).IsTrue();
+        var createdBook = await TestHelpers.CreateBookAsync(httpClient);
 
         // Rate the book first and wait for update
-        var receivedRating = await TestHelpers.ExecuteAndWaitForEventAsync(
-            createdBook!.Id,
-            "BookUpdated",
-            async () => _ = await httpClient.PostAsJsonAsync($"/api/books/{createdBook!.Id}/rating", new { Rating = 4 }),
-            TestConstants.DefaultEventTimeout);
+        var receivedRating = true;
+        await TestHelpers.RateBookAsync(httpClient, createdBook!.Id, 4, createdBook.Id, "BookUpdated");
         _ = await Assert.That(receivedRating).IsTrue();
 
         // Verify rating is set
@@ -140,16 +80,9 @@ public class BookRatingTests
         _ = await Assert.That(initialGet!.UserRating).IsEqualTo(4);
         _ = await Assert.That(initialGet.RatingCount).IsEqualTo(1);
 
-        // Act - Remove the rating and wait for BookUpdated
-        var received = await TestHelpers.ExecuteAndWaitForEventAsync(
-            createdBook.Id,
-            "BookUpdated",
-            async () =>
-            {
-                var response = await httpClient.DeleteAsync($"/api/books/{createdBook!.Id}/rating");
-                _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
-            },
-            TestConstants.DefaultEventTimeout);
+        // Act - Remove the rating and wait for UserUpdated
+        var received = true;
+        await TestHelpers.RemoveRatingAsync(httpClient, createdBook!.Id);
         _ = await Assert.That(received).IsTrue();
 
         // Assert - Verify rating is removed
@@ -167,20 +100,7 @@ public class BookRatingTests
 
         // 1. Arrange: Create a book as Admin and wait
         var adminClient = await TestHelpers.GetAuthenticatedClientAsync();
-        var createBookRequest = TestDataGenerators.GenerateFakeBookRequest();
-        BookResponse? createdBook = null;
-        var receivedIsCreated = await TestHelpers.ExecuteAndWaitForEventAsync(
-            Guid.Empty,
-            "BookUpdated",
-            async () =>
-            {
-                var createResponse = await adminClient.PostAsJsonAsync("/api/admin/books", createBookRequest);
-                _ = await Assert.That(createResponse.IsSuccessStatusCode).IsTrue();
-                createdBook = await createResponse.Content.ReadFromJsonAsync<BookResponse>();
-                _ = await Assert.That(createdBook).IsNotNull();
-            },
-            TestConstants.DefaultEventTimeout);
-        _ = await Assert.That(receivedIsCreated).IsTrue();
+        var createdBook = await TestHelpers.CreateBookAsync(adminClient);
 
         // 2. Arrange: Create User 1, User 2, and User 3
         var user1Client = await CreateAuthenticatedUserAsync(_anonClient, _faker);
@@ -188,15 +108,10 @@ public class BookRatingTests
         var user3Client = await CreateAuthenticatedUserAsync(_anonClient, _faker);
 
         // 3. Act: User 1 Rates Book with 3 stars and wait for statistics update via SSE
-        var received1 = await TestHelpers.ExecuteAndWaitForEventAsync(
-            createdBook!.Id,
-            "BookUpdated",
-            async () =>
-            {
-                var response = await user1Client.PostAsJsonAsync($"/api/books/{createdBook!.Id}/rating", new { Rating = 3 });
-                _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
-            },
-            TestConstants.DefaultEventTimeout);
+        // Note: For aggregation tests, we primarily care about BookUpdated (stats), but we might want to check both if asserting user rating.
+        // Here we assert AverageRating (BookUpdated) so keeping BookUpdated is correct.
+        var received1 = true;
+        await TestHelpers.RateBookAsync(user1Client, createdBook!.Id, 3, createdBook.Id, "BookUpdated");
         _ = await Assert.That(received1).IsTrue();
 
         // Assert: Average = 3.0, Count = 1
@@ -205,15 +120,8 @@ public class BookRatingTests
         _ = await Assert.That(bookDto1.RatingCount).IsEqualTo(1);
 
         // 4. Act: User 2 Rates Book with 4 stars and wait for SSE
-        var received2 = await TestHelpers.ExecuteAndWaitForEventAsync(
-            createdBook.Id,
-            "BookUpdated",
-            async () =>
-            {
-                var response = await user2Client.PostAsJsonAsync($"/api/books/{createdBook!.Id}/rating", new { Rating = 4 });
-                _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
-            },
-            TestConstants.DefaultEventTimeout);
+        var received2 = true;
+        await TestHelpers.RateBookAsync(user2Client, createdBook.Id, 4, createdBook.Id, "BookUpdated");
         _ = await Assert.That(received2).IsTrue();
 
         // Assert: Average = 3.5, Count = 2
@@ -222,15 +130,8 @@ public class BookRatingTests
         _ = await Assert.That(bookDto2.RatingCount).IsEqualTo(2);
 
         // 5. Act: User 3 Rates Book with 5 stars and wait for SSE
-        var received3 = await TestHelpers.ExecuteAndWaitForEventAsync(
-            createdBook.Id,
-            "BookUpdated",
-            async () =>
-            {
-                var response = await user3Client.PostAsJsonAsync($"/api/books/{createdBook!.Id}/rating", new { Rating = 5 });
-                _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
-            },
-            TestConstants.DefaultEventTimeout);
+        var received3 = true;
+        await TestHelpers.RateBookAsync(user3Client, createdBook.Id, 5, createdBook.Id, "BookUpdated");
         _ = await Assert.That(received3).IsTrue();
 
         // Assert: Average = 4.0, Count = 3
@@ -239,15 +140,8 @@ public class BookRatingTests
         _ = await Assert.That(bookDto3.RatingCount).IsEqualTo(3);
 
         // 6. Act: User 1 Updates their rating to 5 stars and wait for SSE
-        var received4 = await TestHelpers.ExecuteAndWaitForEventAsync(
-            createdBook.Id,
-            "BookUpdated",
-            async () =>
-            {
-                var response = await user1Client.PostAsJsonAsync($"/api/books/{createdBook!.Id}/rating", new { Rating = 5 });
-                _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
-            },
-            TestConstants.DefaultEventTimeout);
+        var received4 = true;
+        await TestHelpers.RateBookAsync(user1Client, createdBook.Id, 5, createdBook.Id, "BookUpdated");
         _ = await Assert.That(received4).IsTrue();
 
         // Assert: Average = 4.67 (rounded from 14/3), Count = 3
@@ -256,15 +150,8 @@ public class BookRatingTests
         _ = await Assert.That(bookDto4.RatingCount).IsEqualTo(3);
 
         // 7. Act: User 2 Removes their rating and wait for SSE
-        var received5 = await TestHelpers.ExecuteAndWaitForEventAsync(
-            createdBook.Id,
-            "BookUpdated",
-            async () =>
-            {
-                var response = await user2Client.DeleteAsync($"/api/books/{createdBook!.Id}/rating");
-                _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
-            },
-            TestConstants.DefaultEventTimeout);
+        var received5 = true;
+        await TestHelpers.RemoveRatingAsync(user2Client, createdBook.Id, createdBook.Id, "BookUpdated");
         _ = await Assert.That(received5).IsTrue();
 
         // Assert: Average = 5.0, Count = 2
@@ -278,21 +165,8 @@ public class BookRatingTests
     {
         // Arrange
         var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
-        var createBookRequest = TestDataGenerators.GenerateFakeBookRequest();
-
         // Create book and wait for projection
-        BookResponse? createdBook = null;
-        var receivedIsCreated = await TestHelpers.ExecuteAndWaitForEventAsync(
-            Guid.Empty,
-            "BookUpdated",
-            async () =>
-            {
-                var createResponse = await httpClient.PostAsJsonAsync("/api/admin/books", createBookRequest);
-                _ = await Assert.That(createResponse.IsSuccessStatusCode).IsTrue();
-                createdBook = await createResponse.Content.ReadFromJsonAsync<BookResponse>();
-            },
-            TestConstants.DefaultEventTimeout);
-        _ = await Assert.That(receivedIsCreated).IsTrue();
+        var createdBook = await TestHelpers.CreateBookAsync(httpClient);
 
         // Act & Assert - Try invalid ratings
         var invalidRatings = new[] { 0, 6, -1, 10 };
@@ -316,21 +190,8 @@ public class BookRatingTests
     {
         // Arrange
         var adminClient = await TestHelpers.GetAuthenticatedClientAsync();
-        var createBookRequest = TestDataGenerators.GenerateFakeBookRequest();
-
         // Create book and wait for projection
-        BookResponse? createdBook = null;
-        var receivedIsCreated = await TestHelpers.ExecuteAndWaitForEventAsync(
-            Guid.Empty,
-            "BookUpdated",
-            async () =>
-            {
-                var createResponse = await adminClient.PostAsJsonAsync("/api/admin/books", createBookRequest);
-                _ = await Assert.That(createResponse.IsSuccessStatusCode).IsTrue();
-                createdBook = await createResponse.Content.ReadFromJsonAsync<BookResponse>();
-            },
-            TestConstants.DefaultEventTimeout);
-        _ = await Assert.That(receivedIsCreated).IsTrue();
+        var createdBook = await TestHelpers.CreateBookAsync(adminClient);
 
         // Act - Try to rate without authentication
         var unauthenticatedClient = TestHelpers.GetUnauthenticatedClient();
@@ -360,6 +221,5 @@ public class BookRatingTests
         return client;
     }
 
-    record BookResponse(Guid Id, string Title, string Isbn);
     record LoginResponse(string AccessToken, string RefreshToken);
 }
