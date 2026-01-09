@@ -13,7 +13,11 @@ public class BookStatisticsProjection : MultiStreamProjection<BookStatistics, Gu
         Identity<BookRemovedFromFavorites>(e => e.BookId);
     }
 
-    public void Apply(BookAddedToFavorites _, BookStatistics stats) => stats.LikeCount++;
+#pragma warning disable IDE0060 // Remove unused parameter
+    public void Apply(BookAddedToFavorites @event, BookStatistics stats) 
+        => stats.LikeCount++;
 
-    public void Apply(BookRemovedFromFavorites _, BookStatistics stats) => stats.LikeCount = Math.Max(0, stats.LikeCount - 1);
+    public void Apply(BookRemovedFromFavorites @event, BookStatistics stats) 
+        => stats.LikeCount = Math.Max(0, stats.LikeCount - 1);
+#pragma warning restore IDE0060 // Remove unused parameter
 }
