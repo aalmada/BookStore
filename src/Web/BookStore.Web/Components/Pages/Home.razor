@@ -157,6 +157,13 @@
                                 View Details
                             </MudButton>
                             <MudSpacer />
+                            @if (book.RatingCount > 0)
+                            {
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                    <MudIcon Icon="@Icons.Material.Filled.Star" Color="Color.Warning" Size="Size.Small" />
+                                    <MudText Typo="Typo.caption">@book.AverageRating.ToString("F1")</MudText>
+                                </MudStack>
+                            }
                             <MudChip T="string" Size="Size.Small" Icon="@Icons.Material.Filled.Favorite" Color="Color.Error" Variant="Variant.Text">
                                 @book.LikeCount
                             </MudChip>

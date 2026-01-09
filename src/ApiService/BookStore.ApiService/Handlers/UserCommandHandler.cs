@@ -43,4 +43,32 @@ public static class UserCommandHandler
             _ = session.Events.Append(command.UserId, new BookRemovedFromFavorites(command.BookId));
         }
     }
+
+    public static async Task Handle(RateBook command, IDocumentSession session)
+    {
+        // Validate rating is between 1-5
+        if (command.Rating is < 1 or > 5)
+        {
+            throw new ArgumentException("Rating must be between 1 and 5", nameof(command.Rating));
+        }
+
+        var user = await session.Events.AggregateStreamAsync<ApplicationUser>(command.UserId);
+
+        // Always append event (either new rating or update)
+        // The Apply method will handle updating the existing rating
+        if (user is not null or null) // Always append for valid ratings
+        {
+            _ = session.Events.Append(command.UserId, new BookRated(command.BookId, command.Rating));
+        }
+    }
+
+    public static async Task Handle(RemoveBookRating command, IDocumentSession session)
+    {
+        var user = await session.Events.AggregateStreamAsync<ApplicationUser>(command.UserId);
+
+        if (user != null && user.BookRatings.ContainsKey(command.BookId))
+        {
+            _ = session.Events.Append(command.UserId, new BookRatingRemoved(command.BookId));
+        }
+    }
 }

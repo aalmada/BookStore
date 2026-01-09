@@ -38,6 +38,16 @@ public static class BookEndpoints
             .WithSummary("Remove book from favorites")
             .RequireAuthorization();
 
+        _ = group.MapPost("/{id:guid}/rating", RateBook)
+            .WithName("RateBook")
+            .WithSummary("Rate a book (1-5 stars)")
+            .RequireAuthorization();
+
+        _ = group.MapDelete("/{id:guid}/rating", RemoveRating)
+            .WithName("RemoveRating")
+            .WithSummary("Remove book rating")
+            .RequireAuthorization();
+
         return group;
     }
 
@@ -172,7 +182,10 @@ public static class BookEndpoints
                         .Where(c => c != null)
                         .Cast<CategoryDto>()],
                     false, // IsFavorite is always false in cache
-                    statistics.TryGetValue(book.Id, out var stats) ? stats.LikeCount : 0
+                    statistics.TryGetValue(book.Id, out var stats) ? stats.LikeCount : 0,
+                    stats?.AverageRating ?? 0f,
+                    stats?.RatingCount ?? 0,
+                    0 // UserRating is always 0 in cache, will be overlaid if authenticated
                 )).ToList();
 
                 return new PagedListDto<BookDto>(
@@ -198,13 +211,23 @@ public static class BookEndpoints
             {
                 await using var userSession = store.QuerySession();
                 var user = await userSession.LoadAsync<ApplicationUser>(userId, cancellationToken);
-                if (user?.FavoriteBookIds.Count > 0)
+                if (user != null)
                 {
                     var updatedItems = response.Items.Select(b =>
-                        user.FavoriteBookIds.Contains(b.Id)
-                            ? b with { IsFavorite = true }
-                            : b
-                    ).ToList();
+                    {
+                        var result = b;
+                        if (user.FavoriteBookIds.Contains(b.Id))
+                        {
+                            result = result with { IsFavorite = true };
+                        }
+
+                        if (user.BookRatings.TryGetValue(b.Id, out var rating))
+                        {
+                            result = result with { UserRating = rating };
+                        }
+
+                        return result;
+                    }).ToList();
 
                     response = response with { Items = updatedItems };
                 }
@@ -309,7 +332,10 @@ public static class BookEndpoints
                         .Where(c => c != null)
                         .Cast<CategoryDto>()],
                     false, // IsFavorite is always false in cache
-                    statistics.TryGetValue(book.Id, out var stats) ? stats.LikeCount : 0
+                    statistics.TryGetValue(book.Id, out var stats) ? stats.LikeCount : 0,
+                    stats?.AverageRating ?? 0f,
+                    stats?.RatingCount ?? 0,
+                    0 // UserRating is always 0 in cache, will be overlaid if authenticated
                     );
             },
             options: new HybridCacheEntryOptions
@@ -336,6 +362,24 @@ public static class BookEndpoints
                 if (user != null && user.FavoriteBookIds.Contains(id))
                 {
                     response = response with { IsFavorite = true };
+                }
+            }
+        }
+
+        // Overlay user rating if authenticated
+        if (context.User.Identity?.IsAuthenticated == true)
+        {
+            var userId = context.User.GetUserId();
+            if (userId != Guid.Empty)
+            {
+                await using var userSession = store.QuerySession();
+                var user = await userSession.LoadAsync<ApplicationUser>(userId, cancellationToken);
+                if (user != null)
+                {
+                    if (user.BookRatings.TryGetValue(id, out var rating))
+                    {
+                        response = response with { UserRating = rating };
+                    }
                 }
             }
         }
@@ -376,4 +420,46 @@ public static class BookEndpoints
 
         return TypedResults.NoContent();
     }
+
+    static async Task<Results<NoContent, NotFound, BadRequest<string>>> RateBook(
+        Guid id,
+        [FromBody] RateBookRequest request,
+        [FromServices] IMessageBus bus,
+        HttpContext context,
+        CancellationToken cancellationToken)
+    {
+        if (request.Rating is < 1 or > 5)
+        {
+            return TypedResults.BadRequest("Rating must be between 1 and 5");
+        }
+
+        var userId = context.User.GetUserId();
+        if (userId == Guid.Empty)
+        {
+            return TypedResults.NotFound();
+        }
+
+        await bus.InvokeAsync(new RateBook(userId, id, request.Rating), cancellationToken);
+
+        return TypedResults.NoContent();
+    }
+
+    static async Task<Results<NoContent, NotFound>> RemoveRating(
+        Guid id,
+        [FromServices] IMessageBus bus,
+        HttpContext context,
+        CancellationToken cancellationToken)
+    {
+        var userId = context.User.GetUserId();
+        if (userId == Guid.Empty)
+        {
+            return TypedResults.NotFound();
+        }
+
+        await bus.InvokeAsync(new RemoveBookRating(userId, id), cancellationToken);
+
+        return TypedResults.NoContent();
+    }
+
+    record RateBookRequest(int Rating);
 }

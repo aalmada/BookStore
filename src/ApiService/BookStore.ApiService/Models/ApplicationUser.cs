@@ -64,6 +64,11 @@ public sealed class ApplicationUser
     public ICollection<Guid> FavoriteBookIds { get; set; } = [];
 
     /// <summary>
+    /// Book ratings by the user (BookId -> Rating 1-5)
+    /// </summary>
+    public IDictionary<Guid, int> BookRatings { get; set; } = new Dictionary<Guid, int>();
+
+    /// <summary>
     /// Passkeys registered to this user (WebAuthn/FIDO2)
     /// </summary>
     public IList<UserPasskeyInfo> Passkeys { get; set; } = [];
@@ -89,6 +94,12 @@ public sealed class ApplicationUser
             _ = FavoriteBookIds.Remove(@event.BookId);
         }
     }
+
+    public void Apply(BookStore.Shared.Messages.Events.BookRated @event)
+        => BookRatings[@event.BookId] = @event.Rating;
+
+    public void Apply(BookStore.Shared.Messages.Events.BookRatingRemoved @event)
+        => _ = BookRatings.Remove(@event.BookId);
 }
 
 /// <summary>

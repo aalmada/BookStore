@@ -66,6 +66,10 @@ public static class BookStoreClientExtensions
         _ = AddClient<IAddBookToFavoritesEndpoint>();
         _ = AddClient<IRemoveBookFromFavoritesEndpoint>();
 
+        // Rating endpoints
+        _ = AddClient<IRateBookEndpoint>();
+        _ = AddClient<IRemoveBookRatingEndpoint>();
+
         // System endpoints
         _ = AddClient<IGetAllBooksAdminEndpoint>();
         _ = AddClient<IRebuildProjectionsEndpoint>();

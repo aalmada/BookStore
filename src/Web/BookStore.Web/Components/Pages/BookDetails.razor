@@ -8,6 +8,8 @@
 @inject NavigationManager Navigation
 @inject IAddBookToFavoritesEndpoint AddFavoriteEndpoint
 @inject IRemoveBookFromFavoritesEndpoint RemoveFavoriteEndpoint
+@inject IRateBookEndpoint RateBookEndpoint
+@inject IRemoveBookRatingEndpoint RemoveRatingEndpoint
 @inject AuthenticationStateProvider AuthStateProvider
 @inject ISnackbar Snackbar
 @implements IAsyncDisposable
@@ -79,6 +81,66 @@
                                 @(book.IsFavorite ? "Remove from Favorites" : "Add to Favorites") (@book.LikeCount)
                             </MudButton>
                         </Authorized>
+                     </AuthorizeView>
+
+                     @* Rating *@
+                     <AuthorizeView>
+                        <Authorized>
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+                                <MudText Typo="Typo.body1" Class="mr-2">Your Rating:</MudText>
+                                @for (int i = 1; i <= 5; i++)
+                                {
+                                    var starIndex = i;
+                                    var isFilled = book.UserRating >= starIndex;
+                                    <MudIconButton Icon="@(isFilled ? Icons.Material.Filled.Star : Icons.Material.Outlined.StarBorder)"
+                                                   Color="@(isFilled ? Color.Warning : Color.Default)"
+                                                   Size="Size.Large"
+                                                   OnClick="@(() => RateBookAsync(starIndex))" />
+                                }
+                                @if (book.UserRating > 0)
+                                {
+                                    <MudTooltip Text="Clear rating">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Clear"
+                                                       Color="Color.Default"
+                                                       Size="Size.Small"
+                                                       OnClick="@RemoveRatingAsync" />
+                                    </MudTooltip>
+                                }
+                            </MudStack>
+                            
+                            @* Show average rating below user's rating *@
+                            @if (book.RatingCount > 0 || book.AverageRating > 0)
+                            {
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">Average: </MudText>
+                                    @for (int i = 1; i <= 5; i++)
+                                    {
+                                        var starIndex = i;
+                                        var isFilled = book.AverageRating >= starIndex;
+                                        var isHalfFilled = !isFilled && book.AverageRating >= starIndex - 0.5f;
+                                        <MudIcon Icon="@(isFilled ? Icons.Material.Filled.Star : (isHalfFilled ? Icons.Material.Filled.StarHalf : Icons.Material.Outlined.StarBorder))"
+                                                 Color="@(isFilled || isHalfFilled ? Color.Warning : Color.Default)"
+                                                 Size="Size.Small" />
+                                    }
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">@book.AverageRating.ToString("F1") (@book.RatingCount @(book.RatingCount == 1 ? "rating" : "ratings"))</MudText>
+                                </MudStack>
+                            }
+                        </Authorized>
+                        <NotAuthorized>
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+                                <MudText Typo="Typo.body1" Class="mr-2">Average Rating:</MudText>
+                                @for (int i = 1; i <= 5; i++)
+                                {
+                                    var starIndex = i;
+                                    var isFilled = book.AverageRating >= starIndex;
+                                    var isHalfFilled = !isFilled && book.AverageRating >= starIndex - 0.5f;
+                                    <MudIcon Icon="@(isFilled ? Icons.Material.Filled.Star : (isHalfFilled ? Icons.Material.Filled.StarHalf : Icons.Material.Outlined.StarBorder))"
+                                             Color="@(isFilled || isHalfFilled ? Color.Warning : Color.Default)"
+                                             Size="Size.Large" />
+                                }
+                                <MudText Typo="Typo.body2" Class="ml-2">@book.AverageRating.ToString("F1") (@book.RatingCount @(book.RatingCount == 1 ? "rating" : "ratings"))</MudText>
+                            </MudStack>
+                        </NotAuthorized>
                      </AuthorizeView>
 
                     @* Book Details Card *@
@@ -218,7 +280,7 @@
                 }
             },
             eventsService: EventsService,
-            invalidationPredicate: n => (n is BookStore.Shared.Notifications.BookUpdatedNotification or BookStore.Shared.Notifications.BookDeletedNotification or BookStore.Shared.Notifications.BookCoverUpdatedNotification && n.EntityId == Id) || n is BookStore.Shared.Notifications.UserUpdatedNotification,
+            invalidationPredicate: n => ((n is BookStore.Shared.Notifications.BookUpdatedNotification or BookStore.Shared.Notifications.BookDeletedNotification or BookStore.Shared.Notifications.BookCoverUpdatedNotification) && n.EntityId == Id) || n is BookStore.Shared.Notifications.UserUpdatedNotification,
             onStateChanged: StateHasChanged,
             logger: Logger
         );
@@ -316,6 +378,66 @@
         }
     }
     
+    private async Task RateBookAsync(int rating)
+    {
+        if (book == null) return;
+
+        var previousRating = book.UserRating;
+
+        // 1. Optimistic update
+        bookQuery?.MutateData(current => current == null ? null : current with
+        {
+            UserRating = rating
+        });
+
+        // 2. API Call
+        try
+        {
+            await RateBookEndpoint.Execute(book.Id, new BookStore.Client.RateBookRequest(rating));
+            Snackbar.Add($"Rated {rating} stars", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to rate book {BookId}", book.Id);
+            // 3. Rollback
+            bookQuery?.MutateData(current => current == null ? null : current with
+            {
+                UserRating = previousRating
+            });
+            Snackbar.Add($"Failed to rate: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task RemoveRatingAsync()
+    {
+        if (book == null || book.UserRating == 0) return;
+
+        var previousRating = book.UserRating;
+
+        // 1. Optimistic update
+        bookQuery?.MutateData(current => current == null ? null : current with
+        {
+            UserRating = 0
+        });
+
+        // 2. API Call
+        try
+        {
+            await RemoveRatingEndpoint.Execute(book.Id);
+            Snackbar.Add("Rating removed", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to remove rating for book {BookId}", book.Id);
+            // 3. Rollback
+            bookQuery?.MutateData(current => current == null ? null : current with
+            {
+                UserRating = previousRating
+            });
+            Snackbar.Add($"Failed to remove rating: {ex.Message}", Severity.Error);
+        }
+    }
+
     // Inject EventsService which wasn't injected before
     [Inject] private BookStoreEventsService EventsService { get; set; } = default!;
     

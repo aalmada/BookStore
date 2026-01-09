@@ -100,6 +100,10 @@ static void RegisterScopedRefitClients(IServiceCollection services, Uri baseAddr
     AddScopedClient<IAddBookToFavoritesEndpoint>();
     AddScopedClient<IRemoveBookFromFavoritesEndpoint>();
 
+    // Rating endpoints
+    AddScopedClient<IRateBookEndpoint>();
+    AddScopedClient<IRemoveBookRatingEndpoint>();
+
     // System endpoints
     AddScopedClient<IGetAllBooksAdminEndpoint>();
     AddScopedClient<IRebuildProjectionsEndpoint>();
