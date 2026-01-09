@@ -53,6 +53,7 @@ RegisterScopedRefitClients(builder.Services, new Uri(apiServiceUrl));
 
 static void RegisterScopedRefitClients(IServiceCollection services, Uri baseAddress)
 {
+    // Register aggregated clients
     void AddScopedClient<T>() where T : class => _ = services.AddScoped<T>(sp =>
                                                       {
                                                           var tokenService = sp.GetRequiredService<TokenService>();
@@ -64,63 +65,13 @@ static void RegisterScopedRefitClients(IServiceCollection services, Uri baseAddr
                                                           return RestService.For<T>(httpClient);
                                                       });
 
-    // Register all endpoint interfaces
-    AddScopedClient<IGetBooksEndpoint>();
-    AddScopedClient<IGetBookEndpoint>();
-    AddScopedClient<IGetAuthorsEndpoint>();
-    AddScopedClient<IGetAuthorEndpoint>();
-    AddScopedClient<IGetCategoriesEndpoint>();
-    AddScopedClient<IGetCategoryEndpoint>();
-    AddScopedClient<IGetPublishersEndpoint>();
-    AddScopedClient<IGetPublisherEndpoint>();
-
-    // Admin endpoints
-    AddScopedClient<ICreateBookEndpoint>();
-    AddScopedClient<IUpdateBookEndpoint>();
-    AddScopedClient<ISoftDeleteBookEndpoint>();
-    AddScopedClient<IRestoreBookEndpoint>();
-    AddScopedClient<IUploadBookCoverEndpoint>();
-
-    AddScopedClient<ICreateAuthorEndpoint>();
-    AddScopedClient<IUpdateAuthorEndpoint>();
-    AddScopedClient<ISoftDeleteAuthorEndpoint>();
-    AddScopedClient<IRestoreAuthorEndpoint>();
-
-    AddScopedClient<ICreateCategoryEndpoint>();
-    AddScopedClient<IUpdateCategoryEndpoint>();
-    AddScopedClient<ISoftDeleteCategoryEndpoint>();
-    AddScopedClient<IRestoreCategoryEndpoint>();
-
-    AddScopedClient<ICreatePublisherEndpoint>();
-    AddScopedClient<IUpdatePublisherEndpoint>();
-    AddScopedClient<ISoftDeletePublisherEndpoint>();
-    AddScopedClient<IRestorePublisherEndpoint>();
-
-    // Favorites endpoints
-    AddScopedClient<IAddBookToFavoritesEndpoint>();
-    AddScopedClient<IRemoveBookFromFavoritesEndpoint>();
-
-    // Rating endpoints
-    AddScopedClient<IRateBookEndpoint>();
-    AddScopedClient<IRemoveBookRatingEndpoint>();
-
-    // Shopping Cart endpoints
-    AddScopedClient<IGetShoppingCartEndpoint>();
-    AddScopedClient<IAddToCartEndpoint>();
-    AddScopedClient<IUpdateCartItemEndpoint>();
-    AddScopedClient<IRemoveFromCartEndpoint>();
-    AddScopedClient<IClearCartEndpoint>();
-
-    // System endpoints
-    AddScopedClient<IGetAllBooksAdminEndpoint>();
-    AddScopedClient<IRebuildProjectionsEndpoint>();
-    AddScopedClient<IGetProjectionStatusEndpoint>();
-
-    // Identity endpoints
-    AddScopedClient<IIdentityLoginEndpoint>();
-    AddScopedClient<IIdentityRegisterEndpoint>();
-    AddScopedClient<IIdentityConfirmEmailEndpoint>();
-    AddScopedClient<IIdentityRefreshEndpoint>();
+    AddScopedClient<IBooksClient>();
+    AddScopedClient<IAuthorsClient>();
+    AddScopedClient<ICategoriesClient>();
+    AddScopedClient<IPublishersClient>();
+    AddScopedClient<IShoppingCartClient>();
+    AddScopedClient<ISystemClient>();
+    AddScopedClient<IIdentityClient>();
 }
 
 // Add authentication services (JWT token-based)
@@ -146,7 +97,7 @@ builder.Services.AddAuthorizationCore();
 builder.Services.AddSingleton<OptimisticUpdateService>();
 
 // Register SSE events service
-builder.Services.AddHttpClient<BookStoreEventsService>(client => client.BaseAddress = new Uri(apiServiceUrl));
+builder.Services.AddBookStoreEvents(new Uri(apiServiceUrl));
 
 builder.Services.AddOutputCache();
 

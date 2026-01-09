@@ -30,66 +30,14 @@ public static class BookStoreClientExtensions
             return builder;
         }
 
-        // Register all endpoint interfaces
-        _ = AddClient<IGetBooksEndpoint>();
-        _ = AddClient<IGetBookEndpoint>();
-        _ = AddClient<IGetAuthorsEndpoint>();
-        _ = AddClient<IGetAuthorEndpoint>();
-        _ = AddClient<IGetCategoriesEndpoint>();
-        _ = AddClient<IGetCategoryEndpoint>();
-        _ = AddClient<IGetPublishersEndpoint>();
-        _ = AddClient<IGetPublisherEndpoint>();
-
-        // Admin endpoints
-        _ = AddClient<ICreateBookEndpoint>();
-        _ = AddClient<IUpdateBookEndpoint>();
-        _ = AddClient<ISoftDeleteBookEndpoint>();
-        _ = AddClient<IRestoreBookEndpoint>();
-        _ = AddClient<IUploadBookCoverEndpoint>();
-
-        _ = AddClient<ICreateAuthorEndpoint>();
-        _ = AddClient<IUpdateAuthorEndpoint>();
-        _ = AddClient<ISoftDeleteAuthorEndpoint>();
-        _ = AddClient<IRestoreAuthorEndpoint>();
-
-        _ = AddClient<ICreateCategoryEndpoint>();
-        _ = AddClient<IUpdateCategoryEndpoint>();
-        _ = AddClient<ISoftDeleteCategoryEndpoint>();
-        _ = AddClient<IRestoreCategoryEndpoint>();
-
-        _ = AddClient<ICreatePublisherEndpoint>();
-        _ = AddClient<IUpdatePublisherEndpoint>();
-        _ = AddClient<ISoftDeletePublisherEndpoint>();
-        _ = AddClient<IRestorePublisherEndpoint>();
-
-        // Favorites endpoints
-        _ = AddClient<IAddBookToFavoritesEndpoint>();
-        _ = AddClient<IRemoveBookFromFavoritesEndpoint>();
-
-        // Rating endpoints
-        _ = AddClient<IRateBookEndpoint>();
-        _ = AddClient<IRemoveBookRatingEndpoint>();
-
-        // Shopping Cart endpoints
-        _ = AddClient<IGetShoppingCartEndpoint>();
-        _ = AddClient<IAddToCartEndpoint>();
-        _ = AddClient<IUpdateCartItemEndpoint>();
-        _ = AddClient<IRemoveFromCartEndpoint>();
-        _ = AddClient<IClearCartEndpoint>();
-
-        // System endpoints
-        _ = AddClient<IGetAllBooksAdminEndpoint>();
-        _ = AddClient<IRebuildProjectionsEndpoint>();
-        _ = AddClient<IGetProjectionStatusEndpoint>();
-
-        // Identity endpoints
-        // Note: Login/Register don't strictly need auth header, but it doesn't hurt.
-        // Refresh token endpoint DOES need auth header if we implement "rotate me" logic dependent on old token,
-        // but typically refresh endpoint uses credentials or refresh token in body.
-        _ = AddClient<IIdentityLoginEndpoint>();
-        _ = AddClient<IIdentityRegisterEndpoint>();
-        _ = AddClient<IIdentityConfirmEmailEndpoint>();
-        _ = AddClient<IIdentityRefreshEndpoint>();
+        // Aggregated clients
+        _ = AddClient<IBooksClient>();
+        _ = AddClient<IAuthorsClient>();
+        _ = AddClient<ICategoriesClient>();
+        _ = AddClient<IPublishersClient>();
+        _ = AddClient<IShoppingCartClient>();
+        _ = AddClient<ISystemClient>();
+        _ = AddClient<IIdentityClient>();
 
         return services;
     }
@@ -105,4 +53,18 @@ public static class BookStoreClientExtensions
         this IServiceCollection services,
         Uri baseAddress,
         Action<IHttpClientBuilder> configureResilience) => services.AddBookStoreClient(baseAddress, configureResilience);
+
+    /// <summary>
+    /// Registers the BookStore SSE events service.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="baseAddress">The base address of the API.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddBookStoreEvents(
+        this IServiceCollection services,
+        Uri baseAddress)
+    {
+        _ = services.AddHttpClient<BookStoreEventsService>(client => client.BaseAddress = baseAddress);
+        return services;
+    }
 }

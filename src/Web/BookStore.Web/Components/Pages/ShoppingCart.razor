@@ -1,10 +1,7 @@
 @page "/cart"
 @using BookStore.Web.Services
 @using BookStore.Client
-@inject IGetShoppingCartEndpoint GetCartEndpoint
-@inject IUpdateCartItemEndpoint UpdateCartEndpoint
-@inject IRemoveFromCartEndpoint RemoveFromCartEndpoint
-@inject IClearCartEndpoint ClearCartEndpoint
+@inject IShoppingCartClient CartClient
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
 @implements IAsyncDisposable
@@ -102,7 +99,7 @@
             {
                 try 
                 {
-                    return await GetCartEndpoint.Execute();
+                    return await ((IGetShoppingCartEndpoint)CartClient).Execute();
                 }
                 catch (Refit.ApiException apiEx) when (apiEx.StatusCode == System.Net.HttpStatusCode.Unauthorized)
                 {
@@ -139,7 +136,7 @@
         // 2. API Call
         try
         {
-            await UpdateCartEndpoint.Execute(bookId, new UpdateCartItemClientRequest(newQuantity));
+            await ((IUpdateCartItemEndpoint)CartClient).Execute(bookId, new UpdateCartItemClientRequest(newQuantity));
             Snackbar.Add("Quantity updated", Severity.Success);
         }
         catch (Exception ex)
@@ -172,7 +169,7 @@
         // 2. API Call
         try
         {
-            await RemoveFromCartEndpoint.Execute(bookId);
+            await ((IRemoveFromCartEndpoint)CartClient).Execute(bookId);
             Snackbar.Add("Item removed from cart", Severity.Success);
         }
         catch (Exception ex)
@@ -199,7 +196,7 @@
         // 2. API Call
         try
         {
-            await ClearCartEndpoint.Execute();
+            await ((IClearCartEndpoint)CartClient).Execute();
             Snackbar.Add("Cart cleared", Severity.Success);
         }
         catch (Exception ex)

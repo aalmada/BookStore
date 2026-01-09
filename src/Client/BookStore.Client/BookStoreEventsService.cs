@@ -1,8 +1,9 @@
 using System.Net.ServerSentEvents;
 using System.Text.Json;
 using BookStore.Shared.Notifications;
+using Microsoft.Extensions.Logging;
 
-namespace BookStore.Web.Services;
+namespace BookStore.Client;
 
 /// <summary>
 /// Service to consume real-time domain event notifications via SSE.
@@ -16,6 +17,21 @@ public class BookStoreEventsService : IAsyncDisposable
     Task? _listenerTask;
 
     public event Action<IDomainEventNotification>? OnNotificationReceived;
+
+    static readonly Dictionary<string, Type> _eventTypeMapping = new(StringComparer.OrdinalIgnoreCase)
+    {
+        { "BookCreated", typeof(BookCreatedNotification) },
+        { "BookUpdated", typeof(BookUpdatedNotification) },
+        { "BookDeleted", typeof(BookDeletedNotification) },
+        { "AuthorCreated", typeof(AuthorCreatedNotification) },
+        { "CategoryCreated", typeof(CategoryCreatedNotification) },
+        { "CategoryUpdated", typeof(CategoryUpdatedNotification) },
+        { "CategoryDeleted", typeof(CategoryDeletedNotification) },
+        { "CategoryRestored", typeof(CategoryRestoredNotification) },
+        { "PublisherCreated", typeof(PublisherCreatedNotification) },
+        { "BookCoverUpdated", typeof(BookCoverUpdatedNotification) },
+        { "UserVerified", typeof(UserVerifiedNotification) }
+    };
 
     public BookStoreEventsService(HttpClient httpClient, ILogger<BookStoreEventsService> logger)
     {
@@ -77,23 +93,13 @@ public class BookStoreEventsService : IAsyncDisposable
 
     IDomainEventNotification? DeserializeNotification(string eventType, string data)
     {
-        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-
-        return eventType switch
+        if (_eventTypeMapping.TryGetValue(eventType, out var type))
         {
-            "BookCreated" => JsonSerializer.Deserialize<BookCreatedNotification>(data, options),
-            "BookUpdated" => JsonSerializer.Deserialize<BookUpdatedNotification>(data, options),
-            "BookDeleted" => JsonSerializer.Deserialize<BookDeletedNotification>(data, options),
-            "AuthorCreated" => JsonSerializer.Deserialize<AuthorCreatedNotification>(data, options),
-            "CategoryCreated" => JsonSerializer.Deserialize<CategoryCreatedNotification>(data, options),
-            "CategoryUpdated" => JsonSerializer.Deserialize<CategoryUpdatedNotification>(data, options),
-            "CategoryDeleted" => JsonSerializer.Deserialize<CategoryDeletedNotification>(data, options),
-            "CategoryRestored" => JsonSerializer.Deserialize<CategoryRestoredNotification>(data, options),
-            "PublisherCreated" => JsonSerializer.Deserialize<PublisherCreatedNotification>(data, options),
-            "BookCoverUpdated" => JsonSerializer.Deserialize<BookCoverUpdatedNotification>(data, options),
-            "UserVerified" => JsonSerializer.Deserialize<UserVerifiedNotification>(data, options),
-            _ => null
-        };
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            return JsonSerializer.Deserialize(data, type, options) as IDomainEventNotification;
+        }
+
+        return null;
     }
 
     public async ValueTask DisposeAsync()

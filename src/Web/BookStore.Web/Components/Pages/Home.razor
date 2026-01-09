@@ -4,11 +4,9 @@
 @using BookStore.Shared.Models
 @using BookStore.Web.Services
 @using Microsoft.AspNetCore.Components.Authorization
-@inject IGetBooksEndpoint ApiClient
+@inject IBooksClient BooksClient
 @inject BookStoreEventsService EventsService
 @inject OptimisticUpdateService OptimisticService
-@inject IAddBookToFavoritesEndpoint AddFavoriteEndpoint
-@inject IRemoveBookFromFavoritesEndpoint RemoveFavoriteEndpoint
 @inject AuthenticationStateProvider AuthStateProvider
 @inject ISnackbar Snackbar
 @implements IAsyncDisposable
@@ -259,7 +257,7 @@
 
     private async Task<BookStore.Client.PagedListDtoOfBookDto> FetchBooksAsync()
     {
-        return await ApiClient.Execute(
+        return await ((IGetBooksEndpoint)BooksClient).Execute(
             page: currentPage,
             pageSize: pageSize,
             search: string.IsNullOrWhiteSpace(searchQuery) ? string.Empty : searchQuery,
@@ -361,13 +359,13 @@
         {
             if (originalState) // Was favorite, so remove
             {
-                await RemoveFavoriteEndpoint.Execute(book.Id);
+                await ((IRemoveBookFromFavoritesEndpoint)BooksClient).Execute(book.Id);
                 Snackbar.Add("Removed from favorites", Severity.Success);
             }
             else // Was not favorite, so add
             {
-                await AddFavoriteEndpoint.Execute(book.Id);
-                 Snackbar.Add("Added to favorites", Severity.Success);
+                await ((IAddBookToFavoritesEndpoint)BooksClient).Execute(book.Id);
+                Snackbar.Add("Added to favorites", Severity.Success);
             }
         }
         catch (Exception ex)

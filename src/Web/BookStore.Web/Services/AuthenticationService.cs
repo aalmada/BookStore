@@ -6,16 +6,13 @@ namespace BookStore.Web.Services;
 /// <summary>
 /// Service for managing user authentication using cookie-based authentication
 /// </summary>
-public class AuthenticationService(
-    IIdentityLoginEndpoint loginEndpoint,
-    IIdentityRegisterEndpoint registerEndpoint,
-    IIdentityConfirmEmailEndpoint confirmEmailEndpoint)
+public class AuthenticationService(IIdentityClient identityClient)
 {
     public async Task<bool> ConfirmEmailAsync(string userId, string code)
     {
         try
         {
-            await confirmEmailEndpoint.Execute(userId, code);
+            await ((IIdentityConfirmEmailEndpoint)identityClient).Execute(userId, code);
             return true;
         }
         catch
@@ -32,7 +29,7 @@ public class AuthenticationService(
         {
             var request = new LoginRequest(email, password);
             // useCookies=false - we want JWT tokens, not cookies
-            var response = await loginEndpoint.Execute(request, useCookies: false);
+            var response = await ((IIdentityLoginEndpoint)identityClient).Execute(request, useCookies: false);
 
             // Return the access token so caller can store it
             return new LoginResult(true, null, response.AccessToken, response.RefreshToken);
@@ -59,7 +56,7 @@ public class AuthenticationService(
         try
         {
             var request = new RegisterRequest(email, password);
-            _ = await registerEndpoint.Execute(request);
+            _ = await ((IIdentityRegisterEndpoint)identityClient).Execute(request);
             return new RegisterResult(true, null);
         }
         catch (Refit.ApiException ex)

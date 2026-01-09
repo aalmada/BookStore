@@ -1,3 +1,4 @@
+using BookStore.Client;
 using BookStore.Shared.Notifications;
 
 namespace BookStore.Web.Services;

@@ -14,8 +14,8 @@ public interface IIdentityLoginEndpoint
     [Post("/account/login")]
     Task<LoginResponse> Execute(
         [Body] LoginRequest request,
-        [AliasAs("useCookies")] bool? useCookies = null,
-        [AliasAs("useSessionCookies")] bool? useSessionCookies = null,
+        [Query, AliasAs("useCookies")] bool? useCookies = null,
+        [Query, AliasAs("useSessionCookies")] bool? useSessionCookies = null,
         CancellationToken cancellationToken = default);
 }
 

@@ -4,15 +4,11 @@
 @using ClientModels = BookStore.Client
 @using BookStore.Shared.Models
 @using Microsoft.AspNetCore.Components.Authorization
-@inject IGetBookEndpoint ApiClient
+@inject IBooksClient BooksClient
+@inject IShoppingCartClient CartClient
 @inject NavigationManager Navigation
-@inject IAddBookToFavoritesEndpoint AddFavoriteEndpoint
-@inject IRemoveBookFromFavoritesEndpoint RemoveFavoriteEndpoint
-@inject IRateBookEndpoint RateBookEndpoint
-@inject IRemoveBookRatingEndpoint RemoveRatingEndpoint
 @inject AuthenticationStateProvider AuthStateProvider
 @inject ISnackbar Snackbar
-@inject IAddToCartEndpoint AddToCartEndpoint
 @implements IAsyncDisposable
 @rendermode InteractiveServer
 
@@ -250,7 +246,7 @@
         
         try
         {
-            await AddToCartEndpoint.Execute(new BookStore.Client.AddToCartClientRequest(book.Id, quantity));
+            await ((IAddToCartEndpoint)CartClient).Execute(new BookStore.Client.AddToCartClientRequest(book.Id, quantity));
             Snackbar.Add($"Added {quantity} copy(ies) to cart", Severity.Success);
             quantity = 1; // Reset quantity
         }
@@ -307,7 +303,7 @@
             queryFn: async () => {
                 try 
                 {
-                    return await ApiClient.Execute(
+                    return await ((IGetBookEndpoint)BooksClient).Execute(
                         id: Id,
                         api_version: "1.0",
                         accept_Language: "en",
@@ -333,7 +329,7 @@
     {
         try 
         {
-            return await ApiClient.Execute(
+            return await ((IGetBookEndpoint)BooksClient).Execute(
                 id: Id,
                 api_version: "1.0",
                 accept_Language: "en",
@@ -396,12 +392,12 @@
         {
             if (originalState)
             {
-                await RemoveFavoriteEndpoint.Execute(bookToToggle.Id);
+                await ((IRemoveBookFromFavoritesEndpoint)BooksClient).Execute(bookToToggle.Id);
                 Snackbar.Add("Removed from favorites", Severity.Success);
             }
             else
             {
-                await AddFavoriteEndpoint.Execute(bookToToggle.Id);
+                await ((IAddBookToFavoritesEndpoint)BooksClient).Execute(bookToToggle.Id);
                 Snackbar.Add("Added to favorites", Severity.Success);
             }
         }
@@ -433,7 +429,7 @@
         // 2. API Call
         try
         {
-            await RateBookEndpoint.Execute(book.Id, new BookStore.Client.RateBookRequest(rating));
+            await ((IRateBookEndpoint)BooksClient).Execute(book.Id, new BookStore.Client.RateBookRequest(rating));
             Snackbar.Add($"Rated {rating} stars", Severity.Success);
         }
         catch (Exception ex)
@@ -463,7 +459,7 @@
         // 2. API Call
         try
         {
-            await RemoveRatingEndpoint.Execute(book.Id);
+            await ((IRemoveBookRatingEndpoint)BooksClient).Execute(book.Id);
             Snackbar.Add("Rating removed", Severity.Success);
         }
         catch (Exception ex)
