@@ -38,7 +38,7 @@ The architecture emphasizes:
 
 - **Pragmatism & Performance**: We prioritize clean, maintainable code over academic purity. By avoiding excessive abstraction layers (like generic repositories and passthrough services), we eliminate "architectural tax," ensuring the code remains easy to refactor and runs with maximum performance.
 
-- **Completeness**: Unlike typical "Hello World" demos, this project implements production-grade requirements: resiliency, distributed tracing, structured logging, correct HTTP semantics, and optimistic concurrency.
+- **Completeness**: Unlike typical "Hello World" demos, this project implements production-grade requirements: resiliency, distributed tracing, structured logging, correct HTTP semantics, optimistic concurrency, hybrid caching, configuration validation, content localization, scalable real-time updates, and passwordless authentication.
 
 - **Simplicity**: By keeping the deployment unit single but the code modular, we gain the benefits of microservices (isolation, maintainability) without the operational drawbacks.
 
@@ -89,6 +89,7 @@ The Aspire dashboard opens automatically, providing access to:
 - **Multi-language Support** (configurable via `appsettings.json`)
 - **Full-text Search** with PostgreSQL trigrams and unaccent
 - **Optimistic Concurrency** with ETags
+- **Hybrid Caching** - Multi-tiered caching with Redis and in-memory support
 - **Distributed Tracing** with correlation/causation IDs
 - **API Versioning** (header-based, v1.0)
 - **Soft Deletion** - Logical deletes with restore capability
