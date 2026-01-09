@@ -26,13 +26,13 @@ sealed class PagedListWrapper<T> : IPagedList<T>
     public long PageNumber { get; }
     public long PageSize { get; }
     public long TotalItemCount { get; }
-    public long PageCount => (long)Math.Ceiling(TotalItemCount / (double)PageSize);
+    public long PageCount => (long)double.Ceiling(TotalItemCount / (double)PageSize);
     public bool IsFirstPage => PageNumber == 1;
     public bool IsLastPage => PageNumber >= PageCount;
     public bool HasPreviousPage => PageNumber > 1;
     public bool HasNextPage => PageNumber < PageCount;
     public long FirstItemOnPage => ((PageNumber - 1) * PageSize) + 1;
-    public long LastItemOnPage => Math.Min(PageNumber * PageSize, TotalItemCount);
+    public long LastItemOnPage => long.Min(PageNumber * PageSize, TotalItemCount);
 
     // IPagedList<T>.Count returns long
     long IPagedList<T>.Count => _items.Count;

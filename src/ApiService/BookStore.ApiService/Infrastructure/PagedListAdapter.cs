@@ -26,7 +26,7 @@ public sealed record PagedListAdapter<T>
     public long PageSize { get; init; }
     public long TotalItemCount { get; init; }
 
-    public long PageCount => PageSize > 0 ? (long)Math.Ceiling(TotalItemCount / (double)PageSize) : 0;
+    public long PageCount => PageSize > 0 ? (long)double.Ceiling(TotalItemCount / (double)PageSize) : 0;
     public bool HasPreviousPage => PageNumber > 1;
     public bool HasNextPage => PageNumber < PageCount;
 }
