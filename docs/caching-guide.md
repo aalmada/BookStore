@@ -124,24 +124,122 @@ var response = await cache.GetOrCreateLocalizedAsync(
 
 ## Cache Invalidation
 
-### Automatic Invalidation (Implemented Strategy)
+### Automatic Invalidation via Projection Commit Listener
 
-The API uses a **`CacheInvalidationListener`** to automatically invalidate cache entries after Marten projections are updated. This ensures that the cache is always fresh and consistent with the read models.
+The API uses **`ProjectionCommitListener`** to automatically invalidate cache entries **immediately after read model (projection) mutations**. This ensures the cache is always fresh and consistent with the database.
 
-**How it works:**
-1.  **Listens to Marten Changes**: Hooks into the `IDocumentSessionListener` lifecycle.
-2.  **After Commit**: Invalidates cache only after the transaction is successfully committed and projections are updated.
-3.  **Surgical Invalidation**: Uses structure tags to invalidate only what changed.
+#### How It Works
 
-**Invalidation Logic:**
-- **Updated Entities**: Invalidates the specific item *and* its related lists.
-  - Example: Updating `Category:1` clears `category:1` (all languages) and `categories` list.
-- **New Entities**: Invalidates related lists.
-  - Example: A new `Book` clears `books` list cache.
+The system leverages Marten's **`IDocumentSessionListener`** interface to hook into the projection commit lifecycle:
 
-**Implementation**:
-The listener handles specific projection types. If you add a new projection, you **must** update `CacheInvalidationListener.cs`. A warning log will alert you if a projection is unhandled:
-> *"Cache invalidation not implemented for projection type {ProjectionType}..."*
+```csharp
+public class ProjectionCommitListener : IDocumentSessionListener, IChangeListener
+{
+    readonly HybridCache _cache;
+    readonly INotificationService _notificationService;
+    
+    // Called AFTER projections are committed to the database
+    public async Task AfterCommitAsync(IDocumentSession _, IChangeSet commit, CancellationToken token)
+    {
+        // Process all document changes (projections)
+        await ProcessDocumentChangesAsync(commit.Inserted, ChangeType.Insert, token);
+        await ProcessDocumentChangesAsync(commit.Updated, ChangeType.Update, token);
+        await ProcessDocumentChangesAsync(commit.Deleted, ChangeType.Delete, token);
+    }
+}
+```
+
+**Key Characteristics:**
+
+1. **Asynchronous Execution**: All invalidation operations use `async`/`await` and execute **asynchronously**
+   - Does not block command handlers or HTTP responses
+   - Fire-and-forget pattern with error logging
+   - Operations complete in the background after responses are sent
+
+2. **Timing Guarantee**: Invalidation happens **after** projection commits
+   - Only executes if the database transaction succeeds
+   - Runs after Marten's async daemon updates read models
+   - Ensures cache never becomes stale relative to projections
+
+3. **Surgical Tag-Based Invalidation**: Uses `HybridCache` tags to invalidate efficiently
+   ```csharp
+   async Task InvalidateCacheTagsAsync(Guid id, string entityPrefix, string collectionTag, CancellationToken token)
+   {
+       var itemTag = $"{entityPrefix}:{id}";  // e.g., "book:123"
+       await _cache.RemoveByTagAsync(itemTag, token);      // Invalidate specific item (all languages)
+       await _cache.RemoveByTagAsync(collectionTag, token); // Invalidate lists
+   }
+   ```
+
+#### Execution Flow
+
+```mermaid
+sequenceDiagram
+    participant Command as Command Handler
+    participant Marten as Event Store
+    participant Daemon as Async Daemon
+    participant Listener as ProjectionCommitListener
+    participant Cache as HybridCache
+    
+    Command->>Marten: 1. Append event to stream
+    Command->>Command: 2. SaveChangesAsync()
+    Command-->>Command: 3. Return HTTP response
+    Note over Daemon: Asynchronous Processing
+    Daemon->>Daemon: 4. Process events
+    Daemon->>Daemon: 5. Update projections
+    Daemon->>Listener: 6. AfterCommitAsync(changeSet)
+    Note over Listener: After projection commit
+    par Asynchronous Invalidation
+        Listener->>Cache: 7a. RemoveByTagAsync(item tag)
+        Listener->>Cache: 7b. RemoveByTagAsync(list tag)
+    end
+    Note over Listener: Fire-and-forget, logs errors
+```
+
+#### Invalidation Logic
+
+**For Updated/Created Entities:**
+- Invalidates the **specific item** cache (all language variants via tags)
+- Invalidates **related list** caches 
+
+Example: Updating `Category:123` triggers:
+```csharp
+await _cache.RemoveByTagAsync("category:123");  // All languages: en-US, pt-PT, etc.
+await _cache.RemoveByTagAsync("categories");     // All category lists
+```
+
+**For Deleted Entities:**
+- Same as updates (soft-delete changes `IsDeleted` flag)
+
+**For Projection Types:**
+The listener handles these projection types:
+- `CategoryProjection` → `category:{id}` + `categories`
+- `BookSearchProjection` → `book:{id}` + `books`
+- `AuthorProjection` → `author:{id}` + `authors`
+- `PublisherProjection` → `publisher:{id}` + `publishers`
+- `BookStatistics` → `book:{id}` + `books`
+- `ApplicationUser` → User-specific invalidation
+
+> [!WARNING]
+> If you add a new projection type, you **must** update `ProjectionCommitListener.cs` to handle it. The listener will log a debug warning for unhandled projection types.
+
+#### Error Handling
+
+Invalidation errors are **logged but do not fail the projection update**:
+
+```csharp
+try
+{
+    await ProcessDocumentChangesAsync(commit.Inserted, ChangeType.Insert, token);
+}
+catch (Exception ex)
+{
+    _logger.LogError(ex, "Error processing projection commit");
+    // Error logged, projection commit still succeeds
+}
+```
+
+This ensures that cache issues never prevent data from being persisted.
 
 ### User-Specific Data & Caching (The Overlay Pattern)
 

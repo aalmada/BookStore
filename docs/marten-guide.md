@@ -1063,6 +1063,317 @@ var page = await session.Query<BookSearchProjection>()
     .ToListAsync();
 ```
 
+## Projection Commit Listeners
+
+### Overview
+
+Marten provides **`IDocumentSessionListener`** to hook into the database session lifecycle. This powerful feature enables automatic reactions to projection updates, such as **cache invalidation** and **real-time notifications via Server-Sent Events (SSE)**.
+
+### IDocumentSessionListener Interface
+
+The `IDocumentSessionListener` interface provides hooks for various stages of the session lifecycle:
+
+```csharp
+public interface IDocumentSessionListener
+{
+    // Before changes are saved to in-memory session
+    Task BeforeSaveChangesAsync(IDocumentSession session, CancellationToken token);
+    
+    // After changes are saved to in-memory session (not yet committed)
+    Task AfterSaveChangesAsync(IDocumentSession session, CancellationToken token);
+    
+    // Before database transaction commit
+    Task BeforeCommitAsync(IDocumentSession session, IChangeSet commit, CancellationToken token);
+    
+    // ⭐ AFTER database transaction commit (most commonly used)
+    Task AfterCommitAsync(IDocumentSession session, IChangeSet commit, CancellationToken token);
+}
+```
+
+**Key Hook: `AfterCommitAsync`**
+
+- Called **after** the database transaction successfully commits
+- Receives `IChangeSet` containing all inserted, updated, and deleted documents
+- For **async projections**, this means the hook fires after the projection daemon updates read models
+- Perfect for cache invalidation and notifications
+
+### Real-Time Notifications with ProjectionCommitListener
+
+The BookStore API implements **`ProjectionCommitListener`** to provide automatic cache invalidation and SSE notifications whenever projections are updated.
+
+#### Implementation
+
+```csharp
+public class ProjectionCommitListener : IDocumentSessionListener, IChangeListener
+{
+    readonly HybridCache _cache;
+    readonly INotificationService _notificationService;
+    readonly ILogger<ProjectionCommitListener> _logger;
+    
+    // Called AFTER async projection commits (read models updated)
+    public async Task AfterCommitAsync(IDocumentSession _, IChangeSet commit, CancellationToken token)
+    {
+        // Process all projection changes
+        await ProcessDocumentChangesAsync(commit.Inserted, ChangeType.Insert, token);
+        await ProcessDocumentChangesAsync(commit.Updated, ChangeType.Update, token);
+        await ProcessDocumentChangesAsync(commit.Deleted, ChangeType.Delete, token);
+    }
+    
+    async Task ProcessDocumentChangeAsync(object document, ChangeType changeType, CancellationToken token)
+    {
+        switch (document)
+        {
+            case CategoryProjection category:
+                await HandleCategoryChangeAsync(category, changeType, token);
+                break;
+            case BookSearchProjection book:
+                await HandleBookChangeAsync(book, changeType, token);
+                break;
+            // ... other projection types
+        }
+    }
+    
+    async Task HandleBookChangeAsync(BookSearchProjection book, ChangeType changeType, CancellationToken token)
+    {
+        // 1. Invalidate cache (all language variants)
+        await _cache.RemoveByTagAsync($"book:{book.Id}", token);
+        await _cache.RemoveByTagAsync("books", token);
+        
+        // 2. Send SSE notification to all connected clients
+        var notification = changeType switch
+        {
+            ChangeType.Insert => new BookCreatedNotification(book.Id, book.Title, DateTimeOffset.UtcNow),
+            ChangeType.Update => new BookUpdatedNotification(book.Id, book.Title, DateTimeOffset.UtcNow),
+            ChangeType.Delete => new BookDeletedNotification(book.Id, DateTimeOffset.UtcNow),
+        };
+        
+        await _notificationService.NotifyAsync(notification, token);
+    }
+}
+```
+
+#### Execution Flow
+
+```mermaid
+sequenceDiagram
+    participant Command as Command Handler
+    participant Marten as Event Store
+    participant Daemon as Async Daemon
+    participant Listener as ProjectionCommitListener
+    participant Cache as HybridCache
+    participant Redis as Redis Pub/Sub
+    participant SSE as SSE Clients
+    
+    Command->>Marten: 1. Append event
+    Command->>Marten: 2. SaveChangesAsync()
+    Command-->>Command: 3. Return 201 Created
+    Note over Daemon: Background Processing
+    Daemon->>Daemon: 4. Poll for new events
+    Daemon->>Daemon: 5. Update projections
+    Daemon->>Daemon: 6. Commit transaction
+    Daemon->>Listener: 7. AfterCommitAsync(changeSet)
+    Note over Listener: Asynchronous, Fire-and-Forget
+    par Cache Invalidation
+        Listener->>Cache: 8a. RemoveByTagAsync(item)
+        Listener->>Cache: 8b. RemoveByTagAsync(list)
+    and SSE Notification
+        Listener->>Redis: 8c. PublishAsync(notification)
+        Redis->>SSE: 9. Broadcast to all instances
+    end
+```
+
+**Key Characteristics:**
+
+1. **Asynchronous**: Operations execute asynchronously without blocking projection updates
+2. **Fire-and-Forget**: Errors are logged but don't fail the projection commit
+3. **After Commit**: Only runs if the database transaction succeeds
+4. **Automatic**: No manual notification code needed in endpoints
+
+#### Registering the Listener
+
+```csharp
+// In Program.cs or configuration
+builder.Services.AddMarten(sp =>
+{
+    var options = new StoreOptions();
+    // ... other configuration
+    
+    return options;
+})
+.AddDocumentSessionListener<ProjectionCommitListener>()  // Register listener
+.UseLightweightSessions()
+.IntegrateWithWolverine();
+```
+
+> [!TIP]
+> You can register multiple listeners. They execute in the order registered.
+
+### Server-Sent Events (SSE) with Redis Pub/Sub
+
+The notification service uses **Redis pub/sub** to broadcast SSE notifications across all API instances in a multi-instance deployment.
+
+#### RedisNotificationService Implementation
+
+```csharp
+public class RedisNotificationService : INotificationService, IDisposable
+{
+    readonly ConcurrentDictionary<Guid, Channel<SseItem<IDomainEventNotification>>> _subscribers = new();
+    readonly IConnectionMultiplexer _redis;
+    const string ChannelName = "bookstore:notifications";
+    
+    public RedisNotificationService(IConnectionMultiplexer redis, ILogger<RedisNotificationService> logger)
+    {
+        _redis = redis;
+        
+        // Subscribe to Redis pub/sub
+        _redis.GetSubscriber().Subscribe(RedisChannel.Literal(ChannelName), async (channel, message) =>
+        {
+            var notification = JsonSerializer.Deserialize<IDomainEventNotification>(message.ToString());
+            if (notification != null)
+            {
+                await BroadcastToLocalSubscribersAsync(notification);
+            }
+        });
+    }
+    
+    // Called by ProjectionCommitListener
+    public async ValueTask NotifyAsync(IDomainEventNotification notification, CancellationToken ct = default)
+    {
+        // Publish to Redis (received by all instances including this one)
+        var json = JsonSerializer.Serialize(notification, typeof(IDomainEventNotification));
+        await _redis.GetSubscriber().PublishAsync(RedisChannel.Literal(ChannelName), json);
+    }
+    
+    // Stream SSE events to connected clients
+    public async IAsyncEnumerable<SseItem<IDomainEventNotification>> Subscribe(
+        [EnumeratorCancellation] CancellationToken ct)
+    {
+        var id = Guid.CreateVersion7();
+        var channel = Channel.CreateUnbounded<SseItem<IDomainEventNotification>>();
+        
+        _subscribers.TryAdd(id, channel);
+        
+        try
+        {
+            await foreach (var item in channel.Reader.ReadAllAsync(ct))
+            {
+                yield return item;
+            }
+        }
+        finally
+        {
+            _subscribers.TryRemove(id, out _);
+        }
+    }
+}
+```
+
+#### Multi-Instance Architecture
+
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│  API Instance 1 │     │  API Instance 2 │     │  API Instance 3 │
+│                 │     │                 │     │                 │
+│  - Listener     │     │  - Listener     │     │  - Listener     │
+│  - NotifyAsync()│     │  - NotifyAsync()│     │  - NotifyAsync()│
+└────────┬────────┘     └────────┬────────┘     └────────┬────────┘
+         │                       │                       │
+         └───────────────────────┼───────────────────────┘
+                                 │
+                        ┌────────▼────────┐
+                        │  Redis Pub/Sub  │
+                        │  "bookstore:    │
+                        │   notifications"│
+                        └────────┬────────┘
+                                 │
+         ┌───────────────────────┼───────────────────────┐
+         │                       │                       │
+    ┌────▼────────┐     ┌────────▼────────┐     ┌───────▼─────┐
+    │ SSE Client  │     │  SSE Client     │     │ SSE Client  │
+    │ (Blazor)    │     │  (Mobile App)   │     │ (Console)   │
+    └─────────────┘     └─────────────────┘     └─────────────┘
+```
+
+**Benefits:**
+- ✅ **Scalable**: Works across multiple API instances
+- ✅ **Reliable**: Redis ensures all instances receive notifications
+- ✅ **Automatic**: Tied to projection updates, not manual API calls
+- ✅ **Fallback**: Works in-memory if Redis unavailable
+
+#### Client Connection
+
+```javascript
+// JavaScript/TypeScript client
+const eventSource = new EventSource('/api/notifications/stream');
+
+eventSource.addEventListener('BookUpdated', (event) => {
+    const notification = JSON.parse(event.data);
+    console.log(`Book ${notification.entityId} was updated`);
+    // Refetch data or update UI
+});
+
+eventSource.addEventListener('CategoryCreated', (event) => {
+    const notification = JSON.parse(event.data);
+    console.log(`New category: ${notification.name}`);
+});
+```
+
+```csharp
+// C# client (.NET)
+using var client = new HttpClient { BaseAddress = new Uri("https://api.bookstore.com") };
+using var response = await client.GetAsync("/api/notifications/stream", HttpCompletionOption.ResponseHeadersRead);
+using var stream = await response.Content.ReadAsStreamAsync();
+using var reader = new StreamReader(stream);
+
+await foreach (var line in reader.ReadLinesAsync())
+{
+    if (line.StartsWith("data:"))
+    {
+        var json = line.Substring(5).Trim();
+        var notification = JsonSerializer.Deserialize<IDomainEventNotification>(json);
+        Console.WriteLine($"Received: {notification.EventType}");
+    }
+}
+```
+
+### Best Practices
+
+1. **Keep Listeners Lightweight**: Use fire-and-forget pattern for heavy operations
+   ```csharp
+   // ❌ Don't block the commit
+   public async Task AfterCommitAsync(...)
+   {
+       await ExpensiveOperation();  // Blocks projection daemon
+   }
+   
+   // ✅ Fire and forget
+   public async Task AfterCommitAsync(...)
+   {
+       _ = Task.Run(async () => await ExpensiveOperation());  // Background task
+   }
+   ```
+
+2. **Handle Errors Gracefully**: Don't let listener errors fail projection updates
+   ```csharp
+   try
+   {
+       await ProcessDocumentChangesAsync(commit.Inserted, ChangeType.Insert, token);
+   }
+   catch (Exception ex)
+   {
+       _logger.LogError(ex, "Error in listener");
+       // Don't rethrow - projection commit should still succeed
+   }
+   ```
+
+3. **Use Idempotent Operations**: Listeners may be called multiple times for the same change
+   - Cache invalidation is naturally idempotent (removing non-existent keys is safe)
+   - SSE notifications should be designed for duplicate delivery
+
+4. **Register Early**: Register listeners during application startup before Marten processes events
+
+See the [Caching Guide](caching-guide.md) for cache invalidation implementation details.
+
 ## Metadata Tracking
 
 ### Correlation and Causation IDs
