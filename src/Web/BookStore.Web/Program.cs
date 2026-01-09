@@ -104,6 +104,13 @@ static void RegisterScopedRefitClients(IServiceCollection services, Uri baseAddr
     AddScopedClient<IRateBookEndpoint>();
     AddScopedClient<IRemoveBookRatingEndpoint>();
 
+    // Shopping Cart endpoints
+    AddScopedClient<IGetShoppingCartEndpoint>();
+    AddScopedClient<IAddToCartEndpoint>();
+    AddScopedClient<IUpdateCartItemEndpoint>();
+    AddScopedClient<IRemoveFromCartEndpoint>();
+    AddScopedClient<IClearCartEndpoint>();
+
     // System endpoints
     AddScopedClient<IGetAllBooksAdminEndpoint>();
     AddScopedClient<IRebuildProjectionsEndpoint>();

@@ -1,0 +1,218 @@
+@page "/cart"
+@using BookStore.Web.Services
+@using BookStore.Client
+@inject IGetShoppingCartEndpoint GetCartEndpoint
+@inject IUpdateCartItemEndpoint UpdateCartEndpoint
+@inject IRemoveFromCartEndpoint RemoveFromCartEndpoint
+@inject IClearCartEndpoint ClearCartEndpoint
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@implements IAsyncDisposable
+@rendermode InteractiveServer
+
+<PageTitle>Shopping Cart - BookStore</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-6">
+    <MudText Typo="Typo.h3" Class="mb-6">Shopping Cart</MudText>
+    
+    @if (isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" />
+    }
+    else if (cart?.Items.Count > 0)
+    {
+        <MudPaper Elevation="2" Class="pa-4">
+            @foreach (var item in cart.Items)
+            {
+                <MudGrid Class="mb-4 align-center">
+                    <MudItem xs="12" md="6">
+                        <MudText Typo="Typo.h6">@item.Title</MudText>
+                        @if (!string.IsNullOrEmpty(item.Isbn))
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">ISBN: @item.Isbn</MudText>
+                        }
+                    </MudItem>
+                    <MudItem xs="6" md="3">
+                        <MudNumericField Value="@item.Quantity" 
+                                          Min="1" 
+                                          Max="99"
+                                          Label="Quantity"
+                                          Variant="Variant.Outlined"
+                                          ValueChanged="@((int newQty) => UpdateQuantityAsync(item.BookId, newQty))" />
+                    </MudItem>
+                    <MudItem xs="6" md="3">
+                        <MudButton Color="Color.Error" 
+                                    Variant="Variant.Outlined" 
+                                    StartIcon="@Icons.Material.Filled.Delete"
+                                    OnClick="@(() => RemoveItemAsync(item.BookId))">
+                            Remove
+                        </MudButton>
+                    </MudItem>
+                </MudGrid>
+                <MudDivider Class="mb-4" />
+            }
+            
+            <MudStack Row="true" Justify="Justify.SpaceBetween" Class="mt-4">
+                <MudText Typo="Typo.h6">Total Items: @cart.TotalItems</MudText>
+                <MudStack Row="true" Spacing="2">
+                    <MudButton Href="/" Variant="Variant.Text" Color="Color.Primary">
+                        Continue Shopping
+                    </MudButton>
+                    <MudButton Color="Color.Error" 
+                                Variant="Variant.Text" 
+                                OnClick="ClearCartAsync">
+                        Clear Cart
+                    </MudButton>
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+    }
+    else
+    {
+        <MudAlert Severity="Severity.Info">Your cart is empty</MudAlert>
+        <MudButton Href="/" Variant="Variant.Filled" Color="Color.Primary" Class="mt-4">
+            Browse Books
+        </MudButton>
+    }
+</MudContainer>
+
+@code {
+    private ReactiveQuery<ShoppingCartResponse?>? cartQuery;
+    private ShoppingCartResponse? cart => cartQuery?.Data;
+    private bool isLoading => cartQuery?.IsLoading ?? true;
+
+    [Inject] private ILogger<ShoppingCart> Logger { get; set; } = default!;
+    [Inject] private BookStoreEventsService EventsService { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Start SSE listening
+        EventsService.StartListening();
+        
+        await InitializeQueryAsync();
+    }
+
+    private async Task InitializeQueryAsync()
+    {
+        // Dispose previous if exists
+        cartQuery?.Dispose();
+
+        cartQuery = new ReactiveQuery<ShoppingCartResponse?>(
+            queryFn: async () => 
+            {
+                try 
+                {
+                    return await GetCartEndpoint.Execute();
+                }
+                catch (Refit.ApiException apiEx) when (apiEx.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                {
+                    throw new Exception("Please log in to view your cart.");
+                }
+            },
+            eventsService: EventsService,
+            invalidationPredicate: n => n is BookStore.Shared.Notifications.UserUpdatedNotification,
+            onStateChanged: StateHasChanged,
+            logger: Logger
+        );
+
+        await cartQuery.LoadAsync();
+    }
+
+    private async Task UpdateQuantityAsync(Guid bookId, int newQuantity)
+    {
+        if (newQuantity <= 0 || cart == null) return;
+
+        // Find current item
+        var currentItem = cart.Items.FirstOrDefault(i => i.BookId == bookId);
+        if (currentItem == null) return;
+
+        var previousQuantity = currentItem.Quantity;
+
+        // 1. Optimistic update
+        cartQuery?.MutateData(current => current == null ? null : new ShoppingCartResponse(
+            current.Items.Select(i => i.BookId == bookId 
+                ? i with { Quantity = newQuantity } 
+                : i).ToList(),
+            current.TotalItems - previousQuantity + newQuantity
+        ));
+
+        // 2. API Call
+        try
+        {
+            await UpdateCartEndpoint.Execute(bookId, new UpdateCartItemClientRequest(newQuantity));
+            Snackbar.Add("Quantity updated", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to update quantity for book {BookId}", bookId);
+            // 3. Rollback
+            cartQuery?.MutateData(current => current == null ? null : new ShoppingCartResponse(
+                current.Items.Select(i => i.BookId == bookId 
+                    ? i with { Quantity = previousQuantity } 
+                    : i).ToList(),
+                current.TotalItems - newQuantity + previousQuantity
+            ));
+            Snackbar.Add($"Failed to update: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task RemoveItemAsync(Guid bookId)
+    {
+        if (cart == null) return;
+
+        var itemToRemove = cart.Items.FirstOrDefault(i => i.BookId == bookId);
+        if (itemToRemove == null) return;
+
+        // 1. Optimistic update
+        cartQuery?.MutateData(current => current == null ? null : new ShoppingCartResponse(
+            current.Items.Where(i => i.BookId != bookId).ToList(),
+            current.TotalItems - itemToRemove.Quantity
+        ));
+
+        // 2. API Call
+        try
+        {
+            await RemoveFromCartEndpoint.Execute(bookId);
+            Snackbar.Add("Item removed from cart", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to remove item {BookId}", bookId);
+            // 3. Rollback
+            cartQuery?.MutateData(current => current == null ? null : new ShoppingCartResponse(
+                current.Items.Append(itemToRemove).ToList(),
+                current.TotalItems + itemToRemove.Quantity
+            ));
+            Snackbar.Add($"Failed to remove: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task ClearCartAsync()
+    {
+        if (cart == null || cart.Items.Count == 0) return;
+
+        var previousCart = cart;
+
+        // 1. Optimistic update
+        cartQuery?.MutateData(_ => new ShoppingCartResponse([], 0));
+
+        // 2. API Call
+        try
+        {
+            await ClearCartEndpoint.Execute();
+            Snackbar.Add("Cart cleared", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to clear cart");
+            // 3. Rollback
+            cartQuery?.MutateData(_ => previousCart);
+            Snackbar.Add($"Failed to clear cart: {ex.Message}", Severity.Error);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        cartQuery?.Dispose();
+    }
+}

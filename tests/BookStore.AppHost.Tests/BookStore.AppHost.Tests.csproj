@@ -28,6 +28,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Shared\BookStore.Shared\BookStore.Shared.csproj" />
+    <ProjectReference Include="..\..\src\Client\BookStore.Client\BookStore.Client.csproj" />
     <ProjectReference Include="..\..\src\BookStore.AppHost\BookStore.AppHost.csproj" />
   </ItemGroup>
 

@@ -59,6 +59,9 @@ public static class EndpointMappingExtensions
         _ = publicApi.MapGroup("/notifications")
             .MapNotificationEndpoints()
             .WithTags("Notifications");
+
+        // Shopping Cart endpoints
+        app.MapShoppingCartEndpoints();
     }
 
     static void MapAdminEndpoints(WebApplication app, Asp.Versioning.Builder.ApiVersionSet apiVersionSet)

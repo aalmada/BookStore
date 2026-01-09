@@ -70,6 +70,13 @@ public static class BookStoreClientExtensions
         _ = AddClient<IRateBookEndpoint>();
         _ = AddClient<IRemoveBookRatingEndpoint>();
 
+        // Shopping Cart endpoints
+        _ = AddClient<IGetShoppingCartEndpoint>();
+        _ = AddClient<IAddToCartEndpoint>();
+        _ = AddClient<IUpdateCartItemEndpoint>();
+        _ = AddClient<IRemoveFromCartEndpoint>();
+        _ = AddClient<IClearCartEndpoint>();
+
         // System endpoints
         _ = AddClient<IGetAllBooksAdminEndpoint>();
         _ = AddClient<IRebuildProjectionsEndpoint>();

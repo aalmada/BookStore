@@ -113,8 +113,10 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
         // Use UtcNow as fallback
         var timestamp = DateTimeOffset.UtcNow;
 
-        // We only care about updates (favorites added/removed) or potentially verifying.
-        // Even if we don't distinguish "UserUpdated" vs "UserVerified" perfectly here, 
+        // We care about updates from:
+        // - Favorites added/removed: BookAddedToFavorites, BookRemovedFromFavorites
+        // - Ratings added/removed/updated: BookRated, BookRatingRemoved
+        // - Shopping cart operations: BookAddedToCart, BookRemovedFromCart, CartItemQuantityUpdated, ShoppingCartCleared
         // "UserUpdated" is a good catch-all for ReactiveQuery invalidation.
 
         IDomainEventNotification notification = new UserUpdatedNotification(user.Id, timestamp);
@@ -174,7 +176,6 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
             _ => throw new ArgumentOutOfRangeException(nameof(effectiveChangeType))
         };
 
-        Console.WriteLine($"[DEBUG] Calling NotifyAsync for {notification.EventType} (Id: {notification.EntityId})");
         await NotifyAsync("Author", notification, token);
     }
 

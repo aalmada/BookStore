@@ -69,6 +69,11 @@ public sealed class ApplicationUser
     public IDictionary<Guid, int> BookRatings { get; set; } = new Dictionary<Guid, int>();
 
     /// <summary>
+    /// Shopping cart items (BookId -> Quantity)
+    /// </summary>
+    public IDictionary<Guid, int> ShoppingCartItems { get; set; } = new Dictionary<Guid, int>();
+
+    /// <summary>
     /// Passkeys registered to this user (WebAuthn/FIDO2)
     /// </summary>
     public IList<UserPasskeyInfo> Passkeys { get; set; } = [];
@@ -100,6 +105,27 @@ public sealed class ApplicationUser
 
     public void Apply(BookStore.Shared.Messages.Events.BookRatingRemoved @event)
         => _ = BookRatings.Remove(@event.BookId);
+
+    public void Apply(BookStore.Shared.Messages.Events.BookAddedToCart @event)
+    {
+        if (ShoppingCartItems.ContainsKey(@event.BookId))
+        {
+            ShoppingCartItems[@event.BookId] += @event.Quantity;
+        }
+        else
+        {
+            ShoppingCartItems[@event.BookId] = @event.Quantity;
+        }
+    }
+
+    public void Apply(BookStore.Shared.Messages.Events.BookRemovedFromCart @event)
+        => _ = ShoppingCartItems.Remove(@event.BookId);
+
+    public void Apply(BookStore.Shared.Messages.Events.CartItemQuantityUpdated @event)
+        => ShoppingCartItems[@event.BookId] = @event.Quantity;
+
+    public void Apply(BookStore.Shared.Messages.Events.ShoppingCartCleared @event)
+        => ShoppingCartItems.Clear();
 }
 
 /// <summary>

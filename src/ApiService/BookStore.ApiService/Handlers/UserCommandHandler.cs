@@ -68,4 +68,52 @@ public static class UserCommandHandler
             _ = session.Events.Append(command.UserId, new BookRatingRemoved(command.BookId));
         }
     }
+
+    public static async Task Handle(AddBookToCart command, IDocumentSession session)
+    {
+        if (command.Quantity <= 0)
+        {
+            throw new ArgumentException("Quantity must be greater than 0", nameof(command.Quantity));
+        }
+
+        var user = await session.Events.AggregateStreamAsync<ApplicationUser>(command.UserId);
+
+        // Always append event - Apply method will handle merging quantities
+        _ = session.Events.Append(command.UserId, new BookAddedToCart(command.BookId, command.Quantity));
+    }
+
+    public static async Task Handle(RemoveBookFromCart command, IDocumentSession session)
+    {
+        var user = await session.Events.AggregateStreamAsync<ApplicationUser>(command.UserId);
+
+        if (user != null && user.ShoppingCartItems.ContainsKey(command.BookId))
+        {
+            _ = session.Events.Append(command.UserId, new BookRemovedFromCart(command.BookId));
+        }
+    }
+
+    public static async Task Handle(UpdateCartItemQuantity command, IDocumentSession session)
+    {
+        if (command.Quantity <= 0)
+        {
+            throw new ArgumentException("Quantity must be greater than 0", nameof(command.Quantity));
+        }
+
+        var user = await session.Events.AggregateStreamAsync<ApplicationUser>(command.UserId);
+
+        if (user != null && user.ShoppingCartItems.ContainsKey(command.BookId))
+        {
+            _ = session.Events.Append(command.UserId, new CartItemQuantityUpdated(command.BookId, command.Quantity));
+        }
+    }
+
+    public static async Task Handle(ClearShoppingCart command, IDocumentSession session)
+    {
+        var user = await session.Events.AggregateStreamAsync<ApplicationUser>(command.UserId);
+
+        if (user != null && user.ShoppingCartItems.Count > 0)
+        {
+            _ = session.Events.Append(command.UserId, new ShoppingCartCleared());
+        }
+    }
 }

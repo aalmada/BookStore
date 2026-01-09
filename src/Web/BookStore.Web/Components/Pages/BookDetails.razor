@@ -12,6 +12,7 @@
 @inject IRemoveBookRatingEndpoint RemoveRatingEndpoint
 @inject AuthenticationStateProvider AuthStateProvider
 @inject ISnackbar Snackbar
+@inject IAddToCartEndpoint AddToCartEndpoint
 @implements IAsyncDisposable
 @rendermode InteractiveServer
 
@@ -143,6 +144,27 @@
                         </NotAuthorized>
                      </AuthorizeView>
 
+                     @* Add to Cart *@
+                     <AuthorizeView>
+                        <Authorized>
+                            <MudPaper Elevation="0" Class="pa-4 mb-4" Style="background-color: rgba(0,0,0,0.02); border-radius: 8px;">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="4">
+                                    <MudNumericField @bind-Value="quantity" Label="Quantity" Variant="Variant.Outlined" Min="1" Max="99" Class="mb-0" Style="max-width: 100px;" />
+                                    <MudButton Variant="Variant.Filled" 
+                                               Color="Color.Primary" 
+                                               StartIcon="@Icons.Material.Filled.ShoppingCart"
+                                               OnClick="AddToCartAsync"
+                                               Size="Size.Large">
+                                        Add to Cart
+                                    </MudButton>
+                                </MudStack>
+                            </MudPaper>
+                        </Authorized>
+                        <NotAuthorized>
+                             <MudAlert Severity="Severity.Info" Class="mb-4">Log in to add this book to your cart.</MudAlert>
+                        </NotAuthorized>
+                     </AuthorizeView>
+
                     @* Book Details Card *@
                     <MudCard Elevation="0" Class="mb-4" Style="background-color: rgba(0,0,0,0.02);">
                         <MudCardContent>
@@ -220,6 +242,24 @@
     
     [CascadingParameter] private Task<AuthenticationState> AuthStateTask { get; set; } = default!;
     private System.Security.Claims.ClaimsPrincipal? user;
+    private int quantity = 1;
+
+    private async Task AddToCartAsync()
+    {
+        if (book == null) return;
+        
+        try
+        {
+            await AddToCartEndpoint.Execute(new BookStore.Client.AddToCartClientRequest(book.Id, quantity));
+            Snackbar.Add($"Added {quantity} copy(ies) to cart", Severity.Success);
+            quantity = 1; // Reset quantity
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to add book {BookId} to cart", book.Id);
+            Snackbar.Add($"Failed to add to cart: {ex.Message}", Severity.Error);
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
