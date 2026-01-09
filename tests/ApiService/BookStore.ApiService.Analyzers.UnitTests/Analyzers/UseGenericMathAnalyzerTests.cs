@@ -35,7 +35,7 @@ class Program
     }
 }";
 
-        await Verify.VerifyCodeFixAsync(code, CreateDiagnostic("Max", "Int32", 8, 17), fixedCode);
+        await Verify.VerifyCodeFixAsync(code, CreateDiagnostic("Max", "int", 8, 17), fixedCode);
     }
 
     [Test]
@@ -63,7 +63,7 @@ class Program
     }
 }";
 
-        await Verify.VerifyCodeFixAsync(code, CreateDiagnostic("Min", "Double", 8, 17), fixedCode);
+        await Verify.VerifyCodeFixAsync(code, CreateDiagnostic("Min", "double", 8, 17), fixedCode);
     }
 
     [Test]
@@ -93,7 +93,7 @@ class Program
     }
 }";
 
-        await Verify.VerifyCodeFixAsync(code, CreateDiagnostic("Abs", "Decimal", 9, 17), fixedCode);
+        await Verify.VerifyCodeFixAsync(code, CreateDiagnostic("Abs", "decimal", 9, 17), fixedCode);
     }
 
     [Test]
@@ -115,7 +115,7 @@ class Program
         var x = int.Max(1, 2);
     }
 }";
-        await Verify.VerifyCodeFixAsync(code, CreateDiagnostic("Max", "Int32", 6, 17), fixedCode);
+        await Verify.VerifyCodeFixAsync(code, CreateDiagnostic("Max", "int", 6, 17), fixedCode);
     }
 
     [Test]
@@ -143,7 +143,7 @@ class Program
     }
 }";
 
-        await Verify.VerifyCodeFixAsync(code, CreateDiagnostic("Pow", "Double", 8, 17), fixedCode);
+        await Verify.VerifyCodeFixAsync(code, CreateDiagnostic("Pow", "double", 8, 17), fixedCode);
     }
 
     [Test]
