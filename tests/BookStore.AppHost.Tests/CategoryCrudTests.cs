@@ -142,32 +142,36 @@ public class CategoryCrudTests
     }
 
     [Test]
-    public async Task GetCategory_ShouldReturnLocalizedContent()
+    [Arguments("pt-PT", "Nome da Categoria")]
+    [Arguments("es", "Nombre de la Categoría")]
+    [Arguments("es-MX", "Nombre de la Categoría")]
+    [Arguments("fr-FR", "Default Name")]
+    [Arguments("en", "Default Name")]
+    public async Task GetCategory_WithLocalizedHeader_ShouldReturnExpectedContent(string acceptLanguage, string expectedName)
     {
         // Arrange
         var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
-        var enName = _faker.Commerce.Department();
-        var ptName = _faker.Commerce.Department();
+        var publicClient = GlobalHooks.App!.CreateHttpClient("apiservice");
 
-        var request = new
+        var createRequest = new
         {
             Translations = new Dictionary<string, object>
             {
-                ["en"] = new { Name = enName, Description = "English Description" },
-                ["pt"] = new { Name = ptName, Description = "Descrição em Português" }
+                ["en"] = new { Name = "Default Name", Description = "Default Description" },
+                ["pt-PT"] = new { Name = "Nome da Categoria", Description = "Descrição em Português" },
+                ["es"] = new { Name = "Nombre de la Categoría", Description = "Descripción en Español" }
             }
         };
 
         CategoryDto? res = null;
 
-        // Execute create and wait for SSE notification (match any CategoryCreated event)
-        // Note: Creation often comes as CategoryUpdated due to projection upsert semantics.
+        // Execute create and wait for SSE notification
         var received = await TestHelpers.ExecuteAndWaitForEventAsync(
-            Guid.Empty, // Match any ID since we don't know it yet
+            Guid.Empty,
             "CategoryUpdated",
             async () =>
             {
-                var createResponse = await httpClient.PostAsJsonAsync("/api/admin/categories", request);
+                var createResponse = await httpClient.PostAsJsonAsync("/api/admin/categories", createRequest);
                 _ = await Assert.That(createResponse.StatusCode).IsEqualTo(HttpStatusCode.Created);
                 res = await createResponse.Content.ReadFromJsonAsync<CategoryDto>();
             },
@@ -176,17 +180,27 @@ public class CategoryCrudTests
         _ = await Assert.That(res).IsNotNull();
         _ = await Assert.That(received).IsTrue();
 
-        // Assert (English - Default)
-        httpClient.DefaultRequestHeaders.AcceptLanguage.Clear();
-        httpClient.DefaultRequestHeaders.AcceptLanguage.Add(new StringWithQualityHeaderValue("en"));
-        var enCategory = await httpClient.GetFromJsonAsync<CategoryDto>($"/api/categories/{res.Id}");
-        _ = await Assert.That(enCategory!.Name).IsEqualTo(enName);
+        // Retry policy for the GET check (eventual consistency)
+        var retries = 5;
+        CategoryDto? categoryDto = null;
 
-        // Assert (Portuguese)
-        httpClient.DefaultRequestHeaders.AcceptLanguage.Clear();
-        httpClient.DefaultRequestHeaders.AcceptLanguage.Add(new StringWithQualityHeaderValue("pt"));
-        var ptCategory = await httpClient.GetFromJsonAsync<CategoryDto>($"/api/categories/{res.Id}");
-        _ = await Assert.That(ptCategory!.Name).IsEqualTo(ptName);
+        publicClient.DefaultRequestHeaders.AcceptLanguage.Clear();
+        publicClient.DefaultRequestHeaders.AcceptLanguage.Add(new StringWithQualityHeaderValue(acceptLanguage));
+
+        while (retries-- > 0)
+        {
+            var response = await publicClient.GetAsync($"/api/categories/{res!.Id}");
+            if (response.StatusCode == HttpStatusCode.OK)
+            {
+                categoryDto = await response.Content.ReadFromJsonAsync<CategoryDto>();
+                break;
+            }
+            await Task.Delay(500);
+        }
+
+        // Assert
+        _ = await Assert.That(categoryDto).IsNotNull();
+        _ = await Assert.That(categoryDto!.Name).IsEqualTo(expectedName);
     }
 
     [Test]

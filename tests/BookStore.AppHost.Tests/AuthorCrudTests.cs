@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Net.Http.Headers;
 
 namespace BookStore.AppHost.Tests;
 
@@ -127,5 +128,68 @@ public class AuthorCrudTests
         _ = await Assert.That(received).IsTrue();
     }
 
-    record AuthorDto(Guid Id, string Name);
+    [Test]
+    [Arguments("pt-PT", "Biografia em Português")]
+    [Arguments("es", "Biografía en Español")]
+    [Arguments("es-MX", "Biografía en Español")]
+    [Arguments("fr-FR", "Default Biography")]
+    [Arguments("en", "Default Biography")]
+    public async Task GetAuthor_WithLocalizedHeader_ShouldReturnExpectedContent(string acceptLanguage, string expectedBiography)
+    {
+        // Arrange
+        var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
+        var publicClient = GlobalHooks.App!.CreateHttpClient("apiservice");
+
+        var createRequest = new
+        {
+            Name = "Global Author Name",
+            Translations = new Dictionary<string, object>
+            {
+                ["en"] = new { Biography = "Default Biography" },
+                ["pt-PT"] = new { Biography = "Biografia em Português" },
+                ["es"] = new { Biography = "Biografía en Español" }
+            }
+        };
+
+        AuthorDto? res = null;
+
+        // Execute create and wait for SSE notification
+        var received = await TestHelpers.ExecuteAndWaitForEventAsync(
+            Guid.Empty,
+            "AuthorUpdated",
+            async () =>
+            {
+                var createResponse = await httpClient.PostAsJsonAsync("/api/admin/authors", createRequest);
+                _ = await Assert.That(createResponse.StatusCode).IsEqualTo(HttpStatusCode.Created);
+                res = await createResponse.Content.ReadFromJsonAsync<AuthorDto>();
+            },
+            TestConstants.DefaultEventTimeout);
+
+        _ = await Assert.That(res).IsNotNull();
+        _ = await Assert.That(received).IsTrue();
+
+        // Retry policy for the GET check
+        var retries = 5;
+        AuthorDto? authorDto = null;
+
+        publicClient.DefaultRequestHeaders.AcceptLanguage.Clear();
+        publicClient.DefaultRequestHeaders.AcceptLanguage.Add(new StringWithQualityHeaderValue(acceptLanguage));
+
+        while (retries-- > 0)
+        {
+            var response = await publicClient.GetAsync($"/api/authors/{res!.Id}");
+            if (response.StatusCode == HttpStatusCode.OK)
+            {
+                authorDto = await response.Content.ReadFromJsonAsync<AuthorDto>();
+                break;
+            }
+            await Task.Delay(500);
+        }
+
+        // Assert
+        _ = await Assert.That(authorDto).IsNotNull();
+        _ = await Assert.That(authorDto!.Biography).IsEqualTo(expectedBiography);
+    }
+
+    record AuthorDto(Guid Id, string Name, string? Biography);
 }
