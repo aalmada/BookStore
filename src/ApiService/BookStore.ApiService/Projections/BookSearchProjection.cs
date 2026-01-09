@@ -28,6 +28,8 @@ public class BookSearchProjection
     // Computed search text for ngram matching
     public string SearchText { get; set; } = string.Empty;
 
+    public string? CoverImageUrl { get; set; }
+
     // SingleStreamProjection methods
     public static BookSearchProjection Create(BookAdded @event, IQuerySession session)
     {
@@ -74,6 +76,8 @@ public class BookSearchProjection
     public void Apply(BookSoftDeleted _) => IsDeleted = true;
 
     public void Apply(BookRestored _) => IsDeleted = false;
+
+    public void Apply(BookCoverUpdated @event) => CoverImageUrl = @event.CoverImageUrl;
 
     // Helper methods for denormalization
     static void LoadDenormalizedData(BookSearchProjection projection, IQuerySession session)

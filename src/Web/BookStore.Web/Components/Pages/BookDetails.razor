@@ -51,9 +51,16 @@
             <MudGrid>
                 @* Book Cover *@
                 <MudItem xs="12" md="4">
-                    <MudPaper Elevation="4" Style="border-radius: 12px; overflow: hidden; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); height: 500px; display: flex; align-items: center; justify-content: center;">
-                        <MudIcon Icon="@Icons.Material.Filled.MenuBook" Size="Size.Large" Color="Color.Surface" Style="font-size: 10rem;" />
-                    </MudPaper>
+                    @if (!string.IsNullOrEmpty(book.CoverImageUrl))
+                    {
+                        <MudImage Src="@book.CoverImageUrl" Alt="@book.Title" ObjectFit="ObjectFit.Cover" Elevation="4" Class="rounded-lg" Style="height: 500px; width: 100%;" />
+                    }
+                    else
+                    {
+                        <MudPaper Elevation="4" Style="border-radius: 12px; overflow: hidden; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); height: 500px; display: flex; align-items: center; justify-content: center;">
+                            <MudIcon Icon="@Icons.Material.Filled.MenuBook" Size="Size.Large" Color="Color.Surface" Style="font-size: 10rem;" />
+                        </MudPaper>
+                    }
                 </MudItem>
 
                 @* Book Information *@
@@ -106,7 +113,7 @@
                             </MudStack>
                             
                             @* Show average rating below user's rating *@
-                            @if (book.RatingCount > 0 || book.AverageRating > 0)
+                            @if (book.RatingCount > 0)
                             {
                                 <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
                                     <MudText Typo="Typo.body2" Color="Color.Secondary">Average: </MudText>
@@ -124,19 +131,22 @@
                             }
                         </Authorized>
                         <NotAuthorized>
-                            <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
-                                <MudText Typo="Typo.body1" Class="mr-2">Average Rating:</MudText>
-                                @for (int i = 1; i <= 5; i++)
-                                {
-                                    var starIndex = i;
-                                    var isFilled = book.AverageRating >= starIndex;
-                                    var isHalfFilled = !isFilled && book.AverageRating >= starIndex - 0.5f;
-                                    <MudIcon Icon="@(isFilled ? Icons.Material.Filled.Star : (isHalfFilled ? Icons.Material.Filled.StarHalf : Icons.Material.Outlined.StarBorder))"
-                                             Color="@(isFilled || isHalfFilled ? Color.Warning : Color.Default)"
-                                             Size="Size.Large" />
-                                }
-                                <MudText Typo="Typo.body2" Class="ml-2">@book.AverageRating.ToString("F1") (@book.RatingCount @(book.RatingCount == 1 ? "rating" : "ratings"))</MudText>
-                            </MudStack>
+                            @if (book.RatingCount > 0)
+                            {
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+                                    <MudText Typo="Typo.body1" Class="mr-2">Average Rating:</MudText>
+                                    @for (int i = 1; i <= 5; i++)
+                                    {
+                                        var starIndex = i;
+                                        var isFilled = book.AverageRating >= starIndex;
+                                        var isHalfFilled = !isFilled && book.AverageRating >= starIndex - 0.5f;
+                                        <MudIcon Icon="@(isFilled ? Icons.Material.Filled.Star : (isHalfFilled ? Icons.Material.Filled.StarHalf : Icons.Material.Outlined.StarBorder))"
+                                                 Color="@(isFilled || isHalfFilled ? Color.Warning : Color.Default)"
+                                                 Size="Size.Large" />
+                                    }
+                                    <MudText Typo="Typo.body2" Class="ml-2">@book.AverageRating.ToString("F1") (@book.RatingCount @(book.RatingCount == 1 ? "rating" : "ratings"))</MudText>
+                                </MudStack>
+                            }
                         </NotAuthorized>
                      </AuthorizeView>
 

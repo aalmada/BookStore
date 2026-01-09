@@ -20,4 +20,5 @@ public record BookDto(
     int LikeCount = 0,
     float AverageRating = 0f,
     int RatingCount = 0,
-    int UserRating = 0); // 0 = not rated, 1-5 = user's rating
+    int UserRating = 0,
+    string? CoverImageUrl = null); // 0 = not rated, 1-5 = user's rating

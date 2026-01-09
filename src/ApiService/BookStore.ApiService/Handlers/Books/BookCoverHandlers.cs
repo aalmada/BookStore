@@ -15,7 +15,7 @@ public static class BookCoverHandlers
         BlobStorageService blobStorage,
         IHttpContextAccessor contextAccessor)
     {
-        var context = contextAccessor.HttpContext!;
+        var context = contextAccessor.HttpContext;
 
         // Get current stream state for ETag validation
         var streamState = await session.Events.FetchStreamStateAsync(command.BookId);
@@ -27,7 +27,7 @@ public static class BookCoverHandlers
         var currentETag = ETagHelper.GenerateETag(streamState.Version);
 
         // Check If-Match header for optimistic concurrency
-        if (!string.IsNullOrEmpty(command.ETag) &&
+        if (context is not null && !string.IsNullOrEmpty(command.ETag) &&
             !ETagHelper.CheckIfMatch(context, currentETag))
         {
             return (ETagHelper.PreconditionFailed(), null!);
@@ -53,7 +53,11 @@ public static class BookCoverHandlers
         // Get new stream state and return new ETag
         var newStreamState = await session.Events.FetchStreamStateAsync(command.BookId);
         var newETag = ETagHelper.GenerateETag(newStreamState!.Version);
-        ETagHelper.AddETagHeader(context, newETag);
+        
+        if (context is not null)
+        {
+            ETagHelper.AddETagHeader(context, newETag);
+        }
 
         // Return notification for SignalR
         var notification = new BookCoverUpdatedNotification(

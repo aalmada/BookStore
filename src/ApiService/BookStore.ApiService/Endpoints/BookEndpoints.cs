@@ -185,7 +185,8 @@ public static class BookEndpoints
                     statistics.TryGetValue(book.Id, out var stats) ? stats.LikeCount : 0,
                     stats?.AverageRating ?? 0f,
                     stats?.RatingCount ?? 0,
-                    0 // UserRating is always 0 in cache, will be overlaid if authenticated
+                    0, // UserRating is always 0 in cache, will be overlaid if authenticated
+                    book.CoverImageUrl
                 )).ToList();
 
                 return new PagedListDto<BookDto>(
@@ -335,7 +336,8 @@ public static class BookEndpoints
                     statistics.TryGetValue(book.Id, out var stats) ? stats.LikeCount : 0,
                     stats?.AverageRating ?? 0f,
                     stats?.RatingCount ?? 0,
-                    0 // UserRating is always 0 in cache, will be overlaid if authenticated
+                    0, // UserRating is always 0 in cache, will be overlaid if authenticated
+                    book.CoverImageUrl
                     );
             },
             options: new HybridCacheEntryOptions

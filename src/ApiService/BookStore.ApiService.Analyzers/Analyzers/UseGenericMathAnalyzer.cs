@@ -81,7 +81,7 @@ public class UseGenericMathAnalyzer : DiagnosticAnalyzer
         var diagnostic = Diagnostic.Create(
             Rule,
             memberAccess.GetLocation(),
-            argumentType.Name,
+            argumentType.ToDisplayString(),
             methodName);
 
         context.ReportDiagnostic(diagnostic);

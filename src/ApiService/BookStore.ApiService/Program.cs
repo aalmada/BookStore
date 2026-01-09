@@ -54,30 +54,45 @@ builder.Services.AddRateLimiter(options =>
 var app = builder.Build();
 
 // Start seeding in the background (don't block app startup)
-if (app.Environment.IsDevelopment())
+// Start seeding in the background (don't block app startup)
+// We need seeding in all environments for now (including tests)
+if (true)
 {
     _ = Task.Run(async () =>
     {
-        // Give the app a moment to start listening for health checks
-        await Task.Delay(100);
+        try
+        {
+            // Give the app a moment to start listening for health checks
+            await Task.Delay(100);
 
-        using var scope = app.Services.CreateScope();
-        var store = scope.ServiceProvider.GetRequiredService<IDocumentStore>();
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+            using var scope = app.Services.CreateScope();
+            var store = scope.ServiceProvider.GetRequiredService<IDocumentStore>();
+            var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 
-        // Apply schema to create PostgreSQL extensions (pg_trgm, unaccent)
-        await store.Storage.ApplyAllConfiguredChangesToDatabaseAsync();
+            logger.LogInformation("Starting database seeding...");
 
-        var seeder = new DatabaseSeeder(store);
-        await seeder.SeedAsync();
+            // Apply schema to create PostgreSQL extensions (pg_trgm, unaccent)
+            await store.Storage.ApplyAllConfiguredChangesToDatabaseAsync();
 
-        // Seed admin user
-        var userManager = scope.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.Identity.UserManager<BookStore.ApiService.Models.ApplicationUser>>();
-        await DatabaseSeeder.SeedAdminUserAsync(userManager);
+            var bus = scope.ServiceProvider.GetRequiredService<Wolverine.IMessageBus>();
+            var seeder = new DatabaseSeeder(store, bus);
+            await seeder.SeedAsync();
 
-        // Wait for async projections to process the seeded events
-        // In production, projections run continuously in the background
-        await WaitForProjectionsAsync(store, logger);
+            // Seed admin user
+            var userManager = scope.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.Identity.UserManager<BookStore.ApiService.Models.ApplicationUser>>();
+            await DatabaseSeeder.SeedAdminUserAsync(userManager);
+
+            // Wait for async projections to process the seeded events
+            // In production, projections run continuously in the background
+            await WaitForProjectionsAsync(store, logger);
+            
+            logger.LogInformation("Database seeding completed successfully.");
+        }
+        catch (Exception ex)
+        {
+            var logger = app.Services.GetRequiredService<ILogger<Program>>();
+            logger.LogCritical(ex, "An error occurred during database seeding.");
+        }
     });
 }
 

@@ -34,6 +34,9 @@
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.1" />
     <PackageReference Include="Microsoft.Extensions.Caching.Hybrid" Version="9.2.0-preview.1.25105.6" />
     <PackageReference Include="Scalar.AspNetCore" Version="2.0.18" />
+    <PackageReference Include="SkiaSharp" Version="3.119.1" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="3.119.1" />
+    <PackageReference Include="SkiaSharp.NativeAssets.macOS" Version="3.119.1" />
     <PackageReference Include="WolverineFx.Http" Version="3.9.1" />
     <PackageReference Include="WolverineFx.Marten" Version="3.9.1" />
     <PackageReference Include="MailKit" Version="4.10.0" />
