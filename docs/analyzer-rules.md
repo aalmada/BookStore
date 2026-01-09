@@ -4,9 +4,10 @@ The BookStore.ApiService.Analyzers project enforces architectural patterns for E
 
 ## Overview
 
-The analyzer provides **14 rules across 4 categories** to ensure consistent architecture:
+The analyzer provides **15 rules across 5 categories** to ensure consistent architecture:
 
 - **Event Sourcing Rules** (BS1xxx): Enforce event immutability and proper structure
+- **Best Practices** (BS1xxx): Enforce modern C# features and performance improvements
 - **CQRS Command Rules** (BS2xxx): Ensure commands follow CQRS patterns  
 - **Aggregate Rules** (BS3xxx): Validate Marten conventions and event sourcing patterns
 - **Handler Rules** (BS4xxx): Enforce Wolverine handler conventions
@@ -85,6 +86,28 @@ public record BookAdded(Guid Id);  // Should be in Events namespace
 namespace BookStore.ApiService.Events;
 
 public record BookAdded(Guid Id);
+```
+
+---
+
+### Best Practices Rules (BS1xxx)
+
+#### BS1008: Use generic math
+- **Severity**: Warning
+- **Category**: BestPractices
+
+Use generic math methods (e.g., `int.Max`, `double.Pow`) instead of `System.Math`. This provides better type safety and performance.
+
+**❌ Bad:**
+```csharp
+var max = Math.Max(1, 2);
+var val = Math.Ceiling(1.5);
+```
+
+**✅ Good:**
+```csharp
+var max = int.Max(1, 2);
+var val = double.Ceiling(1.5);
 ```
 
 ---
