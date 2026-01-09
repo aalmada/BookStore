@@ -23,6 +23,7 @@ builder.AddRedisDistributedCache("cache");
 // Configure services
 builder.Services.AddJsonConfiguration(builder.Environment);
 builder.Services.AddApplicationServices(builder.Configuration);
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddMartenEventStore(builder.Configuration);
 builder.Services.AddWolverineMessaging();
 
@@ -144,7 +145,16 @@ else
 }
 
 // Add request localization middleware
-app.UseRequestLocalization();
+// Add request localization middleware
+var localizationOptions = new LocalizationOptions { SupportedCultures = ["en"] }; // Default if config missing (though required)
+builder.Configuration.GetSection(LocalizationOptions.SectionName).Bind(localizationOptions);
+
+var requestLocalizationOptions = new RequestLocalizationOptions()
+    .SetDefaultCulture(localizationOptions.DefaultCulture)
+    .AddSupportedCultures(localizationOptions.SupportedCultures)
+    .AddSupportedUICultures(localizationOptions.SupportedCultures);
+
+app.UseRequestLocalization(requestLocalizationOptions);
 
 // Add Marten metadata middleware to set correlation/causation IDs
 app.UseMartenMetadata();

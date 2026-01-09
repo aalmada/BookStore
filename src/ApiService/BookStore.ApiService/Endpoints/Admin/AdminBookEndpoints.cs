@@ -179,8 +179,11 @@ namespace BookStore.ApiService.Endpoints.Admin
 
             var etag = context.Request.Headers["If-Match"].FirstOrDefault();
 
-            await using var stream = file.OpenReadStream();
-            var command = new Commands.UpdateBookCover(id, stream, file.ContentType)
+            using var stream = new MemoryStream();
+            await file.CopyToAsync(stream, cancellationToken);
+            var content = stream.ToArray();
+
+            var command = new Commands.UpdateBookCover(id, content, file.ContentType)
             {
                 ETag = etag
             };

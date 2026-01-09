@@ -13,8 +13,10 @@ public static class BookCoverHandlers
         UpdateBookCover command,
         IDocumentSession session,
         BlobStorageService blobStorage,
-        HttpContext context)
+        IHttpContextAccessor contextAccessor)
     {
+        var context = contextAccessor.HttpContext!;
+
         // Get current stream state for ETag validation
         var streamState = await session.Events.FetchStreamStateAsync(command.BookId);
         if (streamState is null)
@@ -37,10 +39,11 @@ public static class BookCoverHandlers
             return (Results.NotFound(), null!);
         }
 
+        using var imageStream = new MemoryStream(command.Content);
         // Upload to blob storage
         var coverUrl = await blobStorage.UploadBookCoverAsync(
             command.BookId,
-            command.ImageStream,
+            imageStream,
             command.ContentType);
 
         // Update aggregate

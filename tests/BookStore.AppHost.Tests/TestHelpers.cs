@@ -251,9 +251,8 @@ public static class TestHelpers
         return false;
     }
 
-    public static async Task<BookDto> CreateBookAsync(HttpClient httpClient, Guid? publisherId = null, IEnumerable<Guid>? authorIds = null, IEnumerable<Guid>? categoryIds = null)
+    public static async Task<BookDto> CreateBookAsync(HttpClient httpClient, object createBookRequest)
     {
-        var createBookRequest = GenerateFakeBookRequest(publisherId, authorIds, categoryIds);
         BookDto? createdBook = null;
 
         var received = await ExecuteAndWaitForEventAsync(
@@ -273,6 +272,12 @@ public static class TestHelpers
         }
 
         return createdBook!;
+    }
+
+    public static async Task<BookDto> CreateBookAsync(HttpClient httpClient, Guid? publisherId = null, IEnumerable<Guid>? authorIds = null, IEnumerable<Guid>? categoryIds = null)
+    {
+        var createBookRequest = GenerateFakeBookRequest(publisherId, authorIds, categoryIds);
+        return await CreateBookAsync(httpClient, createBookRequest);
     }
 
     public static async Task AddToCartAsync(HttpClient client, Guid bookId, int quantity = 1, Guid? expectedEntityId = null)

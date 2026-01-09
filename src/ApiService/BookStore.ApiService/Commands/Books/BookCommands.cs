@@ -73,7 +73,7 @@ public record RestoreBook(Guid Id)
 /// </summary>
 public record UpdateBookCover(
     Guid BookId,
-    Stream ImageStream,
+    byte[] Content,
     string ContentType)
 {
     /// <summary>

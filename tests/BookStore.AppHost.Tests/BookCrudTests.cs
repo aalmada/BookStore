@@ -10,6 +10,43 @@ namespace BookStore.AppHost.Tests;
 public class BookCrudTests
 {
     [Test]
+    public async Task UploadBookImage_ShouldReturnOk()
+    {
+        // Arrange
+        var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
+        var createdBook = await TestHelpers.CreateBookAsync(httpClient);
+
+        // Get ETag for concurrency check
+        var getResponse = await httpClient.GetAsync($"/api/books/{createdBook!.Id}");
+        var etag = getResponse.Headers.ETag?.Tag;
+        _ = await Assert.That(etag).IsNotNull();
+
+        // Create dummy image content
+        var fileContent = new ByteArrayContent([0xFF, 0xD8, 0xFF, 0xE0]); // JPEG header mostly
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
+
+        using var content = new MultipartFormDataContent();
+        content.Add(fileContent, "file", "cover.jpg");
+
+        // Act
+        var request = new HttpRequestMessage(HttpMethod.Post, $"/api/admin/books/{createdBook.Id}/cover");
+        request.Headers.IfMatch.Add(new EntityTagHeaderValue(etag!));
+        request.Content = content;
+
+        var response = await httpClient.SendAsync(request);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var error = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"[UploadTest] Upload failed: {response.StatusCode} - {error}");
+        }
+
+        // Assert
+        // We expect OK (200) or No Content (204) depending on implementation
+        _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Or.IsEqualTo(HttpStatusCode.NoContent);
+    }
+
+    [Test]
     public async Task CreateBook_EndToEndFlow_ShouldReturnOk()
     {
         // Arrange
