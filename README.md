@@ -64,7 +64,7 @@ aspire run
 
 The Aspire dashboard opens automatically, providing access to:
 - **Web Frontend** - Blazor application for browsing books
-- **API Service** - Backend API with Scalar documentation at `/scalar/v1`
+- **API Service** - Backend API with Scalar documentation at `/api-reference`
 - **PostgreSQL** - Event store and read model database
 - **PgAdmin** - Database management interface
 
@@ -165,6 +165,7 @@ For a detailed breakdown of the project structure, please refer to the [Getting 
 - **Aspire** - Orchestration and observability
 - **OpenTelemetry** - Distributed tracing and metrics
 - **Scalar** - API documentation UI
+- **Polly** - Resilience and transient fault handling
 - **Docker** - Container runtime
 - **TUnit** - Modern testing framework with built-in code coverage
 - **Bogus** - Fake data generation for tests
@@ -279,7 +280,7 @@ curl -X PUT http://localhost:5000/api/admin/books/{id} \
 
 - **Health Checks**: `/health`
 - **Aspire Dashboard**: `https://localhost:17161`
-- **Scalar API Docs**: `/scalar/v1`
+- **Scalar API Docs**: `/api-reference`
 - **OpenAPI Spec**: `/openapi/v1.json`
 
 ## 🧪 Testing

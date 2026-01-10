@@ -1,6 +1,6 @@
 - name: Home
   href: index.md
 - name: Documentation
-  href: docs/
+  href: docs/getting-started.md
 - name: API Reference
   href: api/

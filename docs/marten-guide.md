@@ -316,6 +316,7 @@ builder.Services.AddMarten(sp =>
 |--------|---------|
 | `MetadataConfig.CorrelationIdEnabled` | Track request workflows |
 | `MetadataConfig.CausationIdEnabled` | Track event chains |
+| `MetadataConfig.HeadersEnabled` | Store technical metadata (IP, User-Agent, etc.) in JSON format |
 | `UseSystemTextJsonForSerialization` | JSON settings for events |
 | `UseNGramSearchWithUnaccent` | Multilingual full-text search |
 | `UseLightweightSessions()` | Better performance |

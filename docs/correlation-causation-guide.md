@@ -34,22 +34,28 @@ The Book Store API implements **causation** and **correlation** IDs for distribu
 
 ### Response Headers
 
+The system automatically echoes the correlation ID in the response headers. If no ID was provided in the request, a new one is generated and returned.
+
 | Header | Description | Example |
 |--------|-------------|---------|
 | `X-Correlation-ID` | Echo of correlation ID (or generated) | `550e8400-e29b-41d4-a716-446655440000` |
-| `X-Event-ID` | ID of the event created by this request | `770e8400-e29b-41d4-a716-446655440002` |
 
 ## Event Metadata Structure
 
-Every event in the system includes metadata:
+Every event in the system includes metadata stored in Marten's dedicated columns and a technical `headers` JSON column:
+
+### Primary Metadata (Columns)
+- **CorrelationId**: Tracks the entire business transaction.
+- **CausationId**: Tracks the immediate cause (usually the message ID).
+
+### Technical Metadata (Headers Column)
+Additional context is stored in the JSON `headers` column for auditability:
 
 ```json
 {
-  "eventId": "770e8400-e29b-41d4-a716-446655440002",
-  "correlationId": "550e8400-e29b-41d4-a716-446655440000",
-  "causationId": "660e8400-e29b-41d4-a716-446655440001",
-  "userId": "admin@example.com",
-  "timestamp": "2024-12-24T12:00:00Z"
+  "user-id": "admin@bookstore.com",
+  "remote-ip": "::1",
+  "user-agent": "Mozilla/5.0..."
 }
 ```
 
@@ -186,19 +192,22 @@ graph TD
 
 ## Querying Events by Correlation ID
 
-You can query the event store to find all events related to a correlation ID:
+You can query the Marten event store to find all events related to a correlation ID and inspect their technical headers:
 
 ```sql
 -- PostgreSQL query in Marten event store
 SELECT 
     id,
+    stream_id,
     type,
-    data->>'eventId' as event_id,
-    data->'metadata'->>'correlationId' as correlation_id,
-    data->'metadata'->>'causationId' as causation_id,
+    correlation_id,
+    causation_id,
+    headers->>'user-id' as user_id,
+    headers->>'remote-ip' as remote_ip,
+    headers->>'user-agent' as user_agent,
     timestamp
 FROM mt_events
-WHERE data->'metadata'->>'correlationId' = 'import-2024-001'
+WHERE correlation_id = 'import-2024-001'
 ORDER BY timestamp;
 ```
 
@@ -268,20 +277,23 @@ logger.LogInformation(
 2. **Use the causation ID** to link back to the original command
 3. **Follow the correlation ID** to see the entire business transaction
 
-## Integration with Observability Tools
+## Implementation Details
 
-Correlation and causation IDs integrate seamlessly with:
+### Middlewares
 
-- **Application Insights**: Automatically tracked in telemetry
-- **Seq**: Structured logging with correlation ID filtering
-- **Jaeger/Zipkin**: Distributed tracing with span correlation
-- **OpenTelemetry**: Native support for trace context propagation
+1. **`MartenMetadataMiddleware`**:
+   - Captures `X-Correlation-ID` from headers or generates a new one.
+   - Sets `CorrelationId` and `CausationId` on the `IDocumentSession`.
+   - Captures `RemoteIpAddress` and `User-Agent`.
+   - Sets technical headers on the session.
+   - Echoes `X-Correlation-ID` in the response.
 
-Example with OpenTelemetry:
-```csharp
-Activity.Current?.SetTag("correlation.id", metadata.CorrelationId);
-Activity.Current?.SetTag("causation.id", metadata.CausationId);
-```
+2. **`WolverineCorrelationMiddleware`**:
+   - Bridges the HTTP-scoped metadata to Wolverine's background handlers.
+   - Uses `IHttpContextAccessor` to retrieve the current request's context.
+
+3. **`LoggingEnricherMiddleware`**:
+   - Automatically adds `CorrelationId` and `CausationId` to the structured logging scope for every request.
 
 ## Summary
 

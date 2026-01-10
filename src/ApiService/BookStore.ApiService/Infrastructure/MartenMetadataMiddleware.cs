@@ -34,11 +34,36 @@ public class MartenMetadataMiddleware
         session.CorrelationId = correlationId;
         session.CausationId = causationId;
 
-        // Optionally set custom headers
+        // Store in HttpContext.Items for other middlewares (Logging, Wolverine)
+        context.Items["CorrelationId"] = correlationId;
+        context.Items["CausationId"] = causationId;
+
+        // Ensure Activity (if present) carries the correlation ID as a tag
+        if (Activity.Current != null)
+        {
+            _ = Activity.Current.SetTag("correlation_id", correlationId);
+            _ = Activity.Current.SetTag("causation_id", causationId);
+        }
+
+        // Capture technical metadata
         var userId = context.User?.Identity?.Name;
+        var remoteIp = context.Connection.RemoteIpAddress?.ToString();
+        var userAgent = context.Request.Headers["User-Agent"].FirstOrDefault();
+
+        // Set technical headers on Marten session
         if (!string.IsNullOrEmpty(userId))
         {
             session.SetHeader("user-id", userId);
+        }
+
+        if (!string.IsNullOrEmpty(remoteIp))
+        {
+            session.SetHeader("remote-ip", remoteIp);
+        }
+
+        if (!string.IsNullOrEmpty(userAgent))
+        {
+            session.SetHeader("user-agent", userAgent);
         }
 
         // Add correlation ID to response headers
@@ -49,6 +74,10 @@ public class MartenMetadataMiddleware
         });
 
         // Log the Marten metadata setup
+        var hasHeader = context.Request.Headers.ContainsKey("X-Correlation-ID");
+        _logger.LogInformation("[MARTEN-METADATA] Request: {Method} {Path}, X-Correlation-ID Header Present: {HasHeader}, CorelationId: {CorrelationId}",
+            context.Request.Method, context.Request.Path, hasHeader, correlationId);
+
         Log.Infrastructure.MartenMetadataSet(_logger, correlationId, causationId, userId ?? "anonymous");
 
         await _next(context);

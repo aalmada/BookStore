@@ -133,7 +133,13 @@ Log.Infrastructure.MartenMetadataSet(
 
 #### Request Tracking
 
-See [LoggingEnricher.cs:40-46](file:///Users/antaoalmada/Projects/BookStore/src/ApiService/BookStore.ApiService/Infrastructure/LoggingEnricher.cs#L40-L46):
+See [LoggingEnricher.cs](file:///Users/antaoalmada/Projects/BookStore/src/ApiService/BookStore.ApiService/Infrastructure/LoggingEnricher.cs):
+
+The `LoggingEnricherMiddleware` automatically enriches the log scope for every HTTP request with:
+- `CorrelationId` (captured from headers or generated)
+- `CausationId` (captured from headers or root request ID)
+- `TraceId`, `SpanId` (from OpenTelemetry)
+- `UserId`, `RemoteIp`, `UserAgent`
 
 ```csharp
 // Log the request start with enriched metadata

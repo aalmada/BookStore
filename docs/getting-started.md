@@ -95,7 +95,7 @@ The frontend provides:
 
 1. In the Aspire dashboard, click on **apiservice**
 2. Copy the HTTP endpoint URL (e.g., `http://localhost:5000`)
-3. Navigate to `http://localhost:5000/scalar/v1`
+3. Navigate to `http://localhost:5000/api-reference`
 
 You'll see interactive API documentation where you can:
 - Browse all endpoints (public and admin)
@@ -436,7 +436,7 @@ dotnet build
 
 ## Getting Help
 
-- Check the [API Reference](api-reference.md) for endpoint details
+- Check the [API Reference](../api/index.md) for endpoint details
 - Review [Architecture](architecture.md) for design patterns
 - Explore the Scalar UI for interactive documentation
 - Check Aspire dashboard logs for debugging

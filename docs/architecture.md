@@ -360,6 +360,7 @@ sequenceDiagram
 - **Real-time Notifications** - Server-Sent Events (SSE) for all mutations
 - **Optimistic Concurrency** - ETags with stream versions
 - **Distributed Tracing** - Correlation/causation IDs
+- **Environmental Metadata** - Automatic capture of IP, User-Agent, and User ID in events
 - **Multi-language** - Category translations
 - **Full-text Search** - PostgreSQL trigrams
 - **API Versioning** - Header-based

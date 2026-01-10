@@ -26,14 +26,15 @@ public class LoggingEnricherMiddleware
         var headers = context.Request.Headers;
 
         // Get correlation ID (already set by MartenMetadataMiddleware)
-        var correlationId = headers.TryGetValue("X-Correlation-ID", out var correlationHeader)
-            ? correlationHeader.ToString()
-            : activity?.RootId ?? Guid.CreateVersion7().ToString();
+        var correlationId = context.Items["CorrelationId"] as string
+            ?? (headers.TryGetValue("X-Correlation-ID", out var correlationHeader) ? correlationHeader.ToString() : null)
+            ?? activity?.RootId
+            ?? Guid.CreateVersion7().ToString();
 
-        // Get causation ID from header
-        var causationId = headers.TryGetValue("X-Causation-ID", out var causationHeader)
-            ? causationHeader.ToString()
-            : activity?.ParentId;
+        // Get causation ID
+        var causationId = context.Items["CausationId"] as string
+            ?? (headers.TryGetValue("X-Causation-ID", out var causationHeader) ? causationHeader.ToString() : null)
+            ?? activity?.ParentId;
 
         // Get trace and span IDs from OpenTelemetry Activity (avoid ToString() if null)
         var traceId = activity?.TraceId.ToString();

@@ -23,6 +23,7 @@ public static class WolverineConfigurationExtensions
 
             // Policies for automatic behavior
             opts.Policies.AutoApplyTransactions();
+            opts.Policies.AddMiddleware(typeof(WolverineCorrelationMiddleware));
         });
 
         return services;
@@ -36,5 +37,6 @@ public static class WolverineConfigurationExtensions
         _ = opts.Discovery.IncludeType(typeof(Handlers.Categories.CategoryHandlers));
         _ = opts.Discovery.IncludeType(typeof(Handlers.Publishers.PublisherHandlers));
         _ = opts.Discovery.IncludeType(typeof(Handlers.Notifications.EmailHandlers));
+        _ = opts.Discovery.IncludeType(typeof(Handlers.UserCommandHandler));
     }
 }

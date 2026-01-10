@@ -2,6 +2,8 @@
   href: getting-started.md
 - name: Architecture
   href: architecture.md
+- name: API Reference
+  href: ../api/index.md
 - name: Guides
   items:
     - name: Event Sourcing
@@ -22,8 +24,8 @@
       href: authentication-guide.md
     - name: Passkey Authentication
       href: passkey-guide.md
-    - name: SignalR
-      href: signalr-guide.md
+    - name: Real-time Notifications (SSE)
+      href: architecture.md#real-time-notifications-with-server-sent-events-sse
     - name: Email Verification
       href: email-validation.md
     - name: Logging

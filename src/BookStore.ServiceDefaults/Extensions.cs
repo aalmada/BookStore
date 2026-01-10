@@ -83,8 +83,10 @@ public static class Extensions
         _ = builder.Services.AddOpenTelemetry()
             .WithMetrics(metrics => _ = metrics.AddAspNetCoreInstrumentation()
                 .AddHttpClientInstrumentation()
-                .AddRuntimeInstrumentation())
+                .AddRuntimeInstrumentation()
+                .AddMeter("Wolverine"))
             .WithTracing(tracing => _ = tracing.AddSource(builder.Environment.ApplicationName)
+                .AddSource("Wolverine")
                 .AddAspNetCoreInstrumentation(tracing =>
                     // Exclude health check requests from tracing
                     tracing.Filter = context =>
