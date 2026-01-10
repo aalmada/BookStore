@@ -29,18 +29,18 @@
     <PackageReference Include="Aspire.StackExchange.Redis.DistributedCaching" Version="13.1.0" />
     <PackageReference Include="Bogus" Version="35.6.5" />
     <PackageReference Include="JasperFx.Core" Version="1.12.0" />
-    <PackageReference Include="Marten" Version="7.37.2" />
+    <PackageReference Include="Marten" Version="8.17.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.1" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.1" />
-    <PackageReference Include="Microsoft.Extensions.Caching.Hybrid" Version="9.2.0-preview.1.25105.6" />
-    <PackageReference Include="Scalar.AspNetCore" Version="2.0.18" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Hybrid" Version="10.1.0" />
+    <PackageReference Include="Scalar.AspNetCore" Version="2.12.4" />
     <PackageReference Include="SkiaSharp" Version="3.119.1" />
     <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="3.119.1" />
     <PackageReference Include="SkiaSharp.NativeAssets.macOS" Version="3.119.1" />
-    <PackageReference Include="WolverineFx.Http" Version="3.9.1" />
-    <PackageReference Include="WolverineFx.Marten" Version="3.9.1" />
-    <PackageReference Include="MailKit" Version="4.10.0" />
-    <PackageReference Include="MimeKit" Version="4.10.0" />
+    <PackageReference Include="WolverineFx.Http" Version="5.9.2" />
+    <PackageReference Include="WolverineFx.Marten" Version="5.9.2" />
+    <PackageReference Include="MailKit" Version="4.14.1" />
+    <PackageReference Include="MimeKit" Version="4.14.0" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.15.0" />
     <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.15.0" />
     <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.15.0" />

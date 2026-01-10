@@ -1,6 +1,6 @@
 using BookStore.ApiService.Models;
 using BookStore.Shared.Messages.Events;
-using Marten.Events;
+using JasperFx.Events;
 using Marten.Events.Aggregation;
 using Marten.Events.Projections;
 

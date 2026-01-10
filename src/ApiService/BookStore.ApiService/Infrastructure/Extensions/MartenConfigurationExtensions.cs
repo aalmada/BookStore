@@ -1,12 +1,17 @@
 using BookStore.ApiService.Projections;
 using BookStore.Shared.Infrastructure.Json;
 using BookStore.Shared.Models;
+using JasperFx;
+using JasperFx.Core;
+using JasperFx.Events;
+using JasperFx.Events.Daemon;
+using JasperFx.Events.Projections;
 using Marten;
 using Marten.Events.Daemon;
-using Marten.Events.Daemon.Resiliency;
 using Marten.Events.Projections;
 using Microsoft.Extensions.Options;
 using Weasel.Core;
+using Weasel.Postgresql;
 using Wolverine.Marten;
 
 namespace BookStore.ApiService.Infrastructure.Extensions;
