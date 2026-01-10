@@ -12,14 +12,14 @@ The system uses a pure **Token-Based** approach to unify the auth model for web,
 graph TB
     subgraph "Blazor Frontend"
         A[User Login] --> B[AuthenticationService]
-        B --> C[TokenService (In-Memory)]
+        B --> C["TokenService (In-Memory)"]
         C --> D[JwtAuthenticationStateProvider]
         D --> E[Notify State Changed]
     end
     
     subgraph "Backend API"
         F[Identity Endpoints] --> G[JwtTokenService]
-        G --> H[Issue Access/Refresh Tokens]
+        G --> H["Issue Access/Refresh Tokens"]
         I[API Requests] --> J[Authorization Header]
         J --> K[Validate Bearer Token]
     end
