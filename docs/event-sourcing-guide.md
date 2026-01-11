@@ -221,6 +221,7 @@ foreach (var evt in events)
 - Fraud detection and investigation
 - Customer support and debugging
 - Performance reviews and analytics
+- Advanced behavioral analytics and business intelligence
 
 ### 2. Time Travel
 
@@ -264,6 +265,7 @@ await daemon.RebuildProjectionAsync<BookSearchProjection>(CancellationToken.None
 - Fix bugs in read models
 - Test new projection logic
 - Create new analytics views
+- Machine learning and recommendation engines (e.g., training models on granular user behavior)
 
 See [Marten Guide - Event Sourcing for Analytics](marten-guide.md#event-sourcing-for-analytics) for analytics patterns.
 
