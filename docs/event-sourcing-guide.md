@@ -173,13 +173,13 @@ See [Marten Guide - Aggregates](marten-guide.md#aggregates) for implementation p
 ```mermaid
 graph LR
     subgraph Events [Events Write Model]
-        BA[BookAdded<br/>- Title: "Clean Code"<br/>- AuthorIds: [author-1]<br/>- PublisherId: pub-1]
+        BA["BookAdded<br/>- Title: 'Clean Code'<br/>- AuthorIds: [author-1]<br/>- PublisherId: pub-1"]
         AU[AuthorUpdated]
         PU[PublisherUpdated]
     end
 
     subgraph Projection [Projection Read Model]
-        BSP[BookSearchProjection<br/>- Title: "Clean Code"<br/>- AuthorNames: "Robert Martin"<br/>- PublisherName: "Prentice Hall"]
+        BSP["BookSearchProjection<br/>- Title: 'Clean Code'<br/>- AuthorNames: 'Robert Martin'<br/>- PublisherName: 'Prentice Hall'"]
     end
 
     BA --> BSP
