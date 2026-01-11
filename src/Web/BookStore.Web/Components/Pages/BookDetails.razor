@@ -300,7 +300,7 @@
              user = newUser;
              if (user.Identity?.IsAuthenticated == true && bookQuery != null)
              {
-                 await bookQuery.LoadAsync();
+                 await bookQuery.LoadAsync(silent: true);
              }
         }
     }

@@ -24,9 +24,14 @@ public class ReactiveQuery<T> : IDisposable
     public T? Data { get; private set; }
 
     /// <summary>
-    /// Gets a value indicating whether the query is currently loading.
+    /// Gets a value indicating whether the query is currently loading for the first time.
     /// </summary>
     public bool IsLoading { get; private set; } = true;
+
+    /// <summary>
+    /// Gets a value indicating whether the query is currently fetching data (including background refreshes).
+    /// </summary>
+    public bool IsFetching { get; private set; }
 
     /// <summary>
     /// Gets the current error message, if any.
@@ -60,9 +65,16 @@ public class ReactiveQuery<T> : IDisposable
     /// <summary>
     /// Executes the query function and updates the state.
     /// </summary>
-    public async Task LoadAsync()
+    public async Task LoadAsync(bool silent = false)
     {
-        IsLoading = true;
+        // Only set IsLoading to true if we don't have data, or if not silent.
+        // This prevents flickering when refreshing data in the background.
+        if (!silent || Data == null)
+        {
+            IsLoading = true;
+        }
+
+        IsFetching = true;
         Error = null;
         _onStateChanged();
 
@@ -78,6 +90,7 @@ public class ReactiveQuery<T> : IDisposable
         finally
         {
             IsLoading = false;
+            IsFetching = false;
             _onStateChanged();
         }
     }
@@ -92,8 +105,8 @@ public class ReactiveQuery<T> : IDisposable
         if (_invalidationService.ShouldInvalidate(notification, _queryKeys))
         {
             Log.QueryInvalidating(_logger, notification.GetType().Name, string.Join(", ", _queryKeys));
-            // Fire and forget reload
-            _ = LoadAsync();
+            // Invalidate in the background (silent = true) to avoid UI flickering
+            _ = LoadAsync(silent: true);
         }
     }
 
