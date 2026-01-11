@@ -25,6 +25,7 @@ public static class BookHandlers
         CreateBook command,
         IDocumentSession session,
         IOptions<LocalizationOptions> localizationOptions,
+        IOptions<CurrencyOptions> currencyOptions,
         ILogger logger)
     {
         Log.Books.BookCreating(logger, command.Id, command.Title, session.CorrelationId ?? "none");
@@ -85,6 +86,29 @@ public static class BookHandlers
             }
         }
 
+        // Validate that default currency price is provided
+        var defaultCurrency = currencyOptions.Value.DefaultCurrency;
+        if (command.Prices is null || !command.Prices.ContainsKey(defaultCurrency))
+        {
+            return Results.BadRequest(new
+            {
+                error = "Default currency price required",
+                message = $"A price for the default currency '{defaultCurrency}' must be provided"
+            });
+        }
+
+        // Validate supported currencies
+        var invalidCurrencies = command.Prices.Keys.Where(c => !currencyOptions.Value.SupportedCurrencies.Contains(c, StringComparer.OrdinalIgnoreCase)).ToList();
+        if (invalidCurrencies.Count > 0)
+        {
+            return Results.BadRequest(new
+            {
+                error = "Invalid currencies provided",
+                invalidCurrencies,
+                message = $"The following currencies are not supported: {string.Join(", ", invalidCurrencies)}"
+            });
+        }
+
         // Convert DTOs to domain objects
         var descriptions = command.Translations.ToDictionary(
             kvp => kvp.Key,
@@ -101,7 +125,8 @@ public static class BookHandlers
                 command.PublicationDate,
                 command.PublisherId,
                 [.. command.AuthorIds],
-                [.. command.CategoryIds]);
+                [.. command.CategoryIds],
+                command.Prices?.ToDictionary(kvp => kvp.Key, kvp => kvp.Value) ?? []);
 
             _ = session.Events.StartStream<BookAggregate>(command.Id, @event);
         }
@@ -132,6 +157,7 @@ public static class BookHandlers
         IDocumentSession session,
         IHttpContextAccessor contextAccessor,
         IOptions<LocalizationOptions> localizationOptions,
+        IOptions<CurrencyOptions> currencyOptions,
         ILogger logger)
     {
         var context = contextAccessor.HttpContext!;
@@ -187,6 +213,29 @@ public static class BookHandlers
             }
         }
 
+        // Validate that default currency price is provided
+        var defaultCurrency = currencyOptions.Value.DefaultCurrency;
+        if (command.Prices is null || !command.Prices.ContainsKey(defaultCurrency))
+        {
+            return Results.BadRequest(new
+            {
+                error = "Default currency price required",
+                message = $"A price for the default currency '{defaultCurrency}' must be provided"
+            });
+        }
+
+        // Validate supported currencies
+        var invalidCurrencies = command.Prices.Keys.Where(c => !currencyOptions.Value.SupportedCurrencies.Contains(c, StringComparer.OrdinalIgnoreCase)).ToList();
+        if (invalidCurrencies.Count > 0)
+        {
+            return Results.BadRequest(new
+            {
+                error = "Invalid currencies provided",
+                invalidCurrencies,
+                message = $"The following currencies are not supported: {string.Join(", ", invalidCurrencies)}"
+            });
+        }
+
         // Get current stream state for ETag validation
         var streamState = await session.Events.FetchStreamStateAsync(command.Id);
         if (streamState is null)
@@ -229,7 +278,8 @@ public static class BookHandlers
                 command.PublicationDate,
                 command.PublisherId,
                 [.. command.AuthorIds],
-                [.. command.CategoryIds]);
+                [.. command.CategoryIds],
+                command.Prices?.ToDictionary(kvp => kvp.Key, kvp => kvp.Value) ?? []);
 
             _ = session.Events.Append(command.Id, @event);
         }

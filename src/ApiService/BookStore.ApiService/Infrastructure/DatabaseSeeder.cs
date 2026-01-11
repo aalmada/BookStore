@@ -239,6 +239,26 @@ public class DatabaseSeeder(IDocumentStore store, IMessageBus bus)
             var categoryId = categories.TryGetValue(book.Category, out var category) ? category.Id : categories.Values.First().Id;
             var publisherId = publishers.Values.First().Id;
 
+            var basePriceValue = book.Category switch
+            {
+                "Classic" => Random.Shared.Next(7, 13),
+                "SciFi" or "Fantasy" => Random.Shared.Next(15, 31),
+                "History" => Random.Shared.Next(20, 41),
+                _ => Random.Shared.Next(10, 26)
+            };
+
+            var decimalPart = Random.Shared.Next(0, 4) switch
+            {
+                0 => 0.00m,
+                1 => 0.49m,
+                2 => 0.95m,
+                _ => 0.99m
+            };
+
+            var usdPrice = (decimal)basePriceValue + decimalPart;
+            var eurPrice = decimal.Max(0.99m, decimal.Round(usdPrice * 0.92m * 2) / 2 - 0.01m);
+            var gbpPrice = decimal.Max(0.99m, decimal.Round(usdPrice * 0.78m * 2) / 2 - 0.01m);
+
             var bookAdded = BookAggregate.CreateEvent(
                 bookId,
                 book.Title,
@@ -248,7 +268,13 @@ public class DatabaseSeeder(IDocumentStore store, IMessageBus bus)
                 new PartialDate(book.Year),
                 publisherId,
                 [authorId],
-                [categoryId]
+                [categoryId],
+                new Dictionary<string, decimal>
+                {
+                    ["USD"] = usdPrice,
+                    ["EUR"] = eurPrice,
+                    ["GBP"] = gbpPrice
+                }
             );
 
             _ = bookSession.Events.StartStream<BookAggregate>(bookId, bookAdded);

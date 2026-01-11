@@ -17,6 +17,7 @@ public class BookAggregate
     public List<Guid> AuthorIds { get; private set; } = [];
     public List<Guid> CategoryIds { get; private set; } = [];
     public bool IsDeleted { get; private set; }
+    public Dictionary<string, decimal> Prices { get; private set; } = [];
     public string? CoverImageUrl { get; private set; }
 
     // Marten uses this for rehydration
@@ -31,6 +32,7 @@ public class BookAggregate
         PublisherId = @event.PublisherId;
         AuthorIds = @event.AuthorIds;
         CategoryIds = @event.CategoryIds;
+        Prices = @event.Prices;
         IsDeleted = false;
     }
 
@@ -44,6 +46,7 @@ public class BookAggregate
         PublisherId = @event.PublisherId;
         AuthorIds = @event.AuthorIds;
         CategoryIds = @event.CategoryIds;
+        Prices = @event.Prices;
     }
 
     void Apply(BookSoftDeleted _) => IsDeleted = true;
@@ -62,13 +65,15 @@ public class BookAggregate
         PartialDate? publicationDate,
         Guid? publisherId,
         List<Guid> authorIds,
-        List<Guid> categoryIds)
+        List<Guid> categoryIds,
+        Dictionary<string, decimal> prices)
     {
         // Validate all inputs before creating event
         ValidateTitle(title);
         ValidateIsbn(isbn);
         ValidateLanguage(language);
         ValidateTranslations(translations);
+        ValidatePrices(prices);
 
         return new BookAdded(
             id,
@@ -79,7 +84,8 @@ public class BookAggregate
             publicationDate,
             publisherId,
             authorIds,
-            categoryIds);
+            categoryIds,
+            prices);
     }
 
     public BookUpdated UpdateEvent(
@@ -90,7 +96,8 @@ public class BookAggregate
         PartialDate? publicationDate,
         Guid? publisherId,
         List<Guid> authorIds,
-        List<Guid> categoryIds)
+        List<Guid> categoryIds,
+        Dictionary<string, decimal> prices)
     {
         // Business rule: cannot update deleted book
         if (IsDeleted)
@@ -103,6 +110,7 @@ public class BookAggregate
         ValidateIsbn(isbn);
         ValidateLanguage(language);
         ValidateTranslations(translations);
+        ValidatePrices(prices);
 
         return new BookUpdated(
             Id,
@@ -113,7 +121,8 @@ public class BookAggregate
             publicationDate,
             publisherId,
             authorIds,
-            categoryIds);
+            categoryIds,
+            prices);
     }
 
     // Validation helper methods
@@ -210,6 +219,29 @@ public class BookAggregate
                 throw new ArgumentException(
                     $"Description for language '{languageCode}' cannot exceed {MaxDescriptionLength} characters",
                     nameof(translations));
+            }
+        }
+    }
+
+    static void ValidatePrices(Dictionary<string, decimal> prices)
+    {
+        ArgumentNullException.ThrowIfNull(prices);
+
+        if (prices.Count == 0)
+        {
+            throw new ArgumentException("At least one price is required", nameof(prices));
+        }
+
+        foreach (var (currencyCode, price) in prices)
+        {
+            if (string.IsNullOrWhiteSpace(currencyCode) || currencyCode.Length != 3)
+            {
+                throw new ArgumentException($"Invalid currency code: '{currencyCode}'", nameof(prices));
+            }
+
+            if (price < 0)
+            {
+                throw new ArgumentException($"Price for currency '{currencyCode}' cannot be negative", nameof(prices));
             }
         }
     }

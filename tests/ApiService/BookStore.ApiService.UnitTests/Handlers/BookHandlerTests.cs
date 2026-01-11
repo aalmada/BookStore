@@ -18,6 +18,20 @@ namespace BookStore.ApiService.UnitTests.Handlers;
 /// </summary>
 public class BookHandlerTests
 {
+    static IOptions<LocalizationOptions> CreateLocalizationOptions()
+        => Options.Create(new LocalizationOptions
+        {
+            DefaultCulture = "en",
+            SupportedCultures = ["en"]
+        });
+
+    static IOptions<CurrencyOptions> CreateCurrencyOptions()
+        => Options.Create(new CurrencyOptions
+        {
+            DefaultCurrency = "USD",
+            SupportedCurrencies = ["USD", "EUR"]
+        });
+
     [Test]
     [Category("Unit")]
     public async Task CreateBookHandler_ShouldStartStreamWithBookAddedEvent()
@@ -34,19 +48,15 @@ public class BookHandlerTests
             new PartialDate(2008, 8, 1),
             Guid.CreateVersion7(), // PublisherId
             [Guid.CreateVersion7()], // AuthorIds
-            [Guid.CreateVersion7()]  // CategoryIds
+            [Guid.CreateVersion7()], // CategoryIds
+            new Dictionary<string, decimal> { ["USD"] = 10.0m } // Prices
         );
 
         var session = Substitute.For<IDocumentSession>();
         _ = session.CorrelationId.Returns("test-correlation-id");
 
         // Act
-        var localizationOptions = Options.Create(new LocalizationOptions
-        {
-            DefaultCulture = "en",
-            SupportedCultures = ["en"]
-        });
-        var result = BookHandlers.Handle(command, session, localizationOptions, Substitute.For<ILogger<CreateBook>>());
+        var result = BookHandlers.Handle(command, session, CreateLocalizationOptions(), CreateCurrencyOptions(), Substitute.For<ILogger<CreateBook>>());
 
         // Assert
         _ = await Assert.That(result).IsNotNull();
@@ -54,7 +64,8 @@ public class BookHandlerTests
             command.Id,
             Arg.Is<BookAdded>(e =>
                 e.Title == "Clean Code" &&
-                e.Isbn == "978-0132350884"));
+                e.Isbn == "978-0132350884" &&
+                e.Prices["USD"] == 10.0m));
     }
 
     [Test]
@@ -77,24 +88,19 @@ public class BookHandlerTests
             },
             new PartialDate(2008, 8, 1),
             Guid.CreateVersion7(),
-            [],
-            []
+            [Guid.CreateVersion7()],
+            [Guid.CreateVersion7()],
+            new Dictionary<string, decimal> { ["USD"] = 10.0m }
         );
 
         var session = Substitute.For<IDocumentSession>();
 
         // Act
-        var localizationOptions = Options.Create(new LocalizationOptions
-        {
-            DefaultCulture = "en",
-            SupportedCultures = ["en"]
-        });
-
-        var result = BookHandlers.Handle(command, session, localizationOptions, Substitute.For<ILogger<CreateBook>>());
+        var result = BookHandlers.Handle(command, session, CreateLocalizationOptions(), CreateCurrencyOptions(), Substitute.For<ILogger<CreateBook>>());
 
         // Assert
-        _ = await Assert.That(result).IsAssignableTo<Microsoft.AspNetCore.Http.IStatusCodeHttpResult>();
-        var badRequestResult = (Microsoft.AspNetCore.Http.IStatusCodeHttpResult)result;
+        _ = await Assert.That(result).IsAssignableTo<IStatusCodeHttpResult>();
+        var badRequestResult = (IStatusCodeHttpResult)result;
         _ = await Assert.That(badRequestResult.StatusCode).IsEqualTo(400);
     }
 
@@ -103,7 +109,6 @@ public class BookHandlerTests
     [Arguments(0, "978-0132350884")]
     [Arguments(501, "978-0132350884")]
     [Arguments(10, "invalid-isbn")]
-
     public async Task CreateBookHandler_WithInvalidDomainValidation_ShouldReturnBadRequest(int titleLength, string isbn)
     {
         // Arrange
@@ -119,23 +124,47 @@ public class BookHandlerTests
             },
             new PartialDate(2008, 8, 1),
             Guid.CreateVersion7(),
-            [],
-            []
+            [Guid.CreateVersion7()],
+            [Guid.CreateVersion7()],
+            new Dictionary<string, decimal> { ["USD"] = 10.0m }
         );
 
         var session = Substitute.For<IDocumentSession>();
-        var localizationOptions = Options.Create(new LocalizationOptions
-        {
-            DefaultCulture = "en",
-            SupportedCultures = ["en"]
-        });
 
         // Act
-        var result = BookHandlers.Handle(command, session, localizationOptions, Substitute.For<ILogger<CreateBook>>());
+        var result = BookHandlers.Handle(command, session, CreateLocalizationOptions(), CreateCurrencyOptions(), Substitute.For<ILogger<CreateBook>>());
 
         // Assert
-        _ = await Assert.That(result).IsAssignableTo<Microsoft.AspNetCore.Http.IStatusCodeHttpResult>();
-        var badRequestResult = (Microsoft.AspNetCore.Http.IStatusCodeHttpResult)result;
+        _ = await Assert.That(result).IsAssignableTo<IStatusCodeHttpResult>();
+        var badRequestResult = (IStatusCodeHttpResult)result;
+        _ = await Assert.That(badRequestResult.StatusCode).IsEqualTo(400);
+    }
+
+    [Test]
+    [Category("Unit")]
+    public async Task CreateBookHandler_WithMissingDefaultPrice_ShouldReturnBadRequest()
+    {
+        // Arrange
+        var command = new CreateBook(
+            "Clean Code",
+            "978-0132350884",
+            "en",
+            new Dictionary<string, BookTranslationDto> { ["en"] = new BookTranslationDto("Description") },
+            null,
+            null,
+            [Guid.CreateVersion7()],
+            [Guid.CreateVersion7()],
+            new Dictionary<string, decimal> { ["EUR"] = 10.0m } // No USD (default)
+        );
+
+        var session = Substitute.For<IDocumentSession>();
+
+        // Act
+        var result = BookHandlers.Handle(command, session, CreateLocalizationOptions(), CreateCurrencyOptions(), Substitute.For<ILogger<CreateBook>>());
+
+        // Assert
+        _ = await Assert.That(result).IsAssignableTo<IStatusCodeHttpResult>();
+        var badRequestResult = (IStatusCodeHttpResult)result;
         _ = await Assert.That(badRequestResult.StatusCode).IsEqualTo(400);
     }
 
@@ -148,33 +177,24 @@ public class BookHandlerTests
             Guid.CreateVersion7(),
             "Updated Title",
             null,
-            "en", // Language (non-nullable)
-            new Dictionary<string, BookTranslationDto> // Translations
-            {
-                ["en"] = new BookTranslationDto("Updated description")
-            },
-            null, // PartialDate
-            null, // PublisherId
-            [],   // AuthorIds
-            []    // CategoryIds
+            "en",
+            new Dictionary<string, BookTranslationDto> { ["en"] = new BookTranslationDto("Updated description") },
+            null,
+            null,
+            [Guid.CreateVersion7()],
+            [Guid.CreateVersion7()],
+            new Dictionary<string, decimal> { ["USD"] = 10.0m }
         );
 
         var session = Substitute.For<IDocumentSession>();
-        var context = new DefaultHttpContext();
         var contextAccessor = Substitute.For<IHttpContextAccessor>();
-        _ = contextAccessor.HttpContext.Returns(context);
+        _ = contextAccessor.HttpContext.Returns(new DefaultHttpContext());
 
-        // Stream doesn't exist
         _ = session.Events.FetchStreamStateAsync(command.Id)
             .Returns(Task.FromResult<Marten.Events.StreamState?>(null));
 
         // Act
-        var localizationOptions = Options.Create(new LocalizationOptions
-        {
-            DefaultCulture = "en",
-            SupportedCultures = ["en"]
-        });
-        var result = await BookHandlers.Handle(command, session, contextAccessor, localizationOptions, Substitute.For<ILogger<UpdateBook>>());
+        var result = await BookHandlers.Handle(command, session, contextAccessor, CreateLocalizationOptions(), CreateCurrencyOptions(), Substitute.For<ILogger<UpdateBook>>());
 
         // Assert
         _ = await Assert.That(result).IsTypeOf<Microsoft.AspNetCore.Http.HttpResults.NotFound>();

@@ -5,6 +5,12 @@
         <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer" />
         <MudText Typo="Typo.h5" Class="ml-3">BookStore</MudText>
         <MudSpacer />
+        <MudSelect T="string" Value="@CurrencyService.CurrentCurrency" ValueChanged="CurrencyService.SetCurrencyAsync" 
+                   Style="width: 100px;" Class="mr-4" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+            <MudSelectItem Value="@("USD")">USD</MudSelectItem>
+            <MudSelectItem Value="@("EUR")">EUR</MudSelectItem>
+            <MudSelectItem Value="@("GBP")">GBP</MudSelectItem>
+        </MudSelect>
         <LoginDisplay />
     </MudAppBar>
     
@@ -19,8 +25,19 @@
     </MudMainContent>
 </MudLayout>
 
+@inject CurrencyService CurrencyService
+
 @code {
     bool _drawerOpen = true;
 
     void ToggleDrawer() => _drawerOpen = !_drawerOpen;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await CurrencyService.InitializeAsync();
+            StateHasChanged();
+        }
+    }
 }

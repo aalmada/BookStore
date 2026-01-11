@@ -362,6 +362,7 @@ sequenceDiagram
 - **Distributed Tracing** - Correlation/causation IDs
 - **Environmental Metadata** - Automatic capture of client IP, User-Agent, and non-PII User ID (GUID) via headers. The system implements a metadata propagation system that allows the backend API to identify the original browser client even when requests are forwarded by the Blazor Server frontend.
 - **Multi-language** - Category translations
+- **Multi-Currency Pricing** - Explicit regional pricing with psychological endings ([docs](multi-currency-guide.md))
 - **Full-text Search** - PostgreSQL trigrams
 - **API Versioning** - Header-based
 - **Soft Deletion** - Logical deletes with restore
@@ -519,4 +520,6 @@ See [Authentication Guide](authentication-guide.md) and [Passkey Guide](passkey-
 - **[Marten Guide](marten-guide.md)** - Event sourcing implementation with Marten
 - **[Wolverine Guide](wolverine-guide.md)** - Command/handler pattern
 - **[Aspire Orchestration Guide](aspire-guide.md)** - Service orchestration details
+- **[Localization Guide](localization-guide.md)** - Multi-language translation system
+- **[Multi-Currency Pricing Guide](multi-currency-guide.md)** - Regional pricing and psychological strategies
 - **[Getting Started](getting-started.md)** - Setup and running the application

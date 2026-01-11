@@ -17,6 +17,7 @@ This approach ensures:
 - ✅ **High performance** - single document read, no JOINs
 - ✅ **Flexible fallback** - comprehensive 5-step fallback strategy
 - ✅ **Easy to maintain** - all translations in one place
+- ✅ **Architectural Symmetry** - mirrors the pattern used for [Multi-Currency Pricing](multi-currency-guide.md)
 
 ## Configuration
 
@@ -258,4 +259,5 @@ Test the fallback chain by checking responses for:
 ✅ **Flexible** - Easy to add/remove languages  
 ✅ **Type-safe** - LINQ queries work normally  
 ✅ **Comprehensive fallback** - 5-step strategy ensures users always see content  
-✅ **Idiomatic Marten** - Uses SingleStreamProjection pattern
+✅ **Idiomatic Marten** - Uses SingleStreamProjection pattern  
+✅ **Symmetric with Pricing** - Mirrors the [Multi-Currency Pricing](multi-currency-guide.md) implementation

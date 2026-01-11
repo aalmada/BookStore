@@ -6,6 +6,7 @@
 @inject NavigationManager Navigation
 @implements IAsyncDisposable
 @rendermode InteractiveServer
+@inject CurrencyService CurrencyService
 
 <PageTitle>Shopping Cart - BookStore</PageTitle>
 
@@ -28,6 +29,9 @@
                         {
                             <MudText Typo="Typo.body2" Color="Color.Secondary">ISBN: @item.Isbn</MudText>
                         }
+                        <MudText Typo="Typo.body1" Color="Color.Primary" Class="font-weight-bold">
+                            @CurrencyService.FormatPrice(item.Prices)
+                        </MudText>
                     </MudItem>
                     <MudItem xs="6" md="3">
                         <MudNumericField Value="@item.Quantity" 
@@ -50,8 +54,13 @@
             }
             
             <MudStack Row="true" Justify="Justify.SpaceBetween" Class="mt-4">
-                <MudText Typo="Typo.h6">Total Items: @cart.TotalItems</MudText>
-                <MudStack Row="true" Spacing="2">
+                <MudStack>
+                    <MudText Typo="Typo.h6">Total Items: @cart.TotalItems</MudText>
+                    <MudText Typo="Typo.h5" Color="Color.Primary" Class="font-weight-bold">
+                        Total: @FormatTotal()
+                    </MudText>
+                </MudStack>
+                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
                     <MudButton Href="/" Variant="Variant.Text" Color="Color.Primary">
                         Continue Shopping
                     </MudButton>
@@ -88,6 +97,9 @@
         EventsService.StartListening();
         
         await InitializeQueryAsync();
+
+        // Subscribe to currency changes
+        CurrencyService.OnCurrencyChanged += StateHasChanged;
     }
 
     private async Task InitializeQueryAsync()
@@ -213,5 +225,22 @@
     public async ValueTask DisposeAsync()
     {
         cartQuery?.Dispose();
+        CurrencyService.OnCurrencyChanged -= StateHasChanged;
+    }
+
+    private string FormatTotal()
+    {
+        if (cart == null) return "N/A";
+
+        var total = cart.Items.Sum(item => 
+        {
+            if (item.Prices.TryGetValue(CurrencyService.CurrentCurrency, out var price))
+            {
+                return price * item.Quantity;
+            }
+            return 0m;
+        });
+
+        return CurrencyService.FormatPrice(new Dictionary<string, decimal> { { CurrencyService.CurrentCurrency, total } });
     }
 }

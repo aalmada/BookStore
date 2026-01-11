@@ -116,6 +116,9 @@ builder.Services.AddSingleton<OptimisticUpdateService>();
 // Register query invalidation service
 builder.Services.AddSingleton<QueryInvalidationService>();
 
+// Register currency service
+builder.Services.AddScoped<CurrencyService>();
+
 // Register SSE events service
 builder.Services.AddBookStoreEvents(new Uri(apiServiceUrl));
 

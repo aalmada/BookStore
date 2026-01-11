@@ -11,6 +11,7 @@
 @inject ISnackbar Snackbar
 @implements IAsyncDisposable
 @rendermode InteractiveServer
+@inject CurrencyService CurrencyService
 
 <PageTitle>@(book?.Title ?? "Book Details") - BookStore</PageTitle>
 
@@ -150,6 +151,10 @@
                         </NotAuthorized>
                      </AuthorizeView>
 
+                     <MudText Typo="Typo.h4" Color="Color.Primary" Class="mb-6 font-weight-bold">
+                         @CurrencyService.FormatPrice(book.Prices)
+                     </MudText>
+
                      @* Add to Cart *@
                      <AuthorizeView>
                         <Authorized>
@@ -273,7 +278,11 @@
         // Start SSE listening (ensure it's started if specific page loaded directly)
         EventsService.StartListening();
         
+        // Initialize ReactiveQuery
         await InitializeQueryAsync();
+
+        // Subscribe to currency changes
+        CurrencyService.OnCurrencyChanged += StateHasChanged;
     }
 
     protected override async Task OnParametersSetAsync()
@@ -475,5 +484,6 @@
     public async ValueTask DisposeAsync()
     {
         bookQuery?.Dispose();
+        CurrencyService.OnCurrencyChanged -= StateHasChanged;
     }
 }

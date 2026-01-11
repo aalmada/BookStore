@@ -14,7 +14,8 @@ namespace BookStore.ApiService.Commands
         PartialDate? PublicationDate,
         Guid? PublisherId,
         IReadOnlyList<Guid> AuthorIds,
-        IReadOnlyList<Guid> CategoryIds);
+        IReadOnlyList<Guid> CategoryIds,
+        IReadOnlyDictionary<string, decimal>? Prices = null);
 
     public record UpdateBookRequest(
         string Title,
@@ -24,7 +25,8 @@ namespace BookStore.ApiService.Commands
         PartialDate? PublicationDate,
         Guid? PublisherId,
         IReadOnlyList<Guid> AuthorIds,
-        IReadOnlyList<Guid> CategoryIds);
+        IReadOnlyList<Guid> CategoryIds,
+        IReadOnlyDictionary<string, decimal>? Prices = null);
 }
 
 namespace BookStore.ApiService.Endpoints.Admin
@@ -76,7 +78,8 @@ namespace BookStore.ApiService.Endpoints.Admin
                 request.PublicationDate,
                 request.PublisherId,
                 request.AuthorIds ?? ImmutableList<Guid>.Empty,
-                request.CategoryIds ?? ImmutableList<Guid>.Empty);
+                request.CategoryIds ?? ImmutableList<Guid>.Empty,
+                request.Prices);
 
             // Wolverine invokes the handler, manages transaction, and returns result
             return bus.InvokeAsync<IResult>(command, cancellationToken);
@@ -101,7 +104,8 @@ namespace BookStore.ApiService.Endpoints.Admin
                 request.PublicationDate,
                 request.PublisherId,
                 request.AuthorIds ?? ImmutableList<Guid>.Empty,
-                request.CategoryIds ?? ImmutableList<Guid>.Empty)
+                request.CategoryIds ?? ImmutableList<Guid>.Empty,
+                request.Prices)
             {
                 ETag = etag
             };

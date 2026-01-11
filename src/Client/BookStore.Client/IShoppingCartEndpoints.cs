@@ -45,7 +45,8 @@ public record ShoppingCartItemResponse(
     Guid BookId,
     string Title,
     string? Isbn,
-    int Quantity);
+    int Quantity,
+    IReadOnlyDictionary<string, decimal> Prices);
 
 public record AddToCartClientRequest(Guid BookId, int Quantity);
 public record UpdateCartItemClientRequest(int Quantity);

@@ -186,6 +186,7 @@ public static class BookEndpoints
                     stats?.AverageRating ?? 0f,
                     stats?.RatingCount ?? 0,
                     0, // UserRating is always 0 in cache, will be overlaid if authenticated
+                    book.Prices,
                     book.CoverImageUrl
                 )).ToList();
 
@@ -337,6 +338,7 @@ public static class BookEndpoints
                     stats?.AverageRating ?? 0f,
                     stats?.RatingCount ?? 0,
                     0, // UserRating is always 0 in cache, will be overlaid if authenticated
+                    book.Prices,
                     book.CoverImageUrl
                     );
             },

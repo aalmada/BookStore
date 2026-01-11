@@ -30,7 +30,8 @@ public class BookSearchProjectionTests
             new PartialDate(2008, 8, 1),
             publisherId,
             [authorId],
-            [] // CategoryIds
+            [], // CategoryIds
+            [] // Prices
         );
 
         var session = Substitute.For<IQuerySession>();
@@ -92,6 +93,7 @@ public class BookSearchProjectionTests
             new PartialDate(2008, 8, 1),
             publisherId,
             [authorId],
+            [],
             []
         );
 

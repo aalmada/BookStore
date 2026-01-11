@@ -12,7 +12,8 @@ public record BookAdded(
     PartialDate? PublicationDate,
     Guid? PublisherId,
     List<Guid> AuthorIds,
-    List<Guid> CategoryIds);
+    List<Guid> CategoryIds,
+    Dictionary<string, decimal> Prices);
 
 public record BookUpdated(
     Guid Id,
@@ -23,7 +24,8 @@ public record BookUpdated(
     PartialDate? PublicationDate,
     Guid? PublisherId,
     List<Guid> AuthorIds,
-    List<Guid> CategoryIds);
+    List<Guid> CategoryIds,
+    Dictionary<string, decimal> Prices);
 
 public record BookSoftDeleted(Guid Id);
 

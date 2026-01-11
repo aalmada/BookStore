@@ -34,6 +34,8 @@
       href: correlation-causation-guide.md
     - name: Localization
       href: localization-guide.md
+    - name: Multi-Currency Pricing
+      href: multi-currency-guide.md
     - name: Caching
       href: caching-guide.md
     - name: ETag

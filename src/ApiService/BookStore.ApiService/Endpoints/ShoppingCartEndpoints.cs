@@ -69,7 +69,8 @@ public static class ShoppingCartEndpoints
             book.Id,
             book.Title ?? "Unknown",
             book.Isbn,
-            profile.ShoppingCartItems[book.Id])).ToList();
+            profile.ShoppingCartItems[book.Id],
+            book.Prices)).ToList();
 
         var cart = new ShoppingCartDto(
             items,

@@ -18,6 +18,9 @@ public class BookSearchProjection
     // Localized field as dictionary (key = culture, value = description)
     public Dictionary<string, string> Descriptions { get; set; } = [];
 
+    // Prices as dictionary (key = currency, value = price)
+    public Dictionary<string, decimal> Prices { get; set; } = [];
+
     // Denormalized fields for performance
     public Guid? PublisherId { get; set; }
     public string? PublisherName { get; set; }
@@ -45,7 +48,8 @@ public class BookSearchProjection
             CategoryIds = @event.CategoryIds,
             Descriptions = @event.Translations?
                 .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Description)
-                ?? []
+                ?? [],
+            Prices = @event.Prices ?? []
         };
 
         LoadDenormalizedData(projection, session);
@@ -66,6 +70,7 @@ public class BookSearchProjection
         Descriptions = @event.Translations?
             .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Description)
             ?? [];
+        Prices = @event.Prices ?? [];
 
         LoadDenormalizedData(this, session);
         UpdateSearchText(this);

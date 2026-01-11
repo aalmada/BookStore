@@ -8,4 +8,5 @@ public record ShoppingCartItemDto(
     Guid BookId,
     string Title,
     string? Isbn,
-    int Quantity);
+    int Quantity,
+    IReadOnlyDictionary<string, decimal> Prices);

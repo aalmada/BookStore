@@ -13,7 +13,8 @@ public record CreateBook(
     PartialDate? PublicationDate,
     Guid? PublisherId,
     IReadOnlyList<Guid> AuthorIds,
-    IReadOnlyList<Guid> CategoryIds)
+    IReadOnlyList<Guid> CategoryIds,
+    IReadOnlyDictionary<string, decimal>? Prices = null)
 {
     /// <summary>
     /// Unique identifier for the book (generated automatically)
@@ -38,7 +39,8 @@ public record UpdateBook(
     PartialDate? PublicationDate,
     Guid? PublisherId,
     IReadOnlyList<Guid> AuthorIds,
-    IReadOnlyList<Guid> CategoryIds)
+    IReadOnlyList<Guid> CategoryIds,
+    IReadOnlyDictionary<string, decimal>? Prices = null)
 {
     /// <summary>
     /// ETag for optimistic concurrency control

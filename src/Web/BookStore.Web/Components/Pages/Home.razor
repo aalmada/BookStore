@@ -11,6 +11,7 @@
 @inject ISnackbar Snackbar
 @implements IAsyncDisposable
 @rendermode InteractiveServer
+@inject CurrencyService CurrencyService
 
 <PageTitle>BookStore - Discover Your Next Great Read</PageTitle>
 
@@ -172,6 +173,9 @@
                                     <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" /> @book.PublicationDate.Value.Year
                                 </MudText>
                             }
+                            <MudText Typo="Typo.h6" Color="Color.Primary" Class="mt-2 font-weight-bold">
+                                @CurrencyService.FormatPrice(book.Prices)
+                            </MudText>
                         </MudCardContent>
                         <MudCardActions>
                             <MudButton Href="@($"/book/{book.Id}")" Variant="Variant.Text" Color="Color.Primary" FullWidth="true" StartIcon="@Icons.Material.Filled.Visibility">
@@ -265,6 +269,9 @@
         
         // Start cleanup timer for stale optimistic books
         StartCleanupTimer();
+
+        // Subscribe to currency changes
+        CurrencyService.OnCurrencyChanged += StateHasChanged;
     }
 
     protected override async Task OnParametersSetAsync()
@@ -450,6 +457,7 @@
         bookQuery?.Dispose();
         OptimisticService.OnBooksChanged -= HandleOptimisticBooksChanged;
         EventsService.OnNotificationReceived -= HandleNotification;
+        CurrencyService.OnCurrencyChanged -= StateHasChanged;
         
         // Dispose timers
         debounceTimer?.Dispose();
