@@ -43,7 +43,7 @@
                       Class="mud-text-field-large" />
     </MudPaper>
 
-    @if (isLoading)
+    @if (isLoading && pagedBooks == null)
     {
         <MudGrid>
             @for (int i = 0; i < 8; i++)
@@ -73,13 +73,29 @@
     else if (pagedBooks != null)
     {
         @* Results Info *@
-        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
-            Showing @pagedBooks.Items.Count of @pagedBooks.TotalItemCount books
-            @if (!string.IsNullOrWhiteSpace(searchQuery))
+        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Showing @pagedBooks.Items.Count of @pagedBooks.TotalItemCount books
+                @if (!string.IsNullOrWhiteSpace(searchQuery))
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Primary" Class="ml-2">@searchQuery</MudChip>
+                }
+            </MudText>
+            <MudSpacer />
+            @if (isFetching)
             {
-                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Class="ml-2">@searchQuery</MudChip>
+                <MudProgressCircular Color="Color.Primary" Size="Size.Small" Indeterminate="true" />
             }
-        </MudText>
+        </MudStack>
+
+        @if (isFetching)
+        {
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-4" />
+        }
+        else
+        {
+            <div style="height: 4px;" class="mb-4"></div>
+        }
 
         @* Book Grid *@
         <MudGrid Spacing="4" Class="mb-6">
@@ -210,6 +226,7 @@
     private ReactiveQuery<BookStore.Client.PagedListDtoOfBookDto>? bookQuery;
     private BookStore.Client.PagedListDtoOfBookDto? pagedBooks => bookQuery?.Data;
     private bool isLoading => bookQuery?.IsLoading ?? true;
+    private bool isFetching => bookQuery?.IsFetching ?? false;
     private string? errorMessage => bookQuery?.Error;
 
     private string searchQuery = string.Empty;
@@ -305,7 +322,7 @@
         currentPage = 1;
         if (bookQuery != null)
         {
-            await bookQuery.LoadAsync();
+            await bookQuery.LoadAsync(silent: true);
         }
     }
 
@@ -320,7 +337,7 @@
         currentPage = page;
         if (bookQuery != null)
         {
-            await bookQuery.LoadAsync();
+            await bookQuery.LoadAsync(silent: true);
         }
     }
 
