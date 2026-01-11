@@ -53,11 +53,14 @@ Additional context is stored in the JSON `headers` column for auditability:
 
 ```json
 {
-  "user-id": "admin@bookstore.com",
+  "user-id": "550e8400-e29b-41d4-a716-446655440000",
   "remote-ip": "::1",
   "user-agent": "Mozilla/5.0..."
 }
 ```
+
+> [!TIP]
+> **Metadata Propagation**: The application implements a propagation system (via `ForwardedHeaders` and `AuthorizationMessageHandler`) that ensures the original browser's IP and User-Agent are preserved even when requests cross boundaries between the Blazor frontend and the backend API.
 
 ## Usage Examples
 

@@ -6,6 +6,7 @@ using BookStore.Web.Components;
 using BookStore.Web.Services;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor.Services;
 using Polly;
@@ -20,6 +21,18 @@ builder.AddServiceDefaults();
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+builder.Services.AddHttpContextAccessor();
+
+// Configure Forwarded Headers to correctly capture client IP behind proxies
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    // Clear known networks/proxies to trust standard proxies in the environment (Aspire/Docker)
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+    options.ForwardLimit = null;
+    options.RequireHeaderSymmetry = false;
+});
 
 builder.Services.AddCascadingAuthenticationState();
 // builder.Services.AddProtectedBrowserStorage();
@@ -57,7 +70,8 @@ static void RegisterScopedRefitClients(IServiceCollection services, Uri baseAddr
     void AddScopedClient<T>() where T : class => _ = services.AddScoped<T>(sp =>
                                                       {
                                                           var tokenService = sp.GetRequiredService<TokenService>();
-                                                          var authHandler = new AuthorizationMessageHandler(tokenService);
+                                                          var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
+                                                          var authHandler = new AuthorizationMessageHandler(tokenService, httpContextAccessor);
                                                           // Ensure we have an InnerHandler
                                                           authHandler.InnerHandler = new HttpClientHandler();
 
@@ -112,6 +126,9 @@ if (!app.Environment.IsDevelopment())
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     _ = app.UseHsts();
 }
+
+// Add Forwarded Headers middleware early in the pipeline
+app.UseForwardedHeaders();
 
 app.UseHttpsRedirection();
 

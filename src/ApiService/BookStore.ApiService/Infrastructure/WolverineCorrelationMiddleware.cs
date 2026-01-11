@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using BookStore.ApiService.Infrastructure.Extensions;
 using Marten;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
@@ -57,7 +58,7 @@ public class WolverineCorrelationMiddleware
         // Propagate Technical Headers
         if (httpContext != null)
         {
-            var userId = httpContext.User?.Identity?.Name;
+            var userId = httpContext.User?.GetUserId().ToString();
             var remoteIp = httpContext.Connection.RemoteIpAddress?.ToString();
             var userAgent = httpContext.Request.Headers["User-Agent"].FirstOrDefault();
 

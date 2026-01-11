@@ -1,3 +1,5 @@
+using BookStore.ApiService.Infrastructure.Extensions;
+
 namespace BookStore.ApiService.Infrastructure;
 
 /// <summary>
@@ -55,7 +57,7 @@ public class EventMetadataService
             ?? correlationId; // If no causation, use correlation as root
 
         // Get user ID from claims (if authenticated)
-        var userId = context?.User?.Identity?.Name;
+        var userId = context?.User?.GetUserId().ToString();
 
         return new EventMetadata
         {

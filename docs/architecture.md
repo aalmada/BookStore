@@ -360,7 +360,7 @@ sequenceDiagram
 - **Real-time Notifications** - Server-Sent Events (SSE) for all mutations
 - **Optimistic Concurrency** - ETags with stream versions
 - **Distributed Tracing** - Correlation/causation IDs
-- **Environmental Metadata** - Automatic capture of IP, User-Agent, and User ID in events
+- **Environmental Metadata** - Automatic capture of client IP, User-Agent, and non-PII User ID (GUID) via headers. The system implements a metadata propagation system that allows the backend API to identify the original browser client even when requests are forwarded by the Blazor Server frontend.
 - **Multi-language** - Category translations
 - **Full-text Search** - PostgreSQL trigrams
 - **API Versioning** - Header-based

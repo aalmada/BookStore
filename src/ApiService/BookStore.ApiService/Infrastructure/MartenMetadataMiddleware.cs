@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using BookStore.ApiService.Infrastructure.Extensions;
 using BookStore.ApiService.Infrastructure.Logging;
 using Microsoft.AspNetCore.Http;
 
@@ -45,8 +46,8 @@ public class MartenMetadataMiddleware
             _ = Activity.Current.SetTag("causation_id", causationId);
         }
 
-        // Capture technical metadata
-        var userId = context.User?.Identity?.Name;
+        // Capture technical metadata (using GUID ID to avoid PII)
+        var userId = context.User?.GetUserId().ToString();
         var remoteIp = context.Connection.RemoteIpAddress?.ToString();
         var userAgent = context.Request.Headers["User-Agent"].FirstOrDefault();
 
@@ -75,8 +76,8 @@ public class MartenMetadataMiddleware
 
         // Log the Marten metadata setup
         var hasHeader = context.Request.Headers.ContainsKey("X-Correlation-ID");
-        _logger.LogInformation("[MARTEN-METADATA] Request: {Method} {Path}, X-Correlation-ID Header Present: {HasHeader}, CorelationId: {CorrelationId}",
-            context.Request.Method, context.Request.Path, hasHeader, correlationId);
+        _logger.LogInformation("[MARTEN-METADATA] Request: {Method} {Path}, X-Correlation-ID: {HasHeader}, CorelationId: {CorrelationId}, RemoteIp: {RemoteIp}",
+            context.Request.Method, context.Request.Path, hasHeader, correlationId, remoteIp);
 
         Log.Infrastructure.MartenMetadataSet(_logger, correlationId, causationId, userId ?? "anonymous");
 

@@ -384,6 +384,14 @@ These are typically unavoidable and acceptable trade-offs.
 - **Don't log redundant information** already in structured properties
 - **Don't use generic messages** like "Error occurred"
 
+## PII Privacy Policy
+
+To comply with privacy regulations (like GDPR) and maintain a clean audit trail, the application follows a strict **No PII in Logs/Metadata** policy:
+
+1. **User Identification**: Always use the User's **GUID ID** (from `ClaimTypes.NameIdentifier`) instead of Email or UserName. This ensures that even if logs are leaked, users cannot be directly identified without access to the primary database.
+2. **Metadata Capture**: When capturing technical metadata for events (IP, User-Agent), ensure these reflect the original client while avoiding the storage of any personally identifiable information in the JSON headers column.
+3. **Sensitive Data**: Never log passwords, reset tokens, or cryptographic keys.
+
 ### Example: Good vs Bad
 
 **❌ Bad:**

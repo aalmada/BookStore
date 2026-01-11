@@ -5,6 +5,7 @@ using BookStore.ApiService.Infrastructure.Logging;
 using BookStore.ApiService.Projections;
 using BookStore.Shared.Models;
 using Marten;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 using Scalar.AspNetCore;
@@ -49,6 +50,17 @@ builder.Services.AddRateLimiter(options =>
         opt.QueueProcessingOrder = System.Threading.RateLimiting.QueueProcessingOrder.OldestFirst;
         opt.QueueLimit = rateLimitOptions.QueueLimit;
     });
+});
+
+// Configure Forwarded Headers to correctly capture client IP behind proxies
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    // Clear known networks/proxies to trust standard proxies in the environment (Aspire/Docker)
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+    options.ForwardLimit = null;
+    options.RequireHeaderSymmetry = false;
 });
 
 var app = builder.Build();
@@ -154,10 +166,9 @@ if (app.Environment.IsDevelopment())
         }
     }));
 }
-else
-{
-    _ = app.UseExceptionHandler();
-}
+
+// Add Forwarded Headers middleware early in the pipeline
+app.UseForwardedHeaders();
 
 // Add request localization middleware
 // Add request localization middleware
