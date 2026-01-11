@@ -1,3 +1,4 @@
+using BookStore.ApiService.Infrastructure.Logging;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -14,9 +15,7 @@ public class LoggingEmailService(
             return Task.CompletedTask;
         }
 
-        logger.LogInformation("Sending verification email to {Email}", email);
-        logger.LogInformation("Subject: {Subject}", subject);
-        logger.LogInformation("Body: {Body}", body);
+        Log.Email.VerificationEmailLogged(logger, email, subject, body);
 
         return Task.CompletedTask;
     }

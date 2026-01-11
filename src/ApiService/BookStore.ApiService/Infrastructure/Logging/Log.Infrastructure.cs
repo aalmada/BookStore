@@ -11,13 +11,16 @@ public static partial class Log
     {
         // Marten Metadata Middleware
         [LoggerMessage(
-            Level = LogLevel.Debug,
-            Message = "Setting Marten metadata: CorrelationId={CorrelationId}, CausationId={CausationId}, UserId={UserId}")]
-        public static partial void MartenMetadataSet(
+            Level = LogLevel.Information,
+            Message = "Marten metadata set for {Method} {Path}: CorrelationId={CorrelationId}, CausationId={CausationId}, UserId={UserId}, RemoteIp={RemoteIp}")]
+        public static partial void MartenMetadataApplied(
             ILogger logger,
+            string method,
+            string path,
             string correlationId,
             string causationId,
-            string? userId);
+            string? userId,
+            string? remoteIp);
 
         // Logging Enricher Middleware
         [LoggerMessage(
@@ -41,7 +44,7 @@ public static partial class Log
         public static partial void DatabaseSeedingCompleted(ILogger logger);
 
         [LoggerMessage(
-            Level = LogLevel.Error,
+            Level = LogLevel.Critical,
             Message = "Database seeding failed")]
         public static partial void DatabaseSeedingFailed(ILogger logger, Exception exception);
 
@@ -76,10 +79,92 @@ public static partial class Log
             int categoryCount,
             int publisherCount);
 
-        // Cache Invalidation
         [LoggerMessage(
             Level = LogLevel.Warning,
             Message = "Cache invalidation not implemented for projection type {ProjectionType}. Consider adding a case to handle this projection.")]
         public static partial void CacheInvalidationNotImplemented(ILogger logger, string projectionType);
+
+        // Projection Commit Listener
+        [LoggerMessage(
+            Level = LogLevel.Debug,
+            Message = "AfterCommitAsync called. Inserted: {InsertedCount}, Updated: {UpdatedCount}, Deleted: {DeletedCount}")]
+        public static partial void AfterCommitAsync(
+            ILogger logger,
+            int insertedCount,
+            int updatedCount,
+            int deletedCount);
+
+        [LoggerMessage(
+            Level = LogLevel.Error,
+            Message = "Error processing projection commit")]
+        public static partial void ErrorProcessingProjectionCommit(ILogger logger, Exception exception);
+
+        [LoggerMessage(
+            Level = LogLevel.Debug,
+            Message = "Processing {ChangeType}: {DocumentType}")]
+        public static partial void ProcessingDocumentChange(
+            ILogger logger,
+            string changeType,
+            string documentType);
+
+        [LoggerMessage(
+            Level = LogLevel.Error,
+            Message = "Error processing {ChangeType} document of type {DocumentType}")]
+        public static partial void ErrorProcessingDocumentChange(
+            ILogger logger,
+            Exception exception,
+            string changeType,
+            string documentType);
+
+        [LoggerMessage(
+            Level = LogLevel.Debug,
+            Message = "Invalidated cache {ItemTag} and {ListTag}")]
+        public static partial void CacheInvalidated(
+            ILogger logger,
+            string itemTag,
+            string listTag);
+
+        [LoggerMessage(
+            Level = LogLevel.Information,
+            Message = "Sending {NotificationType} for {EntityType}")]
+        public static partial void SendingNotification(
+            ILogger logger,
+            string notificationType,
+            string entityType);
+
+        // Startup
+        [LoggerMessage(
+            Level = LogLevel.Information,
+            Message = "Starting the API Service...")]
+        public static partial void StartingApiService(ILogger logger);
+
+        [LoggerMessage(
+            Level = LogLevel.Information,
+            Message = "Registering Marten events for the first time...")]
+        public static partial void RegisteringMartenEvents(ILogger logger);
+
+        [LoggerMessage(
+            Level = LogLevel.Critical,
+            Message = "Failed to register Marten events")]
+        public static partial void FailedToRegisterMartenEvents(ILogger logger, Exception exception);
+
+        [LoggerMessage(
+            Level = LogLevel.Error,
+            Message = "An error occurred during startup")]
+        public static partial void StartupError(ILogger logger, Exception exception);
+
+        [LoggerMessage(
+            Level = LogLevel.Error,
+            Message = "Unhandled exception: {Message}")]
+        public static partial void UnhandledException(ILogger logger, Exception exception, string message);
+
+        [LoggerMessage(
+            Level = LogLevel.Information,
+            Message = "[WOLVERINE-CORRELATION] Session CorrelationId: {SessionId}, CausationId: {SessionCid} (HttpContext present: {HasContext})")]
+        public static partial void WolverineCorrelation(
+            ILogger logger,
+            string? sessionId,
+            string? sessionCid,
+            bool hasContext);
     }
 }

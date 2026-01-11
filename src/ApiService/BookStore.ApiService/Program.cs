@@ -81,7 +81,7 @@ if (true)
             var store = scope.ServiceProvider.GetRequiredService<IDocumentStore>();
             var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 
-            logger.LogInformation("Starting database seeding...");
+            Log.Infrastructure.DatabaseSeedingStarted(logger);
 
             // Apply schema to create PostgreSQL extensions (pg_trgm, unaccent)
             await store.Storage.ApplyAllConfiguredChangesToDatabaseAsync();
@@ -98,12 +98,12 @@ if (true)
             // In production, projections run continuously in the background
             await WaitForProjectionsAsync(store, logger);
 
-            logger.LogInformation("Database seeding completed successfully.");
+            Log.Infrastructure.DatabaseSeedingCompleted(logger);
         }
         catch (Exception ex)
         {
             var logger = app.Services.GetRequiredService<ILogger<Program>>();
-            logger.LogCritical(ex, "An error occurred during database seeding.");
+            Log.Infrastructure.DatabaseSeedingFailed(logger, ex);
         }
     });
 }
@@ -150,7 +150,7 @@ if (app.Environment.IsDevelopment())
             var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
             var exception = exceptionHandlerFeature.Error;
 
-            logger.LogError(exception, "Unhandled exception: {Message}", exception.Message);
+            Log.Infrastructure.UnhandledException(logger, exception, exception.Message);
 
             context.Response.StatusCode = StatusCodes.Status500InternalServerError;
             context.Response.ContentType = "application/problem+json";

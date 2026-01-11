@@ -1,3 +1,4 @@
+using BookStore.ApiService.Infrastructure.Logging;
 using MailKit.Net.Smtp;
 using MailKit.Security;
 using Microsoft.Extensions.Logging;
@@ -17,7 +18,7 @@ public class SmtpEmailService(
         // Safety check - although the handler should prevent this, double check here
         if (string.IsNullOrEmpty(settings.SmtpHost))
         {
-            logger.LogWarning("SMTP Host is not configured. Cannot send email to {Email}", email);
+            Log.Email.SmtpHostNotConfigured(logger, email);
             return;
         }
 
@@ -53,11 +54,11 @@ public class SmtpEmailService(
             // Disconnect cleanly
             await client.DisconnectAsync(true);
 
-            logger.LogInformation("Sent email via SMTP to {Email}", email);
+            Log.Email.EmailSentSmtp(logger, email);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to send email via SMTP to {Email}", email);
+            Log.Email.EmailFailedSmtp(logger, ex, email);
             throw; // Re-throw to let Wolverine handle retries
         }
     }

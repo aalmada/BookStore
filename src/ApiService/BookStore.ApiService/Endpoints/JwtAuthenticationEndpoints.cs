@@ -1,5 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using BookStore.ApiService.Infrastructure.Logging;
 using BookStore.ApiService.Models;
 using BookStore.ApiService.Services;
 using BookStore.Shared.Models;
@@ -43,12 +44,12 @@ public static class JwtAuthenticationEndpoints
         ILogger<Program> logger,
         CancellationToken cancellationToken)
     {
-        logger.LogInformation("JWT login attempt for {Email}", request.Email);
+        Log.Users.JwtLoginAttempt(logger, request.Email);
 
         var user = await userManager.FindByEmailAsync(request.Email);
         if (user == null)
         {
-            logger.LogWarning("Login failed: User not found for {Email}", request.Email);
+            Log.Users.LoginFailedUserNotFound(logger, request.Email);
             return Results.Unauthorized();
         }
 
@@ -57,7 +58,7 @@ public static class JwtAuthenticationEndpoints
 
         if (!result.Succeeded)
         {
-            logger.LogWarning("Login failed: Invalid password for {Email}", request.Email);
+            Log.Users.LoginFailedInvalidPassword(logger, request.Email);
             return Results.Unauthorized();
         }
 
@@ -91,7 +92,7 @@ public static class JwtAuthenticationEndpoints
 
         _ = await userManager.UpdateAsync(user);
 
-        logger.LogInformation("JWT login successful for {Email}", request.Email);
+        Log.Users.JwtLoginSuccessful(logger, request.Email);
 
         return Results.Ok(new LoginResponse(
             TokenType: "Bearer",
@@ -110,7 +111,7 @@ public static class JwtAuthenticationEndpoints
         ILogger<Program> logger,
         CancellationToken cancellationToken)
     {
-        logger.LogInformation("JWT registration attempt for {Email}", request.Email);
+        Log.Users.JwtRegistrationAttempt(logger, request.Email);
 
         var verificationRequired = emailOptions.Value.DeliveryMethod != "None";
 
@@ -125,8 +126,7 @@ public static class JwtAuthenticationEndpoints
 
         if (!result.Succeeded)
         {
-            logger.LogWarning("Registration failed for {Email}: {Errors}",
-                request.Email, string.Join(", ", result.Errors.Select(e => e.Description)));
+            Log.Users.RegistrationFailed(logger, request.Email, string.Join(", ", result.Errors.Select(e => e.Description)));
             return Results.BadRequest(new { errors = result.Errors });
         }
 
@@ -157,7 +157,7 @@ public static class JwtAuthenticationEndpoints
         // Update user to persist token
         _ = await userManager.UpdateAsync(user);
 
-        logger.LogInformation("JWT registration successful for {Email}", request.Email);
+        Log.Users.JwtRegistrationSuccessful(logger, request.Email);
 
         return Results.Ok(new LoginResponse(
             TokenType: "Bearer",
@@ -206,7 +206,7 @@ public static class JwtAuthenticationEndpoints
 
         if (user == null)
         {
-            logger.LogWarning("Refresh failed: Token not found");
+            Log.Users.RefreshFailedTokenNotFound(logger);
             return Results.Unauthorized();
         }
 
@@ -214,7 +214,7 @@ public static class JwtAuthenticationEndpoints
         var existingToken = user.RefreshTokens.FirstOrDefault(rt => rt.Token == request.RefreshToken);
         if (existingToken == null || existingToken.Expires <= DateTimeOffset.UtcNow)
         {
-            logger.LogWarning("Refresh failed: Token expired or invalid for user {User}", user.UserName);
+            Log.Users.RefreshFailedTokenExpiredOrInvalid(logger, user.UserName);
             // Optionally remove expired token
             if (existingToken != null)
             {

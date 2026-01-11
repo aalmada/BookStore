@@ -1,4 +1,5 @@
 using BookStore.ApiService.Events;
+using BookStore.ApiService.Infrastructure.Logging;
 using BookStore.ApiService.Infrastructure.Notifications;
 using BookStore.ApiService.Models;
 using BookStore.ApiService.Projections;
@@ -42,8 +43,7 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
     {
         // For Async Projections, the 'commit' contains the changes to the Read Models (Documents),
         // not the original Events.
-        _logger.LogDebug("AfterCommitAsync called. Inserted: {InsertedCount}, Updated: {UpdatedCount}, Deleted: {DeletedCount}",
-            commit.Inserted.Count(), commit.Updated.Count(), commit.Deleted.Count());
+        Log.Infrastructure.AfterCommitAsync(_logger, commit.Inserted.Count(), commit.Updated.Count(), commit.Deleted.Count());
 
         try
         {
@@ -54,7 +54,7 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error processing projection commit");
+            Log.Infrastructure.ErrorProcessingProjectionCommit(_logger, ex);
         }
     }
 
@@ -69,12 +69,12 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
         {
             try
             {
-                _logger.LogDebug("Processing {ChangeType}: {DocumentType}", changeType, doc.GetType().Name);
+                Log.Infrastructure.ProcessingDocumentChange(_logger, changeType.ToString(), doc.GetType().Name);
                 await ProcessDocumentChangeAsync(doc, changeType, token);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error processing {ChangeType} document of type {DocumentType}", changeType, doc.GetType().Name);
+                Log.Infrastructure.ErrorProcessingDocumentChange(_logger, ex, changeType.ToString(), doc.GetType().Name);
             }
         }
     }
@@ -223,12 +223,12 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
         var itemTag = $"{entityPrefix}:{id}";
         await _cache.RemoveByTagAsync(itemTag, token);
         await _cache.RemoveByTagAsync(collectionTag, token);
-        _logger.LogDebug("Invalidated cache {ItemTag} and {ListTag}", itemTag, collectionTag);
+        Log.Infrastructure.CacheInvalidated(_logger, itemTag, collectionTag);
     }
 
     async Task NotifyAsync(string entityType, IDomainEventNotification notification, CancellationToken token)
     {
-        _logger.LogInformation("Sending {NotificationType} for {EntityType}", notification.GetType().Name, entityType);
+        Log.Infrastructure.SendingNotification(_logger, notification.GetType().Name, entityType);
         await _notificationService.NotifyAsync(notification, token);
     }
 

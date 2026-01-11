@@ -75,11 +75,7 @@ public class MartenMetadataMiddleware
         });
 
         // Log the Marten metadata setup
-        var hasHeader = context.Request.Headers.ContainsKey("X-Correlation-ID");
-        _logger.LogInformation("[MARTEN-METADATA] Request: {Method} {Path}, X-Correlation-ID: {HasHeader}, CorelationId: {CorrelationId}, RemoteIp: {RemoteIp}",
-            context.Request.Method, context.Request.Path, hasHeader, correlationId, remoteIp);
-
-        Log.Infrastructure.MartenMetadataSet(_logger, correlationId, causationId, userId ?? "anonymous");
+        Log.Infrastructure.MartenMetadataApplied(_logger, context.Request.Method, context.Request.Path, correlationId, causationId, userId ?? "anonymous", remoteIp);
 
         await _next(context);
     }

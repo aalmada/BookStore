@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using BookStore.ApiService.Infrastructure.Logging;
 using BookStore.ApiService.Models;
 using BookStore.Shared.Models;
 using Microsoft.AspNetCore.Identity;
@@ -137,7 +138,7 @@ public static class PasskeyEndpoints
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Error extracting user ID from credential");
+                Log.Users.PasskeyExtractUserIdError(logger, ex);
             }
 
             var attestationNew = await signInManager.PerformPasskeyAttestationAsync(request.CredentialJson);
@@ -152,7 +153,7 @@ public static class PasskeyEndpoints
 
             if (string.IsNullOrEmpty(request.UserId))
             {
-                logger.LogWarning("No user ID provided in request, using fallback - login may fail");
+                Log.Users.PasskeyNoUserIdProvided(logger);
             }
 
             var newUser = new ApplicationUser
@@ -185,7 +186,7 @@ public static class PasskeyEndpoints
                 }
                 else
                 {
-                    logger.LogError("Passkey is null after successful attestation");
+                    Log.Users.PasskeyIsNull(logger);
                     return Results.BadRequest("Failed to create passkey");
                 }
             }
@@ -312,7 +313,7 @@ public static class PasskeyEndpoints
                     }
                     catch (Exception ex)
                     {
-                        logger.LogError(ex, "Error parsing credential JSON for user lookup");
+                        Log.Users.PasskeyParseError(logger, ex);
                     }
 
                     return Results.BadRequest("User not found for passkey.");
@@ -324,7 +325,7 @@ public static class PasskeyEndpoints
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Unhandled exception during passkey login");
+                Log.Users.PasskeyLoginUnhandledException(logger, ex);
                 return Results.BadRequest($"Login failed: {ex.Message}");
             }
         });

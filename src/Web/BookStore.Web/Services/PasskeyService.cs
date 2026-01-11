@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using BookStore.Shared.Models;
+using BookStore.Web.Logging;
 using Microsoft.Extensions.Logging;
 
 namespace BookStore.Web.Services;
@@ -29,13 +30,13 @@ public class PasskeyService
 
             var error = await response.Content.ReadAsStringAsync();
             var errorMessage = ParseError(error);
-            _logger.LogWarning("Failed to get creation options: {StatusCode} {Error}", response.StatusCode, errorMessage);
+            Log.RegistrationOptionsFailed(_logger, response.StatusCode, errorMessage);
 
             return (null, errorMessage);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting passkey creation options");
+            Log.RegistrationOptionsError(_logger, ex);
             // Return full exception to debug connection issues
             return (null, $"Internal Error: {ex}");
         }
@@ -51,11 +52,11 @@ public class PasskeyService
                 return await response.Content.ReadAsStringAsync();
             }
 
-            _logger.LogWarning("Failed to get login options: {StatusCode}", response.StatusCode);
+            Log.LoginOptionsFailed(_logger, response.StatusCode);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting passkey login options");
+            Log.LoginOptionsError(_logger, ex);
         }
 
         return null;
@@ -95,12 +96,12 @@ public class PasskeyService
             }
 
             var errorContent = await response.Content.ReadAsStringAsync();
-            _logger.LogWarning("Passkey registration failed: {StatusCode} - {Error}", response.StatusCode, errorContent);
+            Log.RegistrationResultFailed(_logger, response.StatusCode, errorContent);
             return new LoginResult(false, $"Passkey registration failed: {errorContent}", null, null);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error registering passkey");
+            Log.RegistrationCompleteError(_logger, ex);
             return new LoginResult(false, ex.Message, null, null);
         }
     }
@@ -122,13 +123,13 @@ public class PasskeyService
 
             // Return error from server
             var errorContent = await response.Content.ReadAsStringAsync();
-            _logger.LogError("Passkey login failed: {StatusCode} - {Error}", response.StatusCode, errorContent);
+            Log.AssertionResultFailed(_logger, response.StatusCode, errorContent);
 
             return new LoginResult(false, errorContent, null, null);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error during passkey login");
+            Log.LoginCompleteError(_logger, ex);
             return new LoginResult(false, ex.Message, null, null);
         }
     }
@@ -202,7 +203,7 @@ public class PasskeyService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error logging in with passkey");
+            Log.PasskeyLoginError(_logger, ex);
         }
 
         return null;

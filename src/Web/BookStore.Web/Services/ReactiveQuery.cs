@@ -1,5 +1,6 @@
 using BookStore.Client;
 using BookStore.Shared.Notifications;
+using BookStore.Web.Logging;
 
 namespace BookStore.Web.Services;
 
@@ -71,7 +72,7 @@ public class ReactiveQuery<T> : IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "ReactiveQuery failed to load data.");
+            Log.QueryLoadFailed(_logger, ex);
             Error = ex.Message;
         }
         finally
@@ -90,7 +91,7 @@ public class ReactiveQuery<T> : IDisposable
     {
         if (_invalidationService.ShouldInvalidate(notification, _queryKeys))
         {
-            _logger.LogInformation("ReactiveQuery invalidating due to event: {EventType}. Matched Keys: {Keys}", notification.GetType().Name, string.Join(", ", _queryKeys));
+            Log.QueryInvalidating(_logger, notification.GetType().Name, string.Join(", ", _queryKeys));
             // Fire and forget reload
             _ = LoadAsync();
         }
@@ -115,7 +116,7 @@ public class ReactiveQuery<T> : IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to mutate data optimistically.");
+            Log.MutationFailed(_logger, ex);
         }
     }
 

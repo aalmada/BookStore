@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using BookStore.ApiService.Infrastructure.Extensions;
+using BookStore.ApiService.Infrastructure.Logging;
 using Marten;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
@@ -78,7 +79,6 @@ public class WolverineCorrelationMiddleware
             }
         }
 
-        logger.LogInformation("[WOLVERINE-CORRELATION] Session CorrelationId: {SessionId}, CausationId: {SessionCid} (HttpContext present: {HasContext})",
-            session.CorrelationId, session.CausationId, httpContext != null);
+        Log.Infrastructure.WolverineCorrelation(logger, session.CorrelationId, session.CausationId, httpContext != null);
     }
 }

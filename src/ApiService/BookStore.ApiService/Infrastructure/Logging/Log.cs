@@ -14,4 +14,6 @@ public static partial class Log
     public static partial class Categories { }
     public static partial class Publishers { }
     public static partial class Infrastructure { }
+    public static partial class Email { }
+    public static partial class Users { }
 }

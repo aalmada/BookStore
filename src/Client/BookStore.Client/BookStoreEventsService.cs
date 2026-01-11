@@ -1,5 +1,6 @@
 using System.Net.ServerSentEvents;
 using System.Text.Json;
+using BookStore.Client.Logging;
 using BookStore.Shared.Notifications;
 using Microsoft.Extensions.Logging;
 
@@ -79,13 +80,13 @@ public class BookStoreEventsService : IAsyncDisposable
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to deserialize SSE item: {EventType}", item.EventType);
+                        Log.SseDeserializationFailed(_logger, ex, item.EventType);
                     }
                 }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                _logger.LogError(ex, "Error in SSE stream. Retrying in 5 seconds...");
+                Log.SseStreamError(_logger, ex);
                 await Task.Delay(5000, ct);
             }
         }
