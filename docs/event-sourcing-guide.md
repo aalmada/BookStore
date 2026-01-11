@@ -87,7 +87,6 @@ See [Marten Guide - Events](marten-guide.md#events) for implementation details.
 
 A **stream** is a sequence of events for a single aggregate instance.
 
-```
 ```mermaid
 graph TD
     Stream[Stream: book-123]
@@ -100,7 +99,6 @@ graph TD
     V1 --> V2
     V2 --> V3
     V3 --> V4
-```
 ```
 
 **Stream Properties**:
@@ -172,7 +170,6 @@ See [Marten Guide - Aggregates](marten-guide.md#aggregates) for implementation p
 
 **Projections** transform events into read models optimized for queries.
 
-```
 ```mermaid
 graph LR
     subgraph Events [Events Write Model]
@@ -188,7 +185,6 @@ graph LR
     BA --> BSP
     AU -.-> BSP
     PU -.-> BSP
-```
 ```
 
 **Projection Types**:
