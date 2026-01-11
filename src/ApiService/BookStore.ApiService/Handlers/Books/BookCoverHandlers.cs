@@ -61,6 +61,7 @@ public static class BookCoverHandlers
 
         // Return notification for SignalR
         var notification = new BookCoverUpdatedNotification(
+            Guid.Empty,
             aggregate.Id,
             coverUrl);
 

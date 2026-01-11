@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using BookStore.Client.Services;
 using BookStore.Web.Services;
 using Microsoft.AspNetCore.Http;
 
@@ -11,16 +12,25 @@ public class AuthorizationMessageHandler : DelegatingHandler
 {
     readonly TokenService _tokenService;
     readonly IHttpContextAccessor _httpContextAccessor;
+    readonly CorrelationService _correlationService;
 
-    public AuthorizationMessageHandler(TokenService tokenService, IHttpContextAccessor httpContextAccessor)
+    public AuthorizationMessageHandler(
+        TokenService tokenService,
+        IHttpContextAccessor httpContextAccessor,
+        CorrelationService correlationService)
     {
         _tokenService = tokenService;
         _httpContextAccessor = httpContextAccessor;
+        _correlationService = correlationService;
     }
 
     protected override async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request, CancellationToken cancellationToken)
     {
+        // Add Correlation and Causation IDs
+        request.Headers.Add("X-Correlation-ID", _correlationService.CorrelationId);
+        request.Headers.Add("X-Causation-ID", _correlationService.CausationId);
+
         var token = _tokenService.GetAccessToken();
         if (!string.IsNullOrEmpty(token))
         {
@@ -48,6 +58,18 @@ public class AuthorizationMessageHandler : DelegatingHandler
             }
         }
 
-        return await base.SendAsync(request, cancellationToken);
+        var response = await base.SendAsync(request, cancellationToken);
+
+        // Capture Event ID from response to use as causation for next request
+        if (response.Headers.TryGetValues("X-Event-ID", out var eventIds))
+        {
+            var eventId = eventIds.FirstOrDefault();
+            if (!string.IsNullOrEmpty(eventId))
+            {
+                _correlationService.UpdateCausationId(eventId);
+            }
+        }
+
+        return response;
     }
 }

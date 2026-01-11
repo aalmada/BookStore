@@ -1,5 +1,6 @@
 using System.Text.Json;
 using BookStore.Client;
+using BookStore.Client.Services;
 using BookStore.Shared.Infrastructure.Json;
 using BookStore.Web;
 using BookStore.Web.Components;
@@ -71,7 +72,8 @@ static void RegisterScopedRefitClients(IServiceCollection services, Uri baseAddr
                                                       {
                                                           var tokenService = sp.GetRequiredService<TokenService>();
                                                           var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
-                                                          var authHandler = new AuthorizationMessageHandler(tokenService, httpContextAccessor);
+                                                          var correlationService = sp.GetRequiredService<CorrelationService>();
+                                                          var authHandler = new AuthorizationMessageHandler(tokenService, httpContextAccessor, correlationService);
                                                           // Ensure we have an InnerHandler
                                                           authHandler.InnerHandler = new HttpClientHandler();
 
@@ -89,6 +91,7 @@ static void RegisterScopedRefitClients(IServiceCollection services, Uri baseAddr
 }
 
 // Add authentication services (JWT token-based)
+builder.Services.AddScoped<CorrelationService>();
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddHttpClient<PasskeyService>(client => client.BaseAddress = new Uri(apiServiceUrl));
 

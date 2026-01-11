@@ -20,7 +20,7 @@ namespace BookStore.Client
     {
         [Headers("Content-Type: application/json")]
         [Post("/api/admin/books")]
-        Task CreateBookAsync([Body] CreateBookRequest body, [Header("api-version")] object api_version, [Header("Accept-Language")] object accept_Language, [Header("X-Correlation-ID")] object x_Correlation_ID, [Header("X-Causation-ID")] object x_Causation_ID, CancellationToken cancellationToken = default);
+        Task CreateBookAsync([Body] CreateBookRequest body, [Header("api-version")] object api_version, [Header("Accept-Language")] object accept_Language, [Header("X-Correlation-ID")] object? x_Correlation_ID = null, [Header("X-Causation-ID")] object? x_Causation_ID = null, CancellationToken cancellationToken = default);
     }
 
 }

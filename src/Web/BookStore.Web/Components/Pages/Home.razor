@@ -272,9 +272,7 @@
             pageSize: pageSize,
             search: string.IsNullOrWhiteSpace(searchQuery) ? string.Empty : searchQuery,
             api_version: "1.0",
-            accept_Language: "en",
-            x_Correlation_ID: Guid.NewGuid().ToString(),
-            x_Causation_ID: string.Empty);
+            accept_Language: "en");
     }
 
     private void HandleNotification(BookStore.Shared.Notifications.IDomainEventNotification notification)

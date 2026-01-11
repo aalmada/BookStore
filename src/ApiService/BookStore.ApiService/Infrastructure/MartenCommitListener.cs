@@ -119,7 +119,7 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
         // - Shopping cart operations: BookAddedToCart, BookRemovedFromCart, CartItemQuantityUpdated, ShoppingCartCleared
         // "UserUpdated" is a good catch-all for ReactiveQuery invalidation.
 
-        IDomainEventNotification notification = new UserUpdatedNotification(profile.Id, timestamp);
+        IDomainEventNotification notification = new UserUpdatedNotification(Guid.Empty, profile.Id, timestamp);
 
         await NotifyAsync("User", notification, token);
     }
@@ -134,9 +134,9 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
         var name = category.Names.Values.FirstOrDefault() ?? "Unknown";
         IDomainEventNotification notification = effectiveChangeType switch
         {
-            ChangeType.Insert => new CategoryCreatedNotification(category.Id, name, category.LastModified),
-            ChangeType.Update => new CategoryUpdatedNotification(category.Id, category.LastModified),
-            ChangeType.Delete => new CategoryDeletedNotification(category.Id, category.LastModified),
+            ChangeType.Insert => new CategoryCreatedNotification(Guid.Empty, category.Id, name, category.LastModified),
+            ChangeType.Update => new CategoryUpdatedNotification(Guid.Empty, category.Id, category.LastModified),
+            ChangeType.Delete => new CategoryDeletedNotification(Guid.Empty, category.Id, category.LastModified),
             _ => throw new ArgumentOutOfRangeException(nameof(effectiveChangeType))
         };
 
@@ -153,9 +153,9 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
         var timestamp = DateTimeOffset.UtcNow;
         IDomainEventNotification notification = effectiveChangeType switch
         {
-            ChangeType.Insert => new BookCreatedNotification(book.Id, book.Title, timestamp),
-            ChangeType.Update => new BookUpdatedNotification(book.Id, book.Title, timestamp),
-            ChangeType.Delete => new BookDeletedNotification(book.Id, timestamp),
+            ChangeType.Insert => new BookCreatedNotification(Guid.Empty, book.Id, book.Title, timestamp),
+            ChangeType.Update => new BookUpdatedNotification(Guid.Empty, book.Id, book.Title, timestamp),
+            ChangeType.Delete => new BookDeletedNotification(Guid.Empty, book.Id, timestamp),
             _ => throw new ArgumentOutOfRangeException(nameof(effectiveChangeType))
         };
 
@@ -170,9 +170,9 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
 
         IDomainEventNotification notification = effectiveChangeType switch
         {
-            ChangeType.Insert => new AuthorCreatedNotification(author.Id, author.Name, author.LastModified),
-            ChangeType.Update => new AuthorUpdatedNotification(author.Id, author.Name, author.LastModified),
-            ChangeType.Delete => new AuthorDeletedNotification(author.Id, author.LastModified),
+            ChangeType.Insert => new AuthorCreatedNotification(Guid.Empty, author.Id, author.Name, author.LastModified),
+            ChangeType.Update => new AuthorUpdatedNotification(Guid.Empty, author.Id, author.Name, author.LastModified),
+            ChangeType.Delete => new AuthorDeletedNotification(Guid.Empty, author.Id, author.LastModified),
             _ => throw new ArgumentOutOfRangeException(nameof(effectiveChangeType))
         };
 
@@ -187,9 +187,9 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
 
         IDomainEventNotification notification = effectiveChangeType switch
         {
-            ChangeType.Insert => new PublisherCreatedNotification(publisher.Id, publisher.Name, publisher.LastModified),
-            ChangeType.Update => new PublisherUpdatedNotification(publisher.Id, publisher.Name, publisher.LastModified),
-            ChangeType.Delete => new PublisherDeletedNotification(publisher.Id, publisher.LastModified),
+            ChangeType.Insert => new PublisherCreatedNotification(Guid.Empty, publisher.Id, publisher.Name, publisher.LastModified),
+            ChangeType.Update => new PublisherUpdatedNotification(Guid.Empty, publisher.Id, publisher.Name, publisher.LastModified),
+            ChangeType.Delete => new PublisherDeletedNotification(Guid.Empty, publisher.Id, publisher.LastModified),
             _ => throw new ArgumentOutOfRangeException(nameof(effectiveChangeType))
         };
 
@@ -202,7 +202,7 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
 
         // Emit BookUpdated so clients refetch the book (including new stats)
         // Title is unknown here, but usually not critical for simple invalidation signals
-        IDomainEventNotification notification = new BookUpdatedNotification(stats.Id, "Statistics Updated", DateTimeOffset.UtcNow);
+        IDomainEventNotification notification = new BookUpdatedNotification(Guid.Empty, stats.Id, "Statistics Updated", DateTimeOffset.UtcNow);
 
         await NotifyAsync("Book", notification, token);
     }

@@ -25,6 +25,7 @@ namespace BookStore.Shared.Notifications;
 [JsonDerivedType(typeof(UserUpdatedNotification), "UserUpdated")]
 public interface IDomainEventNotification
 {
+    Guid EventId { get; }
     Guid EntityId { get; }
     string EventType { get; }
     DateTimeOffset Timestamp { get; }
@@ -34,6 +35,7 @@ public interface IDomainEventNotification
 /// Notification when a book is created
 /// </summary>
 public record BookCreatedNotification(
+    Guid EventId,
     Guid EntityId,
     string Title,
     DateTimeOffset Timestamp) : IDomainEventNotification
@@ -45,6 +47,7 @@ public record BookCreatedNotification(
 /// Notification when a book is updated
 /// </summary>
 public record BookUpdatedNotification(
+    Guid EventId,
     Guid EntityId,
     string Title,
     DateTimeOffset Timestamp) : IDomainEventNotification
@@ -56,6 +59,7 @@ public record BookUpdatedNotification(
 /// Notification when a book is deleted
 /// </summary>
 public record BookDeletedNotification(
+    Guid EventId,
     Guid EntityId,
     DateTimeOffset Timestamp) : IDomainEventNotification
 {
@@ -66,6 +70,7 @@ public record BookDeletedNotification(
 /// Notification when an author is created
 /// </summary>
 public record AuthorCreatedNotification(
+    Guid EventId,
     Guid EntityId,
     string Name,
     DateTimeOffset Timestamp) : IDomainEventNotification
@@ -77,6 +82,7 @@ public record AuthorCreatedNotification(
 /// Notification when a category is created
 /// </summary>
 public record CategoryCreatedNotification(
+    Guid EventId,
     Guid EntityId,
     string Name,
     DateTimeOffset Timestamp) : IDomainEventNotification
@@ -88,6 +94,7 @@ public record CategoryCreatedNotification(
 /// Notification when a category is updated
 /// </summary>
 public record CategoryUpdatedNotification(
+    Guid EventId,
     Guid EntityId,
     DateTimeOffset Timestamp) : IDomainEventNotification
 {
@@ -98,6 +105,7 @@ public record CategoryUpdatedNotification(
 /// Notification when a category is deleted
 /// </summary>
 public record CategoryDeletedNotification(
+    Guid EventId,
     Guid EntityId,
     DateTimeOffset Timestamp) : IDomainEventNotification
 {
@@ -108,6 +116,7 @@ public record CategoryDeletedNotification(
 /// Notification when a category is restored
 /// </summary>
 public record CategoryRestoredNotification(
+    Guid EventId,
     Guid EntityId,
     DateTimeOffset Timestamp) : IDomainEventNotification
 {
@@ -118,6 +127,7 @@ public record CategoryRestoredNotification(
 /// Notification when a publisher is created
 /// </summary>
 public record PublisherCreatedNotification(
+    Guid EventId,
     Guid EntityId,
     string Name,
     DateTimeOffset Timestamp) : IDomainEventNotification
@@ -129,6 +139,7 @@ public record PublisherCreatedNotification(
 /// Notification when a book cover is updated
 /// </summary>
 public record BookCoverUpdatedNotification(
+    Guid EventId,
     Guid EntityId,
     string CoverUrl) : IDomainEventNotification
 {
@@ -140,6 +151,7 @@ public record BookCoverUpdatedNotification(
 /// Notification when a user verifies their email
 /// </summary>
 public record UserVerifiedNotification(
+    Guid EventId,
     Guid EntityId,
     string Email,
     DateTimeOffset Timestamp) : IDomainEventNotification
@@ -151,6 +163,7 @@ public record UserVerifiedNotification(
 /// Notification when an author is updated
 /// </summary>
 public record AuthorUpdatedNotification(
+    Guid EventId,
     Guid EntityId,
     string Name,
     DateTimeOffset Timestamp) : IDomainEventNotification
@@ -162,6 +175,7 @@ public record AuthorUpdatedNotification(
 /// Notification when an author is deleted
 /// </summary>
 public record AuthorDeletedNotification(
+    Guid EventId,
     Guid EntityId,
     DateTimeOffset Timestamp) : IDomainEventNotification
 {
@@ -172,6 +186,7 @@ public record AuthorDeletedNotification(
 /// Notification when a publisher is updated
 /// </summary>
 public record PublisherUpdatedNotification(
+    Guid EventId,
     Guid EntityId,
     string Name,
     DateTimeOffset Timestamp) : IDomainEventNotification
@@ -183,6 +198,7 @@ public record PublisherUpdatedNotification(
 /// Notification when a publisher is deleted
 /// </summary>
 public record PublisherDeletedNotification(
+    Guid EventId,
     Guid EntityId,
     DateTimeOffset Timestamp) : IDomainEventNotification
 {
@@ -194,6 +210,7 @@ public record PublisherDeletedNotification(
 /// </summary>
 public record PingNotification : IDomainEventNotification
 {
+    public Guid EventId => Guid.Empty;
     public Guid EntityId => Guid.Empty;
     public string EventType => "Ping";
     public DateTimeOffset Timestamp => DateTimeOffset.UtcNow;
@@ -203,6 +220,7 @@ public record PingNotification : IDomainEventNotification
 /// Notification when a user is updated
 /// </summary>
 public record UserUpdatedNotification(
+    Guid EventId,
     Guid EntityId,
     DateTimeOffset Timestamp) : IDomainEventNotification
 {

@@ -20,7 +20,7 @@ namespace BookStore.Client
     {
         [Headers("Accept: application/json")]
         [Post("/api/admin/projections/rebuild")]
-        Task<RebuildResponse> Execute([Header("api-version")] object api_version, [Header("Accept-Language")] object accept_Language, [Header("X-Correlation-ID")] object x_Correlation_ID, [Header("X-Causation-ID")] object x_Causation_ID, CancellationToken cancellationToken = default);
+        Task<RebuildResponse> Execute([Header("api-version")] object api_version, [Header("Accept-Language")] object accept_Language, [Header("X-Correlation-ID")] object? x_Correlation_ID = null, [Header("X-Causation-ID")] object? x_Causation_ID = null, CancellationToken cancellationToken = default);
     }
 
 }

@@ -14,6 +14,7 @@ public class BookStoreEventsService : IAsyncDisposable
 {
     readonly HttpClient _httpClient;
     readonly ILogger<BookStoreEventsService> _logger;
+    readonly Services.CorrelationService _correlationService;
     CancellationTokenSource? _cts;
     Task? _listenerTask;
 
@@ -34,10 +35,14 @@ public class BookStoreEventsService : IAsyncDisposable
         { "UserVerified", typeof(UserVerifiedNotification) }
     };
 
-    public BookStoreEventsService(HttpClient httpClient, ILogger<BookStoreEventsService> logger)
+    public BookStoreEventsService(
+        HttpClient httpClient,
+        ILogger<BookStoreEventsService> logger,
+        Services.CorrelationService correlationService)
     {
         _httpClient = httpClient;
         _logger = logger;
+        _correlationService = correlationService;
     }
 
     public void StartListening()
@@ -75,6 +80,11 @@ public class BookStoreEventsService : IAsyncDisposable
                         var notification = DeserializeNotification(item.EventType, item.Data);
                         if (notification != null)
                         {
+                            if (notification.EventId != Guid.Empty)
+                            {
+                                _correlationService.UpdateCausationId(notification.EventId.ToString());
+                            }
+
                             OnNotificationReceived?.Invoke(notification);
                         }
                     }

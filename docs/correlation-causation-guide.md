@@ -298,6 +298,22 @@ logger.LogInformation(
 3. **`LoggingEnricherMiddleware`**:
    - Automatically adds `CorrelationId` and `CausationId` to the structured logging scope for every request.
 
+### Blazor Frontend Implementation
+
+The Blazor frontend automatically manages and propagates these IDs using a dedicated service and message handler:
+
+1. **`CorrelationService`**:
+   - Stores the current `CorrelationId` (persistent per circuit/session).
+   - Manages the `CausationId`, which updates dynamically.
+
+2. **`AuthorizationMessageHandler`**:
+   - Automatically injects `X-Correlation-ID` and `X-Causation-ID` headers into all outgoing API requests.
+   - Captures `X-Event-ID` from backend responses to update the `CausationId` for subsequent calls.
+
+3. **`BookStoreEventsService`**:
+   - Updates the `CorrelationService` with the `EventId` from incoming Server-Sent Events (SSE).
+   - Ensures that reactive UI updates and subsequent background data reloads are correctly linked to the event that triggered them.
+
 ## Summary
 
 - **Correlation ID**: Tracks the entire business workflow
