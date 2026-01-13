@@ -5,7 +5,7 @@ namespace BookStore.ApiService.Projections;
 
 using Marten.Metadata;
 
-public class PublisherProjection : ISoftDeleted
+public class PublisherProjection
 {
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;

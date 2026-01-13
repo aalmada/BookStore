@@ -19,8 +19,6 @@ public static class GlobalHooks
     [Before(TestSession)]
     public static async Task SetUp()
     {
-        Console.WriteLine("[GLOBAL-SETUP] Starting SetUp...");
-
         try
         {
             var builder = await DistributedApplicationTestingBuilder.CreateAsync<Projects.BookStore_AppHost>();
@@ -34,24 +32,18 @@ public static class GlobalHooks
                 });
             });
 
-            Console.WriteLine("[GLOBAL-SETUP] Building application...");
             App = await builder.BuildAsync();
 
-            Console.WriteLine("[GLOBAL-SETUP] Getting ResourceNotificationService...");
             NotificationService = App.Services.GetRequiredService<ResourceNotificationService>();
 
-            Console.WriteLine("[GLOBAL-SETUP] Starting application...");
             await App.StartAsync();
 
-            Console.WriteLine("[GLOBAL-SETUP] Authenticating admin...");
             // Authenticate once and cache the token for all tests
             await AuthenticateAdminAsync();
-            Console.WriteLine("[GLOBAL-SETUP] SetUp completed successfully.");
+
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine($"[GLOBAL-SETUP] FATAL ERROR: {ex.Message}");
-            Console.WriteLine($"[GLOBAL-SETUP] Stack trace: {ex.StackTrace}");
             throw;
         }
     }
@@ -64,17 +56,15 @@ public static class GlobalHooks
         }
 
         var httpClient = App.CreateHttpClient("apiservice");
-        Console.WriteLine("[GLOBAL-SETUP] Waiting for apiservice to be healthy...");
 
         try
         {
             using var healthCts = new CancellationTokenSource(TimeSpan.FromSeconds(120));
             _ = await NotificationService.WaitForResourceHealthyAsync("apiservice", healthCts.Token);
-            Console.WriteLine("[GLOBAL-SETUP] apiservice is healthy.");
+
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[GLOBAL-SETUP] Health check failed: {ex.Message}");
             throw new InvalidOperationException("apiservice failed to become healthy", ex);
         }
 
@@ -82,7 +72,7 @@ public static class GlobalHooks
         HttpResponseMessage? loginResponse = null;
         for (var i = 0; i < 15; i++)
         {
-            Console.WriteLine($"[GLOBAL-SETUP] Login attempt {i + 1}/15...");
+
             try
             {
                 loginResponse = await httpClient.PostAsJsonAsync("/account/login", new
@@ -93,12 +83,11 @@ public static class GlobalHooks
 
                 if (loginResponse.IsSuccessStatusCode)
                 {
-                    Console.WriteLine("[GLOBAL-SETUP] Login successful.");
                     break;
                 }
 
                 var errorContent = await loginResponse.Content.ReadAsStringAsync();
-                Console.WriteLine($"[GLOBAL-SETUP] Login failed with status: {loginResponse.StatusCode}, body: {errorContent}");
+
             }
 #pragma warning disable RCS1075 // Avoid empty catch clause
             catch (Exception)
@@ -122,7 +111,6 @@ public static class GlobalHooks
         }
 
         AdminAccessToken = loginResult.AccessToken;
-        Console.WriteLine("[GLOBAL-SETUP] Admin access token retrieved.");
 
         // Configure the shared HttpClient with the admin token
         httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", AdminAccessToken);
@@ -132,7 +120,7 @@ public static class GlobalHooks
     [After(TestSession)]
     public static async Task CleanUp()
     {
-        Console.WriteLine("[GLOBAL-SETUP] Cleaning up...");
+
         if (App is not null)
         {
             await App.DisposeAsync();

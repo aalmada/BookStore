@@ -52,7 +52,8 @@ public static class AuthorEndpoints
             {
                 await using var session = store.QuerySession();
 
-                IQueryable<AuthorProjection> query = session.Query<AuthorProjection>();
+                var query = session.Query<AuthorProjection>()
+                    .Where(a => !a.Deleted);
 
                 // Can sort by Name since it's not localized
                 query = (normalizedSortBy, normalizedSortOrder) switch
@@ -105,7 +106,7 @@ public static class AuthorEndpoints
             {
                 await using var session = store.QuerySession();
                 var author = await session.LoadAsync<AuthorProjection>(id, cancel);
-                if (author == null)
+                if (author == null || author.Deleted)
                 {
                     return (AuthorDto?)null;
                 }

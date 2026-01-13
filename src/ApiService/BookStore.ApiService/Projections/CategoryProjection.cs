@@ -5,7 +5,7 @@ namespace BookStore.ApiService.Projections;
 
 using Marten.Metadata;
 
-public class CategoryProjection : ISoftDeleted
+public class CategoryProjection
 {
     public Guid Id { get; set; }
 

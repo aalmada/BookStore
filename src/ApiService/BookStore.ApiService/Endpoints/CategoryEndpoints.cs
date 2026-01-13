@@ -52,7 +52,8 @@ public static class CategoryEndpoints
             {
                 await using var session = store.QuerySession();
 
-                IQueryable<CategoryProjection> query = session.Query<CategoryProjection>();
+                var query = session.Query<CategoryProjection>()
+                    .Where(c => !c.Deleted);
 
                 // Note: Cannot sort by localized name since it's in a dictionary
                 // Sorting by ID only

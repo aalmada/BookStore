@@ -21,6 +21,8 @@ var apiService = builder.AddProject<Projects.BookStore_ApiService>(ResourceNames
     .WithReference(bookStoreDb)
     .WithReference(blobs) // Add blob storage reference
     .WithReference(cache)
+    .WaitFor(cache)
+    .WaitFor(postgres)
     .WithHttpHealthCheck(ResourceNames.HealthCheckEndpoint)
     .WithExternalHttpEndpoints()
     .WithUrlForEndpoint("http", url =>
@@ -32,8 +34,7 @@ var apiService = builder.AddProject<Projects.BookStore_ApiService>(ResourceNames
     {
         url.DisplayText = ResourceNames.ApiReferenceText;
         url.Url += ResourceNames.ApiReferenceUrl;
-    })
-    .WaitFor(postgres);
+    });
 
 builder.AddProject<Projects.BookStore_Web>(ResourceNames.WebFrontend)
     .WithExternalHttpEndpoints()
