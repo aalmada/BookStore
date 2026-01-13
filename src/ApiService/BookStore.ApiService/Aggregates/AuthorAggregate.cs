@@ -3,12 +3,18 @@ using BookStore.ApiService.Infrastructure;
 
 namespace BookStore.ApiService.Aggregates;
 
-public class AuthorAggregate
+using Marten.Metadata;
+using Marten.Schema;
+
+public class AuthorAggregate : ISoftDeleted
 {
     public Guid Id { get; private set; }
     public string Name { get; private set; } = string.Empty;
     public Dictionary<string, AuthorTranslation> Translations { get; private set; } = [];
-    public bool IsDeleted { get; private set; }
+#pragma warning disable BS3005 // Aggregate properties must have private setters (Marten ISoftDeleted requirement)
+    public bool Deleted { get; set; }
+    public DateTimeOffset? DeletedAt { get; set; }
+#pragma warning restore BS3005
 
     // Marten uses this for rehydration
     void Apply(AuthorAdded @event)
@@ -16,7 +22,7 @@ public class AuthorAggregate
         Id = @event.Id;
         Name = @event.Name;
         Translations = @event.Translations;
-        IsDeleted = false;
+        Deleted = false;
     }
 
     void Apply(AuthorUpdated @event)
@@ -25,9 +31,17 @@ public class AuthorAggregate
         Translations = @event.Translations;
     }
 
-    void Apply(AuthorSoftDeleted _) => IsDeleted = true;
+    void Apply(AuthorSoftDeleted @event)
+    {
+        Deleted = true;
+        DeletedAt = @event.Timestamp;
+    }
 
-    void Apply(AuthorRestored _) => IsDeleted = false;
+    void Apply(AuthorRestored _)
+    {
+        Deleted = false;
+        DeletedAt = null;
+    }
 
     // Command methods
     public static AuthorAdded CreateEvent(Guid id, string name, Dictionary<string, AuthorTranslation> translations)
@@ -41,7 +55,7 @@ public class AuthorAggregate
     public AuthorUpdated UpdateEvent(string name, Dictionary<string, AuthorTranslation> translations)
     {
         // Business rule: cannot update deleted author
-        if (IsDeleted)
+        if (Deleted)
         {
             throw new InvalidOperationException("Cannot update a deleted author");
         }
@@ -115,7 +129,7 @@ public class AuthorAggregate
 
     public AuthorSoftDeleted SoftDeleteEvent()
     {
-        if (IsDeleted)
+        if (Deleted)
         {
             throw new InvalidOperationException("Author is already deleted");
         }
@@ -125,7 +139,7 @@ public class AuthorAggregate
 
     public AuthorRestored RestoreEvent()
     {
-        if (!IsDeleted)
+        if (!Deleted)
         {
             throw new InvalidOperationException("Author is not deleted");
         }

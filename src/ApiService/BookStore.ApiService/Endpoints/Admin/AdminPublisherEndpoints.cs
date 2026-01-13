@@ -1,4 +1,5 @@
 using Marten;
+using Marten.Linq.SoftDeletes;
 using Microsoft.AspNetCore.Mvc;
 using Wolverine;
 
@@ -30,7 +31,23 @@ namespace BookStore.ApiService.Endpoints.Admin
                 .WithName("RestorePublisher")
                 .WithSummary("Restore a deleted publisher");
 
+            _ = group.MapGet("/", GetAllPublishers)
+                .WithName("GetAllPublishers")
+                .WithSummary("Get all publishers (including deleted)");
+
             return group.RequireAuthorization("Admin");
+        }
+
+        static async Task<IResult> GetAllPublishers(
+            [FromServices] IQuerySession session,
+            CancellationToken cancellationToken)
+        {
+            var publishers = await session.Query<Projections.PublisherProjection>()
+                .Where(x => x.MaybeDeleted())
+                .OrderBy(x => x.Name)
+                .ToListAsync(cancellationToken);
+
+            return Results.Ok(publishers);
         }
 
         static Task<IResult> CreatePublisher(

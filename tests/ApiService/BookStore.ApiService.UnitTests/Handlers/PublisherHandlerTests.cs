@@ -137,7 +137,7 @@ public class PublisherHandlerTests
 
         typeof(PublisherAggregate).GetProperty(nameof(PublisherAggregate.Id))!.SetValue(aggregate, id);
         typeof(PublisherAggregate).GetProperty(nameof(PublisherAggregate.Name))!.SetValue(aggregate, name);
-        typeof(PublisherAggregate).GetProperty(nameof(PublisherAggregate.IsDeleted))!.SetValue(aggregate, isDeleted);
+        typeof(PublisherAggregate).GetProperty(nameof(PublisherAggregate.Deleted))!.SetValue(aggregate, isDeleted);
 
         return aggregate;
     }

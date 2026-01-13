@@ -127,7 +127,7 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
     async Task HandleCategoryChangeAsync(CategoryProjection category, ChangeType changeType, CancellationToken token)
     {
         // Check for soft delete status if it's an update
-        var effectiveChangeType = DetermineEffectiveChangeType(changeType, category.IsDeleted);
+        var effectiveChangeType = DetermineEffectiveChangeType(changeType, category.Deleted);
 
         await InvalidateCacheTagsAsync(category.Id, CacheTags.CategoryItemPrefix, CacheTags.CategoryList, token);
 
@@ -145,7 +145,7 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
 
     async Task HandleBookChangeAsync(BookSearchProjection book, ChangeType changeType, CancellationToken token)
     {
-        var effectiveChangeType = DetermineEffectiveChangeType(changeType, book.IsDeleted);
+        var effectiveChangeType = DetermineEffectiveChangeType(changeType, book.Deleted);
 
         await InvalidateCacheTagsAsync(book.Id, CacheTags.BookItemPrefix, CacheTags.BookList, token);
 
@@ -164,7 +164,7 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
 
     async Task HandleAuthorChangeAsync(AuthorProjection author, ChangeType changeType, CancellationToken token)
     {
-        var effectiveChangeType = DetermineEffectiveChangeType(changeType, author.IsDeleted);
+        var effectiveChangeType = DetermineEffectiveChangeType(changeType, author.Deleted);
 
         await InvalidateCacheTagsAsync(author.Id, CacheTags.AuthorItemPrefix, CacheTags.AuthorList, token);
 
@@ -181,7 +181,7 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
 
     async Task HandlePublisherChangeAsync(PublisherProjection publisher, ChangeType changeType, CancellationToken token)
     {
-        var effectiveChangeType = DetermineEffectiveChangeType(changeType, publisher.IsDeleted);
+        var effectiveChangeType = DetermineEffectiveChangeType(changeType, publisher.Deleted);
 
         await InvalidateCacheTagsAsync(publisher.Id, CacheTags.PublisherItemPrefix, CacheTags.PublisherList, token);
 

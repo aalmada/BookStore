@@ -1,6 +1,8 @@
 using System.Collections.Immutable;
 using BookStore.Shared.Models;
 using Marten;
+using Marten.Linq;
+using Marten.Linq.SoftDeletes;
 using Microsoft.AspNetCore.Mvc;
 using Wolverine;
 
@@ -151,6 +153,7 @@ namespace BookStore.ApiService.Endpoints.Admin
             CancellationToken cancellationToken)
         {
             var books = await session.Query<Projections.BookSearchProjection>()
+                .Where(x => x.MaybeDeleted())
                 .OrderBy(b => b.Title)
                 .ToListAsync(cancellationToken);
 

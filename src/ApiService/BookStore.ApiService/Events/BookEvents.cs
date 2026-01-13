@@ -27,9 +27,9 @@ public record BookUpdated(
     List<Guid> CategoryIds,
     Dictionary<string, decimal> Prices);
 
-public record BookSoftDeleted(Guid Id);
+public record BookSoftDeleted(Guid Id, DateTimeOffset Timestamp);
 
-public record BookRestored(Guid Id);
+public record BookRestored(Guid Id, DateTimeOffset Timestamp);
 
 public record BookCoverUpdated(Guid Id, string CoverImageUrl);
 

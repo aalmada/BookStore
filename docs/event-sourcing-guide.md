@@ -526,14 +526,14 @@ See [Marten Guide - Querying Projections](marten-guide.md#querying-projections) 
 **Challenge**: Events are immutable, but GDPR requires data deletion.
 
 **Solutions**:
-- **Soft Delete**: Mark as deleted, don't show in projections
+- **Soft Delete**: Mark as deleted (`ISoftDeleted`), automatically filtered from queries
 - **Anonymization**: Replace PII with anonymized data
 - **Crypto Shredding**: Encrypt events, delete encryption key
 - **Stream Archival**: Move stream to separate archive store
 
 ```csharp
-// Soft delete (preferred)
-public record BookSoftDeleted(Guid Id);
+// Soft delete (Marten 8 native support)
+public record BookSoftDeleted(Guid Id, DateTimeOffset Timestamp);
 
 // Anonymization (for GDPR)
 public async Task AnonymizeUserData(Guid userId)

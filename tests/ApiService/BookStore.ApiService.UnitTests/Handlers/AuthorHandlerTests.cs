@@ -196,7 +196,7 @@ public class AuthorHandlerTests
         // Set properties via reflection
         typeof(AuthorAggregate).GetProperty(nameof(AuthorAggregate.Id))!.SetValue(aggregate, id);
         typeof(AuthorAggregate).GetProperty(nameof(AuthorAggregate.Name))!.SetValue(aggregate, name);
-        typeof(AuthorAggregate).GetProperty(nameof(AuthorAggregate.IsDeleted))!.SetValue(aggregate, isDeleted);
+        typeof(AuthorAggregate).GetProperty(nameof(AuthorAggregate.Deleted))!.SetValue(aggregate, isDeleted);
         typeof(AuthorAggregate).GetProperty(nameof(AuthorAggregate.Translations))!.SetValue(aggregate, new Dictionary<string, AuthorTranslation> { ["en"] = new("Bio") });
 
         return aggregate;

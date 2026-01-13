@@ -3,7 +3,9 @@ using Marten.Events.Aggregation;
 
 namespace BookStore.ApiService.Projections;
 
-public class CategoryProjection
+using Marten.Metadata;
+
+public class CategoryProjection : ISoftDeleted
 {
     public Guid Id { get; set; }
 
@@ -11,14 +13,15 @@ public class CategoryProjection
     public Dictionary<string, string> Names { get; set; } = [];
 
     public DateTimeOffset LastModified { get; set; }
-    public bool IsDeleted { get; set; }
+    public bool Deleted { get; set; }
+    public DateTimeOffset? DeletedAt { get; set; }
 
     // SingleStreamProjection methods
     public static CategoryProjection Create(CategoryAdded @event) => new()
     {
         Id = @event.Id,
         LastModified = @event.Timestamp,
-        IsDeleted = false,
+        Deleted = false,
         Names = @event.Translations?
                 .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Name)
                 ?? []
@@ -35,12 +38,14 @@ public class CategoryProjection
     public void Apply(CategorySoftDeleted @event)
     {
         LastModified = @event.Timestamp;
-        IsDeleted = true;
+        Deleted = true;
+        DeletedAt = @event.Timestamp;
     }
 
     public void Apply(CategoryRestored @event)
     {
         LastModified = @event.Timestamp;
-        IsDeleted = false;
+        Deleted = false;
+        DeletedAt = null;
     }
 }

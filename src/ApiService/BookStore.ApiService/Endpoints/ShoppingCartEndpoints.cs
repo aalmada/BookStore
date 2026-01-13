@@ -62,7 +62,7 @@ public static class ShoppingCartEndpoints
 
         var bookIds = profile.ShoppingCartItems!.Keys.ToList();
         var books = await session.Query<BookSearchProjection>()
-            .Where(b => bookIds.Contains(b.Id) && !b.IsDeleted)
+            .Where(b => bookIds.Contains(b.Id) && !b.Deleted)
             .ToListAsync(cancellationToken);
 
         var items = books.Select(book => new ShoppingCartItemDto(

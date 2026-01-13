@@ -2,7 +2,10 @@ using BookStore.ApiService.Events;
 
 namespace BookStore.ApiService.Aggregates;
 
-public class CategoryAggregate
+using Marten.Metadata;
+using Marten.Schema;
+
+public class CategoryAggregate : ISoftDeleted
 {
     // Validation constants
     public const int MaxNameLength = 100;
@@ -10,21 +13,32 @@ public class CategoryAggregate
 
     public Guid Id { get; private set; }
     public Dictionary<string, CategoryTranslation> Translations { get; private set; } = [];
-    public bool IsDeleted { get; private set; }
+#pragma warning disable BS3005 // Aggregate properties must have private setters
+    public bool Deleted { get; set; }
+    public DateTimeOffset? DeletedAt { get; set; }
+#pragma warning restore BS3005
 
     // Marten uses this for rehydration
     void Apply(CategoryAdded @event)
     {
         Id = @event.Id;
         Translations = @event.Translations ?? [];
-        IsDeleted = false;
+        Deleted = false;
     }
 
     void Apply(CategoryUpdated @event) => Translations = @event.Translations ?? [];
 
-    void Apply(CategorySoftDeleted _) => IsDeleted = true;
+    void Apply(CategorySoftDeleted @event)
+    {
+        Deleted = true;
+        DeletedAt = @event.Timestamp;
+    }
 
-    void Apply(CategoryRestored _) => IsDeleted = false;
+    void Apply(CategoryRestored _)
+    {
+        Deleted = false;
+        DeletedAt = null;
+    }
 
     // Command methods
     public static CategoryAdded CreateEvent(Guid id, Dictionary<string, CategoryTranslation> translations)
@@ -60,7 +74,7 @@ public class CategoryAggregate
 
     public CategoryUpdated UpdateEvent(Dictionary<string, CategoryTranslation> translations)
     {
-        if (IsDeleted)
+        if (Deleted)
         {
             throw new InvalidOperationException("Cannot update a deleted category");
         }
@@ -96,7 +110,7 @@ public class CategoryAggregate
 
     public CategorySoftDeleted SoftDeleteEvent()
     {
-        if (IsDeleted)
+        if (Deleted)
         {
             throw new InvalidOperationException("Category is already deleted");
         }
@@ -106,7 +120,7 @@ public class CategoryAggregate
 
     public CategoryRestored RestoreEvent()
     {
-        if (!IsDeleted)
+        if (!Deleted)
         {
             throw new InvalidOperationException("Category is not deleted");
         }
