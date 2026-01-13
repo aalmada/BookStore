@@ -146,20 +146,24 @@ public static class MartenConfigurationExtensions
             .Index(x => x.Title)        // B-tree index for sorting
             .GinIndexJsonData()        // GIN index for JSON fields
             .NgramIndex(x => x.Title)           // NGram search on title
-            .NgramIndex(x => x.AuthorNames);    // NGram search on authors
+            .NgramIndex(x => x.AuthorNames)    // NGram search on authors
+            .Index(x => x.Deleted);             // Index for soft-delete filtering
 
         // AuthorProjection indexes
         _ = options.Schema.For<AuthorProjection>()
             .Index(x => x.Name)         // B-tree index for sorting
-            .NgramIndex(x => x.Name);           // NGram search on author name
+            .NgramIndex(x => x.Name)    // NGram search on author name
+            .Index(x => x.Deleted);     // Index for soft-delete filtering
 
         // Note: CategoryProjection no longer has a Name field - uses Translations dictionary
-        // No indexes configured for CategoryProjection
+        _ = options.Schema.For<CategoryProjection>()
+             .Index(x => x.Deleted);    // Index for soft-delete filtering
 
         // PublisherProjection indexes
         _ = options.Schema.For<PublisherProjection>()
             .Index(x => x.Name)         // B-tree index for sorting
-            .NgramIndex(x => x.Name);           // NGram search on publisher name
+            .NgramIndex(x => x.Name)    // NGram search on publisher name
+            .Index(x => x.Deleted);     // Index for soft-delete filtering
     }
 
     static void RegisterChangeListeners(StoreOptions options, IServiceProvider sp)
