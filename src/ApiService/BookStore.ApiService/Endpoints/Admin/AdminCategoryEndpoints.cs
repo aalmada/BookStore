@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using BookStore.ApiService.Commands;
 using Marten;
+using Marten.Linq.SoftDeletes;
 using Microsoft.AspNetCore.Mvc;
 using Wolverine;
 
@@ -35,7 +36,23 @@ namespace BookStore.ApiService.Endpoints.Admin
                 .WithName("RestoreCategory")
                 .WithSummary("Restore a deleted category");
 
+            _ = group.MapGet("/", GetAllCategories)
+                .WithName("GetAllCategories")
+                .WithSummary("Get all categories (including deleted)");
+
             return group.RequireAuthorization("Admin");
+        }
+
+        static async Task<IResult> GetAllCategories(
+            [FromServices] IQuerySession session,
+            CancellationToken cancellationToken)
+        {
+            var categories = await session.Query<Projections.CategoryProjection>()
+                .Where(x => x.MaybeDeleted())
+                .OrderBy(x => x.Id) // Categories don't have a single name to sort by easily, ID is safe or we can default sort
+                .ToListAsync(cancellationToken);
+
+            return Results.Ok(categories);
         }
 
         static Task<IResult> CreateCategory(

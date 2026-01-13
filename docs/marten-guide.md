@@ -1705,3 +1705,33 @@ Marten provides:
 - **[Architecture Overview](architecture.md)** - System design and patterns
 - **[ETag Guide](etag-guide.md)** - Optimistic concurrency with stream versions
 - **[Correlation/Causation Guide](correlation-causation-guide.md)** - Distributed tracing with metadata
+
+## Soft Deletion with Marten 8
+
+Marten 8 introduces native support for soft deletion through the `ISoftDeleted` interface.
+
+### Strategy
+
+We implement soft deletion for both **Aggregates** and **Projections**.
+
+1.  **Aggregates (`BookAggregate`)**: The aggregate is the source of truth. It implements `ISoftDeleted` and updates `Deleted` and `DeletedAt` properties via `BookSoftDeleted` and `BookRestored` events.
+    *   It maintains business rules preventing operations on deleted books unless restored.
+2.  **Projections (`BookSearchProjection`)**: Projections also implement `ISoftDeleted`. They listen for the same events to update their state.
+    *   **Denormalization Reuse**: We keep the projection record even when deleted (just marked `Deleted = true`). This preserves expensive denormalized data (Author Names, Publisher Names) so that a restore operation is a cheap state flip rather than a full rebuild.
+
+### Usage
+
+**Public API**: Regular queries automatically filter out soft-deleted records.
+```csharp
+// Standard query - Deleted items are HIDDEN by default
+var books = await session.Query<BookSearchProjection>().ToListAsync();
+```
+
+**Admin API**: Use `.Where(x => x.MaybeDeleted())` to include deleted items.
+```csharp
+// Admin query - Include deleted items
+var books = await session.Query<BookSearchProjection>()
+    // Include deleted items by bypassing the filter
+    .Where(x => x.MaybeDeleted()) 
+    .ToListAsync();
+```

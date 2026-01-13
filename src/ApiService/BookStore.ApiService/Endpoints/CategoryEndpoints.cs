@@ -52,8 +52,7 @@ public static class CategoryEndpoints
             {
                 await using var session = store.QuerySession();
 
-                var query = session.Query<CategoryProjection>()
-                    .Where(c => !c.IsDeleted);
+                IQueryable<CategoryProjection> query = session.Query<CategoryProjection>();
 
                 // Note: Cannot sort by localized name since it's in a dictionary
                 // Sorting by ID only
@@ -106,7 +105,7 @@ public static class CategoryEndpoints
             {
                 await using var session = store.QuerySession();
                 var category = await session.LoadAsync<CategoryProjection>(id, cancel);
-                if (category == null || category.IsDeleted)
+                if (category == null || category.Deleted)
                 {
                     return (CategoryProjection?)null;
                 }

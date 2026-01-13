@@ -2,18 +2,20 @@ using BookStore.ApiService.Events;
 using BookStore.Shared.Models;
 using Marten;
 using Marten.Events.Aggregation;
+using Marten.Metadata;
 
 namespace BookStore.ApiService.Projections;
 
 // Read model optimized for search
-public class BookSearchProjection
+public class BookSearchProjection : ISoftDeleted
 {
     public Guid Id { get; set; }
     public string Title { get; set; } = string.Empty;
     public string? Isbn { get; set; }
     public string OriginalLanguage { get; set; } = string.Empty;
     public PartialDate? PublicationDate { get; set; }
-    public bool IsDeleted { get; set; }
+    public bool Deleted { get; set; }
+    public DateTimeOffset? DeletedAt { get; set; }
 
     // Localized field as dictionary (key = culture, value = description)
     public Dictionary<string, string> Descriptions { get; set; } = [];
@@ -78,9 +80,17 @@ public class BookSearchProjection
         return this;
     }
 
-    public void Apply(BookSoftDeleted _) => IsDeleted = true;
+    public void Apply(BookSoftDeleted @event)
+    {
+        Deleted = true;
+        DeletedAt = @event.Timestamp;
+    }
 
-    public void Apply(BookRestored _) => IsDeleted = false;
+    public void Apply(BookRestored _)
+    {
+        Deleted = false;
+        DeletedAt = null;
+    }
 
     public void Apply(BookCoverUpdated @event) => CoverImageUrl = @event.CoverImageUrl;
 

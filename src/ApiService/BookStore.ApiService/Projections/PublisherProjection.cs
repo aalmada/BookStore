@@ -3,12 +3,15 @@ using Marten.Events.Aggregation;
 
 namespace BookStore.ApiService.Projections;
 
-public class PublisherProjection
+using Marten.Metadata;
+
+public class PublisherProjection : ISoftDeleted
 {
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public DateTimeOffset LastModified { get; set; }
-    public bool IsDeleted { get; set; }
+    public bool Deleted { get; set; }
+    public DateTimeOffset? DeletedAt { get; set; }
 
     // SingleStreamProjection methods
     public static PublisherProjection Create(PublisherAdded @event) => new()
@@ -27,12 +30,14 @@ public class PublisherProjection
     public void Apply(PublisherSoftDeleted @event)
     {
         LastModified = @event.Timestamp;
-        IsDeleted = true;
+        Deleted = true;
+        DeletedAt = @event.Timestamp;
     }
 
     public void Apply(PublisherRestored @event)
     {
         LastModified = @event.Timestamp;
-        IsDeleted = false;
+        Deleted = false;
+        DeletedAt = null;
     }
 }

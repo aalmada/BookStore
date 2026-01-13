@@ -529,4 +529,27 @@ public static class TestHelpers
             throw new Exception("Timed out waiting for BookUpdated event after RestoreBook.");
         }
     }
+
+    public static async Task WaitForConditionAsync(Func<Task<bool>> condition, TimeSpan timeout, string failureMessage)
+    {
+        using var cts = new CancellationTokenSource(timeout);
+        try
+        {
+            while (!cts.IsCancellationRequested)
+            {
+                if (await condition())
+                {
+                    return;
+                }
+
+                await Task.Delay(500, cts.Token);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Fall through to failure
+        }
+
+        throw new Exception($"Timeout waiting for condition: {failureMessage}");
+    }
 }

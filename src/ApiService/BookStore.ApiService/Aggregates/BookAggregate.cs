@@ -2,10 +2,11 @@ using BookStore.ApiService.Events;
 using BookStore.ApiService.Infrastructure;
 using BookStore.Shared.Models;
 using Marten;
+using Marten.Metadata;
 
 namespace BookStore.ApiService.Aggregates;
 
-public class BookAggregate
+public class BookAggregate : ISoftDeleted
 {
     public Guid Id { get; private set; }
     public string Title { get; private set; } = string.Empty;
@@ -16,7 +17,10 @@ public class BookAggregate
     public Guid? PublisherId { get; private set; }
     public List<Guid> AuthorIds { get; private set; } = [];
     public List<Guid> CategoryIds { get; private set; } = [];
-    public bool IsDeleted { get; private set; }
+#pragma warning disable BS3005 // Aggregate properties must have private setters (Marten ISoftDeleted requirement)
+    public bool Deleted { get; set; }
+    public DateTimeOffset? DeletedAt { get; set; }
+#pragma warning restore BS3005
     public Dictionary<string, decimal> Prices { get; private set; } = [];
     public string? CoverImageUrl { get; private set; }
 
@@ -33,7 +37,7 @@ public class BookAggregate
         AuthorIds = @event.AuthorIds;
         CategoryIds = @event.CategoryIds;
         Prices = @event.Prices;
-        IsDeleted = false;
+        Deleted = false;
     }
 
     void Apply(BookUpdated @event)
@@ -49,9 +53,17 @@ public class BookAggregate
         Prices = @event.Prices;
     }
 
-    void Apply(BookSoftDeleted _) => IsDeleted = true;
+    void Apply(BookSoftDeleted _)
+    {
+        Deleted = true;
+        DeletedAt = DateTimeOffset.UtcNow;
+    }
 
-    void Apply(BookRestored _) => IsDeleted = false;
+    void Apply(BookRestored _)
+    {
+        Deleted = false;
+        DeletedAt = null;
+    }
 
     void Apply(BookCoverUpdated @event) => CoverImageUrl = @event.CoverImageUrl;
 
@@ -100,7 +112,7 @@ public class BookAggregate
         Dictionary<string, decimal> prices)
     {
         // Business rule: cannot update deleted book
-        if (IsDeleted)
+        if (Deleted)
         {
             throw new InvalidOperationException("Cannot update a deleted book");
         }
@@ -248,27 +260,27 @@ public class BookAggregate
 
     public BookSoftDeleted SoftDeleteEvent()
     {
-        if (IsDeleted)
+        if (Deleted)
         {
             throw new InvalidOperationException("Book is already deleted");
         }
 
-        return new BookSoftDeleted(Id);
+        return new BookSoftDeleted(Id, DateTimeOffset.UtcNow);
     }
 
     public BookRestored RestoreEvent()
     {
-        if (!IsDeleted)
+        if (!Deleted)
         {
             throw new InvalidOperationException("Book is not deleted");
         }
 
-        return new BookRestored(Id);
+        return new BookRestored(Id, DateTimeOffset.UtcNow);
     }
 
     public BookCoverUpdated UpdateCoverImage(string coverImageUrl)
     {
-        if (IsDeleted)
+        if (Deleted)
         {
             throw new InvalidOperationException("Cannot update cover for a deleted book");
         }

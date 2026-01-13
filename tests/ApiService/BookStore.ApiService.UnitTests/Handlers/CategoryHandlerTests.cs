@@ -177,7 +177,7 @@ public class CategoryHandlerTests
         var aggregate = (CategoryAggregate)Activator.CreateInstance(typeof(CategoryAggregate), true)!;
 
         typeof(CategoryAggregate).GetProperty(nameof(CategoryAggregate.Id))!.SetValue(aggregate, id);
-        typeof(CategoryAggregate).GetProperty(nameof(CategoryAggregate.IsDeleted))!.SetValue(aggregate, isDeleted);
+        typeof(CategoryAggregate).GetProperty(nameof(CategoryAggregate.Deleted))!.SetValue(aggregate, isDeleted);
         typeof(CategoryAggregate).GetProperty(nameof(CategoryAggregate.Translations))!.SetValue(aggregate, new Dictionary<string, CategoryTranslation>
         {
             ["en"] = new(defaultName, "Description")
