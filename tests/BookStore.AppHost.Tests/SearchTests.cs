@@ -29,7 +29,8 @@ public class SearchTests
             PublicationDate = new { Year = 2024, Month = 1, Day = 1 },
             PublisherId = (Guid?)null,
             AuthorIds = new Guid[] { },
-            CategoryIds = new Guid[] { }
+            CategoryIds = new Guid[] { },
+            Prices = new Dictionary<string, decimal> { ["USD"] = 10.0m }
         };
         var createdBook = await TestHelpers.CreateBookAsync(httpClient, createRequest);
 

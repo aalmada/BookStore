@@ -36,7 +36,7 @@ public static class AuthorEndpoints
         HttpContext context,
         CancellationToken cancellationToken)
     {
-        var culture = CultureInfo.CurrentCulture.Name;
+        var culture = CultureInfo.CurrentUICulture.Name;
         var defaultCulture = localizationOptions.Value.DefaultCulture;
         var paging = request.Normalize(paginationOptions.Value);
 
@@ -96,7 +96,7 @@ public static class AuthorEndpoints
         HttpContext context,
         CancellationToken cancellationToken)
     {
-        var culture = CultureInfo.CurrentCulture.Name;
+        var culture = CultureInfo.CurrentUICulture.Name;
         var defaultCulture = localizationOptions.Value.DefaultCulture;
 
         var response = await cache.GetOrCreateLocalizedAsync(

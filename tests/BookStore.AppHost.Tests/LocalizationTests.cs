@@ -36,7 +36,8 @@ public class LocalizationTests
             PublicationDate = new { Year = 2023 },
             PublisherId = (Guid?)null,
             AuthorIds = new List<Guid>(),
-            CategoryIds = new List<Guid>()
+            CategoryIds = new List<Guid>(),
+            Prices = new Dictionary<string, decimal> { ["USD"] = 10.0m }
         };
 
         // Create the book

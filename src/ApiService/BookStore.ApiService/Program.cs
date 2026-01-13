@@ -24,6 +24,7 @@ builder.AddRedisDistributedCache(BookStore.ServiceDefaults.ResourceNames.Cache);
 // Configure services
 builder.Services.AddJsonConfiguration(builder.Environment);
 builder.Services.AddApplicationServices(builder.Configuration);
+builder.Services.AddLocalization();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddMartenEventStore(builder.Configuration);
 builder.Services.AddWolverineMessaging();
@@ -172,7 +173,7 @@ app.UseForwardedHeaders();
 
 // Add request localization middleware
 // Add request localization middleware
-var localizationOptions = new LocalizationOptions { SupportedCultures = ["en"] }; // Default if config missing (though required)
+var localizationOptions = new LocalizationOptions { SupportedCultures = ["en", "pt", "pt-PT", "es", "fr", "de"] }; // Default/Fallback
 builder.Configuration.GetSection(LocalizationOptions.SectionName).Bind(localizationOptions);
 
 var requestLocalizationOptions = new RequestLocalizationOptions()

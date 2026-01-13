@@ -33,7 +33,11 @@ public static class TestHelpers
 #pragma warning restore IDE0037
         PublisherId = publisherId,
         AuthorIds = authorIds ?? [],
-        CategoryIds = categoryIds ?? []
+        CategoryIds = categoryIds ?? [],
+        Prices = new Dictionary<string, decimal>
+        {
+            ["USD"] = decimal.Parse(_faker.Commerce.Price(10, 100))
+        }
     };
 
     public static object GenerateFakeAuthorRequest() => new

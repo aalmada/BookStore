@@ -61,7 +61,7 @@ public static class BookEndpoints
         CancellationToken cancellationToken)
     {
         var paging = request.Normalize(paginationOptions.Value);
-        var culture = CultureInfo.CurrentCulture.Name;
+        var culture = CultureInfo.CurrentUICulture.Name;
         var defaultCulture = localizationOptions.Value.DefaultCulture;
 
         var normalizedSortOrder = request.SortOrder?.ToLowerInvariant() == "desc" ? "desc" : "asc";
@@ -247,7 +247,7 @@ public static class BookEndpoints
         HttpContext context,
         CancellationToken cancellationToken)
     {
-        var culture = CultureInfo.CurrentCulture.Name;
+        var culture = CultureInfo.CurrentUICulture.Name;
         var defaultCulture = localizationOptions.Value.DefaultCulture;
 
         // Check ETag first (before cache) for conditional requests
