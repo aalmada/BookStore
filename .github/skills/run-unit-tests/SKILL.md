@@ -1,0 +1,30 @@
+---
+name: Run Unit Tests
+description: Run unit tests for the API Service and Analyzers. Use this to verify business logic, individual components, and code analyzers.
+---
+
+To verify the logic, endpoints, and custom analyzers of the API Service:
+
+1. **Run Service Unit Tests**
+   - Navigate to `tests/ApiService/BookStore.ApiService.UnitTests`.
+   - Run: `dotnet test`
+   - **Purpose**: Verifies handlers, validation, and domain logic.
+
+2. **Run Analyzer Unit Tests**
+   - Navigate to `tests/ApiService/BookStore.ApiService.Analyzers.UnitTests`.
+   - Run: `dotnet test`
+   - **Purpose**: Verifies custom Roslyn analyzers (e.g., UUIDv7 enforcement).
+
+// turbo
+3. **Run All Unit Tests (Shortcut)**
+   - From the root directory, run:
+     ```bash
+     dotnet test tests/ApiService/BookStore.ApiService.UnitTests/BookStore.ApiService.UnitTests.csproj && \
+     dotnet test tests/ApiService/BookStore.ApiService.Analyzers.UnitTests/BookStore.ApiService.Analyzers.UnitTests.csproj
+     ```
+
+4. **Analyze Results**
+   - **Pass**: Core logic and static analysis rules are correct.
+   - **Fail**:
+     - Check the specific failing test and project.
+     - Analyzer tests often fail if code samples in tests don't match expected diagnostics.

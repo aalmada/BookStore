@@ -1,0 +1,1 @@
+../../.github/skills/deploy-to-azure/SKILL.md
