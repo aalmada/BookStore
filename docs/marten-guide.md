@@ -1706,32 +1706,32 @@ Marten provides:
 - **[ETag Guide](etag-guide.md)** - Optimistic concurrency with stream versions
 - **[Correlation/Causation Guide](correlation-causation-guide.md)** - Distributed tracing with metadata
 
-## Soft Deletion with Marten 8
+## Soft Deletion Strategy
 
-Marten 8 introduces native support for soft deletion through the `ISoftDeleted` interface.
+Marten's native `ISoftDeleted` interface works well for simple CRUD documents but can conflict with `SingleStreamProjection` when rebuilding aggregate state from events. Therefore, we implement soft deletion **manually**.
 
 ### Strategy
 
-We implement soft deletion for both **Aggregates** and **Projections**.
+We implement soft deletion by adding an explicit `Deleted` property to our Projections.
 
-1.  **Aggregates (`BookAggregate`)**: The aggregate is the source of truth. It implements `ISoftDeleted` and updates `Deleted` and `DeletedAt` properties via `BookSoftDeleted` and `BookRestored` events.
-    *   It maintains business rules preventing operations on deleted books unless restored.
-2.  **Projections (`BookSearchProjection`)**: Projections also implement `ISoftDeleted`. They listen for the same events to update their state.
+1.  **Events**: We define specific events for lifecycle changes: `BookSoftDeleted` and `BookRestored`.
+2.  **Projections (`BookSearchProjection`)**: The projection handles these events to update a `Deleted` boolean property.
     *   **Denormalization Reuse**: We keep the projection record even when deleted (just marked `Deleted = true`). This preserves expensive denormalized data (Author Names, Publisher Names) so that a restore operation is a cheap state flip rather than a full rebuild.
+3.  **Indexes**: We explicitly index the `Deleted` column for performance.
 
 ### Usage
 
-**Public API**: Regular queries automatically filter out soft-deleted records.
+**Public API**: We manually filter out soft-deleted records in our queries.
 ```csharp
-// Standard query - Deleted items are HIDDEN by default
-var books = await session.Query<BookSearchProjection>().ToListAsync();
+// Standard query - Explicitly filter out deleted items
+var books = await session.Query<BookSearchProjection>()
+    .Where(b => !b.Deleted)
+    .ToListAsync();
 ```
 
-**Admin API**: Use `.Where(x => x.MaybeDeleted())` to include deleted items.
+**Admin API**: We simply omit the filter to see everything.
 ```csharp
 // Admin query - Include deleted items
 var books = await session.Query<BookSearchProjection>()
-    // Include deleted items by bypassing the filter
-    .Where(x => x.MaybeDeleted()) 
     .ToListAsync();
 ```
