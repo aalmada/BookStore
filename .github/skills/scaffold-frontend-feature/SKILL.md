@@ -5,6 +5,11 @@ description: Guide for adding a new feature to the Web Frontend (Blazor), focusi
 
 Follow this guide to implement a responsive frontend feature in `src/Web/BookStore.Web`.
 
+1. **Prerequisites**
+   - Ensure the API Client exists: `src/Client/BookStore.Client/I{Resource}Client.cs`.
+   - Ensure the Shared/Response DTOs exist in `BookStore.Shared`.
+   - if NOT, run `/scaffold-read` or `/scaffold-write` first.
+
 1. **Create the Component**
    - Create/Update `src/Web/BookStore.Web/Components/Pages/{Feature}.razor`.
    - **Inject Services**:

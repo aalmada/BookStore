@@ -1,25 +1,34 @@
-# BookStore Project Instructions
+```instructions
+# BookStore — concise instructions
 
-## 1. Core Principles
-- **Clean Architecture**: Strictly separate concerns.
-- **English Language**: All code, comments, and documentation must be in English.
-- **Conciseness**: Avoid verbose boilerplate. Use modern C# features (records, pattern matching).
-- **No "I"**: Do not refer to yourself. Output code directly.
+Purpose: short, authoritative guidance for agents working in this repository. For full details see `/docs/*` and `.github/prompts/`.
 
-## 2. Formatting & Style
-- **File Scoped Namespaces**: Always use `namespace BookStore.Namespace;` (no braces).
-- **Formatting**: Follow standard .NET coding conventions (`dotnet format`).
-- **Ordering**:
-  1. Fields
-  2. Constructors
-  3. Properties (public then private)
-  4. Methods (public then private)
+Repo summary
+- Full-stack .NET 10 application: event-sourced ASP.NET Core API, Blazor frontend, Aspire orchestration. See `docs/getting-started.md` and `README.md`.
 
-## 3. Testing
-- **Integration Tests**: Prefer integration tests (`BookStore.AppHost.Tests`) over mocking.
-- **Test Names**: Suggest descriptive names, e.g., `Should_ReturnExpectedResult_When_ConditionMet`.
-- **Assertions**: Use strict assertions (check specific properties, not just `NotNull`).
+Build & run (verified)
+- Restore: `dotnet restore`
+- Run app locally (recommended): `aspire run` (starts API, Web, PostgreSQL, PgAdmin)
+- Run tests: `dotnet test` (or `dotnet test --project <path>` for specific projects)
 
-## 4. Documentation
-- **XML Comments**: Add `///` comments to all public APIs, Commands, and Events.
-- **Diagrams**: Use Mermaid for complex logic flows.
+Key coding rules (short)
+- Use file-scoped namespaces: `namespace BookStore.Namespace;`.
+- Prefer `record` types for DTOs, Commands, and Events; enable nullable reference types.
+- Use `DateTimeOffset` (UTC) and ISO 8601 for all timestamps.
+- JSON: camelCase properties; enums serialized as strings.
+- IDs: prefer `Guid.CreateVersion7()` (UUIDv7) where applicable.
+- Follow analyzer rules in `docs/analyzer-rules.md` (events, commands, apply methods, handlers).
+
+Testing & validation
+- Prefer integration tests in `BookStore.AppHost.Tests`; name tests descriptively and assert specific properties.
+- Run `dotnet test` and ensure CI workflows pass (`.github/workflows/ci.yml`).
+
+Where to look for details
+- Code layout and guides: `docs/` (getting-started, architecture, api-conventions, testing-guide, analyzer-rules).
+- Task templates and agent prompts: `.github/prompts/`.
+- Path-specific short rules: `.github/instructions/*.instructions.md`.
+
+Usage
+- Agents should trust these instructions and consult docs only when needed. Keep changes small and run tests locally before proposing PRs.
+
+```

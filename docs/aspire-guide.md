@@ -94,3 +94,41 @@ When the application starts, the **Aspire Dashboard** launches automatically. It
 While Aspire is excellent for local development, it also facilitates deployment. The AppHost can generate manifests for deployment to environments like **Azure Container Apps** or **Kubernetes**.
 
 See the [Aspire Deployment Guide](aspire-deployment-guide.md) for detailed deployment instructions.
+
+## MCP Integration
+
+The Aspire Dashboard exposes a **Model Context Protocol (MCP)** server that provides real-time access to resource logs, traces, and metrics.
+
+### Setup (Recommended)
+
+Run the following command in your AppHost project directory:
+
+```bash
+aspire mcp init
+```
+
+This will:
+1.  Detect your AI environment (VS Code, Copilot CLI, Cursor, etc.).
+2.  Create the appropriate configuration file (e.g., `.vscode/mcp.json`).
+3.  Generate an `AGENTS.md` file to help AI agents understand your project structure.
+
+### Available Tools
+
+Once connected, your AI assistant can use these tools:
+-   **`list_resources`**: List all running services, containers, and executables with their health status and endpoints.
+-   **`list_console_logs`**: Stream standard output/error from any resource.
+-   **`list_structured_logs`**: Query structured logs with filtering.
+-   **`list_traces`**: View distributed traces for request flows.
+-   **`execute_resource_command`**: Trigger commands on resources (if supported).
+-   **`list_integrations`**: See available hosting integrations.
+
+### Configuration Tips
+
+-   **Exclude Resources**: If you have sensitive resources, you can hide them from the MCP server in your AppHost:
+    ```csharp
+    builder.AddProject<Projects.SecretService>("secret")
+           .ExcludeFromMcp();
+    ```
+-   **Manual Config**: The server uses `stdio` transport via `aspire mcp start`.
+
+See the [Official Aspire MCP Documentation](https://aspire.dev/get-started/configure-mcp/) for full details.

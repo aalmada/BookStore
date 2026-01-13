@@ -1,26 +1,32 @@
 # Backend Instructions (ApiService)
 
 ## 1. Event Sourcing (Marten)
-- **Immutability**: All Events, Commands, and Projections MUST be distinct types.
-- **Naming**: Events MUST be past tense (e.g., `BookPublished`).
-- **IDs**: Use `Guid.CreateVersion7()` for NEW IDs. Never `Guid.NewGuid()`.
-- **Timestamps**: Always use `DateTimeOffset` (UTC). Never `DateTime`.
+- **Streams**: 
+  - One stream per Aggregate ID.
+  - Use `session.Events.StartStream<TAggregate>(id, @event)` for creation.
+  - Use `session.Events.Append(id, @event)` for updates.
+- **Aggregates**:
+  - Encapsulate business logic.
+  - `Apply` methods: Determine state from events (Private, return void).
+  - Command methods: Return Events (Do not modify state directly).
 
-## 2. Command Processing (Wolverine)
-- **Pattern**:
-  - `Commands/{Resource}/`: Record definitions.
-  - `Handlers/{Resource}/`: Static handler methods.
-  - `Endpoints/{Resource}/`: Thin routing layer (just `InvokeAsync`).
-- **Transactions**: Rely on Wolverine's auto-transaction policy. Do NOT call `SaveChangesAsync`.
-- **Concurrency**: Use `ETagHelper` in handlers for Update/Delete commands.
+## 2. Projections (Read Models)
+- **Separation**: NEVER query events directly. Query Projections: `session.Query<BookProjection>()`.
+- **Localization**: Store maps in projections (`Dictionary<string, string> Descriptions`).
+- **Async**: Default to `.Add<T>(ProjectionLifecycle.Async)` for scalability.
 
-## 3. Projections
-- **Structure**:
-  - `Create(Event e)`: Initial state.
-  - `Apply(Event e)`: State mutation.
-- **Localization**: Store translations in `Dictionary<string, string>` (e.g., `Descriptions`).
+## 3. Messaging (Wolverine)
+- **Handlers**: 
+  - `public static IResult Handle(Command cmd, IDocumentSession session)`.
+  - Return `IResult` (e.g., `Results.Ok`, `Results.Created`).
+- **Side Effects**: publish notifications via `IMessageBus` only AFTER transaction commit (handled by Wolverine/Marten integration).
 
-## 4. Notifications (SSE)
-- **Flow**: Projection Update -> `MartenCommitListener` -> `NotifyAsync`.
-- **Records**: Define notifications in `BookStore.Shared.Notifications`.
-- **Trigger**: Always update `MartenCommitListener` when adding a new Projection.
+## 4. Caching
+- **HybridCache**: Use `cache.GetOrCreateLocalizedAsync`.
+- **Tags**: Use granular tags (e.g., `cache.Tag("book:{id}")`).
+- **Invalidation**: Handled by `QueryInvalidationService` via SSE (see Frontend).
+
+## 5. Notifications (SSE)
+- **Definition**: Create `record {Event}Notification` in `BookStore.Shared`.
+- **Trigger**: Update `MartenCommitListener.ProcessDocumentChangeAsync`.
+  - Detect projection change -> `localNotificationService.NotifyAsync()`.
