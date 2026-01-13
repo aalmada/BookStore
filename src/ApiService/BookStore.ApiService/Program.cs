@@ -67,44 +67,64 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 var app = builder.Build();
 
 // Start seeding in the background (don't block app startup)
-// Start seeding in the background (don't block app startup)
 // We need seeding in all environments for now (including tests)
 if (true)
 {
     _ = Task.Run(async () =>
     {
-        try
+        var logger = app.Services.GetRequiredService<ILogger<Program>>();
+        var retryCount = 0;
+        var maxRetries = 10;
+        var retryDelay = TimeSpan.FromSeconds(2);
+
+        while (retryCount < maxRetries)
         {
-            // Give the app a moment to start listening for health checks
-            await Task.Delay(100);
+            try
+            {
+                // Give the app a moment to start listening for health checks
+                await Task.Delay(100);
 
-            using var scope = app.Services.CreateScope();
-            var store = scope.ServiceProvider.GetRequiredService<IDocumentStore>();
-            var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+                using var scope = app.Services.CreateScope();
+                var store = scope.ServiceProvider.GetRequiredService<IDocumentStore>();
 
-            Log.Infrastructure.DatabaseSeedingStarted(logger);
+                Log.Infrastructure.DatabaseSeedingStarted(logger);
 
-            // Apply schema to create PostgreSQL extensions (pg_trgm, unaccent)
-            await store.Storage.ApplyAllConfiguredChangesToDatabaseAsync();
+                // Apply schema to create PostgreSQL extensions (pg_trgm, unaccent)
+                await store.Storage.ApplyAllConfiguredChangesToDatabaseAsync();
 
-            var bus = scope.ServiceProvider.GetRequiredService<Wolverine.IMessageBus>();
-            var seeder = new DatabaseSeeder(store, bus);
-            await seeder.SeedAsync();
+                var bus = scope.ServiceProvider.GetRequiredService<Wolverine.IMessageBus>();
+                var seeder = new DatabaseSeeder(store, bus);
+                await seeder.SeedAsync();
 
-            // Seed admin user
-            var userManager = scope.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.Identity.UserManager<BookStore.ApiService.Models.ApplicationUser>>();
-            await DatabaseSeeder.SeedAdminUserAsync(userManager);
+                // Seed admin user
+                var userManager = scope.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.Identity.UserManager<BookStore.ApiService.Models.ApplicationUser>>();
+                await DatabaseSeeder.SeedAdminUserAsync(userManager);
 
-            // Wait for async projections to process the seeded events
-            // In production, projections run continuously in the background
-            await WaitForProjectionsAsync(store, logger);
+                // Wait for async projections to process the seeded events
+                // In production, projections run continuously in the background
+                await WaitForProjectionsAsync(store, logger);
 
-            Log.Infrastructure.DatabaseSeedingCompleted(logger);
-        }
-        catch (Exception ex)
-        {
-            var logger = app.Services.GetRequiredService<ILogger<Program>>();
-            Log.Infrastructure.DatabaseSeedingFailed(logger, ex);
+                Log.Infrastructure.DatabaseSeedingCompleted(logger);
+                return; // Success, exit loop
+            }
+            catch (Exception ex)
+            {
+                retryCount++;
+                Log.Infrastructure.DatabaseSeedingFailed(logger, ex);
+
+                if (retryCount >= maxRetries)
+                {
+#pragma warning disable CA1848 // Use LoggerMessage delegates
+                    logger.LogError(ex, "Database seeding failed after {RetryCount} attempts. Application may not behave correctly.", retryCount);
+#pragma warning restore CA1848
+                    break;
+                }
+
+#pragma warning disable CA1848 // Use LoggerMessage delegates
+                logger.LogWarning(ex, "Database seeding failed (attempt {RetryCount}/{MaxRetries}). Retrying in {RetryDelay}s...", retryCount, maxRetries, retryDelay.TotalSeconds);
+#pragma warning restore CA1848
+                await Task.Delay(retryDelay);
+            }
         }
     });
 }

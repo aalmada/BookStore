@@ -46,7 +46,8 @@ public static class PublisherEndpoints
             cacheKey,
             async cancel =>
             {
-                IQueryable<PublisherProjection> query = session.Query<PublisherProjection>();
+                var query = session.Query<PublisherProjection>()
+                    .Where(p => !p.Deleted);
 
                 query = (normalizedSortBy, normalizedSortOrder) switch
                 {
@@ -92,7 +93,7 @@ public static class PublisherEndpoints
             async cancel =>
             {
                 var publisher = await session.LoadAsync<PublisherProjection>(id, cancel);
-                if (publisher == null)
+                if (publisher == null || publisher.Deleted)
                 {
                     return (PublisherDto?)null;
                 }

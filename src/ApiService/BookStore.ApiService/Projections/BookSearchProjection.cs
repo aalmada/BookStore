@@ -7,7 +7,7 @@ using Marten.Metadata;
 namespace BookStore.ApiService.Projections;
 
 // Read model optimized for search
-public class BookSearchProjection : ISoftDeleted
+public class BookSearchProjection
 {
     public Guid Id { get; set; }
     public string Title { get; set; } = string.Empty;

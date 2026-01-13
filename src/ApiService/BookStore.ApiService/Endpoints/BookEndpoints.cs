@@ -84,10 +84,11 @@ public static class BookEndpoints
 
                 // Build query incrementally
 #pragma warning disable CS8603 // Possible null reference return - false positive from Marten's Include API
-                IQueryable<BookSearchProjection> query = session.Query<BookSearchProjection>()
+                var query = session.Query<BookSearchProjection>()
                     .Include(publishers).On(x => x.PublisherId)!
                     .Include(authors).On(x => x.AuthorIds)!
-                    .Include(categories).On(x => x.CategoryIds)!;
+                    .Include(categories).On(x => x.CategoryIds)!
+                    .Where(b => !b.Deleted);
 
                 // Add search filter if search term is provided
                 if (!string.IsNullOrWhiteSpace(request.Search))
@@ -285,7 +286,7 @@ public static class BookEndpoints
                     .Include(authors).On(x => x.AuthorIds)!
                     .Include(categories).On(x => x.CategoryIds)!
                     //.Include(statistics).On(x => x.Id)!
-                    .Where(b => b.Id == id)
+                    .Where(b => b.Id == id && !b.Deleted)
                     .SingleOrDefaultAsync(cancel);
 #pragma warning restore CS8603
 
