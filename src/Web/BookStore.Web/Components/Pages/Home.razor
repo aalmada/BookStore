@@ -132,7 +132,7 @@
             @foreach (var book in pagedBooks.Items)
             {
                 <MudItem xs="12" sm="6" md="4" lg="3">
-                    <MudCard Elevation="2" Class="book-card" Style="height: 100%; border-radius: 12px; transition: all 0.3s ease; position: relative; overflow: hidden;">
+                    <MudCard Elevation="2" Class="@($"book-card {(book.IsDeleted ? "deleted-book" : "")}")" Style="height: 100%; border-radius: 12px; transition: all 0.3s ease; position: relative; overflow: hidden;">
                          @* Heart Overlay *@
                         <AuthorizeView>
                             <Authorized>
@@ -144,6 +144,15 @@
                                                Size="Size.Medium" />
                             </Authorized>
                         </AuthorizeView>
+
+                        @* Deleted Overlay/Badge *@
+                        @if (book.IsDeleted)
+                        {
+                            <MudChip T="string" Color="Color.Error" Size="Size.Small" Class="deleted-badge" 
+                                     Style="position: absolute; top: 12px; left: 12px; z-index: 10;">
+                                DELETED
+                            </MudChip>
+                        }
 
                         @if (!string.IsNullOrEmpty(book.CoverImageUrl))
                         {
@@ -504,5 +513,23 @@
 
     .mud-text-field-large .mud-input {
         font-size: 1.1rem;
+    }
+
+    .deleted-book {
+        filter: grayscale(100%);
+        opacity: 0.7;
+    }
+    
+    .deleted-book:hover {
+        transform: none !important;
+        box-shadow: none !important;
+        cursor: not-allowed;
+    }
+    
+    .deleted-badge {
+        filter: none; /* Ensure badge itself isn't grayscale if possible, but filter applies to element */
+        /* Since filter applies to the whole card, the badge will also be grayscale. 
+           To fix this properly, we'd need to apply filter to content excluding badge, or accept it. 
+           Accepting it for now as red in grayscale is still dark/distinct. */
     }
 </style>

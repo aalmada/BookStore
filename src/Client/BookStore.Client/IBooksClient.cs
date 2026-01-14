@@ -15,6 +15,7 @@ public interface IBooksClient :
     IRateBookEndpoint,
     IRemoveBookRatingEndpoint,
     IScheduleBookSaleEndpoint,
-    ICancelBookSaleEndpoint
+    ICancelBookSaleEndpoint,
+    IRestoreBookEndpoint
 {
 }

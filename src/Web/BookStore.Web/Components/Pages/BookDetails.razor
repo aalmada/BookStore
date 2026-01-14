@@ -13,6 +13,7 @@
 @implements IAsyncDisposable
 @rendermode InteractiveServer
 @inject CurrencyService CurrencyService
+@inject IDialogService DialogService
 
 <PageTitle>@(book?.Title ?? "Book Details") - BookStore</PageTitle>
 
@@ -252,6 +253,22 @@
             <MudButton Href="/" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.ArrowBack">
                 Back to Catalog
             </MudButton>
+            <AuthorizeView Roles="Admin, ADMIN">
+                <Authorized>
+                    @if (book.IsDeleted)
+                    {
+                        <MudButton Variant="Variant.Filled" Color="Color.Success" StartIcon="@Icons.Material.Filled.Restore" OnClick="RestoreBookAsync" Class="ml-2">
+                            Restore Book
+                        </MudButton>
+                    }
+                    else
+                    {
+                        <MudButton Variant="Variant.Filled" Color="Color.Error" StartIcon="@Icons.Material.Filled.Delete" OnClick="DeleteBookAsync" Class="ml-2">
+                            Delete Book
+                        </MudButton>
+                    }
+                </Authorized>
+            </AuthorizeView>
         </MudStack>
     }
 </MudContainer>
@@ -492,6 +509,49 @@
                 UserRating = previousRating
             });
             Snackbar.Add($"Failed to remove rating: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task DeleteBookAsync()
+    {
+        var currentBook = book;
+        if (currentBook == null) return;
+
+        bool? result = await DialogService.ShowMessageBox(
+            "Delete Book", 
+            "Are you sure you want to delete this book?", 
+            yesText: "Delete", cancelText: "Cancel");
+
+        if (result != true) return;
+
+        try
+        {
+            await BooksClient.SoftDeleteBookAsync(currentBook.Id, "1.0", "en");
+            Snackbar.Add("Book deleted", Severity.Success);
+            if (bookQuery != null) await bookQuery.LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to delete book {BookId}", currentBook.Id);
+            Snackbar.Add($"Failed to delete book: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task RestoreBookAsync()
+    {
+        var currentBook = book;
+        if (currentBook == null) return;
+
+        try
+        {
+            await BooksClient.RestoreBookAsync(currentBook.Id);
+            Snackbar.Add("Book restored", Severity.Success);
+            if (bookQuery != null) await bookQuery.LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to restore book {BookId}", currentBook.Id);
+            Snackbar.Add($"Failed to restore book: {ex.Message}", Severity.Error);
         }
     }
 
