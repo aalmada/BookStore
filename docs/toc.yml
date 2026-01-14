@@ -46,6 +46,8 @@
       href: testing-guide.md
     - name: Integration Testing
       href: integration-testing-guide.md
+    - name: Agent Development
+      href: agent-guide.md
     - name: Aspire Deployment
       href: aspire-deployment-guide.md
     - name: Production Scaling

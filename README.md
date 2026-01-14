@@ -142,6 +142,7 @@ For a detailed breakdown of the project structure, please refer to the [Getting 
 - **[Performance Guide](docs/performance-guide.md)** - GC optimization and performance tuning
 - **[Testing Guide](docs/testing-guide.md)** - Unit testing with TUnit, assertions, and best practices
 - **[Integration Testing Guide](docs/integration-testing-guide.md)** - End-to-end testing with Aspire and Bogus
+- **[Agent Development Guide](docs/agent-guide.md)** - AI assistant configuration system (AGENTS.md files and Claude skills)
 - **[Aspire Deployment Guide](docs/aspire-deployment-guide.md)** - Deploy to Azure and Kubernetes
 - **[Production Scaling Guide](docs/production-scaling-guide.md)** - Scale applications and databases in production
 - **[Contributing Guidelines](CONTRIBUTING.md)** - How to contribute to this project
