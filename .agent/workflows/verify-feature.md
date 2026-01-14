@@ -1,1 +1,0 @@
-../../.github/skills/verify-feature/SKILL.md

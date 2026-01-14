@@ -1,0 +1,17 @@
+@page "/{route}"
+@inject I{Resource}Client Client
+@inject BookStoreEventsService EventsService // For SSE
+@inject QueryInvalidationService InvalidationService // For Mapping
+@inject OptimisticUpdateService OptimisticService // For Lists
+@inject ILogger<{Component}> Logger
+
+@code {
+    private ReactiveQuery<T> query;
+
+    protected override async Task OnInitializedAsync()
+    {
+        EventsService.StartListening();
+        // Initialize query here (see templates/ReactiveQueryInit.cs)
+        await query.LoadAsync();
+    }
+}

@@ -1,1 +1,0 @@
-../../.github/skills/rebuild-clean/SKILL.md

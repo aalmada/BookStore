@@ -1,1 +1,0 @@
-../../.github/skills/scaffold-write/SKILL.md

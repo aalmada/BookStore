@@ -13,19 +13,12 @@ Follow this guide to implement a read-only endpoint in the **Backend** (ApiServi
 
 2. **Define the Projection**
    - Open/Create `src/ApiService/BookStore.ApiService/Projections/{Resource}Projection.cs`.
+   - **Template**: `templates/Projection.cs`
    - **Localization Storage**: Use `Dictionary<string, string>` for storing all translations (e.g., `Descriptions`, `Biographies`).
 
 3. **Expose the Endpoint**
    - Open `src/ApiService/BookStore.ApiService/Endpoints/{Resource}Endpoints.cs`.
-   - **Signature**:
-     ```csharp
-     static async Task<Ok<PagedListDto<Dto>>> GetItems(
-         [FromServices] IDocumentStore store,
-         [FromServices] HybridCache cache,
-         [FromServices] IOptions<LocalizationOptions> locOptions,
-         [AsParameters] OrderedPagedRequest request,
-         CancellationToken cancellationToken)
-     ```
+   - **Template**: `templates/Endpoint.cs`
 
 4. **Implement Caching (HybridCache)**
    - Wrap logic in `cache.GetOrCreateLocalizedAsync`.

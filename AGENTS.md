@@ -1,61 +1,48 @@
-# Copilot instructions
+# BookStore — Agent Instructions
 
-This repository is set up to use Aspire. Aspire is an orchestrator for the entire application and will take care of configuring dependencies, building, and running the application. The resources that make up the application are defined in `apphost.cs` including application code and external dependencies.
+## Purpose
+Short, authoritative guidance for agents working in this repository.
 
-## General recommendations for working with Aspire
-1. Before making any changes always run the apphost using `aspire run` and inspect the state of resources to make sure you are building from a known state.
-1. Changes to the _apphost.cs_ file will require a restart of the application to take effect.
-2. Make changes incrementally and run the aspire application using the `aspire run` command to validate changes.
-3. Use the Aspire MCP tools to check the status of resources and debug issues.
+## Repo Summary
+- **Stack**: Full-stack .NET 10 application: event-sourced ASP.NET Core API, Blazor frontend, Aspire orchestration.
+- **Documentation**: See `docs/getting-started.md` and `README.md`.
 
-## Running the application
-To run the application run the following command:
+## Architecture Highlights
+- **Event Sourcing**: Domain events stored via Marten; aggregates rehydrated from event streams.
+- **Real-time Updates**: Server-Sent Events (SSE) for mutation notifications to connected clients.
+- **Aspire**: Orchestration for API, Web, PostgreSQL, and PgAdmin resources.
+- **Localization**: Multi-language support for content and multi-currency for prices.
 
-```
-aspire run
-```
+## Build & Run
+- **Restore**: `dotnet restore`
+- **Run app (recommended)**: `aspire run` (starts API, Web, PostgreSQL, PgAdmin)
+- **Run tests**: `dotnet test`
+- **Format code**: `dotnet format`
 
-If there is already an instance of the application running it will prompt to stop the existing instance. You only need to restart the application if code in `apphost.cs` is changed, but if you experience problems it can be useful to reset everything to the starting state.
+## Key Coding Rules
+- **Namespaces**: Use file-scoped namespaces: `namespace BookStore.Namespace;`.
+- **DTOs/Commands/Events**: Prefer `record` types; enable nullable reference types.
+- **Timestamps**: Use `DateTimeOffset` (UTC) and ISO 8601.
+- **JSON**: camelCase properties; enums serialized as strings.
+- **IDs**: Use `Guid.CreateVersion7()` (UUIDv7) where applicable.
+- **Analyzer Rules**: Follow `docs/analyzer-rules.md` (events, commands, apply methods, handlers).
 
-## Checking resources
-To check the status of resources defined in the app model use the _list resources_ tool. This will show you the current state of each resource and if there are any issues. If a resource is not running as expected you can use the _execute resource command_ tool to restart it or perform other actions.
+## Testing
+- **Integration Tests**: Prefer `BookStore.AppHost.Tests`; name tests descriptively and assert specific properties.
+- **CI**: Ensure `dotnet test` passes locally.
 
-## Listing integrations
-IMPORTANT! When a user asks you to add a resource to the app model you should first use the _list integrations_ tool to get a list of the current versions of all the available integrations. You should try to use the version of the integration which aligns with the version of the Aspire.AppHost.Sdk. Some integration versions may have a preview suffix. Once you have identified the correct integration you should always use the _get integration docs_ tool to fetch the latest documentation for the integration and follow the links to get additional guidance.
+## Project Structure
+- `src/ApiService/BookStore.ApiService`: Backend API (Domain, Aggregates, Commands, Events, Projections).
+- `src/Web/BookStore.Web`: Blazor Frontend.
+- `src/Client/BookStore.Client`: API Client / SDK.
+- `src/Shared/BookStore.Shared`: Shared contracts, DTOs, and notification models.
+- `src/BookStore.AppHost`: Aspire orchestration.
 
-## Debugging issues
-IMPORTANT! Aspire is designed to capture rich logs and telemetry for all resources defined in the app model. Use the following diagnostic tools when debugging issues with the application before making changes to make sure you are focusing on the right things.
-
-1. _list structured logs_; use this tool to get details about structured logs.
-2. _list console logs_; use this tool to get details about console logs.
-3. _list traces_; use this tool to get details about traces.
-4. _list trace structured logs_; use this tool to get logs related to a trace
-
-## Other Aspire MCP tools
-
-1. _select apphost_; use this tool if working with multiple app hosts within a workspace.
-2. _list apphosts_; use this tool to get details about active app hosts.
-
-## Playwright MCP server
-
-The playwright MCP server has also been configured in this repository and you should use it to perform functional investigations of the resources defined in the app model as you work on the codebase. To get endpoints that can be used for navigation using the playwright MCP server use the list resources tool.
-
-## Updating the app host
-The user may request that you update the Aspire apphost. You can do this using the `aspire update` command. This will update the apphost to the latest version and some of the Aspire specific packages in referenced projects, however you may need to manually update other packages in the solution to ensure compatibility. You can consider using the `dotnet-outdated` with the users consent. To install the `dotnet-outdated` tool use the following command:
-
-```
-dotnet tool install --global dotnet-outdated-tool
-```
-
-## Persistent containers
-IMPORTANT! Consider avoiding persistent containers early during development to avoid creating state management issues when restarting the app.
-
-## Aspire workload
-IMPORTANT! The aspire workload is obsolete. You should never attempt to install or use the Aspire workload.
-
-## Official documentation
-IMPORTANT! Always prefer official documentation when available. The following sites contain the official documentation for Aspire and related components
-
-1. https://aspire.dev
-2. https://learn.microsoft.com/dotnet/aspire
-3. https://nuget.org (for specific integration package details)
+## Agent Skills
+Use Claude skills for common tasks:
+- `/scaffold-write` - Add new command/mutation endpoint
+- `/scaffold-read` - Add new query endpoint
+- `/scaffold-frontend-feature` - Add Blazor feature with reactive state
+- `/verify-feature` - Run build, format, and tests
+- `/doctor` - Check development environment
+- `/deploy-to-azure` - Deploy to Azure using azd

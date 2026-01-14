@@ -10,8 +10,8 @@ Follow this guide to add a new capability (skill/workflow) to the agent.
    - **Goal**: Define what the skill achieves and the steps required.
 
 2. **Create Skill File**
-   - Create directory `.github/skills/{slug}/`.
-   - Create file `.github/skills/{slug}/SKILL.md`.
+   - Create directory `.claude/skills/{slug}/`.
+   - Create file `.claude/skills/{slug}/SKILL.md`.
    - **Content Template**:
      ```markdown
      ---
@@ -30,14 +30,5 @@ Follow this guide to add a new capability (skill/workflow) to the agent.
         - Commands to run automatically...
      ```
 
-3. **Register (Symlink)**
-   - Create a symlink to make it available to the agent:
-     ```bash
-     ln -sf ../../.github/skills/{slug}/SKILL.md .agent/workflows/{slug}.md
-     ```
-
-4. **Update Task List**
-   - Add the new skill to the list of completed tasks in `task.md` if applicable.
-
-5. **Verify**
-   - Use `view_file` to check `.agent/workflows/{slug}.md` ensures it resolves correctly.
+3. **Verify**
+   - Use `view_file` to check `.claude/skills/{slug}/SKILL.md` matches expectations.

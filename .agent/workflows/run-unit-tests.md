@@ -1,1 +1,0 @@
-../../.github/skills/run-unit-tests/SKILL.md

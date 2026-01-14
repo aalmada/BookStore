@@ -12,30 +12,12 @@ Follow this guide to implement a responsive frontend feature in `src/Web/BookSto
 
 1. **Create the Component**
    - Create/Update `src/Web/BookStore.Web/Components/Pages/{Feature}.razor`.
-   - **Inject Services**:
-     ```csharp
-     @inject I{Resource}Client Client
-     @inject BookStoreEventsService EventsService // For SSE
-     @inject QueryInvalidationService InvalidationService // For Mapping
-     @inject OptimisticUpdateService OptimisticService // For Lists
-     @inject ILogger<{Component}> Logger
-     ```
+   - **Template**: `templates/Page.razor`
    - **Lifecycle**: Use `OnInitializedAsync` to start listening: `EventsService.StartListening();`.
 
 2. **Implement Data Fetching**
    - **Pattern**: Use `ReactiveQuery<T>`.
-   - **Setup**:
-     ```csharp
-     query = new ReactiveQuery<T>(
-         queryFn: async () => await Client.GetAsync(Id),
-         eventsService: EventsService,
-         invalidationService: InvalidationService,
-         queryKeys: ["{Resource}", "{Resource}:{Id}"], // e.g. "Books", "Book:123"
-         onStateChanged: StateHasChanged,
-         logger: Logger
-     );
-     await query.LoadAsync();
-     ```
+   - **Setup (Template)**: `templates/ReactiveQueryInit.cs`
 
 3. **Implement Optimistic Updates (Properties)**
    - **Use Case**: Toggling a boolean, changing a number (e.g., Favorites).

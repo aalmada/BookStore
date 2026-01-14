@@ -17,38 +17,15 @@ Follow this guide to implement a state-changing operation in the **Backend** (Ap
 
 2. **Define the Command**
    - Create a `record` in `src/ApiService/BookStore.ApiService/Commands/{Resource}/` (e.g., `Commands/Books/`).
-   - **For Creation**:
-     ```csharp
-     public record CreateBook(...) {
-         public Guid Id { get; init; } = Guid.CreateVersion7(); // Rule: Use Version 7
-     }
-     ```
-   - **For Updates/Deletes**:
-     ```csharp
-     public record UpdateBook(...) {
-         public string? ETag { get; init; } // Rule: Optimistic Concurrency
-     }
-     ```
+   - **Template**: `templates/Command.cs`
 
 3. **Implement the Wolverine Handler**
    - Create/Update `src/ApiService/BookStore.ApiService/Handlers/{Resource}/{Resource}Handlers.cs`.
-   - **Signature**: `public static IResult Handle(Command cmd, IDocumentSession session, ...)`
-   - **Event Creation**: Always use `DateTimeOffset.UtcNow`.
-   - **Flow**:
-     1. **Ident**: `await session.Events.FetchStreamStateAsync(cmd.Id)`
-     2. **Concurrency**: `ETagHelper.CheckIfMatch(context, currentETag)`
-     3. **Load**: `await session.Events.AggregateStreamAsync<Aggregate>(cmd.Id)`
-     4. **Logic**: `var @event = aggregate.DoSomething(..., DateTimeOffset.UtcNow);`
-     5. **Store**: `session.Events.Append(cmd.Id, @event)`
-     6. **Return**: `Results.Ok` (Wolverine auto-commits).
+   - **Template**: `templates/Handler.cs`
 
 4. **Expose the Endpoint (Backend)**
    - Open `src/ApiService/BookStore.ApiService/Endpoints/{Resource}Endpoints.cs`.
-   - **Signature**: MUST accept `CancellationToken`.
-   - **Implementation**:
-     - Inject `IMessageBus`.
-     - `var etag = context.Request.Headers["If-Match"].FirstOrDefault();`
-     - `return await bus.InvokeAsync<IResult>(command, cancellationToken);`
+   - **Template**: `templates/Endpoint.cs`
 
 5. **Update Read Model (Projections)**
    - Open `src/ApiService/BookStore.ApiService/Projections/{Resource}Projection.cs`.

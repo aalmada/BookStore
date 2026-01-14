@@ -1,1 +1,0 @@
-../../.github/skills/scaffold-frontend-feature/SKILL.md
