@@ -326,7 +326,7 @@ builder.Services.AddMarten(sp =>
 
 ### Creating Events
 
-Events are **immutable records** that represent facts:
+Events are **immutable records** that represent facts. In the BookStore project, events include support for localization, multi-currency pricing, and sales scheduling:
 
 ```csharp
 namespace BookStore.ApiService.Events;
@@ -338,11 +338,13 @@ public record BookAdded(
     Guid Id,
     string Title,
     string? Isbn,
-    string? Description,
-    DateOnly? PublicationDate,
+    string Language,
+    Dictionary<string, BookTranslation> Translations,
+    PartialDate? PublicationDate,
     Guid? PublisherId,
     List<Guid> AuthorIds,
-    List<Guid> CategoryIds);
+    List<Guid> CategoryIds,
+    Dictionary<string, decimal> Prices);
 
 /// <summary>
 /// Event: A book's information was updated
@@ -351,22 +353,51 @@ public record BookUpdated(
     Guid Id,
     string Title,
     string? Isbn,
-    string? Description,
-    DateOnly? PublicationDate,
+    string Language,
+    Dictionary<string, BookTranslation> Translations,
+    PartialDate? PublicationDate,
     Guid? PublisherId,
     List<Guid> AuthorIds,
-    List<Guid> CategoryIds);
+    List<Guid> CategoryIds,
+    Dictionary<string, decimal> Prices);
 
 /// <summary>
 /// Event: A book was soft-deleted
 /// </summary>
-public record BookSoftDeleted(Guid Id);
+public record BookSoftDeleted(Guid Id, DateTimeOffset Timestamp);
 
 /// <summary>
 /// Event: A deleted book was restored
 /// </summary>
-public record BookRestored(Guid Id);
+public record BookRestored(Guid Id, DateTimeOffset Timestamp);
+
+/// <summary>
+/// Event: Book cover image was updated
+/// </summary>
+public record BookCoverUpdated(Guid Id, string CoverImageUrl);
+
+/// <summary>
+/// Event: A sale was scheduled for a book
+/// </summary>
+public record BookSaleScheduled(Guid Id, BookSale Sale);
+
+/// <summary>
+/// Event: A scheduled sale was cancelled
+/// </summary>
+public record BookSaleCancelled(Guid Id, DateTimeOffset SaleStart);
+
+/// <summary>
+/// Localized book description
+/// </summary>
+public record BookTranslation(string Description);
 ```
+
+**Key Features**:
+- **Localization**: `Dictionary<string, BookTranslation>` stores descriptions in multiple languages (e.g., "en", "pt", "es")
+- **Multi-Currency**: `Dictionary<string, decimal>` stores prices in different currencies (e.g., "USD", "EUR", "GBP")
+- **Partial Dates**: `PartialDate` supports unknown publication dates (e.g., year only)
+- **Sales**: `BookSaleScheduled`/`BookSaleCancelled` for promotional pricing
+- **Cover Images**: `BookCoverUpdated` for book cover management
 
 ### Event Best Practices
 
@@ -375,6 +406,7 @@ public record BookRestored(Guid Id);
 3. **Include all data**: Events should be self-contained
 4. **Never modify events**: Events are immutable facts
 5. **Add XML documentation**: Explain business meaning
+6. **Use dictionaries for localized/multi-currency data**: Flexible and extensible
 
 ### Registering Events
 
@@ -383,6 +415,9 @@ options.Events.AddEventType<BookAdded>();
 options.Events.AddEventType<BookUpdated>();
 options.Events.AddEventType<BookSoftDeleted>();
 options.Events.AddEventType<BookRestored>();
+options.Events.AddEventType<BookCoverUpdated>();
+options.Events.AddEventType<BookSaleScheduled>();
+options.Events.AddEventType<BookSaleCancelled>();
 ```
 
 ## Aggregates
@@ -396,84 +431,189 @@ An **aggregate** is a domain object that:
 
 ### Creating an Aggregate
 
+The BookStore aggregate enforces complex business rules around localization, multi-currency pricing, sales scheduling, and soft-deletion:
+
 ```csharp
 using Marten;
+using Marten.Metadata;
 
 namespace BookStore.ApiService.Aggregates;
 
-public class BookAggregate
+public class BookAggregate : ISoftDeleted
 {
     // Current state
-    public Guid Id { get; set; }
-    public string Title { get; set; } = string.Empty;
-    public string? Isbn { get; set; }
-    public bool IsDeleted { get; set; }
+    public Guid Id { get; private set; }
+    public string Title { get; private set; } = string.Empty;
+    public string? Isbn { get; private set; }
+    public string Language { get; private set; } = string.Empty;
+    public Dictionary<string, BookTranslation> Translations { get; private set; } = [];
+    public PartialDate? PublicationDate { get; private set; }
+    public Guid? PublisherId { get; private set; }
+    public List<Guid> AuthorIds { get; private set; } = [];
+    public List<Guid> CategoryIds { get; private set; } = [];
+    public bool Deleted { get; set; }  // ISoftDeleted requirement
+    public DateTimeOffset? DeletedAt { get; set; }
+    public Dictionary<string, decimal> Prices { get; private set; } = [];
+    public List<BookSale> Sales { get; private set; } = [];
+    public string? CoverImageUrl { get; private set; }
     
-    // Apply methods: Marten calls these to rebuild state
+    // Apply methods: Marten calls these to rebuild state from events
     void Apply(BookAdded @event)
     {
         Id = @event.Id;
         Title = @event.Title;
         Isbn = @event.Isbn;
-        IsDeleted = false;
+        Language = @event.Language;
+        Translations = @event.Translations;
+        PublicationDate = @event.PublicationDate;
+        PublisherId = @event.PublisherId;
+        AuthorIds = @event.AuthorIds;
+        CategoryIds = @event.CategoryIds;
+        Prices = @event.Prices;
+        Deleted = false;
     }
     
     void Apply(BookUpdated @event)
     {
         Title = @event.Title;
         Isbn = @event.Isbn;
+        Language = @event.Language;
+        Translations = @event.Translations;
+        PublicationDate = @event.PublicationDate;
+        PublisherId = @event.PublisherId;
+        AuthorIds = @event.AuthorIds;
+        CategoryIds = @event.CategoryIds;
+        Prices = @event.Prices;
     }
     
-    void Apply(BookSoftDeleted @event)
+    void Apply(BookSoftDeleted _)
     {
-        IsDeleted = true;
+        Deleted = true;
+        DeletedAt = DateTimeOffset.UtcNow;
     }
     
-    void Apply(BookRestored @event)
+    void Apply(BookRestored _)
     {
-        IsDeleted = false;
+        Deleted = false;
+        DeletedAt = null;
     }
     
-    // Command methods: Generate events
-    public static BookAdded Create(
+    void Apply(BookCoverUpdated @event) => CoverImageUrl = @event.CoverImageUrl;
+    
+    void Apply(BookSaleScheduled @event)
+    {
+        // Remove any existing sale with the same start time
+        Sales.RemoveAll(s => s.Start == @event.Sale.Start);
+        Sales.Add(@event.Sale);
+    }
+    
+    void Apply(BookSaleCancelled @event) => Sales.RemoveAll(s => s.Start == @event.SaleStart);
+    
+    // Command methods: Generate events with business rule validation
+    public static BookAdded CreateEvent(
         Guid id,
         string title,
         string? isbn,
-        ...)
+        string language,
+        Dictionary<string, BookTranslation> translations,
+        PartialDate? publicationDate,
+        Guid? publisherId,
+        List<Guid> authorIds,
+        List<Guid> categoryIds,
+        Dictionary<string, decimal> prices)
     {
-        // Validate business rules
+        // Validate all inputs before creating event
         ValidateTitle(title);
         ValidateIsbn(isbn);
+        ValidateLanguage(language);
+        ValidateTranslations(translations);
+        ValidatePrices(prices);
         
-        // Return event (not saved yet)
-        return new BookAdded(id, title, isbn, ...);
-    }
+        return new BookAdded(
+            id, title, isbn, language, translations,
+            publicationDate, publisherId, authorIds,
+            categoryIds, prices);
+  }
     
-    public BookUpdated Update(string title, string? isbn, ...)
+    public BookUpdated UpdateEvent(
+        string title,
+        string? isbn,
+        string language,
+        Dictionary<string, BookTranslation> translations,
+        PartialDate? publicationDate,
+        Guid? publisherId,
+        List<Guid> authorIds,
+        List<Guid> categoryIds,
+        Dictionary<string, decimal> prices)
     {
         // Business rule: cannot update deleted book
-        if (IsDeleted)
+        if (Deleted)
             throw new InvalidOperationException("Cannot update a deleted book");
         
+        // Validate all inputs before creating event
         ValidateTitle(title);
         ValidateIsbn(isbn);
+        ValidateLanguage(language);
+        ValidateTranslations(translations);
+        ValidatePrices(prices);
         
-        return new BookUpdated(Id, title, isbn, ...);
+        return new BookUpdated(
+            Id, title, isbn, language, translations,
+            publicationDate, publisherId, authorIds,
+            categoryIds, prices);
     }
     
-    public BookSoftDeleted SoftDelete()
+    public BookSoftDeleted SoftDeleteEvent()
     {
-        if (IsDeleted)
+        if (Deleted)
             throw new InvalidOperationException("Book is already deleted");
         
-        return new BookSoftDeleted(Id);
+        return new BookSoftDeleted(Id, DateTimeOffset.UtcNow);
     }
     
-    // Validation helpers
+    public BookRestored RestoreEvent()
+    {
+        if (!Deleted)
+            throw new InvalidOperationException("Book is not deleted");
+        
+        return new BookRestored(Id, DateTimeOffset.UtcNow);
+    }
+    
+    public BookSaleScheduled ScheduleSale(
+        decimal percentage,
+        DateTimeOffset start,
+        DateTimeOffset end)
+    {
+        if (Deleted)
+            throw new InvalidOperationException("Cannot schedule sale for a deleted book");
+        
+        // Validate sale parameters
+        var sale = new BookSale(percentage, start, end);
+        
+        // Check for overlapping sales
+        if (Sales.Any(s => (start < s.End && end > s.Start)))
+            throw new InvalidOperationException("Sale period overlaps with an existing sale");
+        
+        return new BookSaleScheduled(Id, sale);
+    }
+    
+    public BookSaleCancelled CancelSale(DateTimeOffset saleStart)
+    {
+        if (Deleted)
+            throw new InvalidOperationException("Cannot cancel sale for a deleted book");
+        
+        var sale = Sales.FirstOrDefault(s => s.Start == saleStart);
+        if (sale.Equals(default(BookSale)))
+            throw new InvalidOperationException("No sale found with the specified start time");
+        
+        return new BookSaleCancelled(Id, saleStart);
+    }
+    
+    // Validation helper methods
     static void ValidateTitle(string title)
     {
         if (string.IsNullOrWhiteSpace(title))
-            throw new ArgumentException("Title is required", nameof(title));
+            throw new ArgumentException("Book title cannot be null or empty", nameof(title));
         
         if (title.Length > 500)
             throw new ArgumentException("Title cannot exceed 500 characters", nameof(title));
@@ -484,13 +624,84 @@ public class BookAggregate
         if (string.IsNullOrWhiteSpace(isbn))
             return; // ISBN is optional
         
+        // Remove hyphens and spaces for validation
         var cleanIsbn = new string(isbn.Where(char.IsDigit).ToArray());
         
-        if (cleanIsbn.Length != 10 && cleanIsbn.Length != 13)
+        // ISBN-10 or ISBN-13
+        if (cleanIsbn.Length is not 10 and not 13)
             throw new ArgumentException("ISBN must be 10 or 13 digits", nameof(isbn));
+    }
+    
+    static void ValidateLanguage(string language)
+    {
+        if (string.IsNullOrWhiteSpace(language))
+            throw new ArgumentException("Language cannot be null or empty", nameof(language));
+        
+        if (!CultureValidator.IsValidCultureCode(language))
+            throw new ArgumentException($"Invalid language code: {language}", nameof(language));
+    }
+    
+    static void ValidateTranslations(Dictionary<string, BookTranslation> translations)
+    {
+        ArgumentNullException.ThrowIfNull(translations);
+        
+        if (translations.Count == 0)
+            throw new ArgumentException("At least one description translation is required", nameof(translations));
+        
+        // Validate language codes
+        if (!CultureValidator.ValidateTranslations(translations, out var invalidCodes))
+            throw new ArgumentException(
+                $"Invalid language codes in descriptions: {string.Join(", ", invalidCodes)}",
+                nameof(translations));
+        
+        // Validate translation values and description content
+        foreach (var (languageCode, translation) in translations)
+        {
+            if (translation is null)
+                throw new ArgumentException(
+                    $"Translation value for language '{languageCode}' cannot be null",
+                    nameof(translations));
+            
+            if (string.IsNullOrWhiteSpace(translation.Description))
+                throw new ArgumentException(
+                    $"Description for language '{languageCode}' cannot be null or empty",
+                    nameof(translations));
+            
+            if (translation.Description.Length > 5000)
+                throw new ArgumentException(
+                    $"Description for language '{languageCode}' cannot exceed 5000 characters",
+                    nameof(translations));
+        }
+    }
+    
+    static void ValidatePrices(Dictionary<string, decimal> prices)
+    {
+        ArgumentNullException.ThrowIfNull(prices);
+        
+        if (prices.Count == 0)
+            throw new ArgumentException("At least one price is required", nameof(prices));
+        
+        foreach (var (currencyCode, price) in prices)
+        {
+            if (string.IsNullOrWhiteSpace(currencyCode) || currencyCode.Length != 3)
+                throw new ArgumentException($"Invalid currency code: '{currencyCode}'", nameof(prices));
+            
+            if (price < 0)
+                throw new ArgumentException(
+                    $"Price for currency '{currencyCode}' cannot be negative",
+                    nameof(prices));
+        }
     }
 }
 ```
+
+**Key Features**:
+- **ISoftDeleted Interface**: Implements Marten's soft-delete pattern
+- **Multi-language Validation**: Validates culture codes for all translations
+- **Multi-currency Validation**: Validates currency codes and ensures non-negative prices
+- **Sales Business Rules**: Prevents overlapping sales periods
+- **Deleted State Protection**: Prevents operations on deleted books
+- **Comprehensive Validation**: All inputs validated before event generation
 
 ### Aggregate Patterns
 
@@ -910,86 +1121,165 @@ public class AuthorProjectionBuilder : SingleStreamProjection<AuthorProjection>
 }
 ```
 
-### Multi-Stream Projections
+### Complex Projection with Denormalization
 
-Listen to events from multiple streams:
+The BookSearchProjection demonstrates advanced patterns including denormalization, localization, multi-currency, and sales tracking:
 
 ```csharp
-public class BookSearchProjectionBuilder : MultiStreamProjection<BookSearchProjection, Guid>
+using Marten.Events.Aggregation;
+using Marten.Metadata;
+
+namespace BookStore.ApiService.Projections;
+
+// Read model optimized for search and queries
+public class BookSearchProjection
 {
-    public BookSearchProjectionBuilder()
-    {
-        // Listen to book events
-        Identity<BookAdded>(x => x.Id);
-        Identity<BookUpdated>(x => x.Id);
-        DeleteEvent<BookSoftDeleted>();
-        
-        // Listen to publisher events (to update denormalized data)
-        Identity<PublisherUpdated>(x => x.Id);
-        
-        // Listen to author events
-        Identity<AuthorUpdated>(x => x.Id);
-    }
+    public Guid Id { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string? Isbn { get; set; }
+    public string OriginalLanguage { get; set; } = string.Empty;
+    public PartialDate? PublicationDate { get; set; }
+    public bool Deleted { get; set; }
+    public DateTimeOffset? DeletedAt { get; set; }
     
-    public async Task<BookSearchProjection> Create(
-        BookAdded @event,
-        IQuerySession session)
+    // Localized descriptions as dictionary (key = culture, value = description)
+    public Dictionary<string, string> Descriptions { get; set; } = [];
+    
+    // Multi-currency prices as dictionary (key = currency, value = price)
+    public Dictionary<string, decimal> Prices { get; set; } = [];
+    
+    // Denormalized fields for performance
+    public Guid? PublisherId { get; set; }
+    public string? PublisherName { get; set; }  // Denormalized from PublisherProjection
+    public List<Guid> AuthorIds { get; set; } = [];
+    public string AuthorNames { get; set; } = string.Empty;  // Denormalized, concatenated
+    public List<Guid> CategoryIds { get; set; } = [];
+    
+    // Computed search text for ngram matching
+    public string SearchText { get; set; } = string.Empty;
+    
+    // Sales tracking
+    public List<BookSale> Sales { get; set; } = [];
+    
+    // Cover image
+    public string? CoverImageUrl { get; set; }
+    
+    // Create projection from initial event
+    public static BookSearchProjection Create(BookAdded @event, IQuerySession session)
     {
         var projection = new BookSearchProjection
         {
             Id = @event.Id,
             Title = @event.Title,
+            Isbn = @event.Isbn,
+            OriginalLanguage = @event.Language,
+            PublicationDate = @event.PublicationDate,
             PublisherId = @event.PublisherId,
-            AuthorIds = @event.AuthorIds
+            AuthorIds = @event.AuthorIds,
+            CategoryIds = @event.CategoryIds,
+            Descriptions = @event.Translations?
+                .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Description)
+                ?? [],
+            Prices = @event.Prices ?? []
         };
         
-        // Denormalize publisher name
-        if (projection.PublisherId.HasValue)
-        {
-            var publisher = await session
-                .LoadAsync<PublisherProjection>(projection.PublisherId.Value);
-            projection.PublisherName = publisher?.Name;
-        }
-        
-        // Denormalize author names
-        if (projection.AuthorIds.Any())
-        {
-            var authors = await session.Query<AuthorProjection>()
-                .Where(a => projection.AuthorIds.Contains(a.Id))
-                .ToListAsync();
-            projection.AuthorNames = string.Join(", ", authors.Select(a => a.Name));
-        }
-        
-        // Compute search text
-        projection.SearchText = $"{projection.Title} {projection.AuthorNames} {projection.PublisherName}";
+        // Denormalize related data from other projections
+        LoadDenormalizedData(projection, session);
+        UpdateSearchText(projection);
         
         return projection;
     }
     
-    public async Task Apply(
-        BookUpdated @event,
-        BookSearchProjection projection,
-        IQuerySession session)
+    // Update projection when book data changes
+    public BookSearchProjection Apply(BookUpdated @event, IQuerySession session)
     {
-        projection.Title = @event.Title;
-        projection.PublisherId = @event.PublisherId;
-        projection.AuthorIds = @event.AuthorIds;
+        Title = @event.Title;
+        Isbn = @event.Isbn;
+        OriginalLanguage = @event.Language;
+        PublicationDate = @event.PublicationDate;
+        PublisherId = @event.PublisherId;
+        AuthorIds = @event.AuthorIds;
+        CategoryIds = @event.CategoryIds;
+        Descriptions = @event.Translations?
+            .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Description)
+            ?? [];
+        Prices = @event.Prices ?? [];
         
-        // Re-denormalize (IDs may have changed)
-        // ... same logic as Create
+        LoadDenormalizedData(this, session);
+        UpdateSearchText(this);
+        
+        return this;
     }
     
-    // Update when publisher name changes
-    void Apply(PublisherUpdated @event, BookSearchProjection projection)
+    // Handle soft delete
+    public void Apply(BookSoftDeleted @event)
     {
-        if (projection.PublisherId == @event.Id)
+        Deleted = true;
+        DeletedAt = @event.Timestamp;
+    }
+    
+    // Handle restore
+    public void Apply(BookRestored _)
+    {
+        Deleted = false;
+        DeletedAt = null;
+    }
+    
+    // Handle cover image updates
+    public void Apply(BookCoverUpdated @event) => CoverImageUrl = @event.CoverImageUrl;
+    
+    // Handle sales scheduling
+    public void Apply(BookSaleScheduled @event)
+    {
+        // Remove any existing sale with the same start time
+        Sales.RemoveAll(s => s.Start == @event.Sale.Start);
+        Sales.Add(@event.Sale);
+    }
+    
+    public void Apply(BookSaleCancelled @event) => Sales.RemoveAll(s => s.Start == @event.SaleStart);
+    
+    // Helper methods for denormalization
+    static void LoadDenormalizedData(BookSearchProjection projection, IQuerySession session)
+    {
+        // Load publisher name (synchronous query during projection)
+        if (projection.PublisherId.HasValue)
         {
-            projection.PublisherName = @event.Name;
-            projection.SearchText = $"{projection.Title} {projection.AuthorNames} {projection.PublisherName}";
+            var publisher = session.Query<PublisherProjection>()
+                .FirstOrDefault(p => p.Id == projection.PublisherId.Value);
+            projection.PublisherName = publisher?.Name;
+        }
+        else
+        {
+            projection.PublisherName = null;
+        }
+        
+        // Load and concatenate author names
+        if (projection.AuthorIds.Count > 0)
+        {
+            var authors = session.Query<AuthorProjection>()
+                .Where(a => projection.AuthorIds.Contains(a.Id))
+                .ToList();
+            projection.AuthorNames = string.Join(", ", authors.Select(a => a.Name));
+        }
+        else
+        {
+            projection.AuthorNames = string.Empty;
         }
     }
+    
+    // Compute full-text search field
+    static void UpdateSearchText(BookSearchProjection projection) =>
+        projection.SearchText = $"{projection.Title} {projection.Isbn ?? string.Empty} {projection.PublisherName ?? string.Empty} {projection.AuthorNames}".Trim();
 }
 ```
+
+**Key Features**:
+- **Denormalization**: Publisher and author names loaded from other projections for fast queries
+- **Localization**: Descriptions stored as dictionary for language-specific retrieval
+- **Multi-Currency**: Prices stored as dictionary for currency-specific retrieval
+- **Search Optimization**: `SearchText` field combines multiple fields for efficient full-text search
+- **Sales Tracking**: Active and scheduled sales stored in projection
+- **Soft Delete Support**: Tracks deleted state without removing the projection
 
 ### Projection Lifecycle
 
