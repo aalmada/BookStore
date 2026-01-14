@@ -1,6 +1,6 @@
-using Refit;
 using System.Threading;
 using System.Threading.Tasks;
+using Refit;
 
 namespace BookStore.Client;
 
