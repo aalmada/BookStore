@@ -1,0 +1,12 @@
+@using BookStore.Shared.Models
+
+@if (Sale != null)
+{
+    <MudChip T="string" Color="Color.Error" Size="Size.Small" Class="ml-2 font-weight-bold">
+        SAVE @Sale.Value.Percentage.ToString("0")%
+    </MudChip>
+}
+
+@code {
+    [Parameter] public BookSale? Sale { get; set; }
+}

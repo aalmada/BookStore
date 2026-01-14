@@ -4,6 +4,7 @@
 @using BookStore.Shared.Models
 @using BookStore.Web.Services
 @using Microsoft.AspNetCore.Components.Authorization
+@using BookStore.Web.Components.Catalog
 @inject IBooksClient BooksClient
 @inject BookStoreEventsService EventsService
 @inject OptimisticUpdateService OptimisticService
@@ -173,9 +174,25 @@
                                     <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" /> @book.PublicationDate.Value.Year
                                 </MudText>
                             }
-                            <MudText Typo="Typo.h6" Color="Color.Primary" Class="mt-2 font-weight-bold">
-                                @CurrencyService.FormatPrice(book.Prices)
-                            </MudText>
+                            @if (book.ActiveSale != null && book.Prices != null && book.Prices.TryGetValue(CurrencyService.CurrentCurrency, out var originalPrice))
+                            {
+                                var discountedPrice = book.ActiveSale.Value.CalculateDiscountedPrice(originalPrice);
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mt-2">
+                                     <MudText Typo="Typo.body2" Style="text-decoration: line-through; color: var(--mud-palette-text-secondary); opacity: 0.7;">
+                                         @CurrencyService.FormatPrice(originalPrice)
+                                     </MudText>
+                                     <MudText Typo="Typo.h6" Color="Color.Error" Class="font-weight-bold">
+                                        @CurrencyService.FormatPrice(discountedPrice)
+                                     </MudText>
+                                     <BookSaleBadge Sale="@book.ActiveSale" />
+                                </MudStack>
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.h6" Color="Color.Primary" Class="mt-2 font-weight-bold">
+                                    @CurrencyService.FormatPrice(book.Prices)
+                                </MudText>
+                            }
                         </MudCardContent>
                         <MudCardActions>
                             <MudButton Href="@($"/book/{book.Id}")" Variant="Variant.Text" Color="Color.Primary" FullWidth="true" StartIcon="@Icons.Material.Filled.Visibility">

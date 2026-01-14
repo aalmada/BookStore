@@ -13,6 +13,8 @@ public interface IBooksClient :
     IAddBookToFavoritesEndpoint,
     IRemoveBookFromFavoritesEndpoint,
     IRateBookEndpoint,
-    IRemoveBookRatingEndpoint
+    IRemoveBookRatingEndpoint,
+    IScheduleBookSaleEndpoint,
+    ICancelBookSaleEndpoint
 {
 }

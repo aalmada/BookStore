@@ -4,6 +4,7 @@
 @using ClientModels = BookStore.Client
 @using BookStore.Shared.Models
 @using Microsoft.AspNetCore.Components.Authorization
+@using BookStore.Web.Components.Catalog
 @inject IBooksClient BooksClient
 @inject IShoppingCartClient CartClient
 @inject NavigationManager Navigation
@@ -151,9 +152,25 @@
                         </NotAuthorized>
                      </AuthorizeView>
 
-                     <MudText Typo="Typo.h4" Color="Color.Primary" Class="mb-6 font-weight-bold">
-                         @CurrencyService.FormatPrice(book.Prices)
-                     </MudText>
+                     @if (book.ActiveSale != null && book.Prices != null && book.Prices.TryGetValue(CurrencyService.CurrentCurrency, out var originalPrice))
+                     {
+                        var discountedPrice = book.ActiveSale.Value.CalculateDiscountedPrice(originalPrice);
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-6">
+                             <MudText Typo="Typo.h5" Style="text-decoration: line-through; color: var(--mud-palette-text-secondary); opacity: 0.7;">
+                                 @CurrencyService.FormatPrice(originalPrice)
+                             </MudText>
+                             <MudText Typo="Typo.h4" Color="Color.Error" Class="font-weight-bold">
+                                @CurrencyService.FormatPrice(discountedPrice)
+                             </MudText>
+                             <BookSaleBadge Sale="@book.ActiveSale" />
+                        </MudStack>
+                     }
+                     else
+                     {
+                         <MudText Typo="Typo.h4" Color="Color.Primary" Class="mb-6 font-weight-bold">
+                             @CurrencyService.FormatPrice(book.Prices)
+                         </MudText>
+                     }
 
                      @* Add to Cart *@
                      <AuthorizeView>

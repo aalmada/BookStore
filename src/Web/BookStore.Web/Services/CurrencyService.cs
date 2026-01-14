@@ -47,12 +47,14 @@ public class CurrencyService(IJSRuntime jsRuntime)
             return "N/A";
         }
 
-        return CurrentCurrency switch
-        {
-            "USD" => string.Format(CultureInfo.InvariantCulture, "${0:N2}", price),
-            "EUR" => string.Format(CultureInfo.InvariantCulture, "{0:N2}€", price),
-            "GBP" => string.Format(CultureInfo.InvariantCulture, "£{0:N2}", price),
-            _ => string.Format(CultureInfo.InvariantCulture, "{0:N2} {1}", price, CurrentCurrency)
-        };
+        return FormatPrice(price);
     }
+
+    public string FormatPrice(decimal price) => CurrentCurrency switch
+    {
+        "USD" => string.Format(CultureInfo.InvariantCulture, "${0:N2}", price),
+        "EUR" => string.Format(CultureInfo.InvariantCulture, "{0:N2}€", price),
+        "GBP" => string.Format(CultureInfo.InvariantCulture, "£{0:N2}", price),
+        _ => string.Format(CultureInfo.InvariantCulture, "{0:N2} {1}", price, CurrentCurrency)
+    };
 }
