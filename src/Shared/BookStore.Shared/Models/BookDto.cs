@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 
 namespace BookStore.Shared.Models;
 
@@ -22,4 +23,6 @@ public record BookDto(
     int RatingCount = 0,
     int UserRating = 0,
     IReadOnlyDictionary<string, decimal>? Prices = null,
-    string? CoverImageUrl = null); // 0 = not rated, 1-5 = user's rating
+    string? CoverImageUrl = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    BookSale? ActiveSale = null); // Currently active sale, if any

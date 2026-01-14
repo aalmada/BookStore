@@ -140,4 +140,61 @@ public class BookSearchProjectionTests
 
         return mock;
     }
+    [Test]
+    [Category("Unit")]
+    public async Task Apply_BookSaleScheduled_ShouldAddSale()
+    {
+        // Arrange
+        var projection = new BookSearchProjection { Id = Guid.NewGuid() };
+        var sale = new BookSale(10m, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddDays(1));
+        var @event = new BookSaleScheduled(projection.Id, sale);
+
+        // Act
+        projection.Apply(@event);
+
+        // Assert
+        _ = await Assert.That(projection.Sales).Count().IsEqualTo(1);
+        _ = await Assert.That(projection.Sales[0]).IsEqualTo(sale);
+    }
+
+    [Test]
+    [Category("Unit")]
+    public async Task Apply_BookSaleScheduled_WithExistingOverlap_ShouldReplace()
+    {
+        // Arrange
+        var projection = new BookSearchProjection { Id = Guid.NewGuid() };
+        var start = DateTimeOffset.UtcNow;
+        var existingSale = new BookSale(10m, start, start.AddDays(1));
+        projection.Sales.Add(existingSale);
+
+        var newSale = new BookSale(20m, start, start.AddDays(2)); // Same start time, different end/percentage
+        var @event = new BookSaleScheduled(projection.Id, newSale);
+
+        // Act
+        projection.Apply(@event);
+
+        // Assert
+        _ = await Assert.That(projection.Sales).Count().IsEqualTo(1);
+        _ = await Assert.That(projection.Sales[0].Percentage).IsEqualTo(20m);
+        _ = await Assert.That(projection.Sales[0].End).IsEqualTo(newSale.End);
+    }
+
+    [Test]
+    [Category("Unit")]
+    public async Task Apply_BookSaleCancelled_ShouldRemoveSale()
+    {
+        // Arrange
+        var projection = new BookSearchProjection { Id = Guid.NewGuid() };
+        var start = DateTimeOffset.UtcNow;
+        var sale = new BookSale(10m, start, start.AddDays(1));
+        projection.Sales.Add(sale);
+
+        var @event = new BookSaleCancelled(projection.Id, start);
+
+        // Act
+        projection.Apply(@event);
+
+        // Assert
+        _ = await Assert.That(projection.Sales).IsEmpty();
+    }
 }

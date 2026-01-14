@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Security.Claims; // Need this for ClaimsPrincipal if not implicit
 using BookStore.ApiService.Aggregates;
+using BookStore.ApiService.Commands;
 using BookStore.ApiService.Infrastructure;
 using BookStore.ApiService.Infrastructure.Extensions;
 using BookStore.ApiService.Messages.Commands;
@@ -48,7 +49,28 @@ public static class BookEndpoints
             .WithSummary("Remove book rating")
             .RequireAuthorization();
 
+        _ = group.MapPost("/{id:guid}/sales", ScheduleSale)
+            .WithName("ScheduleBookSale")
+            .WithSummary("Schedule a sale for a book")
+            .RequireAuthorization();
+
+        _ = group.MapDelete("/{id:guid}/sales", CancelSale)
+            .WithName("CancelBookSale")
+            .WithSummary("Cancel a scheduled sale for a book")
+            .RequireAuthorization();
+
         return group;
+    }
+
+    static BookSale? GetActiveSale(List<BookSale>? sales, DateTimeOffset now)
+    {
+        if (sales is null || sales.Count == 0)
+        {
+            return null;
+        }
+
+        var sale = sales.FirstOrDefault(s => s.IsActive(now));
+        return sale.Percentage > 0 ? sale : null;
     }
 
     static async Task<Ok<PagedListDto<BookDto>>> SearchBooks(
@@ -68,7 +90,7 @@ public static class BookEndpoints
         var normalizedSortBy = request.SortBy?.ToLowerInvariant();
 
         // Create cache key including all search parameters
-        var cacheKey = $"books:search={request.Search}:author={request.AuthorId}:category={request.CategoryId}:publisher={request.PublisherId}:page={paging.Page}:size={paging.PageSize}:sort={normalizedSortBy}:{normalizedSortOrder}";
+        var cacheKey = $"books:search={request.Search}:author={request.AuthorId}:category={request.CategoryId}:publisher={request.PublisherId}:onSale={request.OnSale}:minPrice={request.MinPrice}:maxPrice={request.MaxPrice}:page={paging.Page}:size={paging.PageSize}:sort={normalizedSortBy}:{normalizedSortOrder}";
 
         var response = await cache.GetOrCreateLocalizedAsync(
             cacheKey,
@@ -114,6 +136,24 @@ public static class BookEndpoints
                     query = query.Where(b => b.PublisherId == request.PublisherId.Value);
                 }
 
+                // Filter by active sales if requested
+                if (request.OnSale == true)
+                {
+                    var currentTime = DateTimeOffset.UtcNow;
+                    query = query.Where(b => b.Sales.Any(s => s.Start <= currentTime && s.End > currentTime));
+                }
+
+                // Filter by price range if specified
+                if (request.MinPrice.HasValue)
+                {
+                    query = query.Where(b => b.Prices.Any(p => p.Value >= request.MinPrice.Value));
+                }
+
+                if (request.MaxPrice.HasValue)
+                {
+                    query = query.Where(b => b.Prices.Any(p => p.Value <= request.MaxPrice.Value));
+                }
+
                 // Apply sorting
                 query = (normalizedSortBy, normalizedSortOrder) switch
                 {
@@ -153,43 +193,49 @@ public static class BookEndpoints
 #pragma warning restore CS8603
 
                 // Map to DTOs with localized descriptions, biographies, and category names
-                var bookDtos = pagedList.Select(book => new BookDto(
-                    book.Id,
-                    book.Title,
-                    book.Isbn,
-                    book.OriginalLanguage,
-                    CultureInfo.GetCultureInfo(book.OriginalLanguage).DisplayName,
-                    LocalizationHelper.GetLocalizedValue(book.Descriptions, culture, defaultCulture, ""),
-                    book.PublicationDate,
-                    BookStore.ApiService.Helpers.BookHelpers.IsPreRelease(book.PublicationDate),
-                    book.PublisherId.HasValue && publishers.TryGetValue(book.PublisherId.Value, out var pub)
-                        ? new PublisherDto(pub.Id, pub.Name)
-                        : null,
-                    [.. book.AuthorIds
-                        .Select(id => authors.TryGetValue(id, out var author)
-                            ? new AuthorDto(
-                                author.Id,
-                                author.Name,
-                                LocalizationHelper.GetLocalizedValue(author.Biographies, culture, defaultCulture, ""))
-                            : null)
-                        .Where(a => a != null)
-                        .Cast<AuthorDto>()],
-                    [.. book.CategoryIds
-                        .Select(id => categories.TryGetValue(id, out var cat)
-                            ? new CategoryDto(
-                                cat.Id,
-                                LocalizationHelper.GetLocalizedValue(cat.Names, culture, defaultCulture, "Unknown"))
-                            : null)
-                        .Where(c => c != null)
-                        .Cast<CategoryDto>()],
-                    false, // IsFavorite is always false in cache
-                    statistics.TryGetValue(book.Id, out var stats) ? stats.LikeCount : 0,
-                    stats?.AverageRating ?? 0f,
-                    stats?.RatingCount ?? 0,
-                    0, // UserRating is always 0 in cache, will be overlaid if authenticated
-                    book.Prices,
-                    book.CoverImageUrl
-                )).ToList();
+                var now = DateTimeOffset.UtcNow;
+                var bookDtos = pagedList.Select(book =>
+                {
+                    var activeSale = GetActiveSale(book.Sales, now);
+                    return new BookDto(
+                        book.Id,
+                        book.Title,
+                        book.Isbn,
+                        book.OriginalLanguage,
+                        CultureInfo.GetCultureInfo(book.OriginalLanguage).DisplayName,
+                        LocalizationHelper.GetLocalizedValue(book.Descriptions, culture, defaultCulture, ""),
+                        book.PublicationDate,
+                        BookStore.ApiService.Helpers.BookHelpers.IsPreRelease(book.PublicationDate),
+                        book.PublisherId.HasValue && publishers.TryGetValue(book.PublisherId.Value, out var pub)
+                            ? new PublisherDto(pub.Id, pub.Name)
+                            : null,
+                        [.. book.AuthorIds
+                            .Select(id => authors.TryGetValue(id, out var author)
+                                ? new AuthorDto(
+                                    author.Id,
+                                    author.Name,
+                                    LocalizationHelper.GetLocalizedValue(author.Biographies, culture, defaultCulture, ""))
+                                : null)
+                            .Where(a => a != null)
+                            .Cast<AuthorDto>()],
+                        [.. book.CategoryIds
+                            .Select(id => categories.TryGetValue(id, out var cat)
+                                ? new CategoryDto(
+                                    cat.Id,
+                                    LocalizationHelper.GetLocalizedValue(cat.Names, culture, defaultCulture, "Unknown"))
+                                : null)
+                            .Where(c => c != null)
+                            .Cast<CategoryDto>()],
+                        false, // IsFavorite is always false in cache
+                        statistics.TryGetValue(book.Id, out var stats) ? stats.LikeCount : 0,
+                        stats?.AverageRating ?? 0f,
+                        stats?.RatingCount ?? 0,
+                        0, // UserRating is always 0 in cache, will be overlaid if authenticated
+                        book.Prices,
+                        book.CoverImageUrl,
+                        activeSale
+                    );
+                }).ToList();
 
                 return new PagedListDto<BookDto>(
                     bookDtos,
@@ -305,6 +351,8 @@ public static class BookEndpoints
                 }
 
                 // Map to DTO with localized values
+                var now = DateTimeOffset.UtcNow;
+                var activeSale = GetActiveSale(book.Sales, now);
                 return new BookDto(
                     book.Id,
                     book.Title,
@@ -340,7 +388,8 @@ public static class BookEndpoints
                     stats?.RatingCount ?? 0,
                     0, // UserRating is always 0 in cache, will be overlaid if authenticated
                     book.Prices,
-                    book.CoverImageUrl
+                    book.CoverImageUrl,
+                    activeSale
                     );
             },
             options: new HybridCacheEntryOptions
@@ -466,5 +515,38 @@ public static class BookEndpoints
         return TypedResults.NoContent();
     }
 
+    static async Task<IResult> ScheduleSale(
+        Guid id,
+        [FromBody] ScheduleSaleRequest request,
+        [FromServices] IMessageBus bus,
+        HttpContext context,
+        CancellationToken cancellationToken)
+    {
+        var etag = context.Request.Headers.IfMatch.FirstOrDefault();
+        var command = new ScheduleBookSale(id, request.Percentage, request.Start, request.End)
+        {
+            ETag = etag
+        };
+
+        return await bus.InvokeAsync<IResult>(command, cancellationToken);
+    }
+
+    static async Task<IResult> CancelSale(
+        Guid id,
+        [FromQuery] DateTimeOffset saleStart,
+        [FromServices] IMessageBus bus,
+        HttpContext context,
+        CancellationToken cancellationToken)
+    {
+        var etag = context.Request.Headers.IfMatch.FirstOrDefault();
+        var command = new CancelBookSale(id, saleStart)
+        {
+            ETag = etag
+        };
+
+        return await bus.InvokeAsync<IResult>(command, cancellationToken);
+    }
+
     record RateBookRequest(int Rating);
+    record ScheduleSaleRequest(decimal Percentage, DateTimeOffset Start, DateTimeOffset End);
 }

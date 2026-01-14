@@ -33,6 +33,8 @@ public class BookSearchProjection
     // Computed search text for ngram matching
     public string SearchText { get; set; } = string.Empty;
 
+    public List<BookSale> Sales { get; set; } = [];
+
     public string? CoverImageUrl { get; set; }
 
     // SingleStreamProjection methods
@@ -93,6 +95,15 @@ public class BookSearchProjection
     }
 
     public void Apply(BookCoverUpdated @event) => CoverImageUrl = @event.CoverImageUrl;
+
+    public void Apply(BookSaleScheduled @event)
+    {
+        // Remove any existing sale with the same start time
+        _ = Sales.RemoveAll(s => s.Start == @event.Sale.Start);
+        Sales.Add(@event.Sale);
+    }
+
+    public void Apply(BookSaleCancelled @event) => _ = Sales.RemoveAll(s => s.Start == @event.SaleStart);
 
     // Helper methods for denormalization
     static void LoadDenormalizedData(BookSearchProjection projection, IQuerySession session)

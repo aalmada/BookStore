@@ -1,23 +1,21 @@
 using BookStore.ApiService.Aggregates;
 using BookStore.ApiService.Commands;
 using BookStore.ApiService.Events;
+using BookStore.ApiService.Infrastructure.Logging;
 using BookStore.ApiService.Projections;
 using BookStore.ApiService.Services;
 using BookStore.Shared.Models;
 using Marten;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Wolverine;
 
 namespace BookStore.ApiService.Infrastructure;
 
 /// <summary>
-/// Seeds the database with sample data using event sourcing
+/// Seeds the database with initial data.
 /// </summary>
-
-/// <summary>
-/// Seeds the database with sample data using event sourcing
-/// </summary>
-public class DatabaseSeeder(IDocumentStore store, IMessageBus bus)
+public class DatabaseSeeder(IDocumentStore store, IMessageBus bus, ILogger<DatabaseSeeder> logger)
 {
 
     public async Task SeedAsync()
@@ -28,17 +26,22 @@ public class DatabaseSeeder(IDocumentStore store, IMessageBus bus)
         var existingBooks = await session.Query<BookSearchProjection>().AnyAsync();
         if (existingBooks)
         {
+            Log.Seeding.DatabaseAlreadySeeded(logger);
             return; // Already seeded
         }
 
+        Log.Seeding.StartingDatabaseSeeding(logger);
+
         // Seed in dependency order: Publishers → Authors → Categories → Books
-        var publisherIds = SeedPublishers(session);
-        var authorIds = SeedAuthors(session);
-        var categoryIds = SeedCategories(session);
+        var publisherIds = SeedPublishers(session, logger);
+        var authorIds = SeedAuthors(session, logger);
+        var categoryIds = SeedCategories(session, logger);
 
         await session.SaveChangesAsync();
 
-        await SeedBooksAsync(store, bus, publisherIds, authorIds, categoryIds);
+        await SeedBooksAsync(store, bus, publisherIds, authorIds, categoryIds, logger);
+
+        Log.Seeding.DatabaseSeedingCompleted(logger);
     }
 
     /// <summary>
@@ -73,8 +76,10 @@ public class DatabaseSeeder(IDocumentStore store, IMessageBus bus)
         }
     }
 
-    static Dictionary<string, PublisherAdded> SeedPublishers(IDocumentSession session)
+    static Dictionary<string, PublisherAdded> SeedPublishers(IDocumentSession session, ILogger logger)
     {
+        Log.Seeding.SeedingPublishers(logger);
+
         var publishers = new Dictionary<string, PublisherAdded>
         {
             ["Penguin"] = new(Guid.CreateVersion7(), "Penguin Random House", DateTimeOffset.UtcNow),
@@ -89,11 +94,13 @@ public class DatabaseSeeder(IDocumentStore store, IMessageBus bus)
             _ = session.Events.StartStream<PublisherAggregate>(@event.Id, @event);
         }
 
+        Log.Seeding.seededPublishers(logger, publishers.Count);
         return publishers;
     }
 
-    static Dictionary<string, AuthorAdded> SeedAuthors(IDocumentSession session)
+    static Dictionary<string, AuthorAdded> SeedAuthors(IDocumentSession session, ILogger logger)
     {
+        Log.Seeding.SeedingAuthors(logger);
         var authors = new[]
         {
             (Key: "Fitzgerald", Event: new AuthorAdded(Guid.CreateVersion7(), "F. Scott Fitzgerald", new Dictionary<string, AuthorTranslation> { ["en"] = new("American novelist") }, DateTimeOffset.UtcNow)),
@@ -138,11 +145,13 @@ public class DatabaseSeeder(IDocumentStore store, IMessageBus bus)
             result[key] = @event;
         }
 
+        Log.Seeding.SeededAuthors(logger, result.Count);
         return result;
     }
 
-    static Dictionary<string, CategoryAdded> SeedCategories(IDocumentSession session)
+    static Dictionary<string, CategoryAdded> SeedCategories(IDocumentSession session, ILogger logger)
     {
+        Log.Seeding.SeedingCategories(logger);
         var categories = new[]
         {
             (Key: "Fiction", Event: new CategoryAdded(Guid.CreateVersion7(), new Dictionary<string, CategoryTranslation> { ["en"] = new("Fiction", null) }, DateTimeOffset.UtcNow)),
@@ -163,16 +172,19 @@ public class DatabaseSeeder(IDocumentStore store, IMessageBus bus)
             result[key] = @event;
         }
 
+        Log.Seeding.SeededCategories(logger, result.Count);
         return result;
     }
 
-    async Task SeedBooksAsync(
+    static async Task SeedBooksAsync(
         IDocumentStore store,
         IMessageBus bus,
         Dictionary<string, PublisherAdded> publishers,
         Dictionary<string, AuthorAdded> authors,
-        Dictionary<string, CategoryAdded> categories)
+        Dictionary<string, CategoryAdded> categories,
+        ILogger logger)
     {
+        Log.Seeding.SeedingBooks(logger);
         var books = new[]
         {
             // English Books
@@ -287,7 +299,7 @@ public class DatabaseSeeder(IDocumentStore store, IMessageBus bus)
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Failed to generate cover for {book.Title}: {ex.Message}");
+                Log.Seeding.FailedToGenerateCover(logger, ex, book.Title);
             }
         }
 
@@ -296,6 +308,102 @@ public class DatabaseSeeder(IDocumentStore store, IMessageBus bus)
         foreach (var cmd in bookCommands)
         {
             await bus.InvokeAsync(cmd);
+        }
+
+        Log.Seeding.SeededBooks(logger, books.Length);
+    }
+
+    public async Task SeedSalesAsync()
+    {
+        Log.Seeding.StartingSalesSeeding(logger);
+
+        await using var session = store.LightweightSession();
+
+        // Get some books to add sales to
+        var books = await session.Query<BookSearchProjection>()
+            .Where(b => !b.Deleted)
+            .Take(5)
+            .ToListAsync();
+
+        Log.Seeding.FoundBooksForSalesSeeding(logger, books.Count);
+
+        if (books.Count == 0)
+        {
+            Log.Seeding.NoBooksFoundForSalesSeeding(logger);
+            return;
+        }
+
+        var now = DateTimeOffset.UtcNow;
+
+        try
+        {
+            // Active sale (started 1 day ago, ends in 7 days)
+            if (books.Count > 0)
+            {
+                var aggregate = await session.Events.AggregateStreamAsync<BookAggregate>(books[0].Id);
+                if (aggregate != null)
+                {
+                    var saleEvent = aggregate.ScheduleSale(25m, now.AddDays(-1), now.AddDays(7));
+                    _ = session.Events.Append(books[0].Id, saleEvent);
+                    Log.Seeding.ScheduledSale(logger, 25m, books[0].Id, books[0].Title);
+                }
+            }
+
+            // Active sale (started 12 hours ago, ends in 5 days)
+            if (books.Count > 1)
+            {
+                var aggregate = await session.Events.AggregateStreamAsync<BookAggregate>(books[1].Id);
+                if (aggregate != null)
+                {
+                    var saleEvent = aggregate.ScheduleSale(15m, now.AddHours(-12), now.AddDays(5));
+                    _ = session.Events.Append(books[1].Id, saleEvent);
+                    Log.Seeding.ScheduledSale(logger, 15m, books[1].Id, books[1].Title);
+                }
+            }
+
+            // Active sale (started 1 hour ago, ends in 3 days)
+            if (books.Count > 2)
+            {
+                var aggregate = await session.Events.AggregateStreamAsync<BookAggregate>(books[2].Id);
+                if (aggregate != null)
+                {
+                    var saleEvent = aggregate.ScheduleSale(30m, now.AddHours(-1), now.AddDays(3));
+                    _ = session.Events.Append(books[2].Id, saleEvent);
+                    Log.Seeding.ScheduledSale(logger, 30m, books[2].Id, books[2].Title);
+                }
+            }
+
+            // Upcoming sale (starts in 1 hour, ends in 2 days)
+            if (books.Count > 3)
+            {
+                var aggregate = await session.Events.AggregateStreamAsync<BookAggregate>(books[3].Id);
+                if (aggregate != null)
+                {
+                    var saleEvent = aggregate.ScheduleSale(20m, now.AddHours(1), now.AddDays(2));
+                    _ = session.Events.Append(books[3].Id, saleEvent);
+                    Log.Seeding.ScheduledSale(logger, 20m, books[3].Id, books[3].Title);
+                }
+            }
+
+            // Upcoming sale (starts in 6 hours, ends in 4 days)
+            if (books.Count > 4)
+            {
+                var aggregate = await session.Events.AggregateStreamAsync<BookAggregate>(books[4].Id);
+                if (aggregate != null)
+                {
+                    var saleEvent = aggregate.ScheduleSale(10m, now.AddHours(6), now.AddDays(4));
+                    _ = session.Events.Append(books[4].Id, saleEvent);
+                    Log.Seeding.ScheduledSale(logger, 10m, books[4].Id, books[4].Title);
+                }
+            }
+
+            await session.SaveChangesAsync();
+            Log.Seeding.SalesSeedingCompleted(logger);
+        }
+        catch (Exception ex)
+        {
+            Log.Seeding.ErrorSeedingSales(logger, ex);
+            throw;
         }
     }
 }

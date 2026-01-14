@@ -33,5 +33,10 @@ public record BookRestored(Guid Id, DateTimeOffset Timestamp);
 
 public record BookCoverUpdated(Guid Id, string CoverImageUrl);
 
+public record BookSaleScheduled(Guid Id, BookSale Sale);
+
+public record BookSaleCancelled(Guid Id, DateTimeOffset SaleStart);
+
 // Localization model for book descriptions
 public record BookTranslation(string Description);
+
