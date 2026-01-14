@@ -1,0 +1,83 @@
+Running tests from /Users/antaoalmada/Projects/BookStore/tests/BookStore.AppHost.Tests/bin/Debug/net10.0/BookStore.AppHost.Tests.dll (net10.0|arm64)
+[+0/x0/?0] BookStore.AppHost.Tests.dll (net10.0|arm64)(2s)
+
+[+0/x0/?0] BookStore.AppHost.Tests.dll (net10.0|arm64)(5s)
+
+[+0/x0/?0] BookStore.AppHost.Tests.dll (net10.0|arm64)(8s)
+
+[+0/x0/?0] BookStore.AppHost.Tests.dll (net10.0|arm64)(11s)
+
+[+28/x0/?0] BookStore.AppHost.Tests.dll (net10.0|arm64)(14s)
+
+[+38/x0/?0] BookStore.AppHost.Tests.dll (net10.0|arm64)(17s)
+
+[+41/x0/?0] BookStore.AppHost.Tests.dll (net10.0|arm64)(20s)
+
+[+44/x0/?0] BookStore.AppHost.Tests.dll (net10.0|arm64)(23s)
+
+[+47/x0/?0] BookStore.AppHost.Tests.dll (net10.0|arm64)(26s)
+
+[+48/x0/?0] BookStore.AppHost.Tests.dll (net10.0|arm64)(29s)
+
+[+50/x0/?0] BookStore.AppHost.Tests.dll (net10.0|arm64)(32s)
+
+[+51/x0/?0] BookStore.AppHost.Tests.dll (net10.0|arm64)(35s)
+
+[+52/x0/?0] BookStore.AppHost.Tests.dll (net10.0|arm64)(38s)
+
+[+53/x0/?0] BookStore.AppHost.Tests.dll (net10.0|arm64)(41s)
+
+[+54/x0/?0] BookStore.AppHost.Tests.dll (net10.0|arm64)(44s)
+
+[+56/x0/?0] BookStore.AppHost.Tests.dll (net10.0|arm64)(47s)
+
+[+57/x0/?0] BookStore.AppHost.Tests.dll (net10.0|arm64)(50s)
+
+[+57/x0/?0] BookStore.AppHost.Tests.dll (net10.0|arm64)(53s)
+
+[+58/x0/?0] BookStore.AppHost.Tests.dll (net10.0|arm64)(56s)
+
+[+60/x0/?0] BookStore.AppHost.Tests.dll (net10.0|arm64)(59s)
+
+[+61/x0/?0] BookStore.AppHost.Tests.dll (net10.0|arm64)(1m 02s)
+
+[+63/x0/?0] BookStore.AppHost.Tests.dll (net10.0|arm64)(1m 05s)
+
+[+68/x0/?0] BookStore.AppHost.Tests.dll (net10.0|arm64)(1m 08s)
+
+[+71/x0/?0] BookStore.AppHost.Tests.dll (net10.0|arm64)(1m 11s)
+
+[+74/x0/?0] BookStore.AppHost.Tests.dll (net10.0|arm64)(1m 14s)
+
+[+78/x0/?0] BookStore.AppHost.Tests.dll (net10.0|arm64)(1m 17s)
+
+[+79/x0/?0] BookStore.AppHost.Tests.dll (net10.0|arm64)(1m 20s)
+
+[+80/x0/?0] BookStore.AppHost.Tests.dll (net10.0|arm64)(1m 23s)
+
+[+80/x0/?0] BookStore.AppHost.Tests.dll (net10.0|arm64)(1m 26s)
+
+[+81/x0/?0] BookStore.AppHost.Tests.dll (net10.0|arm64)(1m 29s)
+
+[+81/x0/?0] BookStore.AppHost.Tests.dll (net10.0|arm64)(1m 32s)
+
+[+84/x0/?0] BookStore.AppHost.Tests.dll (net10.0|arm64)(1m 35s)
+
+[+85/x0/?0] BookStore.AppHost.Tests.dll (net10.0|arm64)(1m 38s)
+
+[+85/x0/?0] BookStore.AppHost.Tests.dll (net10.0|arm64)(1m 41s)
+
+[+85/x0/?0] BookStore.AppHost.Tests.dll (net10.0|arm64)(1m 44s)
+
+[+85/x0/?0] BookStore.AppHost.Tests.dll (net10.0|arm64)(1m 47s)
+
+[+85/x0/?0] BookStore.AppHost.Tests.dll (net10.0|arm64)(1m 50s)
+
+/Users/antaoalmada/Projects/BookStore/tests/BookStore.AppHost.Tests/bin/Debug/net10.0/BookStore.AppHost.Tests.dll (net10.0|arm64) passed (1m 53s 034ms)
+
+Test run summary: Passed!
+  total: 85
+  failed: 0
+  succeeded: 85
+  skipped: 0
+  duration: 1h 22m 36s 777ms

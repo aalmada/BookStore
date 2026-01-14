@@ -25,4 +25,6 @@ public record BookDto(
     IReadOnlyDictionary<string, decimal>? Prices = null,
     string? CoverImageUrl = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    BookSale? ActiveSale = null); // Currently active sale, if any
+    BookSale? ActiveSale = null, // Currently active sale, if any
+    bool IsDeleted = false);
+

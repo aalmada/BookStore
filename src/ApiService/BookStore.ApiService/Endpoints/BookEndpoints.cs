@@ -86,11 +86,16 @@ public static class BookEndpoints
         var culture = CultureInfo.CurrentUICulture.Name;
         var defaultCulture = localizationOptions.Value.DefaultCulture;
 
+        // Check if user is admin - manual check to be robust against RoleClaimType mismatches
+        var isAdmin = context.User.Claims.Any(c =>
+            (c.Type == System.Security.Claims.ClaimTypes.Role || c.Type == "role") &&
+            string.Equals(c.Value, "Admin", StringComparison.OrdinalIgnoreCase));
+
         var normalizedSortOrder = request.SortOrder?.ToLowerInvariant() == "desc" ? "desc" : "asc";
         var normalizedSortBy = request.SortBy?.ToLowerInvariant();
 
         // Create cache key including all search parameters
-        var cacheKey = $"books:search={request.Search}:author={request.AuthorId}:category={request.CategoryId}:publisher={request.PublisherId}:onSale={request.OnSale}:minPrice={request.MinPrice}:maxPrice={request.MaxPrice}:page={paging.Page}:size={paging.PageSize}:sort={normalizedSortBy}:{normalizedSortOrder}";
+        var cacheKey = $"books:search={request.Search}:author={request.AuthorId}:category={request.CategoryId}:publisher={request.PublisherId}:onSale={request.OnSale}:minPrice={request.MinPrice}:maxPrice={request.MaxPrice}:page={paging.Page}:size={paging.PageSize}:sort={normalizedSortBy}:{normalizedSortOrder}:admin={isAdmin}";
 
         var response = await cache.GetOrCreateLocalizedAsync(
             cacheKey,
@@ -106,11 +111,15 @@ public static class BookEndpoints
 
                 // Build query incrementally
 #pragma warning disable CS8603 // Possible null reference return - false positive from Marten's Include API
-                var query = session.Query<BookSearchProjection>()
+                IQueryable<BookSearchProjection> query = session.Query<BookSearchProjection>()
                     .Include(publishers).On(x => x.PublisherId)!
                     .Include(authors).On(x => x.AuthorIds)!
-                    .Include(categories).On(x => x.CategoryIds)!
-                    .Where(b => !b.Deleted);
+                    .Include(categories).On(x => x.CategoryIds)!;
+
+                if (!isAdmin)
+                {
+                    query = query.Where(b => !b.Deleted);
+                }
 
                 // Add search filter if search term is provided
                 if (!string.IsNullOrWhiteSpace(request.Search))
@@ -233,7 +242,8 @@ public static class BookEndpoints
                         0, // UserRating is always 0 in cache, will be overlaid if authenticated
                         book.Prices,
                         book.CoverImageUrl,
-                        activeSale
+                        activeSale,
+                        book.Deleted
                     );
                 }).ToList();
 
@@ -314,8 +324,13 @@ public static class BookEndpoints
             BookStore.ApiService.Infrastructure.ETagHelper.AddETagHeader(context, etag);
         }
 
+        // Check if user is admin - manual check to be robust against RoleClaimType mismatches
+        var isAdmin = context.User.Claims.Any(c =>
+            (c.Type == System.Security.Claims.ClaimTypes.Role || c.Type == "role") &&
+            string.Equals(c.Value, "Admin", StringComparison.OrdinalIgnoreCase));
+
         var response = await cache.GetOrCreateLocalizedAsync(
-            $"book:{id}",
+            $"book:{id}:admin={isAdmin}",
             async cancel =>
             {
                 // Dictionaries to hold included documents
@@ -327,13 +342,26 @@ public static class BookEndpoints
                 // Load book with Include() for related entities
                 // Since session is tenant-scoped, Includes will automatically load for the same tenant!
 #pragma warning disable CS8603 // Possible null reference return
-                var book = await session.Query<BookSearchProjection>()
+                var bookQuery = session.Query<BookSearchProjection>()
                     .Include(publishers).On(x => x.PublisherId)!
                     .Include(authors).On(x => x.AuthorIds)!
                     .Include(categories).On(x => x.CategoryIds)!
                     //.Include(statistics).On(x => x.Id)!
-                    .Where(b => b.Id == id && !b.Deleted)
-                    .SingleOrDefaultAsync(cancel);
+                    //.Include(statistics).On(x => x.Id)!
+                    .Where(b => b.Id == id);
+
+                context.Response.Headers.Append("X-Debug-Admin-Status", isAdmin.ToString());
+                context.Response.Headers.Append("X-Debug-User-Name", context.User.Identity?.Name ?? "null");
+
+                context.Response.Headers.Append("X-Debug-Admin-Status", isAdmin.ToString());
+                context.Response.Headers.Append("X-Debug-User-Name", context.User.Identity?.Name ?? "null");
+
+                if (!isAdmin)
+                {
+                    bookQuery = bookQuery.Where(b => !b.Deleted);
+                }
+
+                var book = await bookQuery.SingleOrDefaultAsync(cancel);
 #pragma warning restore CS8603
 
                 if (book != null)
@@ -389,7 +417,8 @@ public static class BookEndpoints
                     0, // UserRating is always 0 in cache, will be overlaid if authenticated
                     book.Prices,
                     book.CoverImageUrl,
-                    activeSale
+                    activeSale,
+                    book.Deleted
                     );
             },
             options: new HybridCacheEntryOptions
