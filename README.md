@@ -22,6 +22,9 @@ A complete book store management system featuring:
 - **Database**: PostgreSQL with event store and read model projections
 - **Modern Stack**: .NET 10 with C# 14 (latest language features)
 
+> [!TIP]
+> **AI-Ready Project**: This codebase is fully configured for AI-assisted development with `AGENTS.md` files and reusable skills in [`.claude/skills/`](.claude/skills/). See [Agent-Based Development](#-agent-based-development) for details.
+
 ## 🏗️ Architectural Philosophy
 
 > *"A complex system that works is invariably found to have evolved from a simple system that worked. A complex system designed from scratch never works and cannot be patched up to make it work. You have to start over with a working simple system."*
@@ -319,5 +322,33 @@ Contributions are welcome! Please read our [Contributing Guidelines](CONTRIBUTIN
 - Pull request process
 
 By contributing, you agree that your contributions will be licensed under the MIT License.
+
+## 🤖 Agent-Based Development
+
+This project is fully configured for **AI-assisted development**, providing comprehensive guidance for AI coding assistants to understand and work effectively with the codebase.
+
+### AGENTS.md Files
+
+Throughout the project, you'll find `AGENTS.md` files that serve as knowledge bases for AI assistants:
+
+- **[Root AGENTS.md](AGENTS.md)** - Project overview, architectural principles, and general guidelines
+- **[ApiService AGENTS.md](src/BookStore.ApiService/AGENTS.md)** - Backend patterns, Event Sourcing/CQRS conventions, and API design
+- **[Web AGENTS.md](src/BookStore.Web/AGENTS.md)** - Blazor frontend patterns, real-time updates, and UI conventions
+- **[Client AGENTS.md](src/Client/BookStore.Client/AGENTS.md)** - API client library usage and patterns
+- **[Test Projects AGENTS.md](tests/BookStore.ApiService.Tests/AGENTS.md)** - Testing patterns and integration test setup
+
+These files enable AI assistants to quickly understand context-specific patterns, conventions, and architectural decisions without needing to explore the entire codebase.
+
+### Reusable Skills
+
+The [`.claude/skills/`](.claude/skills/) directory contains reusable AI workflows for common development tasks:
+
+- **[scaffold-skill](.claude/skills/scaffold-skill/SKILL.md)** - Create new AI skills with proper structure
+- **[create-new-endpoint](.claude/skills/create-new-endpoint/SKILL.md)** - Generate CQRS endpoints following project conventions
+- **[create-domain-type](.claude/skills/create-domain-type/SKILL.md)** - Scaffold domain entities with Event Sourcing patterns
+
+These skills encode complex workflows and best practices, enabling consistent, high-quality code generation across the project.
+
+For a comprehensive guide on the agent development system, see the **[Agent Development Guide](docs/agent-guide.md)**.
 
 
