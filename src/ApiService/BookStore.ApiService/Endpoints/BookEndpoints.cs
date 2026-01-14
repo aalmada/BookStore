@@ -25,6 +25,11 @@ public static class BookEndpoints
             .WithName("GetBooks")
             .WithSummary("Get all books");
 
+        _ = group.MapGet("/favorites", GetFavoriteBooks)
+            .WithName("GetFavoriteBooks")
+            .WithSummary("Get user's favorite books")
+            .RequireAuthorization();
+
         _ = group.MapGet("/{id:guid}", GetBook)
             .WithName("GetBook")
             .WithSummary("Get book by ID");
@@ -292,6 +297,160 @@ public static class BookEndpoints
                 }
             }
         }
+
+        return TypedResults.Ok(response);
+    }
+
+    static async Task<Results<Ok<PagedListDto<BookDto>>, UnauthorizedHttpResult>> GetFavoriteBooks(
+        [FromServices] IDocumentStore store,
+        [FromServices] IOptions<PaginationOptions> paginationOptions,
+        [FromServices] IOptions<LocalizationOptions> localizationOptions,
+        [AsParameters] OrderedPagedRequest request,
+        HttpContext context,
+        CancellationToken cancellationToken)
+    {
+        // Require authentication
+        var userId = context.User.GetUserId();
+        if (userId == Guid.Empty)
+        {
+            return TypedResults.Unauthorized();
+        }
+
+        var paging = request.Normalize(paginationOptions.Value);
+        var culture = CultureInfo.CurrentUICulture.Name;
+        var defaultCulture = localizationOptions.Value.DefaultCulture;
+
+        // Check if user is admin
+        var isAdmin = context.User.Claims.Any(c =>
+            (c.Type == System.Security.Claims.ClaimTypes.Role || c.Type == "role") &&
+            string.Equals(c.Value, "Admin", StringComparison.OrdinalIgnoreCase));
+
+        var normalizedSortOrder = request.SortOrder?.ToLowerInvariant() == "desc" ? "desc" : "asc";
+        var normalizedSortBy = request.SortBy?.ToLowerInvariant();
+
+        await using var session = store.QuerySession();
+
+        // Load user's profile to get favorite book IDs
+        var profile = await session.LoadAsync<UserProfile>(userId, cancellationToken);
+        if (profile == null || profile.FavoriteBookIds.Count == 0)
+        {
+            // Return empty list if user has no favorites
+            return TypedResults.Ok(new PagedListDto<BookDto>(
+                [],
+                paging.Page!.Value,
+                paging.PageSize!.Value,
+                0));
+        }
+
+        // Dictionaries to hold included documents
+        var publishers = new Dictionary<Guid, PublisherProjection>();
+        var authors = new Dictionary<Guid, AuthorProjection>();
+        var categories = new Dictionary<Guid, CategoryProjection>();
+        var statistics = new Dictionary<Guid, BookStatistics>();
+
+        // Query books that are in user's favorites
+#pragma warning disable CS8603 // Possible null reference return - false positive from Marten's Include API
+        var query = session.Query<BookSearchProjection>()
+            .Include(publishers).On(x => x.PublisherId)!
+            .Include(authors).On(x => x.AuthorIds)!
+            .Include(categories).On(x => x.CategoryIds)!
+            .Where(b => profile.FavoriteBookIds.Contains(b.Id));
+
+        // Respect admin/soft-delete rules
+        if (!isAdmin)
+        {
+            query = query.Where(b => !b.Deleted);
+        }
+
+        // Apply sorting
+        query = (normalizedSortBy, normalizedSortOrder) switch
+        {
+            ("publisher", "desc") => query
+                .OrderByDescending(b => b.PublisherName)
+                .ThenBy(b => b.Title),
+            ("publisher", "asc") => query
+                .OrderBy(b => b.PublisherName)
+                .ThenBy(b => b.Title),
+            ("date", "desc") => query
+                .OrderByDescending(b => b.PublicationDate.GetValueOrDefault().Year)
+                .ThenByDescending(b => b.PublicationDate.GetValueOrDefault().Month)
+                .ThenByDescending(b => b.PublicationDate.GetValueOrDefault().Day)
+                .ThenBy(b => b.Title),
+            ("date", "asc") => query
+                .OrderBy(b => b.PublicationDate.GetValueOrDefault().Year)
+                .ThenBy(b => b.PublicationDate.GetValueOrDefault().Month)
+                .ThenBy(b => b.PublicationDate.GetValueOrDefault().Day)
+                .ThenBy(b => b.Title),
+            ("title", "desc") => query
+                .OrderByDescending(b => b.Title),
+            _ => query
+                .OrderBy(b => b.Title) // Default to Title asc
+        };
+
+        // Execute query with pagination
+        var pagedList = await query
+            .ToPagedListAsync(paging.Page!.Value, paging.PageSize!.Value, cancellationToken);
+
+        // Load statistics explicitly
+        var bookIds = pagedList.Select(b => b.Id).ToArray();
+        var loadedStats = await session.LoadManyAsync<BookStatistics>(cancellationToken, bookIds);
+        foreach (var stat in loadedStats)
+        {
+            statistics[stat.Id] = stat;
+        }
+#pragma warning restore CS8603
+
+        // Map to DTOs with localized descriptions
+        var now = DateTimeOffset.UtcNow;
+        var bookDtos = pagedList.Select(book =>
+        {
+            var activeSale = GetActiveSale(book.Sales, now);
+            return new BookDto(
+                book.Id,
+                book.Title,
+                book.Isbn,
+                book.OriginalLanguage,
+                CultureInfo.GetCultureInfo(book.OriginalLanguage).DisplayName,
+                LocalizationHelper.GetLocalizedValue(book.Descriptions, culture, defaultCulture, ""),
+                book.PublicationDate,
+                BookStore.ApiService.Helpers.BookHelpers.IsPreRelease(book.PublicationDate),
+                book.PublisherId.HasValue && publishers.TryGetValue(book.PublisherId.Value, out var pub)
+                    ? new PublisherDto(pub.Id, pub.Name)
+                    : null,
+                [.. book.AuthorIds
+                    .Select(id => authors.TryGetValue(id, out var author)
+                        ? new AuthorDto(
+                            author.Id,
+                            author.Name,
+                            LocalizationHelper.GetLocalizedValue(author.Biographies, culture, defaultCulture, ""))
+                        : null)
+                    .Where(a => a != null)
+                    .Cast<AuthorDto>()],
+                [.. book.CategoryIds
+                    .Select(id => categories.TryGetValue(id, out var cat)
+                        ? new CategoryDto(
+                            cat.Id,
+                            LocalizationHelper.GetLocalizedValue(cat.Names, culture, defaultCulture, "Unknown"))
+                        : null)
+                    .Where(c => c != null)
+                    .Cast<CategoryDto>()],
+                true, // IsFavorite is always true for favorites endpoint
+                statistics.TryGetValue(book.Id, out var stats) ? stats.LikeCount : 0,
+                stats?.AverageRating ?? 0f,
+                stats?.RatingCount ?? 0,
+                profile.BookRatings.TryGetValue(book.Id, out var userRating) ? userRating : 0,
+                book.Prices,
+                book.CoverImageUrl,
+                activeSale,
+                book.Deleted
+            );
+        }).ToList();
+
+        var response = new PagedListDto<BookDto>(
+            bookDtos,
+            pagedList.PageNumber,
+            pagedList.PageSize,
+            pagedList.TotalItemCount);
 
         return TypedResults.Ok(response);
     }
