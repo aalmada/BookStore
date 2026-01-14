@@ -275,6 +275,13 @@ public static class TestHelpers
             throw new Exception("Failed to create book or receive BookUpdated event.");
         }
 
+        // Fetch full book details since the Create endpoint only returns ID
+        var getResponse = await httpClient.GetAsync($"/api/books/{createdBook.Id}");
+        if (getResponse.IsSuccessStatusCode)
+        {
+            createdBook = await getResponse.Content.ReadFromJsonAsync<BookDto>();
+        }
+
         return createdBook!;
     }
 

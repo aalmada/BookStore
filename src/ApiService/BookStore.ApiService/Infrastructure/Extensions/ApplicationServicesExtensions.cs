@@ -164,7 +164,9 @@ public static class ApplicationServicesExtensions
                 ValidAudience = jwtSettings["Audience"],
                 IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(
                         System.Text.Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]!)),
-                ClockSkew = TimeSpan.Zero // Remove default 5 minute clock skew
+                ClockSkew = TimeSpan.Zero, // Remove default 5 minute clock skew
+                RoleClaimType = System.Security.Claims.ClaimTypes.Role,
+                NameClaimType = System.Security.Claims.ClaimTypes.Name
             })
             // Add cookies required by SignInManager
             .AddCookie(Microsoft.AspNetCore.Identity.IdentityConstants.ApplicationScheme)

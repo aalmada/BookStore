@@ -92,6 +92,74 @@ public class BookSoftDeleteTests
         _ = await Assert.That(restoredGet.IsSuccessStatusCode).IsTrue();
     }
 
+    [Test]
+    public async Task SoftDeletedBook_ShouldBeVisibleToAdmin_ButNotPublic()
+    {
+        // Arrange
+        var adminClient = await TestHelpers.GetAuthenticatedClientAsync();
+        var publicClient = TestHelpers.GetUnauthenticatedClient();
+
+        var createdBook = await TestHelpers.CreateBookAsync(adminClient);
+        var bookId = createdBook!.Id;
+
+        // Soft Delete
+        var getResponse = await adminClient.GetAsync($"/api/books/{bookId}");
+        var etag = getResponse.Headers.ETag?.Tag;
+
+        var deleteRequest = new HttpRequestMessage(HttpMethod.Delete, $"/api/admin/books/{bookId}");
+        deleteRequest.Headers.IfMatch.Add(new System.Net.Http.Headers.EntityTagHeaderValue(etag!));
+        var deleteResponse = await adminClient.SendAsync(deleteRequest);
+        _ = await Assert.That(deleteResponse.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
+
+        // Wait for projection
+        await TestHelpers.WaitForConditionAsync(async () =>
+        {
+            var r = await publicClient.GetAsync($"/api/books/{bookId}");
+            return r.StatusCode == HttpStatusCode.NotFound;
+        }, TimeSpan.FromSeconds(10), "Book did not disappear from public API");
+
+        // Act & Assert
+
+        // 1. Single Book Endpoint
+
+        // Public -> 404
+        var publicGet = await publicClient.GetAsync($"/api/books/{bookId}");
+        _ = await Assert.That(publicGet.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
+
+        // Admin should see the book (Get)
+        var response = await adminClient.GetAsync($"/api/books/{bookId}");
+        if (!response.IsSuccessStatusCode)
+        {
+            var headers = string.Join("; ", response.Headers.Select(h => $"{h.Key}={string.Join(",", h.Value)}"));
+            throw new Exception($"Failed to get book. Status: {response.StatusCode}. Headers: {headers}");
+        }
+
+        var book = await response.Content.ReadFromJsonAsync<BookDto>();
+        _ = await Assert.That(book).IsNotNull();
+        _ = await Assert.That(book!.Id).IsEqualTo(bookId);
+        _ = await Assert.That(book.IsDeleted).IsTrue();
+
+        // 2. Search/List Endpoint
+
+        // Public -> Should NOT contain the book
+        var publicSearch = await publicClient.GetFromJsonAsync<PagedListDto<BookDto>>($"/api/books?search={createdBook.Title}");
+        _ = await Assert.That(publicSearch!.Items.Any(b => b.Id == bookId)).IsFalse();
+
+        // Admin -> Should contain the book with IsDeleted=true
+        var adminSearch = await adminClient.GetFromJsonAsync<PagedListDto<BookDto>>($"/api/books?search={Uri.EscapeDataString(createdBook.Title)}");
+
+        // Note: The search endpoint might need to cache update or re-query. Admin requests have their own cache key due to isAdmin param.
+        // We might need to wait for the cache to invalidate or just rely on the new key being generated fresh if not present.
+        // However, HybridCache is used. If "isAdmin=true" key was never cached, it will query Marten.
+        // Marten query should return it.
+
+        // Let's check if it returns
+        var foundBook = adminSearch!.Items.FirstOrDefault(b => b.Id == bookId);
+
+        _ = await Assert.That(foundBook).IsNotNull();
+        _ = await Assert.That(foundBook!.IsDeleted).IsTrue();
+    }
+
     // Helper class to deserialzie the projection from Admin API
     class BookSearchProjection
     {
