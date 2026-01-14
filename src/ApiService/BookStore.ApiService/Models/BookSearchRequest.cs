@@ -8,4 +8,7 @@ public record BookSearchRequest : OrderedPagedRequest
     public Guid? AuthorId { get; init; }
     public Guid? CategoryId { get; init; }
     public Guid? PublisherId { get; init; }
+    public bool? OnSale { get; init; }
+    public decimal? MinPrice { get; init; }
+    public decimal? MaxPrice { get; init; }
 }

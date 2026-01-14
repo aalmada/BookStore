@@ -1,3 +1,4 @@
+using System.Reflection;
 using BookStore.ApiService.Aggregates;
 using BookStore.ApiService.Commands;
 using BookStore.ApiService.Events;
@@ -5,6 +6,7 @@ using BookStore.ApiService.Handlers.Books;
 using BookStore.ApiService.Infrastructure;
 using BookStore.Shared.Models;
 using Marten;
+using Marten.Events;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -198,5 +200,107 @@ public class BookHandlerTests
 
         // Assert
         _ = await Assert.That(result).IsTypeOf<Microsoft.AspNetCore.Http.HttpResults.NotFound>();
+    }
+    [Test]
+    [Category("Unit")]
+    public async Task ScheduleBookSale_ShouldAppendEvent()
+    {
+        // Arrange
+        var bookId = Guid.CreateVersion7();
+        var command = new ScheduleBookSale(bookId, 10m, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddDays(1));
+        var session = Substitute.For<IDocumentSession>();
+
+        // Mock FetchStreamStateAsync to return a valid state (book exists)
+        _ = session.Events.FetchStreamStateAsync(bookId).Returns(new Marten.Events.StreamState { Version = 1 });
+
+        // Mock AggregateStreamAsync to return a valid aggregate
+        var aggregate = new BookAggregate();
+        SetPrivateProperty(aggregate, "Id", bookId);
+        _ = session.Events.AggregateStreamAsync<BookAggregate>(bookId).Returns(aggregate);
+
+        // Act
+        var result = await BookHandlers.Handle(command, session, Substitute.For<IHttpContextAccessor>(), Substitute.For<ILogger<ScheduleBookSale>>());
+
+        // Assert
+        _ = await Assert.That(result).IsTypeOf<Microsoft.AspNetCore.Http.HttpResults.NoContent>();
+        _ = session.Events.Received(1).Append(
+            bookId,
+            Arg.Is<BookSaleScheduled>(e => e.Sale.Percentage == 10m));
+    }
+
+    [Test]
+    [Category("Unit")]
+    public async Task ScheduleBookSale_WithInvalidPercentage_ShouldReturnBadRequest()
+    {
+        // Arrange
+        var bookId = Guid.CreateVersion7();
+        var command = new ScheduleBookSale(bookId, 150m, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddDays(1));
+        var session = Substitute.For<IDocumentSession>();
+
+        _ = session.Events.FetchStreamStateAsync(bookId).Returns(new Marten.Events.StreamState { Version = 1 });
+        var aggregate = new BookAggregate();
+        SetPrivateProperty(aggregate, "Id", bookId);
+        _ = session.Events.AggregateStreamAsync<BookAggregate>(bookId).Returns(aggregate);
+
+        // Act
+        var result = await BookHandlers.Handle(command, session, Substitute.For<IHttpContextAccessor>(), Substitute.For<ILogger<ScheduleBookSale>>());
+
+        // Assert
+        _ = await Assert.That(result).IsAssignableTo<IStatusCodeHttpResult>();
+        var badRequestResult = (IStatusCodeHttpResult)result;
+        _ = await Assert.That(badRequestResult.StatusCode).IsEqualTo(400);
+    }
+
+    [Test]
+    [Category("Unit")]
+    public async Task ScheduleBookSale_WithMissingBook_ShouldReturnNotFound()
+    {
+        // Arrange
+        var bookId = Guid.CreateVersion7();
+        var command = new ScheduleBookSale(bookId, 10m, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddDays(1));
+        var session = Substitute.For<IDocumentSession>();
+
+        _ = session.Events.FetchStreamStateAsync(bookId).Returns(Task.FromResult<Marten.Events.StreamState?>(null));
+
+        // Act
+        var result = await BookHandlers.Handle(command, session, Substitute.For<IHttpContextAccessor>(), Substitute.For<ILogger<ScheduleBookSale>>());
+
+        // Assert
+        _ = await Assert.That(result).IsTypeOf<Microsoft.AspNetCore.Http.HttpResults.NotFound>();
+    }
+
+    [Test]
+    [Category("Unit")]
+    public async Task CancelBookSale_ShouldAppendEvent()
+    {
+        // Arrange
+        var bookId = Guid.CreateVersion7();
+        var saleStart = DateTimeOffset.UtcNow;
+        var command = new CancelBookSale(bookId, saleStart);
+        var session = Substitute.For<IDocumentSession>();
+
+        _ = session.Events.FetchStreamStateAsync(bookId).Returns(new Marten.Events.StreamState { Version = 1 });
+        var aggregate = new BookAggregate();
+        SetPrivateProperty(aggregate, "Id", bookId);
+        // Pre-seed an active sale using reflection to access private list
+        var salesList = (List<BookSale>)aggregate.GetType().GetProperty("Sales", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)!.GetValue(aggregate)!;
+        salesList.Add(new BookSale(10m, saleStart, saleStart.AddDays(1)));
+
+        _ = session.Events.AggregateStreamAsync<BookAggregate>(bookId).Returns(aggregate);
+
+        // Act
+        var result = await BookHandlers.Handle(command, session, Substitute.For<IHttpContextAccessor>(), Substitute.For<ILogger<CancelBookSale>>());
+
+        // Assert
+        _ = await Assert.That(result).IsTypeOf<Microsoft.AspNetCore.Http.HttpResults.NoContent>();
+        _ = session.Events.Received(1).Append(
+            bookId,
+            Arg.Is<BookSaleCancelled>(e => e.SaleStart == saleStart));
+    }
+
+    static void SetPrivateProperty<T>(T obj, string propertyName, object value)
+    {
+        var property = typeof(T).GetProperty(propertyName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        property?.SetValue(obj, value);
     }
 }

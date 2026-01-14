@@ -417,4 +417,124 @@ public static class BookHandlers
 
         return Results.NoContent();
     }
+
+    /// <summary>
+    /// Handle ScheduleBookSale command with ETag validation
+    /// </summary>
+    public static async Task<IResult> Handle(
+        ScheduleBookSale command,
+        IDocumentSession session,
+        IHttpContextAccessor contextAccessor,
+        ILogger logger)
+    {
+        var context = contextAccessor.HttpContext;
+
+        // Get current stream state for ETag validation
+        var streamState = await session.Events.FetchStreamStateAsync(command.BookId);
+        if (streamState is null)
+        {
+            Log.Books.BookNotFound(logger, command.BookId);
+            return Results.NotFound();
+        }
+
+        var currentETag = ETagHelper.GenerateETag(streamState.Version);
+
+        // Check If-Match header for optimistic concurrency (only if we have an HTTP context)
+        if (context != null && !string.IsNullOrEmpty(command.ETag) &&
+            !ETagHelper.CheckIfMatch(context, currentETag))
+        {
+            return ETagHelper.PreconditionFailed();
+        }
+
+        var aggregate = await session.Events.AggregateStreamAsync<BookAggregate>(command.BookId);
+        if (aggregate is null)
+        {
+            Log.Books.BookNotFound(logger, command.BookId);
+            return Results.NotFound();
+        }
+
+        try
+        {
+            var @event = aggregate.ScheduleSale(command.Percentage, command.Start, command.End);
+            _ = session.Events.Append(command.BookId, @event);
+        }
+        catch (ArgumentException ex)
+        {
+            Log.Books.InvalidBookData(logger, command.BookId, ex.Message);
+            return Results.BadRequest(new { error = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            Log.Books.InvalidBookOperation(logger, command.BookId, ex.Message);
+            return Results.BadRequest(new { error = ex.Message });
+        }
+
+        // Get new stream state and return new ETag (only if we have an HTTP context)
+        if (context != null)
+        {
+            var newStreamState = await session.Events.FetchStreamStateAsync(command.BookId);
+            var newETag = ETagHelper.GenerateETag(newStreamState!.Version);
+            ETagHelper.AddETagHeader(context, newETag);
+        }
+
+        return Results.NoContent();
+    }
+
+    /// <summary>
+    /// Handle CancelBookSale command with ETag validation
+    /// </summary>
+    public static async Task<IResult> Handle(
+        CancelBookSale command,
+        IDocumentSession session,
+        IHttpContextAccessor contextAccessor,
+        ILogger logger)
+    {
+        var context = contextAccessor.HttpContext;
+
+        // Get current stream state for ETag validation
+        var streamState = await session.Events.FetchStreamStateAsync(command.BookId);
+        if (streamState is null)
+        {
+            Log.Books.BookNotFound(logger, command.BookId);
+            return Results.NotFound();
+        }
+
+        var currentETag = ETagHelper.GenerateETag(streamState.Version);
+
+        // Check If-Match header for optimistic concurrency (only if we have an HTTP context)
+        if (context != null && !string.IsNullOrEmpty(command.ETag) &&
+            !ETagHelper.CheckIfMatch(context, currentETag))
+        {
+            return ETagHelper.PreconditionFailed();
+        }
+
+        var aggregate = await session.Events.AggregateStreamAsync<BookAggregate>(command.BookId);
+        if (aggregate is null)
+        {
+            Log.Books.BookNotFound(logger, command.BookId);
+            return Results.NotFound();
+        }
+
+        try
+        {
+            var @event = aggregate.CancelSale(command.SaleStart);
+            _ = session.Events.Append(command.BookId, @event);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Log.Books.InvalidBookOperation(logger, command.BookId, ex.Message);
+            return Results.BadRequest(new { error = ex.Message });
+        }
+
+        // Get new stream state and return new ETag (only if we have an HTTP context)
+        if (context != null)
+        {
+            var newStreamState = await session.Events.FetchStreamStateAsync(command.BookId);
+            var newETag = ETagHelper.GenerateETag(newStreamState!.Version);
+            ETagHelper.AddETagHeader(context, newETag);
+        }
+
+        return Results.NoContent();
+    }
 }
+

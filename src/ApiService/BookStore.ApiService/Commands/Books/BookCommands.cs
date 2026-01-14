@@ -83,3 +83,32 @@ public record UpdateBookCover(
     /// </summary>
     public string? ETag { get; init; }
 }
+
+/// <summary>
+/// Command to schedule a sale for a book
+/// </summary>
+public record ScheduleBookSale(
+    Guid BookId,
+    decimal Percentage,
+    DateTimeOffset Start,
+    DateTimeOffset End)
+{
+    /// <summary>
+    /// ETag for optimistic concurrency control
+    /// </summary>
+    public string? ETag { get; init; }
+}
+
+/// <summary>
+/// Command to cancel a scheduled sale
+/// </summary>
+public record CancelBookSale(
+    Guid BookId,
+    DateTimeOffset SaleStart)
+{
+    /// <summary>
+    /// ETag for optimistic concurrency control
+    /// </summary>
+    public string? ETag { get; init; }
+}
+

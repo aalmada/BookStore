@@ -22,6 +22,7 @@ public class BookAggregate : ISoftDeleted
     public DateTimeOffset? DeletedAt { get; set; }
 #pragma warning restore BS3005
     public Dictionary<string, decimal> Prices { get; private set; } = [];
+    public List<BookSale> Sales { get; private set; } = [];
     public string? CoverImageUrl { get; private set; }
 
     // Marten uses this for rehydration
@@ -66,6 +67,15 @@ public class BookAggregate : ISoftDeleted
     }
 
     void Apply(BookCoverUpdated @event) => CoverImageUrl = @event.CoverImageUrl;
+
+    void Apply(BookSaleScheduled @event)
+    {
+        // Remove any existing sale with the same start time
+        _ = Sales.RemoveAll(s => s.Start == @event.Sale.Start);
+        Sales.Add(@event.Sale);
+    }
+
+    void Apply(BookSaleCancelled @event) => _ = Sales.RemoveAll(s => s.Start == @event.SaleStart);
 
     // Command methods
     public static BookAdded CreateEvent(
@@ -292,4 +302,40 @@ public class BookAggregate : ISoftDeleted
 
         return new BookCoverUpdated(Id, coverImageUrl);
     }
+
+    public BookSaleScheduled ScheduleSale(decimal percentage, DateTimeOffset start, DateTimeOffset end)
+    {
+        if (Deleted)
+        {
+            throw new InvalidOperationException("Cannot schedule sale for a deleted book");
+        }
+
+        // Validate sale parameters (BookSale constructor will throw if invalid)
+        var sale = new BookSale(percentage, start, end);
+
+        // Check for overlapping sales
+        if (Sales.Any(s => (start < s.End && end > s.Start)))
+        {
+            throw new InvalidOperationException("Sale period overlaps with an existing sale");
+        }
+
+        return new BookSaleScheduled(Id, sale);
+    }
+
+    public BookSaleCancelled CancelSale(DateTimeOffset saleStart)
+    {
+        if (Deleted)
+        {
+            throw new InvalidOperationException("Cannot cancel sale for a deleted book");
+        }
+
+        var sale = Sales.FirstOrDefault(s => s.Start == saleStart);
+        if (sale.Equals(default(BookSale)))
+        {
+            throw new InvalidOperationException("No sale found with the specified start time");
+        }
+
+        return new BookSaleCancelled(Id, saleStart);
+    }
 }
+

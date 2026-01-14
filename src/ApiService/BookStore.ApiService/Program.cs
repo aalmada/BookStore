@@ -93,7 +93,8 @@ if (true)
                 await store.Storage.ApplyAllConfiguredChangesToDatabaseAsync();
 
                 var bus = scope.ServiceProvider.GetRequiredService<Wolverine.IMessageBus>();
-                var seeder = new DatabaseSeeder(store, bus);
+                var seederLogger = scope.ServiceProvider.GetRequiredService<ILogger<DatabaseSeeder>>();
+                var seeder = new DatabaseSeeder(store, bus, seederLogger);
                 await seeder.SeedAsync();
 
                 // Seed admin user
@@ -103,6 +104,12 @@ if (true)
                 // Wait for async projections to process the seeded events
                 // In production, projections run continuously in the background
                 await WaitForProjectionsAsync(store, logger);
+
+                // Seed sales AFTER projections are ready so we can query BookSearchProjection
+                await seeder.SeedSalesAsync();
+
+                // Wait AGAIN for projections to process the new sales events
+                await WaitForProjectionsAsync(store, logger, expectSales: true);
 
                 Log.Infrastructure.DatabaseSeedingCompleted(logger);
                 return; // Success, exit loop
@@ -129,7 +136,7 @@ if (true)
     });
 }
 
-static async Task WaitForProjectionsAsync(IDocumentStore store, ILogger logger)
+static async Task WaitForProjectionsAsync(IDocumentStore store, ILogger logger, bool expectSales = false)
 {
     Log.Infrastructure.WaitingForProjections(logger);
 
@@ -147,8 +154,16 @@ static async Task WaitForProjectionsAsync(IDocumentStore store, ILogger logger)
         var categoryCount = await session.Query<CategoryProjection>().CountAsync();
         var publisherCount = await session.Query<PublisherProjection>().CountAsync();
 
-        // If all projections have data, we're ready
-        if (bookCount > 0 && authorCount > 0 && categoryCount > 0 && publisherCount > 0)
+        var projectionsReady = bookCount > 0 && authorCount > 0 && categoryCount > 0 && publisherCount > 0;
+
+        if (expectSales)
+        {
+            // If we expect sales, verify that at least one book has sales
+            var hasSales = await session.Query<BookSearchProjection>().AnyAsync(b => b.Sales.Count > 0); // Check length of JSONB array
+            projectionsReady = projectionsReady && hasSales;
+        }
+
+        if (projectionsReady)
         {
             Log.Infrastructure.ProjectionsReady(logger, bookCount, authorCount, categoryCount, publisherCount);
             return;
