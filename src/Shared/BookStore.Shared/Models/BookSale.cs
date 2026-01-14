@@ -43,12 +43,12 @@ public readonly record struct BookSale
     /// <summary>
     /// Checks if the sale is currently active
     /// </summary>
-    public bool IsActive(DateTimeOffset now) 
+    public bool IsActive(DateTimeOffset now)
         => now >= Start && now < End;
 
     /// <summary>
     /// Calculates the discounted price
     /// </summary>
-    public decimal CalculateDiscountedPrice(decimal originalPrice) 
+    public decimal CalculateDiscountedPrice(decimal originalPrice)
         => originalPrice * (1 - Percentage / 100);
 }

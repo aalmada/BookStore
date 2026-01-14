@@ -24,7 +24,7 @@ public class BookSaleTests
     [Arguments(100)]
     [Arguments(-10)]
     [Arguments(150)]
-    public async Task Constructor_WithInvalidPercentage_ThrowsArgumentException(decimal percentage) 
+    public async Task Constructor_WithInvalidPercentage_ThrowsArgumentException(decimal percentage)
         => _ = await Assert.ThrowsAsync<ArgumentException>(() =>
             {
                 _ = new BookSale(percentage, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddDays(1));
