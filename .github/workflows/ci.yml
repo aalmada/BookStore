@@ -1,0 +1,107 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v6
+      
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v5
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+        
+    - name: Cache NuGet packages
+      uses: actions/cache@v5
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
+      
+    - name: Restore dependencies
+      run: dotnet restore
+      
+    - name: Build
+      run: dotnet build --no-restore --configuration Release
+      
+    - name: Run API unit tests (fast feedback)
+      run: dotnet test --configuration Release ${{ github.event_name == 'pull_request' && '--fail-fast' || '' }} -- --coverage --coverage-output-format cobertura
+      working-directory: tests/ApiService/BookStore.ApiService.UnitTests
+      # TUnit automatically generates GitHub Actions test summary
+      # Run fast unit tests first for quick feedback
+      
+    # - name: Run AppHost integration tests
+    #   run: dotnet test --configuration Release -- --coverage --coverage-output-format cobertura
+    #   working-directory: tests/BookStore.AppHost.Tests
+    #   env:
+    #     ASPNETCORE_ENVIRONMENT: Development
+    #   # Tests full application startup and end-to-end scenarios
+      
+    - name: Run analyzer tests
+      run: dotnet test --configuration Release
+      working-directory: tests/ApiService/BookStore.ApiService.Analyzers.UnitTests
+      # Verify Roslyn analyzers work correctly
+      
+
+      
+    - name: Code Coverage Summary
+      uses: irongut/CodeCoverageSummary@v1.3.0
+      with:
+        filename: '**/TestResults/*.cobertura.xml'
+        badge: true
+        fail_below_min: false
+        format: markdown
+        hide_branch_rate: false
+        hide_complexity: true
+        indicators: true
+        output: both
+        thresholds: '60 80'
+
+    - name: Add Coverage PR Comment
+      uses: marocchino/sticky-pull-request-comment@v2
+      if: github.event_name == 'pull_request'
+      with:
+        recreate: true
+        path: code-coverage-results.md
+
+    - name: Write to Job Summary
+      run: cat code-coverage-results.md >> $GITHUB_STEP_SUMMARY
+      
+  code-quality:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v6
+      
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v5
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+        
+    - name: Restore dependencies
+      run: dotnet restore
+      
+    - name: Check code formatting
+      run: dotnet format --verify-no-changes --verbosity diagnostic
+      
+    - name: Run analyzers
+      run: dotnet build --no-restore --configuration Release /p:TreatWarningsAsErrors=true
