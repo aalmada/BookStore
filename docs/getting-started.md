@@ -8,10 +8,7 @@ This guide will help you set up and run the complete Book Store application (fro
 
 - **.NET 10 SDK** - [Download](https://dotnet.microsoft.com/download/dotnet/10.0)
   - Includes **C# 14** with latest language features (collection expressions, primary constructors, etc.)
-- **Aspire workload** - Install after .NET SDK:
-  ```bash
-  dotnet workload install aspire
-  ```
+- **Aspire CLI** - [Install instructions](https://aspire.dev/get-started/install-cli/)
 - **Docker Desktop** - [Download](https://www.docker.com/products/docker-desktop)
 - **Git** - [Download](https://git-scm.com/downloads)
 

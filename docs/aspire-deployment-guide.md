@@ -19,17 +19,11 @@ The BookStore application uses Aspire to orchestrate:
 
 ### General Requirements
 
-- **.NET 10 SDK** or later (with Aspire workload)
+- **.NET 10 SDK** or later
 - **Docker Desktop** or Podman (OCI-compliant container runtime)
 - **Aspire CLI** (for publishing and deployment)
 
-```bash
-# Install Aspire workload
-dotnet workload install aspire
 
-# Verify installation
-dotnet workload list
-```
 
 ### Azure Deployment Requirements
 
