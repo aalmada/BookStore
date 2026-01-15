@@ -1,6 +1,6 @@
 # ApiService Instructions
 
-**Scope**: `src/BookStore.ApiService/**`
+**Scope**: `src/ApiService/BookStore.ApiService/**`
 
 ## Core Rules
 - **Domain Logic**: Belongs inside aggregates; application layer coordinates and persists events.

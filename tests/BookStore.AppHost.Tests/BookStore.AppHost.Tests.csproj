@@ -28,11 +28,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Shared\BookStore.Shared\BookStore.Shared.csproj" />
-    <ProjectReference Include="..\..\src\Client\BookStore.Client\BookStore.Client.csproj" />
+    <ProjectReference Include="..\..\src\BookStore.Shared\BookStore.Shared.csproj" />
+    <ProjectReference Include="..\..\src\BookStore.Client\BookStore.Client.csproj" />
     <ProjectReference Include="..\..\src\BookStore.AppHost\BookStore.AppHost.csproj" />
     <ProjectReference Include="..\..\src\BookStore.ServiceDefaults\BookStore.ServiceDefaults.csproj" />
-    <ProjectReference Include="..\..\src\ApiService\BookStore.ApiService\BookStore.ApiService.csproj" />
+    <ProjectReference Include="..\..\src\BookStore.ApiService\BookStore.ApiService.csproj" />
   </ItemGroup>
 
 </Project>

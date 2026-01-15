@@ -277,6 +277,18 @@ BookStore/
 │   │   ├── Infrastructure/        # Cross-cutting concerns
 │   │   └── Program.cs             # API entry point
 │   │
+│   ├── BookStore.ApiService.Analyzers/  # Roslyn Analyzers
+│   │   └── Analyzers/             # Custom code analyzers
+│   │
+│   ├── BookStore.Client/          # Reusable HTTP Client Library
+│   │   ├── Endpoints/             # Endpoint interfaces
+│   │   └── IBooksClient.cs        # Main client interface
+│   │
+│   ├── BookStore.Shared/          # Shared DTOs and Models
+│   │   ├── Requests/              # Request DTOs
+│   │   ├── Responses/             # Response DTOs
+│   │   └── Models/                # Shared domain models
+│   │
 │   ├── BookStore.Web/             # Blazor Frontend
 │   │   ├── Components/            # Blazor components
 │   │   │   ├── Pages/             # Page components
@@ -288,12 +300,24 @@ BookStore/
 │   ├── BookStore.AppHost/         # Aspire Orchestration
 │   │   └── Program.cs             # Service configuration
 │   │
-│   ├── BookStore.ServiceDefaults/ # Shared Configuration
-│   │   └── Extensions.cs          # OpenTelemetry, logging, health checks
+│   └── BookStore.ServiceDefaults/ # Shared Configuration
+│       └── Extensions.cs          # OpenTelemetry, logging, health checks
+│
+├── tests/
+│   ├── ApiService/
+│   │   ├── BookStore.ApiService.UnitTests/           # API Unit Tests
+│   │   │   ├── Handlers/                             # Handler tests
+│   │   │   └── JsonSerializationTests.cs
+│   │   │
+│   │   └── BookStore.ApiService.Analyzers.UnitTests/ # Analyzer Tests
 │   │
-│   └── BookStore.Tests/           # Unit Tests
-│       ├── Handlers/              # Handler tests
-│       └── JsonSerializationTests.cs
+│   ├── BookStore.AppHost.Tests/   # Integration Tests
+│   │   ├── GlobalSetup.cs         # Test infrastructure
+│   │   └── Tests/                 # Integration test suites
+│   │
+│   ├── BookStore.Shared.UnitTests/    # Shared Library Tests
+│   │
+│   └── BookStore.Web.Tests/           # Frontend Unit Tests
 │
 └── docs/                          # Documentation
     ├── getting-started.md         # This guide
@@ -313,11 +337,14 @@ The project uses **TUnit**, a modern testing framework for .NET with built-in co
 # Run all tests
 dotnet test
 
-# Run tests for specific project
-dotnet test --project src/ApiService/BookStore.ApiService.Tests/BookStore.ApiService.Tests.csproj
+# Run integration tests
+dotnet test --project tests/BookStore.AppHost.Tests/BookStore.AppHost.Tests.csproj
 
-# Alternative: Run tests directly
-dotnet run --project src/ApiService/BookStore.ApiService.Tests/BookStore.ApiService.Tests.csproj
+# Run API unit tests
+dotnet test --project tests/BookStore.ApiService.UnitTests/BookStore.ApiService.UnitTests.csproj
+
+# Run analyzer tests
+dotnet test --project tests/BookStore.ApiService.Analyzers.UnitTests/BookStore.ApiService.Analyzers.UnitTests.csproj
 ```
 
 ### Test Structure

@@ -2,7 +2,6 @@
 
   <PropertyGroup>
     <IsAspireSharedProject>true</IsAspireSharedProject>
-    <IsAspireSharedProject>true</IsAspireSharedProject>
   </PropertyGroup>
 
   <ItemGroup>

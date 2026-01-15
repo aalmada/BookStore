@@ -19,7 +19,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\BookStore.ServiceDefaults\BookStore.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\BookStore.ServiceDefaults\BookStore.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\BookStore.ApiService.Analyzers\BookStore.ApiService.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\BookStore.Shared\BookStore.Shared.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -44,11 +46,6 @@
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.15.0" />
     <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.15.0" />
     <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.15.0" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\BookStore.ApiService.Analyzers\BookStore.ApiService.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-    <ProjectReference Include="..\..\Shared\BookStore.Shared\BookStore.Shared.csproj" />
   </ItemGroup>
 
 </Project>

@@ -12,8 +12,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\ApiService\BookStore.ApiService\BookStore.ApiService.csproj" />
-    <ProjectReference Include="..\Web\BookStore.Web\BookStore.Web.csproj" />
+    <ProjectReference Include="..\BookStore.ApiService\BookStore.ApiService.csproj" />
+    <ProjectReference Include="..\BookStore.Web\BookStore.Web.csproj" />
     <ProjectReference Include="..\BookStore.ServiceDefaults\BookStore.ServiceDefaults.csproj" IsAspireProjectResource="false" />
   </ItemGroup>
 

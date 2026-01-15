@@ -10,7 +10,7 @@
 
   <ItemGroup>
     <!-- Reference Shared for PartialDate -->
-    <ProjectReference Include="..\..\Shared\BookStore.Shared\BookStore.Shared.csproj" />
+    <ProjectReference Include="..\BookStore.Shared\BookStore.Shared.csproj" />
   </ItemGroup>
 
 </Project>

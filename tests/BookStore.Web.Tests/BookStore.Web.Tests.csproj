@@ -15,8 +15,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\BookStore.AppHost\BookStore.AppHost.csproj" />
-    <ProjectReference Include="..\BookStore.Web\BookStore.Web.csproj" />
+    <ProjectReference Include="..\..\src\BookStore.AppHost\BookStore.AppHost.csproj" />
+    <ProjectReference Include="..\..\src\BookStore.Web\BookStore.Web.csproj" />
   </ItemGroup>
 
   <ItemGroup>
