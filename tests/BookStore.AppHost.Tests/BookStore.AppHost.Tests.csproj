@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.Testing" Version="13.1.0" />
+    <PackageReference Include="Azure.Storage.Blobs" Version="12.27.0" />
     <PackageReference Include="Bogus" Version="35.6.5" />
     <PackageReference Include="coverlet.collector" Version="6.0.4">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -31,6 +32,7 @@
     <ProjectReference Include="..\..\src\Client\BookStore.Client\BookStore.Client.csproj" />
     <ProjectReference Include="..\..\src\BookStore.AppHost\BookStore.AppHost.csproj" />
     <ProjectReference Include="..\..\src\BookStore.ServiceDefaults\BookStore.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\..\src\ApiService\BookStore.ApiService\BookStore.ApiService.csproj" />
   </ItemGroup>
 
 </Project>

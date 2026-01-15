@@ -1,6 +1,7 @@
 # Book Store
 
 [![CI](https://github.com/aalmada/BookStore/actions/workflows/ci.yml/badge.svg)](https://github.com/aalmada/BookStore/actions/workflows/ci.yml)
+![Code Coverage](https://img.shields.io/badge/Code%20Coverage-from%20CI-green?logo=codecov)
 [![Nightly Integration Tests](https://github.com/aalmada/BookStore/actions/workflows/nightly-integration.yml/badge.svg)](https://github.com/aalmada/BookStore/actions/workflows/nightly-integration.yml)
 [![Documentation](https://github.com/aalmada/BookStore/actions/workflows/docs.yml/badge.svg)](https://github.com/aalmada/BookStore/actions/workflows/docs.yml)
 [![CodeQL](https://github.com/aalmada/BookStore/actions/workflows/codeql.yml/badge.svg)](https://github.com/aalmada/BookStore/actions/workflows/codeql.yml)
