@@ -28,6 +28,89 @@ BookStore.AppHost.Tests/
 └── GlobalSetup.cs             # Global test setup and teardown
 ```
 
+## Test Infrastructure with .NET Aspire
+
+The integration tests leverage **[Aspire.Hosting.Testing](https://learn.microsoft.com/en-us/dotnet/aspire/fundamentals/testing)** to automatically start and orchestrate all application components, providing true end-to-end testing in an isolated environment.
+
+### How Aspire Bootstraps the Application
+
+The `GlobalSetup.cs` uses `DistributedApplicationTestingBuilder` to create and start the entire application stack defined in [`BookStore.AppHost`](file:///Users/antaoalmada/Projects/BookStore/src/BookStore.AppHost/AppHost.cs):
+
+```csharp
+// GlobalSetup.cs - Before(TestSession)
+var builder = await DistributedApplicationTestingBuilder.CreateAsync<Projects.BookStore_AppHost>();
+App = await builder.BuildAsync();
+await App.StartAsync();
+```
+
+This single call automatically provisions and starts:
+
+| Component | Resource Type | Purpose |
+|-----------|---------------|---------|
+| **PostgreSQL** | Database | Core data storage with `pg_trgm` extension for full-text search |
+| **Azurite** | Blob Storage | Azure Storage emulator for book cover images |
+| **Redis** | Cache | Distributed caching layer |
+| **ApiService** | .NET Project | RESTful API backend |
+| **WebFrontend** | .NET Project | Blazor web application |
+
+> [!IMPORTANT]
+> Aspire automatically handles:
+> - ✅ Resource lifecycle management (start, stop, cleanup)
+> - ✅ Health checks and readiness verification
+> - ✅ Service discovery and connection strings
+> - ✅ Dependency ordering (e.g., API waits for database)
+> - ✅ Container orchestration for infrastructure services
+
+### Accessing Resources in Tests
+
+Tests interact with the application through HTTP clients created by the `DistributedApplication`:
+
+```csharp
+// TestHelpers.cs
+public static async Task<HttpClient> GetAuthenticatedClientAsync()
+{
+    var app = GlobalHooks.App!;
+    var client = app.CreateHttpClient("apiservice"); // Service name from AppHost
+    client.DefaultRequestHeaders.Authorization = 
+        new AuthenticationHeaderValue("Bearer", GlobalHooks.AdminAccessToken);
+    return await Task.FromResult(client);
+}
+```
+
+The `CreateHttpClient()` method automatically resolves the service endpoint from Aspire's service discovery.
+
+### Resource Health Monitoring
+
+Aspire's `ResourceNotificationService` allows tests to verify infrastructure health:
+
+```csharp
+// InfrastructureTests.cs
+[Test]
+[Arguments("postgres")]
+[Arguments("cache")]
+[Arguments("blobs")]
+public async Task ResourceIsHealthy(string resourceName)
+{
+    var notificationService = GlobalHooks.NotificationService;
+    await notificationService!.WaitForResourceHealthyAsync(resourceName, CancellationToken.None)
+        .WaitAsync(TestConstants.DefaultTimeout);
+}
+```
+
+> [!NOTE]
+> The `WaitForResourceHealthyAsync` method is also used in `GlobalSetup` to ensure the API service is ready before attempting authentication.
+
+### Benefits Over Manual Setup
+
+Using Aspire for integration testing provides significant advantages:
+
+- **✅ Realistic Environment**: Tests run against the same infrastructure topology as production
+- **✅ No Mocking Required**: Tests interact with real databases, storage, and caches
+- **✅ Simplified Configuration**: No manual setup of connection strings or service endpoints
+- **✅ Parallel Test Isolation**: Each test run gets its own isolated environment
+- **✅ Automatic Cleanup**: Resources are properly disposed after test execution
+- **✅ Fast Startup**: Aspire optimizes container reuse and startup times
+
 ## Key Features
 
 ### 1. Shared Authentication Token
