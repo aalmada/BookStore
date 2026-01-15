@@ -24,7 +24,14 @@ A complete book store management system featuring:
 - **Modern Stack**: .NET 10 with C# 14 (latest language features)
 
 > [!TIP]
-> **AI-Ready Project**: This codebase is fully configured for AI-assisted development with `AGENTS.md` files and reusable skills in [`.claude/skills/`](.claude/skills/). See [Agent-Based Development](#-agent-based-development) for details.
+> **🤖 AI-Ready Development**: This project is built for AI agents. Run `/doctor` to check your environment, then use skills like `/scaffold-write` or `/scaffold-read` to generate code following all architectural patterns automatically. **Zero setup required**—just ask your AI assistant to scaffold a feature!
+>
+> - ✅ **AGENTS.md Files** - Context-aware guidance in every project directory
+> - ✅ **10+ Skills** - Automated workflows for scaffolding, testing, and deployment
+> - ✅ **Template-Based** - Generate Event Sourcing, CQRS, and reactive UI code
+> - ✅ **Standards Compliant** - Follows [GitHub Copilot](https://docs.github.com/en/copilot/concepts/agents/about-agent-skills) and [agents.md](https://agents.md/) specifications
+>
+> See [Agent Development Guide](docs/agent-guide.md) for the complete system overview.
 
 ## 🏗️ Architectural Philosophy
 

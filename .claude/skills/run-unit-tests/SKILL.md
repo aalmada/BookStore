@@ -1,6 +1,7 @@
 ---
 name: Run Unit Tests
 description: Run unit tests for the API Service and Analyzers. Use this to verify business logic, individual components, and code analyzers.
+license: MIT
 ---
 
 To verify the logic, endpoints, and custom analyzers of the API Service:
@@ -16,12 +17,25 @@ To verify the logic, endpoints, and custom analyzers of the API Service:
    - **Purpose**: Verifies custom Roslyn analyzers (e.g., UUIDv7 enforcement).
 
 // turbo
-3. **Run All Unit Tests (Shortcut)**
-   - From the root directory, run:
+3. **Both (shortcut)**
+   - To run both test suites in one command:
      ```bash
      dotnet test tests/ApiService/BookStore.ApiService.UnitTests/BookStore.ApiService.UnitTests.csproj && \
      dotnet test tests/ApiService/BookStore.ApiService.Analyzers.UnitTests/BookStore.ApiService.Analyzers.UnitTests.csproj
      ```
+
+## Related Skills
+
+**Used By**:
+- `/verify-feature` - Runs all tests including these unit tests
+
+**Related**:
+- `/run-integration-tests` - Run full integration test suite
+- `/verify-feature` - Complete verification (build + format + all tests)
+
+**See Also**:
+- ApiService.UnitTests AGENTS.md - Unit test patterns
+- Analyzers.UnitTests AGENTS.md - Analyzer testing patterns
 
 4. **Analyze Results**
    - **Pass**: Core logic and static analysis rules are correct.

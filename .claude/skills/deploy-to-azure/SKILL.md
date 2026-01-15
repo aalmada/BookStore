@@ -1,9 +1,24 @@
 ---
 name: Deploy To Azure
 description: Deploy the BookStore application to Azure using Aspire and azd. Use this to ship the application to production.
+license: MIT
 ---
 
 Deploy the application stack to Azure Container Apps using the Azure Developer CLI (`azd`).
+
+## Related Skills
+
+**Prerequisites**:
+- `/doctor` - Verify your environment has .NET SDK, Docker, and azd installed
+
+**Alternatives**:
+- `/deploy-kubernetes` - For Kubernetes deployment (AKS, EKS, GKE)
+
+**Recovery**:
+- `/rollback-deployment` - If deployment fails or causes issues
+
+**Verification**:
+- `/verify-feature` - Test the deployed application
 
 1. **Environment Check**
    - Verify the `.azure` directory exists.

@@ -1,13 +1,29 @@
 ---
 name: Verify Feature
 description: Strict verification for new features. Runs compilation, formatting, and all tests to ensure the "Definition of Done".
+license: MIT
 ---
 
 Use this skill to verify that a feature implementation is complete and correct. It enforces code style, compilation, and test passing.
 
+## Related Skills
+
+**Typically Used After**:
+- `/scaffold-write`, `/scaffold-read`, `/scaffold-frontend-feature` - After implementing features
+- `/scaffold-test` - After creating tests
+- `/debug-sse`, `/debug-cache` - After fixing issues
+
+**Component Skills** (for granular verification):
+- `/rebuild-clean` - Clean build if compilation issues
+- `/run-unit-tests` - Run only unit tests
+- `/run-integration-tests` - Run only integration tests
+
+## Verification Steps
+
 1. **Compilation**
    - Run `dotnet build` in the root directory.
    - **Check**: If the build fails, STOP. Report the errors using `view_file` to show the relevant code.
+   - **Tip**: For clean rebuild, use `/rebuild-clean`
 
 2. **Code Formatting**
    - Run `dotnet format --verify-no-changes`.
@@ -20,9 +36,12 @@ Use this skill to verify that a feature implementation is complete and correct. 
 
 // turbo
 4. **Run Tests (Unit & Integration)**
-   - Run `dotnet test`.
+   - Run `dotnet test` to execute all test suites.
    - **Check**: All tests must pass.
    - *Action*: If tests fail, analyze the results. Focus on any NEW failures related to the recent changes.
+   - **Granular Options**:
+     - `/run-unit-tests` - Unit tests only
+     - `/run-integration-tests` - Integration tests only
 
 5. **Completion**
    - If all steps pass, report: "✅ Feature verified: Builds, follows style guide, and passes all tests."

@@ -1,6 +1,7 @@
 ---
 name: Doctor
 description: specific tools and SDKs required for the BookStore project. Use this to diagnose environment issues.
+license: MIT
 ---
 
 Perform a health check on the development environment to ensure all prerequisites are met:
@@ -25,9 +26,20 @@ Perform a health check on the development environment to ensure all prerequisite
    - **Requirement**: Valid client version installed.
    - *Action*: Required for Kubernetes deployment commands.
 
-5. **Aspire Workload**
-   - Run `dotnet workload list`
+5. **Aspire Workload** (for orchestration)
+   - Run: `dotnet workload list`
+   - Should show `aspire` in installed workloads.
    - **Requirement**: The `aspire` workload must be present.
    - *Action*: If missing, run `dotnet workload install aspire`.
 
 Report a summary: "Environment is healthy" or list specific missing tools.
+
+## Related Skills
+
+**Run Before**:
+- `/deploy-to-azure` - Check azd and Docker before deployment
+- `/deploy-kubernetes` - Check kubectl and Docker before deployment
+
+**See Also**:
+- [Getting Started Guide](../../docs/getting-started.md) - Installation instructions
+- README.md - Prerequisites section

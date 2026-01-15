@@ -1,6 +1,7 @@
 ---
 name: Scaffold Read
 description: Guide for adding a new read operation (query) to the Backend. Focuses on Marten queries, Projections, Caching, and Pagination.
+license: MIT
 ---
 
 Follow this guide to implement a read-only endpoint in the **Backend** (ApiService) using strict project standards.
@@ -39,6 +40,27 @@ Follow this guide to implement a read-only endpoint in the **Backend** (ApiServi
 7. **Client Integration**
    - **Interface**: Create `src/Client/BookStore.Client/IGet{Resource}Endpoint.cs` manually.
    - **Registration**: Add to `BookStoreClientExtensions.cs`.
+
+## Related Skills
+
+**Prerequisites**:
+- `/scaffold-write` - Ensure write operations exist before adding reads
+- `/scaffold-projection` - For detailed projection patterns and localization
+
+**Next Steps**:
+- `/scaffold-frontend-feature` - Create UI to consume the query
+- `/scaffold-test` - Create integration tests for the endpoint
+- `/verify-feature` - Complete verification
+
+**Related**:
+- `/debug-cache` - If caching issues occur
+
+**See Also**:
+- [scaffold-projection](../scaffold-projection/SKILL.md) - Advanced projection patterns
+- [scaffold-write](../scaffold-write/SKILL.md) - Related write operations
+- ApiService AGENTS.md - Caching and localization patterns
+
+## Verification
 
 8. **Verify**
    - Run `/verify-feature` to ensure build and tests pass.

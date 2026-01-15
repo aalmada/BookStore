@@ -1,6 +1,7 @@
 ---
 name: Scaffold Frontend Feature
 description: Guide for adding a new feature to the Web Frontend (Blazor), focusing on Reactive State, Optimistic Updates, and Cache Invalidation.
+license: MIT
 ---
 
 Follow this guide to implement a responsive frontend feature in `src/Web/BookStore.Web`.
@@ -44,6 +45,29 @@ Follow this guide to implement a responsive frontend feature in `src/Web/BookSto
    - Open `src/Web/BookStore.Web/Services/QueryInvalidationService.cs`.
    - Add cases to `GetInvalidationKeys(IDomainEventNotification notification)`.
    - **Rule**: Map the Domain Event (e.g., `BookCreated`) to the Query Keys you defined in Step 2 (e.g., `"Books"`).
+
+## Related Skills
+
+**Prerequisites**:
+- Backend endpoints must exist first:
+  - `/scaffold-write` - For mutation endpoints
+  - `/scaffold-read` - For query endpoints
+- Client SDK must be configured (usually done by scaffold-write/read)
+
+**Next Steps**:
+- `/scaffold-test` - Create integration tests for the feature
+- `/verify-feature` - Complete verification
+
+**Debugging**:
+- `/debug-sse` - If real-time updates don't work
+- `/debug-cache` - If query data is stale
+
+**See Also**:
+- Web AGENTS.md - ReactiveQuery patterns and SSE integration
+- [scaffold-write](../scaffold-write/SKILL.md) - Backend mutations
+- [scaffold-read](../scaffold-read/SKILL.md) - Backend queries
+
+## Verification
 
 6. **Verify**
    - Run the app and verify:

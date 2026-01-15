@@ -1,6 +1,7 @@
 ---
 name: Scaffold Write
 description: Guide for adding a new write operation (command/mutation) to the Backend. Focuses on Event Sourcing, Wolverine commands, and Projections.
+license: MIT
 ---
 
 Follow this guide to implement a state-changing operation in the **Backend** (ApiService) using strict project standards.
@@ -41,6 +42,28 @@ Follow this guide to implement a state-changing operation in the **Backend** (Ap
    - **Interface**: Create `src/Client/BookStore.Client/I{Action}{Resource}Endpoint.cs` manually.
    - **DTOs**: If a Request DTO is needed, create it in `src/Shared/BookStore.Shared/Models/` (do not rely on auto-generation).
    - **Registration**: Add to `BookStoreClientExtensions.cs`.
+
+## Related Skills
+
+**Prerequisites**:
+- For complex aggregates, consider `/scaffold-aggregate` first to create the domain model
+
+**Next Steps**:
+- `/scaffold-read` - Add query endpoints for the new resource
+- `/scaffold-frontend-feature` - Create UI for the new feature
+- `/scaffold-test` - Create integration tests
+- `/verify-feature` - Complete verification
+
+**Specialized Skills**:
+- `/scaffold-aggregate` - Generate event-sourced aggregates with Apply methods
+- `/scaffold-projection` - Generate read model projections for queries
+
+**See Also**:
+- [scaffold-aggregate](../scaffold-aggregate/SKILL.md) - Detailed aggregate patterns
+- [scaffold-projection](../scaffold-projection/SKILL.md) - Projection creation
+- ApiService AGENTS.md - Backend patterns and conventions
+
+## Verification
 
 8. **Verify**
    - Run `/verify-feature` to ensure build, format, and tests pass.

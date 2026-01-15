@@ -1,6 +1,7 @@
 ---
 name: Scaffold Skill
 description: Guide for creating and registering a new agent skill.
+license: MIT
 ---
 
 Follow this guide to add a new capability (skill/workflow) to the agent.
