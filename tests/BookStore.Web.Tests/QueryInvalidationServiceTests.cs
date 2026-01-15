@@ -7,13 +7,10 @@ namespace BookStore.Web.Tests;
 
 public class QueryInvalidationServiceTests
 {
-    private QueryInvalidationService _sut = null!;
+    QueryInvalidationService _sut = null!;
 
     [Before(Test)]
-    public void Setup()
-    {
-        _sut = new QueryInvalidationService(NullLogger<QueryInvalidationService>.Instance);
-    }
+    public void Setup() => _sut = new QueryInvalidationService(NullLogger<QueryInvalidationService>.Instance);
 
     [Test]
     public async Task ShouldInvalidate_ReturnsTrue_WhenKeyMatches()
@@ -23,7 +20,7 @@ public class QueryInvalidationServiceTests
 
         var result = _sut.ShouldInvalidate(notification, keys);
 
-        await Assert.That(result).IsTrue();
+        _ = await Assert.That(result).IsTrue();
     }
 
     [Test]
@@ -35,9 +32,9 @@ public class QueryInvalidationServiceTests
 
         var result = _sut.ShouldInvalidate(notification, keys);
 
-        await Assert.That(result).IsTrue();
+        _ = await Assert.That(result).IsTrue();
     }
-    
+
     [Test]
     public async Task ShouldInvalidate_ReturnsFalse_WhenNoKeyMatches()
     {
@@ -47,7 +44,7 @@ public class QueryInvalidationServiceTests
 
         var result = _sut.ShouldInvalidate(notification, keys);
 
-        await Assert.That(result).IsFalse();
+        _ = await Assert.That(result).IsFalse();
     }
 
     [Test]
@@ -59,7 +56,7 @@ public class QueryInvalidationServiceTests
 
         var result = _sut.ShouldInvalidate(notification, keys);
 
-        await Assert.That(result).IsTrue();
+        _ = await Assert.That(result).IsTrue();
     }
 
     [Test]
@@ -77,46 +74,68 @@ public class QueryInvalidationServiceTests
 
         foreach (var type in notificationTypes)
         {
-            try 
+            try
             {
                 var instance = CreateInstance(type);
                 if (instance is IDomainEventNotification notification)
                 {
                     // Access the private GetInvalidationKeys method for testing
                     var method = _sut.GetType().GetMethod("GetInvalidationKeys", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                    if (method == null) throw new Exception("Method GetInvalidationKeys not found");
+                    if (method == null)
+                    {
+                        throw new Exception("Method GetInvalidationKeys not found");
+                    }
 
-                    var keys = (IEnumerable<string>)method.Invoke(_sut, new object[] { notification })!;
+                    var keys = (IEnumerable<string>)method.Invoke(_sut, [notification])!;
                     var keyList = keys.ToList();
 
-                    await Assert.That(keyList).IsNotEmpty().Because($"Notification type {type.Name} should yield at least one invalidation key.");
+                    _ = await Assert.That(keyList).IsNotEmpty().Because($"Notification type {type.Name} should yield at least one invalidation key.");
                 }
             }
             catch (Exception ex)
             {
-                 // CreateInstance might fail if we can't handle the constructor
-                 // This failure itself is a good alert that we have a new complex notification type
-                 throw new Exception($"Failed to verify notification type {type.Name}: {ex.Message}", ex);
+                // CreateInstance might fail if we can't handle the constructor
+                // This failure itself is a good alert that we have a new complex notification type
+                throw new Exception($"Failed to verify notification type {type.Name}: {ex.Message}", ex);
             }
         }
     }
 
-    private object CreateInstance(Type type)
+    object CreateInstance(Type type)
     {
         // Try to find a constructor
         var ctor = type.GetConstructors().FirstOrDefault();
-        if (ctor == null) return Activator.CreateInstance(type)!;
+        if (ctor == null)
+        {
+            return Activator.CreateInstance(type)!;
+        }
 
         var parameters = ctor.GetParameters().Select(p => GetDefaultValue(p.ParameterType)).ToArray();
         return ctor.Invoke(parameters);
     }
 
-    private object GetDefaultValue(Type type)
+    object GetDefaultValue(Type type)
     {
-        if (type == typeof(string)) return "test";
-        if (type == typeof(Guid)) return Guid.NewGuid();
-        if (type == typeof(DateTimeOffset)) return DateTimeOffset.UtcNow;
-        if (type.IsValueType) return Activator.CreateInstance(type)!;
+        if (type == typeof(string))
+        {
+            return "test";
+        }
+
+        if (type == typeof(Guid))
+        {
+            return Guid.NewGuid();
+        }
+
+        if (type == typeof(DateTimeOffset))
+        {
+            return DateTimeOffset.UtcNow;
+        }
+
+        if (type.IsValueType)
+        {
+            return Activator.CreateInstance(type)!;
+        }
+
         return null!;
     }
 }

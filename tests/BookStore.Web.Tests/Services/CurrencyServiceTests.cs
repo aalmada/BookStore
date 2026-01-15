@@ -8,8 +8,8 @@ namespace BookStore.Web.Tests.Services;
 
 public class CurrencyServiceTests
 {
-    private IJSRuntime _jsRuntime = null!;
-    private CurrencyService _sut = null!;
+    IJSRuntime _jsRuntime = null!;
+    CurrencyService _sut = null!;
 
     [Before(Test)]
     public void Setup()
@@ -22,14 +22,14 @@ public class CurrencyServiceTests
     public async Task InitializeAsync_ShouldLoadFromLocalStorage()
     {
         // Arrange
-        _jsRuntime.InvokeAsync<string?>("localStorage.getItem", Arg.Is<object[]>(a => a[0].ToString() == "selected_currency"))
+        _ = _jsRuntime.InvokeAsync<string?>("localStorage.getItem", Arg.Is<object[]>(a => a[0].ToString() == "selected_currency"))
             .Returns(new ValueTask<string?>("EUR"));
 
         // Act
         await _sut.InitializeAsync();
 
         // Assert
-        await Assert.That(_sut.CurrentCurrency).IsEqualTo("EUR");
+        _ = await Assert.That(_sut.CurrentCurrency).IsEqualTo("EUR");
     }
 
     [Test]
@@ -39,7 +39,7 @@ public class CurrencyServiceTests
         await _sut.SetCurrencyAsync("GBP");
 
         // Assert
-        await Assert.That(_sut.CurrentCurrency).IsEqualTo("GBP");
+        _ = await Assert.That(_sut.CurrentCurrency).IsEqualTo("GBP");
         _ = await _jsRuntime.Received(1).InvokeAsync<IJSVoidResult>("localStorage.setItem", Arg.Is<object[]>(a => a[0].ToString() == "selected_currency" && a[1].ToString() == "GBP"));
     }
 
@@ -54,7 +54,7 @@ public class CurrencyServiceTests
         await _sut.SetCurrencyAsync("EUR");
 
         // Assert
-        await Assert.That(eventTriggered).IsTrue();
+        _ = await Assert.That(eventTriggered).IsTrue();
     }
 
     [Test]
@@ -76,7 +76,7 @@ public class CurrencyServiceTests
         var result = _sut.FormatPrice(prices);
 
         // Assert
-        await Assert.That(result).IsEqualTo(expected);
+        _ = await Assert.That(result).IsEqualTo(expected);
     }
 
     [Test]
@@ -93,6 +93,6 @@ public class CurrencyServiceTests
         var result = _sut.FormatPrice(prices);
 
         // Assert
-        await Assert.That(result).IsEqualTo("N/A");
+        _ = await Assert.That(result).IsEqualTo("N/A");
     }
 }
