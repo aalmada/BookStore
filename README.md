@@ -28,7 +28,7 @@ A complete book store management system featuring:
 > - ✅ **AGENTS.md Files** - Context-aware guidance in every project directory
 > - ✅ **10+ Skills** - Automated workflows for scaffolding, testing, and deployment
 > - ✅ **Template-Based** - Generate Event Sourcing, CQRS, and reactive UI code
-> - ✅ **Standards Compliant** - Follows [GitHub Copilot](https://docs.github.com/en/copilot/concepts/agents/about-agent-skills) and [agents.md](https://agents.md/) specifications
+> - ✅ **Standards Compliant** - Follows [Claude Skills](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview) and [AGENTS.md](https://agents.md/) specifications
 >
 > See [Agent Development Guide](docs/agent-guide.md) for the complete system overview.
 
