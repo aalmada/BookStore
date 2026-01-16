@@ -27,10 +27,10 @@ A complete book store management system featuring:
 ## 📸 Screenshots
 
 ### Book Catalog
-![Book Catalog](docs/images/book-list.png)
+![Book Catalog](images/book-list.png)
 
 ### Book Details
-![Book Details](docs/images/book-details.png)
+![Book Details](images/book-details.png)
 
 ## 🏗️ Architectural Philosophy
 
