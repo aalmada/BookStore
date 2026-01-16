@@ -24,6 +24,14 @@ A complete book store management system featuring:
 - **AI-Ready**: Built for AI agents with context-aware guidance and automated skills (see [Agent Guide](docs/agent-guide.md))
 
 
+## 📸 Screenshots
+
+### Book Catalog
+![Book Catalog](docs/images/book-list.png)
+
+### Book Details
+![Book Details](docs/images/book-details.png)
+
 ## 🏗️ Architectural Philosophy
 
 > *"A complex system that works is invariably found to have evolved from a simple system that worked. A complex system designed from scratch never works and cannot be patched up to make it work. You have to start over with a working simple system."*
