@@ -78,7 +78,9 @@
                 "repo": "https://github.com/aalmada/BookStore",
                 "branch": "main"
             },
-            "_gitUrlPattern": "github"
+            "_gitUrlPattern": "github",
+            "_baseUrl": "https://aalmada.github.io/BookStore/",
+            "_appOgImage": "images/og-image.png"
         },
         "globalMetadataFiles": [],
         "fileMetadataFiles": [],
