@@ -94,6 +94,16 @@
         "noLangKeyword": false,
         "keepFileLink": false,
         "cleanupCacheHistory": false,
-        "disableGitFeatures": false
+        "disableGitFeatures": false,
+        "sitemap": {
+            "baseUrl": "https://aalmada.github.io/BookStore/",
+            "priority": 0.1,
+            "changefreq": "daily",
+            "fileOptions": {
+                "**/index.md": {
+                    "priority": 0.8
+                }
+            }
+        }
     }
 }
