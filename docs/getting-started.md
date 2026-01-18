@@ -60,7 +60,7 @@ This will:
 - Open the Aspire dashboard in your browser
 
 > [!TIP]
-> For a deep dive into how Aspire orchestrates the solution locally, see the [Aspire Orchestration Guide](aspire-guide.md).
+> For a deep dive into how Aspire orchestrates the solution locally, see the [Aspire Orchestration Guide](guides/aspire-guide.md).
 
 ## Accessing the Application
 
@@ -454,9 +454,9 @@ dotnet build
 ## Next Steps
 
 - **[Architecture Overview](architecture.md)** - Understand the system design
-- **[Testing Guide](testing-guide.md)** - Learn about testing with TUnit
-- **[Event Sourcing Guide](event-sourcing-guide.md)** - Learn about event sourcing
-- **[ETag Support](etag-guide.md)** - Implement optimistic concurrency
+- **[Testing Guide](guides/testing-guide.md)** - Learn about testing with TUnit
+- **[Event Sourcing Guide](guides/event-sourcing-guide.md)** - Learn about event sourcing
+- **[ETag Support](guides/etag-guide.md)** - Implement optimistic concurrency
 
 ## Getting Help
 

@@ -3,6 +3,7 @@
         {
             "src": [
                 {
+                    "src": "..",
                     "files": [
                         "src/**/*.csproj"
                     ],
@@ -30,11 +31,11 @@
             },
             {
                 "files": [
-                    "docs/**.md",
-                    "docs/**/toc.yml",
+                    "**.md",
+                    "**/toc.yml",
                     "toc.yml",
-                    "*.md",
-                    "LICENSE",
+                    "../README.md",
+                    "../LICENSE",
                     "robots.txt"
                 ],
                 "exclude": [

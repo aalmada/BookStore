@@ -21,16 +21,16 @@ A complete book store management system featuring:
 - **Orchestration**: Aspire for local development, deployment, and observability
 - **Database**: PostgreSQL with event store and read model projections
 - **Modern Stack**: .NET 10 with C# 14 (latest language features)
-- **AI-Ready**: Built for AI agents with context-aware guidance and automated skills (see [Agent Guide](docs/agent-guide.md))
+- **AI-Ready**: Built for AI agents with context-aware guidance and automated skills (see [Agent Guide](docs/guides/agent-guide.md))
 
 
 ## 📸 Screenshots
 
 ### Book Catalog
-![Book Catalog](images/book-list.png)
+![Book Catalog](docs/images/book-list.png)
 
 ### Book Details
-![Book Details](images/book-details.png)
+![Book Details](docs/images/book-details.png)
 
 ## 🏗️ Architectural Philosophy
 
@@ -114,7 +114,7 @@ The project includes a custom **Roslyn Analyzer** (`BookStore.ApiService.Analyze
 - ✅ Handlers follow Wolverine conventions
 - ✅ Consistent namespace organization
 
-See [Analyzer Rules Documentation](docs/analyzer-rules.md) for details.
+See [Analyzer Rules Documentation](docs/guides/analyzer-rules.md) for details.
 
 - **Native OpenAPI** with Scalar UI
 - **Structured Logging** with correlation IDs
@@ -134,27 +134,29 @@ For a detailed breakdown of the project structure, please refer to the [Getting 
 
 - **[Getting Started](docs/getting-started.md)** - Setup and first steps
 - **[Architecture Overview](docs/architecture.md)** - System design and patterns
-- **[Event Sourcing Guide](docs/event-sourcing-guide.md)** - Event sourcing concepts and implementation
-- **[Aspire Orchestration Guide](docs/aspire-guide.md)** - Service orchestration and local development
-- **[Marten Guide](docs/marten-guide.md)** - Document DB and Event Store features
-- **[Wolverine Integration](docs/wolverine-guide.md)** - Command/handler pattern with Wolverine
-- **[Configuration Guide](docs/configuration-guide.md)** - Options pattern and validation
-- **[API Conventions](docs/api-conventions-guide.md)** - Time handling and JSON serialization standards
-- **[API Client Generation](docs/api-client-generation.md)** - Type-safe API client with Refit
-- **[Authentication Guide](docs/authentication-guide.md)** - JWT authentication and role-based authorization
-- **[Passkey Guide](docs/passkey-guide.md)** - Passwordless authentication with WebAuthn/FIDO2
+- **[Event Sourcing Guide](docs/guides/event-sourcing-guide.md)** - Event sourcing concepts and implementation
+- **[Aspire Orchestration Guide](docs/guides/aspire-guide.md)** - Service orchestration and local development
+- **[Marten Guide](docs/guides/marten-guide.md)** - Document DB and Event Store features
+- **[Wolverine Integration](docs/guides/wolverine-guide.md)** - Command/handler pattern with Wolverine
+- **[Configuration Guide](docs/guides/configuration-guide.md)** - Options pattern and validation
+- **[API Conventions](docs/guides/api-conventions-guide.md)** - Time handling and JSON serialization standards
+- **[API Client Generation](docs/guides/api-client-generation.md)** - Type-safe API client with Refit
+- **[Authentication Guide](docs/guides/authentication-guide.md)** - JWT authentication and role-based authorization
+- **[Passkey Guide](docs/guides/passkey-guide.md)** - Passwordless authentication with WebAuthn/FIDO2
 - **[Real-time Notifications](#) <!-- TODO: Create SSE guide -->** - Server-Sent Events (SSE) for push notifications
-- **[Logging Guide](docs/logging-guide.md)** - Structured logging with source-generated log messages
-- **[Correlation & Causation IDs](docs/correlation-causation-guide.md)** - Distributed tracing
-- **[Localization Guide](docs/localization-guide.md)** - Multi-language support
-- **[Caching Guide](docs/caching-guide.md)** - Hybrid caching with Redis and localization support
-- **[ETag Support](docs/etag-guide.md)** - Optimistic concurrency and caching
-- **[Performance Guide](docs/performance-guide.md)** - GC optimization and performance tuning
-- **[Testing Guide](docs/testing-guide.md)** - Unit testing with TUnit, assertions, and best practices
-- **[Integration Testing Guide](docs/integration-testing-guide.md)** - End-to-end testing with Aspire and Bogus
-- **[Agent Development Guide](docs/agent-guide.md)** - AI assistant configuration system (AGENTS.md files and Claude skills)
-- **[Aspire Deployment Guide](docs/aspire-deployment-guide.md)** - Deploy to Azure and Kubernetes
-- **[Production Scaling Guide](docs/production-scaling-guide.md)** - Scale applications and databases in production
+- **[Logging Guide](docs/guides/logging-guide.md)** - Structured logging with source-generated log messages
+- **[Correlation & Causation IDs](docs/guides/correlation-causation-guide.md)** - Distributed tracing
+- **[Localization Guide](docs/guides/localization-guide.md)** - Multi-language support
+- **[Caching Guide](docs/guides/caching-guide.md)** - Hybrid caching with Redis and localization support
+- **[Real-time Notifications Guide](docs/guides/real-time-notifications.md)** - Server-Sent Events (SSE) implementation
+- **[ETag Support](docs/guides/etag-guide.md)** - Optimistic concurrency and caching
+- **[Performance Guide](docs/guides/performance-guide.md)** - GC optimization and performance tuning
+- **[Testing Guide](docs/guides/testing-guide.md)** - Unit testing with TUnit, assertions, and best practices
+- **[Integration Testing Guide](docs/guides/integration-testing-guide.md)** - End-to-end testing with Aspire and Bogus
+- **[Agent Development Guide](docs/guides/agent-guide.md)** - AI assistant configuration system (AGENTS.md files and Claude skills)
+- **[Aspire Deployment Guide](docs/guides/aspire-deployment-guide.md)** - Deploy to Azure and Kubernetes
+- **[Production Scaling Guide](docs/guides/production-scaling-guide.md)** - Scale applications and databases in production
+- **[Documentation Guide](docs/guides/documentation-guide.md)** - How to build and contribute to documentation
 - **[Contributing Guidelines](CONTRIBUTING.md)** - How to contribute to this project
 
 ## 🔧 Technology Stack

@@ -3,56 +3,58 @@
 - name: Architecture
   href: architecture.md
 - name: API Reference
-  href: ../api/index.md
+  href: api/index.md
 - name: Guides
   items:
     - name: Event Sourcing
-      href: event-sourcing-guide.md
+      href: guides/event-sourcing-guide.md
     - name: Aspire Orchestration
-      href: aspire-guide.md
+      href: guides/aspire-guide.md
     - name: Marten
-      href: marten-guide.md
+      href: guides/marten-guide.md
     - name: Wolverine
-      href: wolverine-guide.md
+      href: guides/wolverine-guide.md
     - name: Configuration
-      href: configuration-guide.md
+      href: guides/configuration-guide.md
     - name: API Conventions
-      href: api-conventions-guide.md
+      href: guides/api-conventions-guide.md
     - name: API Client Generation
-      href: api-client-generation.md
+      href: guides/api-client-generation.md
     - name: Authentication
-      href: authentication-guide.md
+      href: guides/authentication-guide.md
     - name: Passkey Authentication
-      href: passkey-guide.md
+      href: guides/passkey-guide.md
     - name: Real-time Notifications (SSE)
-      href: architecture.md#real-time-notifications-with-server-sent-events-sse
+      href: guides/real-time-notifications.md
     - name: Email Verification
-      href: email-validation.md
+      href: guides/email-validation.md
     - name: Logging
-      href: logging-guide.md
+      href: guides/logging-guide.md
     - name: Correlation & Causation
-      href: correlation-causation-guide.md
+      href: guides/correlation-causation-guide.md
     - name: Localization
-      href: localization-guide.md
+      href: guides/localization-guide.md
     - name: Multi-Currency Pricing
-      href: multi-currency-guide.md
+      href: guides/multi-currency-guide.md
     - name: Caching
-      href: caching-guide.md
+      href: guides/caching-guide.md
     - name: ETag
-      href: etag-guide.md
+      href: guides/etag-guide.md
     - name: Performance
-      href: performance-guide.md
+      href: guides/performance-guide.md
     - name: Testing
-      href: testing-guide.md
+      href: guides/testing-guide.md
     - name: Integration Testing
-      href: integration-testing-guide.md
+      href: guides/integration-testing-guide.md
     - name: Agent Development
-      href: agent-guide.md
+      href: guides/agent-guide.md
     - name: Aspire Deployment
-      href: aspire-deployment-guide.md
+      href: guides/aspire-deployment-guide.md
     - name: Production Scaling
-      href: production-scaling-guide.md
+      href: guides/production-scaling-guide.md
+    - name: Documentation Guide
+      href: guides/documentation-guide.md
 - name: Rules
   items:
     - name: Analyzer Rules
-      href: analyzer-rules.md
+      href: guides/analyzer-rules.md

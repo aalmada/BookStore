@@ -52,7 +52,7 @@ graph TD
 Instead of storing current state, we store all changes as immutable events.
 
 > [!NOTE]
-> For a comprehensive guide to event sourcing concepts, patterns, and best practices, see the [Event Sourcing Guide](event-sourcing-guide.md).
+> For a comprehensive guide to event sourcing concepts, patterns, and best practices, see the [Event Sourcing Guide](guides/event-sourcing-guide.md).
 
 **Benefits**:
 - Complete audit trail
@@ -82,7 +82,7 @@ public class BookAggregate
 }
 ```
 
-See [Marten Guide](marten-guide.md) for implementation details.
+See [Marten Guide](guides/marten-guide.md) for implementation details.
 
 ### CQRS (Command Query Responsibility Segregation)
 
@@ -157,99 +157,13 @@ public class BookSearchProjection
 
 The application automatically sends SSE notifications whenever projections are updated, providing real-time updates to connected clients without polling.
 
-**How it Works:**
-
-1. **Mutation occurs** - Client creates/updates/deletes an entity
-2. **Event stored** - Event is appended to Marten event stream
-3. **Projection updates** - Async daemon processes event and updates read model
-4. **Notification sent** - `ProjectionCommitListener` detects projection change and sends SSE notification
-5. **Clients receive** - All connected clients receive the update in real-time
-
-**SSE Flow:**
-
-```mermaid
-sequenceDiagram
-    participant Client
-    participant API as API Endpoint
-    participant Marten as Event Store
-    participant Daemon as Async Daemon
-    participant Listener as ProjectionCommitListener
-    participant SSE as SSE Stream
-    
-    Client->>API: 1. POST /api/admin/books (Create)
-    API->>Marten: 2. Append BookAdded event
-    Marten-->>API: 3. Event stored
-    API-->>Client: 4. HTTP 201 Created
-    
-    Daemon->>Marten: 5. Poll for new events
-    Daemon->>Daemon: 6. Update BookSearchProjection
-    Daemon->>Listener: 7. AfterCommitAsync (projection change)
-    Listener->>Listener: 8. Invalidate cache tags
-    Listener->>SSE: 9. Broadcast BookCreated notification
-    SSE-->>Client: 10. Push notification via SSE
-```
-
-**Event Types:**
-- `CategoryCreated`, `CategoryUpdated`, `CategoryDeleted`
-- `AuthorCreated`, `AuthorUpdated`, `AuthorDeleted`
-- `PublisherCreated`, `PublisherUpdated`, `PublisherDeleted`
-- `BookCreated`, `BookUpdated`, `BookDeleted`
-
-**Implementation:**
-
-```csharp
-// ProjectionCommitListener.cs
-public class ProjectionCommitListener : IDocumentSessionListener
-{
-    public async Task AfterCommitAsync(IDocumentSession _, IChangeSet commit, CancellationToken token)
-    {
-        // Process all projection changes
-        await ProcessDocumentChangesAsync(commit.Inserted, ChangeType.Insert, token);
-        await ProcessDocumentChangesAsync(commit.Updated, ChangeType.Update, token);  
-        await ProcessDocumentChangesAsync(commit.Deleted, ChangeType.Delete, token);
-    }
-    
-    async Task HandleCategoryChangeAsync(CategoryProjection category, ChangeType changeType)
-    {
-        // Determine notification type based on change and soft-delete status
-        var effectiveChangeType = DetermineEffectiveChangeType(changeType, category.IsDeleted);
-        
-        // Invalidate cache
-        await InvalidateCacheTagsAsync(category.Id, CacheTags.CategoryItemPrefix, CacheTags.CategoryList);
-        
-        // Send SSE notification
-        IDomainEventNotification notification = effectiveChangeType switch
-        {
-            ChangeType.Insert => new CategoryCreatedNotification(...),
-            ChangeType.Update => new CategoryUpdatedNotification(...),
-            ChangeType.Delete => new CategoryDeletedNotification(...)
-        };
-        await _notificationService.NotifyAsync(notification);
-    }
-}
-```
-
-**Benefits:**
-- ✅ **Automatic** - No manual notification code needed
-- ✅ **Reliable** - Tied to projection updates, not API calls
-- ✅ **Efficient** - Single listener handles all entities
-- ✅ **Integrated** - Cache invalidation + SSE in one place
-
-**Client Connection:**
-
-```javascript
-// Connect to SSE endpoint
-const eventSource = new EventSource('/api/notifications/stream');
-
-eventSource.addEventListener('BookUpdated', (event) => {
-    const notification = JSON.parse(event.data);
-    console.log(`Book ${notification.entityId} updated`);
-    // Update UI with fresh data
-});
-```
-
 > [!NOTE]
-> Soft-delete operations appear as `Delete` notifications. Restore operations appear as `Update` notifications (IsDeleted changes from true → false).
+> For implementation details, flow diagrams, and client integration examples, see the [Real-time Notifications Guide](guides/real-time-notifications.md).
+
+**Key Features**:
+- **Automatic**: Tied to projection updates, not API calls.
+- **Reliable**: Notifications only fire if the data is successfully committed.
+- **Integrated**: Handles cache invalidation and notification in a single unit of work.
 ```
 
 ## Domain Model
@@ -351,7 +265,7 @@ sequenceDiagram
 - **Wolverine** - Command/handler pattern and message bus
 - **Marten** - Event store and document DB
 - **PostgreSQL 16** - Database with extensions
-- **Aspire** - [Orchestration](aspire-guide.md) and observability
+- **Aspire** - [Orchestration](guides/aspire-guide.md) and observability
 - **Scalar** - API documentation
 
 ### Features
@@ -362,7 +276,7 @@ sequenceDiagram
 - **Distributed Tracing** - Correlation/causation IDs
 - **Environmental Metadata** - Automatic capture of client IP, User-Agent, and non-PII User ID (GUID) via headers. The system implements a metadata propagation system that allows the backend API to identify the original browser client even when requests are forwarded by the Blazor Server frontend.
 - **Multi-language** - Category translations
-- **Multi-Currency Pricing** - Explicit regional pricing with psychological endings ([docs](multi-currency-guide.md))
+- **Multi-Currency Pricing** - Explicit regional pricing with psychological endings ([docs](guides/multi-currency-guide.md))
 - **Full-text Search** - PostgreSQL trigrams
 - **API Versioning** - Header-based
 - **Soft Deletion** - Logical deletes with restore
@@ -374,7 +288,7 @@ sequenceDiagram
 - **Health Checks** - Service monitoring
 - **TUnit** - Modern testing framework with built-in code coverage
 - **Bogus** - Fake data generation for tests
-- **Roslyn Analyzers** - Custom analyzers for Event Sourcing/CQRS patterns ([docs](analyzer-rules.md))
+- **Roslyn Analyzers** - Custom analyzers for Event Sourcing/CQRS patterns ([docs](guides/analyzer-rules.md))
 - **Roslynator.Analyzers** - Enhanced code analysis
 - **Refit** - Type-safe REST library for .NET
 
@@ -486,7 +400,7 @@ The application implements a **Token-based authentication system**:
   - Admin role for full access
   - Extensible for additional roles
   
-See [Authentication Guide](authentication-guide.md) and [Passkey Guide](passkey-guide.md) for details.
+See [Authentication Guide](guides/authentication-guide.md) and [Passkey Guide](guides/passkey-guide.md) for details.
 
 ### Data Protection
 
@@ -516,10 +430,10 @@ See [Authentication Guide](authentication-guide.md) and [Passkey Guide](passkey-
 
 ## Next Steps
 
-- **[Event Sourcing Guide](event-sourcing-guide.md)** - Event sourcing concepts and patterns
-- **[Marten Guide](marten-guide.md)** - Event sourcing implementation with Marten
-- **[Wolverine Guide](wolverine-guide.md)** - Command/handler pattern
-- **[Aspire Orchestration Guide](aspire-guide.md)** - Service orchestration details
-- **[Localization Guide](localization-guide.md)** - Multi-language translation system
-- **[Multi-Currency Pricing Guide](multi-currency-guide.md)** - Regional pricing and psychological strategies
+- **[Event Sourcing Guide](guides/event-sourcing-guide.md)** - Event sourcing concepts and patterns
+- **[Marten Guide](guides/marten-guide.md)** - Event sourcing implementation with Marten
+- **[Wolverine Guide](guides/wolverine-guide.md)** - Command/handler pattern
+- **[Aspire Orchestration Guide](guides/aspire-guide.md)** - Service orchestration details
+- **[Localization Guide](guides/localization-guide.md)** - Multi-language translation system
+- **[Multi-Currency Pricing Guide](guides/multi-currency-guide.md)** - Regional pricing and psychological strategies
 - **[Getting Started](getting-started.md)** - Setup and running the application
