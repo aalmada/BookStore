@@ -77,6 +77,16 @@
                         </MudText>
                     }
 
+                    @if (book.Categories?.Count > 0)
+                    {
+                        <MudStack Row="true" Class="mb-4">
+                            @foreach (var category in book.Categories)
+                            {
+                                <MudChip T="string" Color="Color.Primary" Variant="Variant.Outlined">@category.Name</MudChip>
+                            }
+                        </MudStack>
+                    }
+
                      @* Favorite Button *@
                      <AuthorizeView>
                         <Authorized>

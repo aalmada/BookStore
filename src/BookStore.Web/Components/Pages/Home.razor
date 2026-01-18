@@ -171,6 +171,16 @@
                             <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-1">
                                 <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" /> @string.Join(", ", book.Authors.Select(a => a.Name))
                             </MudText>
+                            @if (book.Categories?.Count > 0)
+                            {
+                                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-1">
+                                    <MudIcon Icon="@Icons.Material.Filled.Category" Size="Size.Small" />
+                                    @foreach (var category in book.Categories)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" Class="mr-1">@category.Name</MudChip>
+                                    }
+                                </MudText>
+                            }
                             @if (book.Publisher != null)
                             {
                                 <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-1">
