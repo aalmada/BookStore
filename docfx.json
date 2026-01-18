@@ -34,7 +34,8 @@
                     "docs/**/toc.yml",
                     "toc.yml",
                     "*.md",
-                    "LICENSE"
+                    "LICENSE",
+                    "robots.txt"
                 ],
                 "exclude": [
                     "obj/**",
