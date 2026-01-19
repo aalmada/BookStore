@@ -76,13 +76,9 @@ public record RestoreBook(Guid Id)
 public record UpdateBookCover(
     Guid BookId,
     byte[] Content,
-    string ContentType)
-{
-    /// <summary>
-    /// ETag for optimistic concurrency control
-    /// </summary>
-    public string? ETag { get; init; }
-}
+    string ContentType,
+    string? ETag = null,
+    string? TenantId = null);
 
 /// <summary>
 /// Command to schedule a sale for a book

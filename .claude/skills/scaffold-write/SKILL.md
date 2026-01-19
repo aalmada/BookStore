@@ -43,6 +43,10 @@ Follow this guide to implement a state-changing operation in the **Backend** (Ap
    - **DTOs**: If a Request DTO is needed, create it in `src/Shared/BookStore.Shared/Models/` (do not rely on auto-generation).
    - **Registration**: Add to `BookStoreClientExtensions.cs`.
 
+8. **Multi-Tenancy Check**
+   - Ensure explicit `ITenantContext` injection if managing cache keys.
+   - Verify `TenantId` propagates in any background jobs.
+
 ## Related Skills
 
 **Prerequisites**:

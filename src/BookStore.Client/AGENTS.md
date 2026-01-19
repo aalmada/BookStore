@@ -7,6 +7,7 @@
 - **DTOs**: Ensure DTOs match API contracts exactly. Uses `record` types.
 - **Serialization**: Handle JSON serialization/deserialization correctly (camelCase, ISO 8601).
 - **Error Handling**: Gracefully handle API errors and exceptions.
+- **Multi-Tenancy**: Send `X-Tenant-ID` header for all requests to ensure correct tenant context.
 
 ## Architecture
 The client uses an **Interface Aggregation** pattern to keep endpoints granular while providing a unified entry point.

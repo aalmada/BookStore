@@ -1,4 +1,5 @@
 using BookStore.ApiService.Infrastructure.Extensions;
+using BookStore.ApiService.Infrastructure.Tenant;
 using BookStore.ApiService.Messages.Commands;
 using BookStore.ApiService.Models;
 using BookStore.ApiService.Projections;
@@ -35,10 +36,13 @@ public static class ShoppingCartEndpoints
 
     static async Task<Results<Ok<ShoppingCartDto>, NotFound>> GetCart(
         [FromServices] IQuerySession session,
+        [FromServices] ITenantContext tenantContext,
         HttpContext context,
         CancellationToken cancellationToken)
     {
         var userId = context.User.GetUserId();
+        Console.WriteLine($"[CART-ENDPOINT] GetCart - UserId: {userId}, TenantId: {tenantContext.TenantId}");
+
         if (userId == Guid.Empty)
         {
             return TypedResults.NotFound();
@@ -52,8 +56,11 @@ public static class ShoppingCartEndpoints
         {
             // UserProfile doesn't exist - shouldn't happen for authenticated users
             // Return empty cart for now
+            Console.WriteLine($"[CART-ENDPOINT] GetCart - UserProfile is NULL for UserId: {userId}");
             return TypedResults.Ok(new ShoppingCartDto([], 0));
         }
+
+        Console.WriteLine($"[CART-ENDPOINT] GetCart - UserProfile found, CartItems count: {profile.ShoppingCartItems?.Count ?? 0}");
 
         if (profile.ShoppingCartItems?.Count == 0)
         {
@@ -82,6 +89,7 @@ public static class ShoppingCartEndpoints
     static async Task<Results<NoContent, NotFound, BadRequest<string>>> AddToCart(
         [FromBody] AddToCartRequest request,
         [FromServices] IMessageBus bus,
+        [FromServices] ITenantContext tenantContext,
         HttpContext context,
         CancellationToken cancellationToken)
     {
@@ -91,6 +99,8 @@ public static class ShoppingCartEndpoints
         }
 
         var userId = context.User.GetUserId();
+        Console.WriteLine($"[CART-ENDPOINT] AddToCart - UserId: {userId}, BookId: {request.BookId}, Quantity: {request.Quantity}, TenantId: {tenantContext.TenantId}");
+
         if (userId == Guid.Empty)
         {
             return TypedResults.NotFound();

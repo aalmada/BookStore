@@ -83,13 +83,16 @@ public static class TestHelpers
         var app = GlobalHooks.App!;
         var client = app.CreateHttpClient("apiservice");
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", GlobalHooks.AdminAccessToken);
+        client.DefaultRequestHeaders.Add("X-Tenant-ID", "default");
         return await Task.FromResult(client);
     }
 
     public static HttpClient GetUnauthenticatedClient()
     {
         var app = GlobalHooks.App!;
-        return app.CreateHttpClient("apiservice");
+        var client = app.CreateHttpClient("apiservice");
+        client.DefaultRequestHeaders.Add("X-Tenant-ID", "default");
+        return client;
     }
 
     /// <summary>
@@ -116,6 +119,7 @@ public static class TestHelpers
         using var client = app.CreateHttpClient("apiservice");
         client.Timeout = TestConstants.DefaultStreamTimeout; // Prevent Aspire default timeout from killing the stream
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", GlobalHooks.AdminAccessToken);
+        client.DefaultRequestHeaders.Add("X-Tenant-ID", "default");
 
         using var cts = new CancellationTokenSource(timeout);
         var tcs = new TaskCompletionSource<bool>();
@@ -216,6 +220,7 @@ public static class TestHelpers
         var app = GlobalHooks.App!;
         using var client = app.CreateHttpClient("apiservice");
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", GlobalHooks.AdminAccessToken);
+        client.DefaultRequestHeaders.Add("X-Tenant-ID", "default");
 
         using var cts = new CancellationTokenSource(timeout);
         try
@@ -275,6 +280,14 @@ public static class TestHelpers
             throw new Exception("Failed to create book or receive BookUpdated event.");
         }
 
+        // Wait for the book to be available in the query model (async projection catch-up)
+        // This prevents race conditions where tests try to fetch the book before it's indexed
+        await WaitForConditionAsync(async () =>
+        {
+            var response = await httpClient.GetAsync($"/api/books/{createdBook.Id}");
+            return response.IsSuccessStatusCode;
+        }, TimeSpan.FromSeconds(5), "Book not found in query model after creation");
+
         // Fetch full book details since the Create endpoint only returns ID
         var getResponse = await httpClient.GetAsync($"/api/books/{createdBook.Id}");
         if (getResponse.IsSuccessStatusCode)
@@ -291,6 +304,15 @@ public static class TestHelpers
         return await CreateBookAsync(httpClient, createBookRequest);
     }
 
+    public static async Task<HttpClient> GetTenantClientAsync(string tenantId, string accessToken)
+    {
+        var app = GlobalHooks.App!;
+        var client = app.CreateHttpClient("apiservice");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        client.DefaultRequestHeaders.Add("X-Tenant-ID", tenantId);
+        return await Task.FromResult(client);
+    }
+
     public static async Task AddToCartAsync(HttpClient client, Guid bookId, int quantity = 1, Guid? expectedEntityId = null)
     {
         var received = await ExecuteAndWaitForEventAsync(
@@ -299,6 +321,16 @@ public static class TestHelpers
             async () =>
             {
                 var response = await client.PostAsJsonAsync("/api/cart/items", new AddToCartClientRequest(bookId, quantity));
+                if (!response.IsSuccessStatusCode)
+                {
+                    var content = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"[AddToCart Failure] Status: {response.StatusCode}, Content: {content}");
+                }
+                else
+                {
+                    Console.WriteLine($"[AddToCart Success] BookId: {bookId}, Quantity: {quantity}, Status: {response.StatusCode}");
+                }
+
                 _ = await Assert.That(response.IsSuccessStatusCode).IsTrue();
             },
             TestConstants.DefaultEventTimeout);
@@ -307,6 +339,8 @@ public static class TestHelpers
         {
             throw new Exception("Timed out waiting for UserUpdated event after AddToCart.");
         }
+
+        Console.WriteLine($"[AddToCart Complete] Received UserUpdated event for BookId: {bookId}");
     }
 
     public static async Task UpdateCartItemQuantityAsync(HttpClient client, Guid bookId, int quantity, Guid? expectedEntityId = null)
@@ -559,4 +593,123 @@ public static class TestHelpers
 
         throw new Exception($"Timeout waiting for condition: {failureMessage}");
     }
+    public static async Task SeedTenantAsync(Marten.IDocumentStore store, string tenantId)
+    {
+        await using var session = store.LightweightSession(tenantId);
+        var adminEmail = $"admin@{tenantId}.com";
+
+        // We still use manual store here as TestHelpers might be used in light setup contexts
+        // but we fix the normalization mismatch
+        var adminUser = new BookStore.ApiService.Models.ApplicationUser
+        {
+            UserName = adminEmail,
+            NormalizedUserName = adminEmail.ToUpperInvariant(),
+            Email = adminEmail,
+            NormalizedEmail = adminEmail.ToUpperInvariant(),
+            EmailConfirmed = true,
+            Roles = ["Admin"],
+            SecurityStamp = Guid.CreateVersion7().ToString("D"),
+            ConcurrencyStamp = Guid.CreateVersion7().ToString("D")
+        };
+
+        var hasher = new Microsoft.AspNetCore.Identity.PasswordHasher<BookStore.ApiService.Models.ApplicationUser>();
+        adminUser.PasswordHash = hasher.HashPassword(adminUser, "Admin123!");
+
+        // Use Store (Upsert) to handle existing users
+        session.Store(adminUser);
+        await session.SaveChangesAsync();
+    }
+    public static async Task<LoginResponse?> LoginAsAdminAsync(HttpClient client, string tenantId)
+    {
+        var email = tenantId == "default"
+            ? "admin@bookstore.com"
+            : $"admin@{tenantId}.com";
+
+        var credentials = new { email, password = "Admin123!" };
+
+        // Simple retry logic
+        for (var i = 0; i < 3; i++)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Post, "/account/login")
+            {
+                Content = JsonContent.Create(credentials)
+            };
+            request.Headers.Add("X-Tenant-ID", tenantId);
+
+            var response = await client.SendAsync(request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<LoginResponse>();
+            }
+
+            if (i == 2) // Last attempt
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"[Login Failure] Tenant: {tenantId}, Status: {response.StatusCode}, Attempt: {i + 1}, Content: {content}");
+                return null;
+            }
+
+            await Task.Delay(500); // Wait before retry
+        }
+
+        return null;
+    }
+
+    public static async Task<HttpClient> CreateUserAndGetClientAsync(string? tenantId = "default")
+    {
+        var app = GlobalHooks.App!;
+        var publicClient = app.CreateHttpClient("apiservice");
+        publicClient.DefaultRequestHeaders.Add("X-Tenant-ID", tenantId);
+
+        var email = $"user_{Guid.NewGuid()}@example.com";
+        var password = "Password123!";
+
+        Console.WriteLine($"[TEST-USER] Creating user {email} for tenant {tenantId}");
+
+        // Register
+        var registerRequest = new { email, password };
+        var registerResponse = await publicClient.PostAsJsonAsync("/account/register", registerRequest);
+        if (!registerResponse.IsSuccessStatusCode)
+        {
+            var error = await registerResponse.Content.ReadAsStringAsync();
+            Console.WriteLine($"[TEST-USER] Registration failed: {registerResponse.StatusCode} - {error}");
+        }
+
+        _ = registerResponse.EnsureSuccessStatusCode();
+        Console.WriteLine($"[TEST-USER] User registered successfully");
+
+        // Login
+        var loginRequest = new { email, password };
+        var loginResponse = await publicClient.PostAsJsonAsync("/account/login", loginRequest);
+        if (!loginResponse.IsSuccessStatusCode)
+        {
+            var error = await loginResponse.Content.ReadAsStringAsync();
+            Console.WriteLine($"[TEST-USER] Login failed: {loginResponse.StatusCode} - {error}");
+        }
+
+        _ = loginResponse.EnsureSuccessStatusCode();
+
+        var tokenResponse = await loginResponse.Content.ReadFromJsonAsync<LoginResponse>();
+        Console.WriteLine($"[TEST-USER] User logged in successfully, token length: {tokenResponse!.AccessToken.Length}");
+
+        // Decode JWT to verify claims
+        var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+        var jwtToken = handler.ReadJwtToken(tokenResponse.AccessToken);
+        var subClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "sub")?.Value;
+        var tenantClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "tenant_id")?.Value;
+        var emailClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "email")?.Value;
+        Console.WriteLine($"[JWT-CLAIMS] sub: {subClaim}, tenant_id: {tenantClaim}, email: {emailClaim}");
+
+        // Create authenticated client
+        var authenticatedClient = app.CreateHttpClient("apiservice");
+        authenticatedClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokenResponse.AccessToken);
+        authenticatedClient.DefaultRequestHeaders.Add("X-Tenant-ID", tenantId);
+
+        Console.WriteLine($"[TEST-CLIENT] Created client with tenant header: {tenantId}");
+
+        return authenticatedClient;
+    }
+
+    public record LoginResponse(string AccessToken, string RefreshToken);
 }

@@ -323,6 +323,22 @@ spec:
 
 ---
 
+## Multi-Tenancy Scaling
+
+The application uses **Conjoined Tenancy** (shared database, logical isolation) by default, which is cost-effective for efficiently serving many smaller tenants.
+
+### Scaling Strategies
+
+#### 1. Tenant Sharding (Future)
+As tenants grow, you can move larger tenants to dedicated databases while keeping smaller tenants on a shared instance. Marten supports this via **Separate Database per Tenant** configuration.
+
+#### 2. Resource Isolation
+- **API Handling**: `TenantResolutionMiddleware` ensures every request is scoped to a specific tenant.
+- **Data Isolation**: All database queries automatically filter by `tenant_id`.
+- **Cache Isolation**: HybridCache keys include `tenant_id` to prevent data leaks.
+
+---
+
 ## Database Scaling
 
 ### PostgreSQL Read Replicas

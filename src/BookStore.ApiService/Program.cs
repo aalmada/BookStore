@@ -1,12 +1,16 @@
+using System.Threading.RateLimiting;
 using BookStore.ApiService.Endpoints;
+using BookStore.ApiService.Endpoints.Admin;
 using BookStore.ApiService.Infrastructure;
 using BookStore.ApiService.Infrastructure.Extensions;
 using BookStore.ApiService.Infrastructure.Logging;
+using BookStore.ApiService.Infrastructure.Tenant;
 using BookStore.ApiService.Projections;
 using BookStore.Shared.Models;
 using Marten;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Options;
 using Scalar.AspNetCore;
 
@@ -26,6 +30,17 @@ builder.Services.AddJsonConfiguration(builder.Environment);
 builder.Services.AddApplicationServices(builder.Configuration);
 builder.Services.AddLocalization();
 builder.Services.AddHttpContextAccessor();
+
+// specialized tenant services
+builder.Services.AddScoped<ITenantContext, TenantContext>();
+builder.Services.AddScoped<MartenTenantStore>(); // Register concrete implementation
+builder.Services.AddScoped<ITenantStore>(sp =>
+{
+    var inner = sp.GetRequiredService<MartenTenantStore>();
+    var cache = sp.GetRequiredService<IDistributedCache>();
+    return new CachedTenantStore(inner, cache);
+});
+
 builder.Services.AddMartenEventStore(builder.Configuration);
 builder.Services.AddWolverineMessaging();
 
@@ -43,14 +58,53 @@ builder.Services.AddRateLimiter(options =>
     var rateLimitOptions = new RateLimitOptions();
     builder.Configuration.GetSection(RateLimitOptions.SectionName).Bind(rateLimitOptions);
 
-    // Strict policy for Authentication endpoints (Login, Register, Passkeys)
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+    {
+        // Exempt health checks and metrics
+        if (context.Request.Path.StartsWithSegments("/health") ||
+            context.Request.Path.StartsWithSegments("/metrics"))
+        {
+            return RateLimitPartition.GetNoLimiter("exempt");
+        }
+
+        // Per-tenant rate limiting
+        var tenantId = context.Items["TenantId"]?.ToString() ?? "default";
+
+        return RateLimitPartition.GetFixedWindowLimiter(tenantId, _ =>
+            new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 1000, // 1000 requests per window
+                Window = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 10
+            });
+    });
+
+    // Stricter rate limiting for authentication endpoints (login, register, etc.)
     _ = options.AddFixedWindowLimiter("AuthPolicy", opt =>
     {
-        opt.PermitLimit = rateLimitOptions.PermitLimit;
-        opt.Window = TimeSpan.FromMinutes(rateLimitOptions.WindowInMinutes);
-        opt.QueueProcessingOrder = System.Threading.RateLimiting.QueueProcessingOrder.OldestFirst;
-        opt.QueueLimit = rateLimitOptions.QueueLimit;
+        opt.PermitLimit = rateLimitOptions.AuthPermitLimit;
+        opt.Window = TimeSpan.FromSeconds(rateLimitOptions.AuthWindowSeconds);
+        opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        opt.QueueLimit = rateLimitOptions.AuthQueueLimit;
     });
+
+    options.OnRejected = async (context, cancellationToken) =>
+    {
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+
+        double? retryAfterSeconds = null;
+        if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+        {
+            retryAfterSeconds = retryAfter.TotalSeconds;
+        }
+
+        await context.HttpContext.Response.WriteAsJsonAsync(new
+        {
+            error = "Rate limit exceeded",
+            retryAfter = retryAfterSeconds
+        }, cancellationToken);
+    };
 });
 
 // Configure Forwarded Headers to correctly capture client IP behind proxies
@@ -68,7 +122,7 @@ var app = builder.Build();
 
 // Start seeding in the background (don't block app startup)
 // We need seeding in all environments for now (including tests)
-if (true)
+if (app.Configuration.GetValue("Seeding:Enabled", true))
 {
     _ = Task.Run(async () =>
     {
@@ -94,22 +148,36 @@ if (true)
 
                 var bus = scope.ServiceProvider.GetRequiredService<Wolverine.IMessageBus>();
                 var seederLogger = scope.ServiceProvider.GetRequiredService<ILogger<DatabaseSeeder>>();
-                var seeder = new DatabaseSeeder(store, bus, seederLogger);
-                await seeder.SeedAsync();
-
-                // Seed admin user
                 var userManager = scope.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.Identity.UserManager<BookStore.ApiService.Models.ApplicationUser>>();
-                await DatabaseSeeder.SeedAdminUserAsync(userManager);
+                var seeder = new DatabaseSeeder(store, bus, seederLogger, userManager);
+                var tenantStore = scope.ServiceProvider.GetRequiredService<ITenantStore>();
 
-                // Wait for async projections to process the seeded events
-                // In production, projections run continuously in the background
-                await WaitForProjectionsAsync(store, logger);
+                // 1. Ensure Tenants exist in the DB
+                var initialTenants = new[] { "default", "acme", "contoso" };
+                await seeder.SeedTenantsAsync(initialTenants);
 
-                // Seed sales AFTER projections are ready so we can query BookSearchProjection
-                await seeder.SeedSalesAsync();
+                // 2. Refresh the list of tenants from the store (verifying it works)
+                var tenants = initialTenants;
 
-                // Wait AGAIN for projections to process the new sales events
-                await WaitForProjectionsAsync(store, logger, expectSales: true);
+                foreach (var tenantId in tenants)
+                {
+#pragma warning disable CA1848 // Use LoggerMessage delegates
+                    logger.LogInformation("Seeding tenant: {TenantId}", tenantId);
+#pragma warning restore CA1848
+
+                    // Admin user is now seeded per-tenant in SeedAsync
+
+                    await seeder.SeedAsync(tenantId);
+
+                    // Wait for async projections to process the seeded events for this tenant
+                    await WaitForProjectionsAsync(store, logger, tenantId);
+
+                    // Seed sales AFTER projections are ready
+                    await seeder.SeedSalesAsync(tenantId);
+
+                    // Wait AGAIN for projections
+                    await WaitForProjectionsAsync(store, logger, tenantId, expectSales: true);
+                }
 
                 Log.Infrastructure.DatabaseSeedingCompleted(logger);
                 return; // Success, exit loop
@@ -136,7 +204,7 @@ if (true)
     });
 }
 
-static async Task WaitForProjectionsAsync(IDocumentStore store, ILogger logger, bool expectSales = false)
+static async Task WaitForProjectionsAsync(IDocumentStore store, ILogger logger, string tenantId, bool expectSales = false)
 {
     Log.Infrastructure.WaitingForProjections(logger);
 
@@ -146,7 +214,7 @@ static async Task WaitForProjectionsAsync(IDocumentStore store, ILogger logger, 
 
     while (stopwatch.Elapsed < timeout)
     {
-        await using var session = store.QuerySession();
+        await using var session = store.QuerySession(tenantId);
 
         // Check if projections have data by querying the projection tables
         var bookCount = await session.Query<BookSearchProjection>().CountAsync();
@@ -218,6 +286,11 @@ var requestLocalizationOptions = new RequestLocalizationOptions()
 
 app.UseRequestLocalization(requestLocalizationOptions);
 
+app.UseRequestLocalization(requestLocalizationOptions);
+
+// Add Tenant Resolution Middleware
+app.UseTenantResolution();
+
 // Add Marten metadata middleware to set correlation/causation IDs
 app.UseMartenMetadata();
 
@@ -232,6 +305,7 @@ app.UseRateLimiter();
 
 // Add authentication and authorization
 app.UseAuthentication();
+app.UseTenantSecurity();
 app.UseAuthorization();
 
 // Map OpenAPI endpoint and configure Scalar UI
@@ -248,6 +322,8 @@ if (app.Environment.IsDevelopment())
 
 // Map JWT authentication endpoints
 app.MapGroup("/account").MapJwtAuthenticationEndpoints();
+app.MapGroup("/api/admin/tenants").WithTags("Tenants").MapTenantEndpoints().RequireAuthorization("Admin"); // Require Admin role
+app.MapGroup("/api/tenants").WithTags("Tenants").MapTenantInfoEndpoints(); // Public
 app.MapPasskeyEndpoints();
 
 // Map all API endpoints

@@ -1,6 +1,7 @@
 using BookStore.ApiService.Aggregates;
 using BookStore.ApiService.Commands;
 using BookStore.ApiService.Infrastructure;
+using BookStore.ApiService.Infrastructure.Tenant;
 using BookStore.ApiService.Services;
 using BookStore.Shared.Notifications;
 using Marten;
@@ -11,11 +12,17 @@ public static class BookCoverHandlers
 {
     public static async Task<(IResult, BookCoverUpdatedNotification)> Handle(
         UpdateBookCover command,
-        IDocumentSession session,
+        IDocumentStore store, // Changed from IDocumentSession
         BlobStorageService blobStorage,
-        IHttpContextAccessor contextAccessor)
+        IHttpContextAccessor contextAccessor,
+        ITenantContext tenantContext)
     {
         var context = contextAccessor.HttpContext;
+        var tenantId = command.TenantId ?? tenantContext.TenantId;
+
+        // Open a session explicitly for the target tenant
+        // This ensures checking the Correct Aggregate Stream
+        await using var session = store.LightweightSession(tenantId);
 
         // Get current stream state for ETag validation
         var streamState = await session.Events.FetchStreamStateAsync(command.BookId);
@@ -40,15 +47,21 @@ public static class BookCoverHandlers
         }
 
         using var imageStream = new MemoryStream(command.Content);
-        // Upload to blob storage
-        var coverUrl = await blobStorage.UploadBookCoverAsync(
+
+        // Upload the cover to blob storage (tenant-isolated)
+        _ = await blobStorage.UploadBookCoverAsync(
             command.BookId,
             imageStream,
-            command.ContentType);
+            command.ContentType,
+            tenantId);
 
-        // Update aggregate
-        var @event = aggregate.UpdateCoverImage(coverUrl);
+        // Determine format from content type
+        var format = CoverImageFormatExtensions.FromContentType(command.ContentType);
+
+        // Update aggregate with format enum (URL will be generated dynamically by API endpoints)
+        var @event = aggregate.UpdateCoverImage(format);
         _ = session.Events.Append(command.BookId, @event);
+        await session.SaveChangesAsync();
 
         // Get new stream state and return new ETag
         var newStreamState = await session.Events.FetchStreamStateAsync(command.BookId);
@@ -59,12 +72,21 @@ public static class BookCoverHandlers
             ETagHelper.AddETagHeader(context, newETag);
         }
 
+        // Generate URL dynamically for notification (only if we have an HTTP context)
+        // During background seeding, context may be null
+        string? coverUrl = null;
+        if (context?.Request is not null)
+        {
+            var baseUrl = $"{context.Request.Scheme}://{context.Request.Host}";
+            coverUrl = $"{baseUrl}/api/books/{command.BookId}/cover?tenantId={Uri.EscapeDataString(tenantId)}";
+        }
+
         // Return notification for SignalR
         var notification = new BookCoverUpdatedNotification(
             Guid.Empty,
             aggregate.Id,
             coverUrl);
 
-        return (Results.Ok(new { CoverUrl = coverUrl }), notification);
+        return (Results.Ok(new { Format = format.ToString() }), notification);
     }
 }

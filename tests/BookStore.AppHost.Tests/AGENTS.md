@@ -12,19 +12,22 @@ End-to-end integration tests using Aspire's testing framework. Tests the full ap
 - **Global Setup**: `GlobalSetup.cs` initializes the app once per test session and authenticates an admin user.
 - **SSE Testing**: `TestHelpers.ExecuteAndWaitForEventAsync()` verifies that mutations trigger SSE notifications.
 - **Fake Data**: Uses `Bogus` library via `TestHelpers.GenerateFake*Request()` methods.
+- **Data Isolation**: Tests **MUST NOT rely on background seeding**. Use `GlobalSetup` or `[Before(Test)]` hooks to manually seed required data (Tenants, Users, Books) using helper methods.
+- **Consistency**: When creating data, ensure availability in projections by using waiting helpers (e.g., `WaitForConditionAsync`) before assertions.
 
 ## Test Structure
 - **Naming**: `{Feature}Tests.cs` (e.g., `BookCrudTests.cs`, `AuthorCrudTests.cs`)
 - **Assertions**: **Always use TUnit assertions**: `await Assert.That(actual).IsEqualTo(expected)`, `await Assert.That(condition).IsTrue()`, etc.
-- **HTTP Clients**: 
   - `TestHelpers.GetAuthenticatedClientAsync()` for admin operations
   - `TestHelpers.GetUnauthenticatedClient()` for public API tests
+- **Multi-Tenancy**: Use `client.DefaultRequestHeaders.Add("X-Tenant-ID", "tenant-id")` to test isolation.
 
 ## Writing New Tests
 1. **Create Test Class**: Follow naming pattern `{Feature}Tests.cs`
 2. **Use Test Helpers**: Leverage existing helpers in `TestHelpers.cs` for common operations (CreateBookAsync, AddToCartAsync, etc.)
 3. **Wait for SSE Events**: Use `ExecuteAndWaitForEventAsync()` to ensure mutations complete and broadcast events
-4. **Cleanup**: Tests should be idempotent; use fresh data for each test
+4. **Self-Contained Data**: Create all necessary prerequisite data within the test or setup (e.g., if you need a book, create it first). Do not assume "default" data exists.
+5. **Cleanup**: Tests should be idempotent; use fresh data for each test
 
 ## Common Helpers
 - `CreateBookAsync()` - Creates a book and waits for `BookUpdated` event

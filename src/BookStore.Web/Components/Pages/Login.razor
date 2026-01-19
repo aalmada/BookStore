@@ -8,7 +8,7 @@
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 @inject ILogger<Login> Logger
-@rendermode InteractiveServer
+
 
 <PageTitle>Login - BookStore</PageTitle>
 
@@ -38,7 +38,11 @@
                     <MudTextField @bind-Value="password"
                                   Label="Password"
                                   Variant="Variant.Outlined"
-                                  InputType="InputType.Password"
+                                  InputType="@PasswordInput"
+                                  Adornment="Adornment.End"
+                                  AdornmentIcon="@PasswordInputIcon"
+                                  OnAdornmentClick="ButtonTestclick"
+                                  AdornmentAriaLabel="Show Password"
                                   Required="true"
                                   RequiredError="Password is required"
                                   Class="mb-4" />
@@ -105,7 +109,26 @@
     string email = string.Empty;
     string password = string.Empty;
     string? errorMessage;
+    bool isShow;
+    InputType PasswordInput = InputType.Password;
+    string PasswordInputIcon = Icons.Material.Filled.VisibilityOff;
     bool isLoading;
+
+    void ButtonTestclick()
+    {
+        if (isShow)
+        {
+            isShow = false;
+            PasswordInputIcon = Icons.Material.Filled.VisibilityOff;
+            PasswordInput = InputType.Password;
+        }
+        else
+        {
+            isShow = true;
+            PasswordInputIcon = Icons.Material.Filled.Visibility;
+            PasswordInput = InputType.Text;
+        }
+    }
 
     [SupplyParameterFromQuery]
     public string? ReturnUrl { get; set; }

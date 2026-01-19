@@ -16,8 +16,10 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.1" />
+    <PackageReference Include="Marten" Version="8.17.0" />
     <PackageReference Include="Npgsql" Version="10.0.1" />
     <PackageReference Include="TUnit" Version="1.9.45" />
+    <PackageReference Include="Weasel.Core" Version="8.4.3" />
   </ItemGroup>
 
   <ItemGroup>

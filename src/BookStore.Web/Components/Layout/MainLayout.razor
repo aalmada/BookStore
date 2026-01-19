@@ -3,8 +3,20 @@
 <MudLayout>
     <MudAppBar Elevation="1">
         <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer" />
-        <MudText Typo="Typo.h5" Class="ml-3">BookStore</MudText>
+        <MudText Typo="Typo.h5" Class="ml-3">
+            @if (TenantService.IsLoading)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @TenantService.CurrentTenantName
+        </MudText>
         <MudSpacer />
+        <MudMenu Icon="@Icons.Material.Filled.Business" Color="Color.Inherit" Class="mr-2">
+            @foreach (var tenant in _tenants)
+            {
+                <MudMenuItem OnClick="@(() => SwitchTenant(tenant.Id))">@tenant.Name</MudMenuItem>
+            }
+        </MudMenu>
         <MudSelect T="string" Value="@CurrencyService.CurrentCurrency" ValueChanged="CurrencyService.SetCurrencyAsync" 
                    Style="width: 100px;" Class="mr-4" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
             <MudSelectItem Value="@("USD")">USD</MudSelectItem>
@@ -26,18 +38,31 @@
 </MudLayout>
 
 @inject CurrencyService CurrencyService
+@inject TenantService TenantService
+@inject NavigationManager Navigation
+@implements IDisposable
 
 @code {
     bool _drawerOpen = true;
+    List<TenantInfoDto> _tenants = [];
 
     void ToggleDrawer() => _drawerOpen = !_drawerOpen;
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    void SwitchTenant(string tenantId)
     {
-        if (firstRender)
-        {
-            await CurrencyService.InitializeAsync();
-            StateHasChanged();
-        }
+        Navigation.NavigateTo($"/?tenant={tenantId}", forceLoad: true);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        TenantService.OnChange += StateHasChanged;
+        await TenantService.InitializeAsync();
+        await CurrencyService.InitializeAsync();
+        _tenants = await TenantService.GetAvailableTenantsAsync();
+    }
+
+    public void Dispose()
+    {
+        TenantService.OnChange -= StateHasChanged;
     }
 }

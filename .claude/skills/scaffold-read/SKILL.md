@@ -41,6 +41,10 @@ Follow this guide to implement a read-only endpoint in the **Backend** (ApiServi
    - **Interface**: Create `src/Client/BookStore.Client/IGet{Resource}Endpoint.cs` manually.
    - **Registration**: Add to `BookStoreClientExtensions.cs`.
 
+8. **Multi-Tenancy Check**
+   - Ensure explicit `ITenantContext` injection if managing cache keys (e.g., `tenant={tenantId}`).
+   - Verify queries are using `IDocumentSession` (tenant-scoped) and NOT `IDocumentStore`.
+
 ## Related Skills
 
 **Prerequisites**:

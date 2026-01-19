@@ -1,9 +1,11 @@
 using System.Text.Json;
+using Blazored.LocalStorage;
 using BookStore.Client;
 using BookStore.Client.Services;
 using BookStore.Shared.Infrastructure.Json;
 using BookStore.Web;
 using BookStore.Web.Components;
+using BookStore.Web.Infrastructure;
 using BookStore.Web.Services;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
@@ -23,6 +25,12 @@ builder.AddServiceDefaults();
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddHttpContextAccessor();
+
+// Add Blazored LocalStorage
+builder.Services.AddBlazoredLocalStorage();
+
+// Add application services
+builder.Services.AddScoped<TenantService>();
 
 // Configure Forwarded Headers to correctly capture client IP behind proxies
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
@@ -67,15 +75,36 @@ RegisterScopedRefitClients(builder.Services, new Uri(apiServiceUrl));
 
 static void RegisterScopedRefitClients(IServiceCollection services, Uri baseAddress)
 {
+    // Register TenantService & Handler
+    _ = services.AddScoped<TenantService>();
+    _ = services.AddTransient<TenantHeaderHandler>();
+
+    // Register ITenantClient separately (No TenantHeaderHandler context to prevent circular dep)
+    _ = services.AddScoped<ITenantClient>(sp =>
+    {
+        // Use a simple client or one with just Auth handler if needed
+        // For public endpoint, base client is enough
+        var httpClient = new HttpClient { BaseAddress = baseAddress };
+        return RestService.For<ITenantClient>(httpClient);
+    });
+
     // Register aggregated clients
     void AddScopedClient<T>() where T : class => _ = services.AddScoped<T>(sp =>
                                                       {
                                                           var tokenService = sp.GetRequiredService<TokenService>();
                                                           var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
                                                           var correlationService = sp.GetRequiredService<CorrelationService>();
+                                                          var tenantService = sp.GetRequiredService<TenantService>();
+
                                                           var authHandler = new AuthorizationMessageHandler(tokenService, httpContextAccessor, correlationService);
-                                                          // Ensure we have an InnerHandler
-                                                          authHandler.InnerHandler = new HttpClientHandler();
+
+                                                          // Pipeline: Auth -> Tenant -> Network
+                                                          var tenantHandler = new TenantHeaderHandler(tenantService)
+                                                          {
+                                                              InnerHandler = new HttpClientHandler()
+                                                          };
+
+                                                          authHandler.InnerHandler = tenantHandler;
 
                                                           var httpClient = new HttpClient(authHandler) { BaseAddress = baseAddress };
                                                           return RestService.For<T>(httpClient);
@@ -94,7 +123,6 @@ static void RegisterScopedRefitClients(IServiceCollection services, Uri baseAddr
 builder.Services.AddScoped<CorrelationService>();
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddHttpClient<PasskeyService>(client => client.BaseAddress = new Uri(apiServiceUrl));
-
 builder.Services.AddScoped<AuthenticationService>();
 builder.Services.AddScoped<JwtAuthenticationStateProvider>();
 builder.Services.AddScoped<AuthenticationStateProvider>(

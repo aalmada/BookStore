@@ -1,3 +1,4 @@
+using BookStore.ApiService.Infrastructure.Tenant;
 using BookStore.ApiService.Projections;
 using BookStore.Shared.Infrastructure.Json;
 using BookStore.Shared.Models;
@@ -56,11 +57,29 @@ public static class MartenConfigurationExtensions
             ConfigureIndexes(options);
             RegisterChangeListeners(options, sp);
 
+            // Enable Multi-Tenancy (Conjoined - same DB, different tenant_id column)
+            options.Events.TenancyStyle = Marten.Storage.TenancyStyle.Conjoined;
+
+            // Enforce multi-tenancy on all documents
+            _ = options.Policies.AllDocumentsAreMultiTenanted();
+
+            // Tenant documents are excluded from multi-tenancy via [DoNotPartition] attribute
+
             return options;
         })
-        .UseLightweightSessions()
         .AddAsyncDaemon(DaemonMode.Solo)
         .IntegrateWithWolverine();
+
+        // Register IDocumentSession with proper tenant scoping
+        _ = services.AddScoped<IDocumentSession>(sp =>
+        {
+            var store = sp.GetRequiredService<IDocumentStore>();
+            var tenantContext = sp.GetRequiredService<ITenantContext>();
+            return store.LightweightSession(tenantContext.TenantId);
+        });
+
+        // Also register IQuerySession just in case
+        _ = services.AddScoped<IQuerySession>(sp => sp.GetRequiredService<IDocumentSession>());
 
         return services;
     }
@@ -112,6 +131,7 @@ public static class MartenConfigurationExtensions
         _ = options.Events.AddEventType<Events.PublisherRestored>();
 
         // User events
+        _ = options.Events.AddEventType<BookStore.Shared.Messages.Events.UserProfileCreated>();
         _ = options.Events.AddEventType<BookStore.Shared.Messages.Events.BookAddedToFavorites>();
         _ = options.Events.AddEventType<BookStore.Shared.Messages.Events.BookRemovedFromFavorites>();
         _ = options.Events.AddEventType<BookStore.Shared.Messages.Events.BookRated>();

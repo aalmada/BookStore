@@ -74,3 +74,4 @@ Follow this guide to implement a responsive frontend feature in `src/Web/BookSto
      1. Data loads.
      2. Mutations update UI instantly.
      3. SSE events (from other internal tabs/users) trigger auto-refetch.
+     4. **Multi-Tenancy**: Switch tenants (url var `?tenant=xxx`) and verify data isolation.

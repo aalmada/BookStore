@@ -141,7 +141,7 @@ public record PublisherCreatedNotification(
 public record BookCoverUpdatedNotification(
     Guid EventId,
     Guid EntityId,
-    string CoverUrl) : IDomainEventNotification
+    string? CoverUrl) : IDomainEventNotification
 {
     public string EventType => "BookCoverUpdated";
     public DateTimeOffset Timestamp { get; } = DateTimeOffset.UtcNow;

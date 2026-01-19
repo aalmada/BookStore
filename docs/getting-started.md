@@ -115,12 +115,36 @@ You'll see interactive API documentation where you can:
 
 ## Logging In
 
-### 1. Default Admin Account
+### 1. Per-Tenant Admin Accounts
 
-The application seeds a default administrator account for development:
+The application uses **multi-tenancy** with isolated data per tenant. Each tenant has its own admin account seeded for development:
 
-- **Email**: `admin@bookstore.com`
-- **Password**: `Admin123!`
+| Tenant | Admin Email | Password | Tenant Header |
+|--------|-------------|----------|---------------|
+| Default | `admin@bookstore.com` | `Admin123!` | `X-Tenant-ID: default` |
+| Acme | `admin@acme.com` | `Admin123!` | `X-Tenant-ID: acme` |
+| Contoso | `admin@contoso.com` | `Admin123!` | `X-Tenant-ID: contoso` |
+
+> [!IMPORTANT]
+> Each admin can only access their own tenant's data. For example, `admin@acme.com` cannot login as the `contoso` tenant or access contoso's books.
+
+**Testing Multi-Tenancy**:
+```bash
+# Login as Acme admin
+curl -X POST http://localhost:5000/identity/login \
+  -H "Content-Type: application/json" \
+  -H "X-Tenant-ID: acme" \
+  -d '{"email": "admin@acme.com", "password": "Admin123!"}'
+
+# Login as Contoso admin  
+curl -X POST http://localhost:5000/identity/login \
+  -H "Content-Type: application/json" \
+  -H "X-Tenant-ID: contoso" \
+  -d '{"email": "admin@contoso.com", "password": "Admin123!"}'
+```
+
+> [!TIP]
+> For complete multi-tenancy details including architecture and isolation patterns, see the [Multi-Tenancy Guide](guides/multi-tenancy-guide.md).
 
 ### 2. Registering a New Account
 

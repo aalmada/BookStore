@@ -31,7 +31,7 @@ public record BookSoftDeleted(Guid Id, DateTimeOffset Timestamp);
 
 public record BookRestored(Guid Id, DateTimeOffset Timestamp);
 
-public record BookCoverUpdated(Guid Id, string CoverImageUrl);
+public record BookCoverUpdated(Guid Id, CoverImageFormat CoverFormat);
 
 public record BookSaleScheduled(Guid Id, BookSale Sale);
 

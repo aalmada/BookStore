@@ -36,6 +36,10 @@
       href: guides/localization-guide.md
     - name: Multi-Currency Pricing
       href: guides/multi-currency-guide.md
+    - name: Multi-Tenancy
+      href: guides/multi-tenancy-guide.md
+    - name: Database Indexes
+      href: guides/database-indexes-guide.md
     - name: Caching
       href: guides/caching-guide.md
     - name: ETag
