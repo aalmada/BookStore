@@ -138,6 +138,16 @@ public static IResult Handle(CreateBook cmd, IDocumentSession session)
 }
 ```
 
+### Multi-Tenancy
+
+The system implements **Enterprise-grade Multi-tenancy** using Marten's Conjoined Tenancy model.
+
+**Key Components**:
+- **Tenant Resolution**: `TenantResolutionMiddleware` extracts tenant ID from `X-Tenant-ID` header.
+- **Data Isolation**: All Marten documents and events are partitioned by `tenant_id`.
+- **Service Scoping**: `IDocumentSession` and `IQuerySession` are scoped to the current tenant.
+- **Cache Partitioning**: HybridCache keys are namespaced by tenant to ensure complete isolation.
+
 ### Async Projections
 
 Projections run asynchronously to build read models from events. With Wolverine integration via `.IntegrateWithWolverine()`, Wolverine manages the async projection daemon, providing distributed coordination and automatic failover across nodes.

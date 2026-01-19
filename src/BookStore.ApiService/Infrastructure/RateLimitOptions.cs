@@ -13,4 +13,12 @@ public class RateLimitOptions
     public int WindowInMinutes { get; set; } = 1;
 
     public int QueueLimit { get; set; } = 0;
+
+    [Range(1, int.MaxValue)]
+    public int AuthPermitLimit { get; set; } = 10;
+
+    [Range(1, int.MaxValue)]
+    public int AuthWindowSeconds { get; set; } = 60;
+
+    public int AuthQueueLimit { get; set; } = 2;
 }

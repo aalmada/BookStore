@@ -38,6 +38,7 @@ public static class BookStoreClientExtensions
         _ = AddClient<IShoppingCartClient>();
         _ = AddClient<ISystemClient>();
         _ = AddClient<IIdentityClient>();
+        _ = AddClient<ITenantClient>();
 
         return services;
     }

@@ -29,6 +29,8 @@ public sealed class UserProfile
     public IDictionary<Guid, int> ShoppingCartItems { get; set; } = new Dictionary<Guid, int>();
 
     // Apply methods for Marten Self-Aggregating Snapshot
+    public void Apply(UserProfileCreated @event) => Id = @event.UserId;
+
     public void Apply(BookAddedToFavorites @event)
     {
         if (!FavoriteBookIds.Contains(@event.BookId))

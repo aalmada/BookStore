@@ -2,8 +2,10 @@ using System.Globalization;
 using System.Security.Claims; // Need this for ClaimsPrincipal if not implicit
 using BookStore.ApiService.Aggregates;
 using BookStore.ApiService.Commands;
+using BookStore.ApiService.Endpoints.Books;
 using BookStore.ApiService.Infrastructure;
 using BookStore.ApiService.Infrastructure.Extensions;
+using BookStore.ApiService.Infrastructure.Tenant;
 using BookStore.ApiService.Messages.Commands;
 using BookStore.ApiService.Models;
 using BookStore.ApiService.Projections;
@@ -21,6 +23,9 @@ public static class BookEndpoints
 {
     public static RouteGroupBuilder MapBookEndpoints(this RouteGroupBuilder group)
     {
+        // Add cover endpoints mapping
+        _ = group.MapBookCoverEndpoints();
+
         _ = group.MapGet("/", SearchBooks)
             .WithName("GetBooks")
             .WithSummary("Get all books");
@@ -67,6 +72,20 @@ public static class BookEndpoints
         return group;
     }
 
+    /// <summary>
+    /// Generates a cover image URL for a book based on its format.
+    /// Returns null if the book has no cover.
+    /// </summary>
+    static string? GenerateCoverUrl(Guid bookId, CoverImageFormat format, string tenantId, HttpRequest request)
+    {
+        if (format == CoverImageFormat.None)
+        {
+            return null;
+        }
+
+        var baseUrl = $"{request.Scheme}://{request.Host}";
+        return $"{baseUrl}/api/books/{bookId}/cover?tenantId={Uri.EscapeDataString(tenantId)}";
+    }
     static BookSale? GetActiveSale(List<BookSale>? sales, DateTimeOffset now)
     {
         if (sales is null || sales.Count == 0)
@@ -79,10 +98,11 @@ public static class BookEndpoints
     }
 
     static async Task<Ok<PagedListDto<BookDto>>> SearchBooks(
-        [FromServices] IDocumentStore store,
+        [FromServices] IQuerySession session,
         [FromServices] IOptions<PaginationOptions> paginationOptions,
         [FromServices] IOptions<LocalizationOptions> localizationOptions,
         [FromServices] HybridCache cache,
+        [FromServices] ITenantContext tenantContext,
         [AsParameters] BookSearchRequest request,
         HttpContext context,
         CancellationToken cancellationToken)
@@ -90,6 +110,8 @@ public static class BookEndpoints
         var paging = request.Normalize(paginationOptions.Value);
         var culture = CultureInfo.CurrentUICulture.Name;
         var defaultCulture = localizationOptions.Value.DefaultCulture;
+
+        // ... (rest of setup)
 
         // Check if user is admin - manual check to be robust against RoleClaimType mismatches
         var isAdmin = context.User.Claims.Any(c =>
@@ -100,13 +122,13 @@ public static class BookEndpoints
         var normalizedSortBy = request.SortBy?.ToLowerInvariant();
 
         // Create cache key including all search parameters
-        var cacheKey = $"books:search={request.Search}:author={request.AuthorId}:category={request.CategoryId}:publisher={request.PublisherId}:onSale={request.OnSale}:minPrice={request.MinPrice}:maxPrice={request.MaxPrice}:page={paging.Page}:size={paging.PageSize}:sort={normalizedSortBy}:{normalizedSortOrder}:admin={isAdmin}";
+        var cacheKey = $"books:search={request.Search}:author={request.AuthorId}:category={request.CategoryId}:publisher={request.PublisherId}:onSale={request.OnSale}:minPrice={request.MinPrice}:maxPrice={request.MaxPrice}:page={paging.Page}:size={paging.PageSize}:sort={normalizedSortBy}:{normalizedSortOrder}:admin={isAdmin}:tenant={tenantContext.TenantId}";
 
         var response = await cache.GetOrCreateLocalizedAsync(
             cacheKey,
             async cancel =>
             {
-                await using var session = store.QuerySession();
+                // Session is already scoped and tenant-aware
 
                 // Dictionaries to hold included documents
                 var publishers = new Dictionary<Guid, PublisherProjection>();
@@ -246,7 +268,7 @@ public static class BookEndpoints
                         stats?.RatingCount ?? 0,
                         0, // UserRating is always 0 in cache, will be overlaid if authenticated
                         book.Prices,
-                        book.CoverImageUrl,
+                        GenerateCoverUrl(book.Id, book.CoverFormat, tenantContext.TenantId, context.Request),
                         activeSale,
                         book.Deleted
                     );
@@ -273,8 +295,8 @@ public static class BookEndpoints
             var userId = context.User.GetUserId();
             if (userId != Guid.Empty)
             {
-                await using var userSession = store.QuerySession();
-                var profile = await userSession.LoadAsync<UserProfile>(userId, cancellationToken);
+                // Load user profile using injected session
+                var profile = await session.LoadAsync<UserProfile>(userId, cancellationToken);
                 if (profile != null)
                 {
                     var updatedItems = response.Items.Select(b =>
@@ -302,7 +324,7 @@ public static class BookEndpoints
     }
 
     static async Task<Results<Ok<PagedListDto<BookDto>>, UnauthorizedHttpResult>> GetFavoriteBooks(
-        [FromServices] IDocumentStore store,
+        [FromServices] IQuerySession session,
         [FromServices] IOptions<PaginationOptions> paginationOptions,
         [FromServices] IOptions<LocalizationOptions> localizationOptions,
         [AsParameters] OrderedPagedRequest request,
@@ -328,7 +350,7 @@ public static class BookEndpoints
         var normalizedSortOrder = request.SortOrder?.ToLowerInvariant() == "desc" ? "desc" : "asc";
         var normalizedSortBy = request.SortBy?.ToLowerInvariant();
 
-        await using var session = store.QuerySession();
+        // Session is injected
 
         // Load user's profile to get favorite book IDs
         var profile = await session.LoadAsync<UserProfile>(userId, cancellationToken);
@@ -440,7 +462,7 @@ public static class BookEndpoints
                 stats?.RatingCount ?? 0,
                 profile.BookRatings.TryGetValue(book.Id, out var userRating) ? userRating : 0,
                 book.Prices,
-                book.CoverImageUrl,
+                GenerateCoverUrl(book.Id, book.CoverFormat, session.TenantId, context.Request),
                 activeSale,
                 book.Deleted
             );
@@ -457,9 +479,10 @@ public static class BookEndpoints
 
     static async Task<Results<Ok<BookDto>, NotFound, StatusCodeHttpResult>> GetBook(
         Guid id,
-        [FromServices] IDocumentStore store,
+        [FromServices] IQuerySession session,
         [FromServices] IOptions<LocalizationOptions> localizationOptions,
         [FromServices] HybridCache cache,
+        [FromServices] ITenantContext tenantContext,
         HttpContext context,
         CancellationToken cancellationToken)
     {
@@ -467,7 +490,7 @@ public static class BookEndpoints
         var defaultCulture = localizationOptions.Value.DefaultCulture;
 
         // Check ETag first (before cache) for conditional requests
-        await using var session = store.QuerySession();
+        // Session is injected
         var streamState = await session.Events.FetchStreamStateAsync(id, cancellationToken);
 
         if (streamState != null)
@@ -489,7 +512,7 @@ public static class BookEndpoints
             string.Equals(c.Value, "Admin", StringComparison.OrdinalIgnoreCase));
 
         var response = await cache.GetOrCreateLocalizedAsync(
-            $"book:{id}:admin={isAdmin}",
+            $"book:{id}:admin={isAdmin}:tenant={tenantContext.TenantId}",
             async cancel =>
             {
                 // Dictionaries to hold included documents
@@ -575,7 +598,7 @@ public static class BookEndpoints
                     stats?.RatingCount ?? 0,
                     0, // UserRating is always 0 in cache, will be overlaid if authenticated
                     book.Prices,
-                    book.CoverImageUrl,
+                    GenerateCoverUrl(book.Id, book.CoverFormat, tenantContext.TenantId, context.Request),
                     activeSale,
                     book.Deleted
                     );
@@ -599,8 +622,7 @@ public static class BookEndpoints
             var userId = context.User.GetUserId();
             if (userId != Guid.Empty)
             {
-                await using var userSession = store.QuerySession();
-                var profile = await userSession.LoadAsync<UserProfile>(userId, cancellationToken);
+                var profile = await session.LoadAsync<UserProfile>(userId, cancellationToken);
                 if (profile != null && profile.FavoriteBookIds.Contains(id))
                 {
                     response = response with { IsFavorite = true };
@@ -614,8 +636,7 @@ public static class BookEndpoints
             var userId = context.User.GetUserId();
             if (userId != Guid.Empty)
             {
-                await using var userSession = store.QuerySession();
-                var user = await userSession.LoadAsync<UserProfile>(userId, cancellationToken);
+                var user = await session.LoadAsync<UserProfile>(userId, cancellationToken);
                 if (user != null)
                 {
                     if (user.BookRatings.TryGetValue(id, out var rating))

@@ -23,7 +23,7 @@ public class BookAggregate : ISoftDeleted
 #pragma warning restore BS3005
     public Dictionary<string, decimal> Prices { get; private set; } = [];
     public List<BookSale> Sales { get; private set; } = [];
-    public string? CoverImageUrl { get; private set; }
+    public CoverImageFormat CoverFormat { get; private set; } = CoverImageFormat.None;
 
     // Marten uses this for rehydration
     void Apply(BookAdded @event)
@@ -66,7 +66,7 @@ public class BookAggregate : ISoftDeleted
         DeletedAt = null;
     }
 
-    void Apply(BookCoverUpdated @event) => CoverImageUrl = @event.CoverImageUrl;
+    void Apply(BookCoverUpdated @event) => CoverFormat = @event.CoverFormat;
 
     void Apply(BookSaleScheduled @event)
     {
@@ -288,19 +288,19 @@ public class BookAggregate : ISoftDeleted
         return new BookRestored(Id, DateTimeOffset.UtcNow);
     }
 
-    public BookCoverUpdated UpdateCoverImage(string coverImageUrl)
+    public BookCoverUpdated UpdateCoverImage(CoverImageFormat format)
     {
         if (Deleted)
         {
             throw new InvalidOperationException("Cannot update cover for a deleted book");
         }
 
-        if (string.IsNullOrWhiteSpace(coverImageUrl))
+        if (format == CoverImageFormat.None)
         {
-            throw new ArgumentException("Cover image URL is required", nameof(coverImageUrl));
+            throw new ArgumentException("Cover format cannot be None", nameof(format));
         }
 
-        return new BookCoverUpdated(Id, coverImageUrl);
+        return new BookCoverUpdated(Id, format);
     }
 
     public BookSaleScheduled ScheduleSale(decimal percentage, DateTimeOffset start, DateTimeOffset end)

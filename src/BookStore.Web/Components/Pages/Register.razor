@@ -8,7 +8,7 @@
 @implements IDisposable
 @inject IJSRuntime JS
 @using Microsoft.JSInterop
-@rendermode InteractiveServer
+
 
 <PageTitle>Register - BookStore</PageTitle>
 
@@ -53,7 +53,11 @@
                     <MudTextField @bind-Value="password"
                                   Label="Password"
                                   Variant="Variant.Outlined"
-                                  InputType="InputType.Password"
+                                  InputType="@PasswordInput"
+                                  Adornment="Adornment.End"
+                                  AdornmentIcon="@PasswordInputIcon"
+                                  OnAdornmentClick="ButtonTestclick"
+                                  AdornmentAriaLabel="Show Password"
                                   Required="true"
                                   RequiredError="Password is required"
                                   OnBlur="ValidatePasswordStrength"
@@ -75,7 +79,11 @@
                     <MudTextField @bind-Value="confirmPassword"
                                   Label="Confirm Password"
                                   Variant="Variant.Outlined"
-                                  InputType="InputType.Password"
+                                  InputType="@ConfirmPasswordInput"
+                                  Adornment="Adornment.End"
+                                  AdornmentIcon="@ConfirmPasswordInputIcon"
+                                  OnAdornmentClick="ButtonConfirmTestclick"
+                                  AdornmentAriaLabel="Show Confirm Password"
                                   Required="true"
                                   RequiredError="Please confirm your password"
                                   Validation="@(new Func<string, string?>(ValidateConfirmPassword))"
@@ -152,7 +160,47 @@
     string password = string.Empty;
     string confirmPassword = string.Empty;
     string? errorMessage;
+    bool isShow;
+    InputType PasswordInput = InputType.Password;
+    string PasswordInputIcon = Icons.Material.Filled.VisibilityOff;
+    
+    bool isConfirmShow;
+    InputType ConfirmPasswordInput = InputType.Password;
+    string ConfirmPasswordInputIcon = Icons.Material.Filled.VisibilityOff;
+    
     bool isLoading;
+
+    void ButtonTestclick()
+    {
+        if (isShow)
+        {
+            isShow = false;
+            PasswordInputIcon = Icons.Material.Filled.VisibilityOff;
+            PasswordInput = InputType.Password;
+        }
+        else
+        {
+            isShow = true;
+            PasswordInputIcon = Icons.Material.Filled.Visibility;
+            PasswordInput = InputType.Text;
+        }
+    }
+
+    void ButtonConfirmTestclick()
+    {
+        if (isConfirmShow)
+        {
+            isConfirmShow = false;
+            ConfirmPasswordInputIcon = Icons.Material.Filled.VisibilityOff;
+            ConfirmPasswordInput = InputType.Password;
+        }
+        else
+        {
+            isConfirmShow = true;
+            ConfirmPasswordInputIcon = Icons.Material.Filled.Visibility;
+            ConfirmPasswordInput = InputType.Text;
+        }
+    }
     bool registrationSuccess;
     bool requiresVerification;
     List<string> passwordErrors = new();

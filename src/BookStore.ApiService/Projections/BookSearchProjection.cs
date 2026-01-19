@@ -35,7 +35,7 @@ public class BookSearchProjection
 
     public List<BookSale> Sales { get; set; } = [];
 
-    public string? CoverImageUrl { get; set; }
+    public CoverImageFormat CoverFormat { get; set; } = CoverImageFormat.None;
 
     // SingleStreamProjection methods
     public static BookSearchProjection Create(BookAdded @event, IQuerySession session)
@@ -94,7 +94,7 @@ public class BookSearchProjection
         DeletedAt = null;
     }
 
-    public void Apply(BookCoverUpdated @event) => CoverImageUrl = @event.CoverImageUrl;
+    public void Apply(BookCoverUpdated @event) => CoverFormat = @event.CoverFormat;
 
     public void Apply(BookSaleScheduled @event)
     {

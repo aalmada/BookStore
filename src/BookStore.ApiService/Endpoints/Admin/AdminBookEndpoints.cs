@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using BookStore.ApiService.Infrastructure.Tenant;
 using BookStore.Shared.Models;
 using Marten;
 using Marten.Linq;
@@ -70,6 +71,7 @@ namespace BookStore.ApiService.Endpoints.Admin
         static Task<IResult> CreateBook(
             [FromBody] Commands.CreateBookRequest request,
             [FromServices] IMessageBus bus,
+            [FromServices] ITenantContext tenantContext,
             CancellationToken cancellationToken)
         {
             var command = new Commands.CreateBook(
@@ -84,13 +86,14 @@ namespace BookStore.ApiService.Endpoints.Admin
                 request.Prices);
 
             // Wolverine invokes the handler, manages transaction, and returns result
-            return bus.InvokeAsync<IResult>(command, cancellationToken);
+            return bus.InvokeAsync<IResult>(command, new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
         }
 
         static Task<IResult> UpdateBook(
             Guid id,
             [FromBody] Commands.UpdateBookRequest request,
             [FromServices] IMessageBus bus,
+            [FromServices] ITenantContext tenantContext,
             HttpContext context,
             CancellationToken cancellationToken)
         {
@@ -112,12 +115,13 @@ namespace BookStore.ApiService.Endpoints.Admin
                 ETag = etag
             };
 
-            return bus.InvokeAsync<IResult>(command, cancellationToken);
+            return bus.InvokeAsync<IResult>(command, new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
         }
 
         static Task<IResult> SoftDeleteBook(
             Guid id,
             [FromServices] IMessageBus bus,
+            [FromServices] ITenantContext tenantContext,
             HttpContext context,
             CancellationToken cancellationToken)
         {
@@ -128,12 +132,13 @@ namespace BookStore.ApiService.Endpoints.Admin
                 ETag = etag
             };
 
-            return bus.InvokeAsync<IResult>(command, cancellationToken);
+            return bus.InvokeAsync<IResult>(command, new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
         }
 
         static Task<IResult> RestoreBook(
             Guid id,
             [FromServices] IMessageBus bus,
+            [FromServices] ITenantContext tenantContext,
             HttpContext context,
             CancellationToken cancellationToken)
         {
@@ -144,7 +149,7 @@ namespace BookStore.ApiService.Endpoints.Admin
                 ETag = etag
             };
 
-            return bus.InvokeAsync<IResult>(command, cancellationToken);
+            return bus.InvokeAsync<IResult>(command, new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
         }
 
         // Read operations don't need Wolverine (no business logic)
@@ -163,6 +168,7 @@ namespace BookStore.ApiService.Endpoints.Admin
             Guid id,
             IFormFile file,
             [FromServices] IMessageBus bus,
+            [FromServices] ITenantContext tenantContext,
             HttpContext context,
             CancellationToken cancellationToken)
         {
@@ -194,7 +200,7 @@ namespace BookStore.ApiService.Endpoints.Admin
                 ETag = etag
             };
 
-            return await bus.InvokeAsync<IResult>(command, cancellationToken);
+            return await bus.InvokeAsync<IResult>(command, new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
         }
     }
 }

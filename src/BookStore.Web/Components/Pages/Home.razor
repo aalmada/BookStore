@@ -11,19 +11,20 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @inject ISnackbar Snackbar
 @implements IAsyncDisposable
-@rendermode InteractiveServer
+
+@inject TenantService TenantService
 @inject CurrencyService CurrencyService
 
-<PageTitle>BookStore - Discover Your Next Great Read</PageTitle>
+<PageTitle>@TenantService.CurrentTenantName - Discover Your Next Great Read</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraExtraLarge" Class="mt-6">
     @* Hero Section *@
-    <MudPaper Elevation="0" Class="pa-6 mb-6" Style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px;">
-        <MudText Typo="Typo.h3" Color="Color.Surface" Class="mb-2">
-            <MudIcon Icon="@Icons.Material.Filled.MenuBook" Size="Size.Large" /> BookStore
+    <MudPaper Elevation="0" Class="pa-6 mb-6" Style="background: var(--mud-palette-primary); color: var(--mud-palette-primary-text); border-radius: 16px;">
+        <MudText Typo="Typo.h3" Color="Color.Inherit" Class="mb-2">
+            <MudIcon Icon="@Icons.Material.Filled.MenuBook" Size="Size.Large" /> @TenantService.CurrentTenantName
         </MudText>
-        <MudText Typo="Typo.h6" Color="Color.Surface" Style="opacity: 0.9;">
-            Discover your next great read from our curated collection
+        <MudText Typo="Typo.h6" Color="Color.Inherit" Style="opacity: 0.9;">
+            @TenantService.CurrentTenantTagline
         </MudText>
     </MudPaper>
 
@@ -160,8 +161,8 @@
                         }
                         else
                         {
-                            <MudPaper Elevation="0" Height="200px" Style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center;">
-                                <MudIcon Icon="@Icons.Material.Filled.MenuBook" Size="Size.Large" Color="Color.Surface" Style="font-size: 4rem;" />
+                            <MudPaper Elevation="0" Height="200px" Style="background: var(--mud-palette-primary); color: var(--mud-palette-primary-text); display: flex; align-items: center; justify-content: center;">
+                                <MudIcon Icon="@Icons.Material.Filled.MenuBook" Size="Size.Large" Color="Color.Inherit" Style="font-size: 4rem;" />
                             </MudPaper>
                         }
                         <MudCardContent>
@@ -283,6 +284,9 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // Initialize Tenant FIRST
+        await TenantService.InitializeAsync();
+        
         // Subscribe to optimistic update changes
         OptimisticService.OnBooksChanged += HandleOptimisticBooksChanged;
         
@@ -308,6 +312,21 @@
 
         // Subscribe to currency changes
         CurrencyService.OnCurrencyChanged += StateHasChanged;
+        
+        // Subscribe to tenant changes (and reload data)
+        TenantService.OnChange += HandleTenantChanged;
+    }
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        return Task.CompletedTask;
+    }
+
+    private void HandleTenantChanged()
+    {
+        // Reload books when tenant changes
+        _ = bookQuery?.LoadAsync();
+        StateHasChanged();
     }
 
     protected override async Task OnParametersSetAsync()
@@ -494,6 +513,7 @@
         OptimisticService.OnBooksChanged -= HandleOptimisticBooksChanged;
         EventsService.OnNotificationReceived -= HandleNotification;
         CurrencyService.OnCurrencyChanged -= StateHasChanged;
+        TenantService.OnChange -= HandleTenantChanged;
         
         // Dispose timers
         debounceTimer?.Dispose();

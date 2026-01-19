@@ -54,7 +54,7 @@ public class BlobStorageTests
         var contentType = "image/jpeg";
 
         // Act
-        var uri = await _blobStorageService!.UploadBookCoverAsync(bookId, stream, contentType);
+        var uri = await _blobStorageService!.UploadBookCoverAsync(bookId, stream, contentType, "default");
 
         // Assert
         _ = await Assert.That(uri).IsNotNull();
@@ -63,7 +63,7 @@ public class BlobStorageTests
 
         // Verify blob exists
         var container = _blobServiceClient!.GetBlobContainerClient(ContainerName);
-        var blob = container.GetBlobClient($"{bookId}.jpg");
+        var blob = container.GetBlobClient($"default/{bookId}.jpg");
         var exists = await blob.ExistsAsync();
         _ = await Assert.That(exists.Value).IsTrue();
     }
@@ -79,7 +79,7 @@ public class BlobStorageTests
         var contentType = "image/png";
 
         // Upload first
-        _ = await _blobStorageService!.UploadBookCoverAsync(bookId, stream, contentType);
+        _ = await _blobStorageService!.UploadBookCoverAsync(bookId, stream, contentType, "default");
 
         // Act
         var result = await _blobStorageService.GetBookCoverAsync(bookId);
@@ -111,11 +111,11 @@ public class BlobStorageTests
         using var stream = new MemoryStream(content);
         var contentType = "image/webp";
 
-        _ = await _blobStorageService!.UploadBookCoverAsync(bookId, stream, contentType);
+        _ = await _blobStorageService!.UploadBookCoverAsync(bookId, stream, contentType, "default");
 
         // Verify existence before delete
         var container = _blobServiceClient!.GetBlobContainerClient(ContainerName);
-        var blob = container.GetBlobClient($"{bookId}.webp");
+        var blob = container.GetBlobClient($"default/{bookId}.webp");
         var existsBefore = await blob.ExistsAsync();
         _ = await Assert.That(existsBefore.Value).IsTrue();
 

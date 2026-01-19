@@ -12,6 +12,7 @@ Short, authoritative guidance for agents working in this repository.
 - **Real-time Updates**: Server-Sent Events (SSE) for mutation notifications to connected clients.
 - **Aspire**: Orchestration for API, Web, PostgreSQL, and PgAdmin resources.
 - **Localization**: Multi-language support for content and multi-currency for prices.
+- **Multi-Tenancy**: Conjoined tenancy with data, API, and cache isolation.
 
 ## Build & Run
 - **Restore**: `dotnet restore`

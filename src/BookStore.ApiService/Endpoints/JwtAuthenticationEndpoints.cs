@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using BookStore.ApiService.Infrastructure.Logging;
+using BookStore.ApiService.Infrastructure.Tenant;
 using BookStore.ApiService.Models;
 using BookStore.ApiService.Services;
 using BookStore.Shared.Models;
@@ -41,6 +42,7 @@ public static class JwtAuthenticationEndpoints
         UserManager<ApplicationUser> userManager,
         SignInManager<ApplicationUser> signInManager,
         JwtTokenService jwtTokenService,
+        ITenantContext tenantContext,
         ILogger<Program> logger,
         CancellationToken cancellationToken)
     {
@@ -71,6 +73,7 @@ public static class JwtAuthenticationEndpoints
             new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new(JwtRegisteredClaimNames.Email, user.Email!),
             new(JwtRegisteredClaimNames.Jti, Guid.CreateVersion7().ToString()),
+            new("tenant_id", tenantContext.TenantId)
         };
 
         // Add roles as claims
@@ -106,6 +109,7 @@ public static class JwtAuthenticationEndpoints
         RegisterRequest request,
         UserManager<ApplicationUser> userManager,
         JwtTokenService jwtTokenService,
+        ITenantContext tenantContext,
         Wolverine.IMessageBus bus,
         IOptions<Infrastructure.Email.EmailOptions> emailOptions,
         ILogger<Program> logger,
@@ -145,6 +149,7 @@ public static class JwtAuthenticationEndpoints
             new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new(JwtRegisteredClaimNames.Email, user.Email!),
             new(JwtRegisteredClaimNames.Jti, Guid.CreateVersion7().ToString()),
+            new("tenant_id", tenantContext.TenantId)
         };
 
         var accessToken = jwtTokenService.GenerateAccessToken(claims);
@@ -196,6 +201,7 @@ public static class JwtAuthenticationEndpoints
         JwtTokenService jwtTokenService,
         UserManager<ApplicationUser> userManager,
         Marten.IDocumentSession session,
+        ITenantContext tenantContext,
         ILogger<Program> logger,
         CancellationToken cancellationToken)
     {
@@ -235,6 +241,7 @@ public static class JwtAuthenticationEndpoints
             new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new(JwtRegisteredClaimNames.Email, user.Email!),
             new(JwtRegisteredClaimNames.Jti, Guid.CreateVersion7().ToString()),
+            new("tenant_id", tenantContext.TenantId)
         };
 
         var roles = await userManager.GetRolesAsync(user);

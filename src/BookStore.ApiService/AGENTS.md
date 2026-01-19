@@ -7,7 +7,9 @@
 - **Commands/Events**: Use `record` types; add XML summaries to public APIs.
 - **Handlers**: Follow Wolverine conventions (`Handle`, prefer static) and keep single responsibility.
 - **Aggregates**: Return events from behavior methods; `Apply` methods must follow Marten conventions (void, single parameter).
+- **Aggregates**: Return events from behavior methods; `Apply` methods must follow Marten conventions (void, single parameter).
 - **Time**: `DateTimeOffset` (UTC) and ISO 8601 for JSON.
+- **Multi-Tenancy**: Inject `ITenantContext` for tenant-aware operations. `Tenant` documents are stored in the 'default' tenant.
 
 ## Real-time Notifications (SSE)
 When implementing write operations, enable real-time updates:

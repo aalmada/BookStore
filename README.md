@@ -17,6 +17,7 @@ I am sure a lot may be improved. Opening this code to the public is an opportuni
 
 A complete book store management system featuring:
 - **Backend API**: Event-sourced ASP.NET Core Minimal APIs with Marten and PostgreSQL
+- **Multi-Tenancy**: Enterprise-grade data isolation with tenant-aware routing and blob storage
 - **Frontend**: Blazor web application for browsing and managing books
 - **Orchestration**: Aspire for local development, deployment, and observability
 - **Database**: PostgreSQL with event store and read model projections
@@ -97,6 +98,11 @@ The Aspire dashboard opens automatically, providing access to:
 - **Passwordless Support** - Full Passkey support including **Passkey-First Sign Up** (.NET 10)
 - **Role-Based Authorization** - Admin endpoints protected
 - **Multi-language Support** (configurable via `appsettings.json`)
+- **Multi-Tenancy** - Enterprise-grade conjoined multi-tenancy with complete data isolation
+  - Shared infrastructure, isolated data per tenant
+  - Tenant-specific blob storage paths
+  - Tenant context propagation across all layers
+  - Dynamic URL generation for tenant-aware resources
 - **Full-text Search** with PostgreSQL trigrams and unaccent
 - **Optimistic Concurrency** with ETags
 - **Hybrid Caching** - Multi-tiered caching with Redis and in-memory support
@@ -147,6 +153,8 @@ For a detailed breakdown of the project structure, please refer to the [Getting 
 - **[Logging Guide](docs/guides/logging-guide.md)** - Structured logging with source-generated log messages
 - **[Correlation & Causation IDs](docs/guides/correlation-causation-guide.md)** - Distributed tracing
 - **[Localization Guide](docs/guides/localization-guide.md)** - Multi-language support
+- **[Multi-Tenancy Guide](docs/guides/multi-tenancy-guide.md)** - Enterprise multi-tenancy with Marten
+- **[Database Indexes Guide](docs/guides/database-indexes-guide.md)** - Production database optimization
 - **[Caching Guide](docs/guides/caching-guide.md)** - Hybrid caching with Redis and localization support
 - **[Real-time Notifications Guide](docs/guides/real-time-notifications.md)** - Server-Sent Events (SSE) implementation
 - **[ETag Support](docs/guides/etag-guide.md)** - Optimistic concurrency and caching

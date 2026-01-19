@@ -13,9 +13,10 @@ public class BookRatingTests
     public async Task RateBook_ShouldUpdateUserRatingAndStatistics()
     {
         // Arrange
-        var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
+        var adminClient = await TestHelpers.GetAuthenticatedClientAsync();
+        var httpClient = await TestHelpers.CreateUserAndGetClientAsync();
         // Create book and wait for projection
-        var createdBook = await TestHelpers.CreateBookAsync(httpClient);
+        var createdBook = await TestHelpers.CreateBookAsync(adminClient);
 
         // Act - Rate the book and wait for UserUpdated (since we assert UserRating)
         var rating = 4;
@@ -34,9 +35,10 @@ public class BookRatingTests
     public async Task UpdateRating_ShouldChangeExistingRating()
     {
         // Arrange
-        var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
+        var adminClient = await TestHelpers.GetAuthenticatedClientAsync();
+        var httpClient = await TestHelpers.CreateUserAndGetClientAsync();
         // Create book and wait for projection
-        var createdBook = await TestHelpers.CreateBookAsync(httpClient);
+        var createdBook = await TestHelpers.CreateBookAsync(adminClient);
 
         // Rate the book initially and wait for update
         var initialRating = 3;
@@ -66,9 +68,10 @@ public class BookRatingTests
     public async Task RemoveRating_ShouldClearUserRatingAndUpdateStatistics()
     {
         // Arrange
-        var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
+        var adminClient = await TestHelpers.GetAuthenticatedClientAsync();
+        var httpClient = await TestHelpers.CreateUserAndGetClientAsync();
         // Create book and wait for projection
-        var createdBook = await TestHelpers.CreateBookAsync(httpClient);
+        var createdBook = await TestHelpers.CreateBookAsync(adminClient);
 
         // Rate the book first and wait for update
         var receivedRating = true;
@@ -164,9 +167,10 @@ public class BookRatingTests
     public async Task RateBook_WithInvalidRating_ShouldReturnBadRequest()
     {
         // Arrange
-        var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
+        var adminClient = await TestHelpers.GetAuthenticatedClientAsync();
+        var httpClient = await TestHelpers.CreateUserAndGetClientAsync();
         // Create book and wait for projection
-        var createdBook = await TestHelpers.CreateBookAsync(httpClient);
+        var createdBook = await TestHelpers.CreateBookAsync(adminClient);
 
         // Act & Assert - Try invalid ratings
         var invalidRatings = new[] { 0, 6, -1, 10 };

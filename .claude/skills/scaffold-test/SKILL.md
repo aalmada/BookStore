@@ -238,6 +238,13 @@ var client = await TestHelpers.GetAuthenticatedClientAsync();
 var client = TestHelpers.GetUnauthenticatedClient();
 ```
 
+### Multi-Tenancy
+```csharp
+// Manual tenant isolation testing
+var client = await TestHelpers.GetAuthenticatedClientAsync();
+client.DefaultRequestHeaders.Add("X-Tenant-ID", "acme");
+```
+
 ### Wait for SSE Events After Mutations
 ```csharp
 var (result, notification) = await TestHelpers.ExecuteAndWaitForEventAsync<T>(

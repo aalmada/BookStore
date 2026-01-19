@@ -12,6 +12,7 @@ public class BlobStorageService(BlobServiceClient blobServiceClient)
         Guid bookId,
         Stream imageStream,
         string contentType,
+        string tenantId = "default",
         CancellationToken cancellationToken = default)
     {
         var container = await GetContainerAsync(cancellationToken);
@@ -25,7 +26,7 @@ public class BlobStorageService(BlobServiceClient blobServiceClient)
             _ => "jpg" // Default to jpg for safety
         };
 
-        var blobName = $"{bookId}.{extension}";
+        var blobName = $"{tenantId}/{bookId}.{extension}";
         var blob = container.GetBlobClient(blobName);
 
         _ = await blob.UploadAsync(
@@ -38,6 +39,7 @@ public class BlobStorageService(BlobServiceClient blobServiceClient)
 
     public async Task<BlobDownloadResult> GetBookCoverAsync(
         Guid bookId,
+        string tenantId = "default",
         CancellationToken cancellationToken = default)
     {
         var container = await GetContainerAsync(cancellationToken);
@@ -45,7 +47,7 @@ public class BlobStorageService(BlobServiceClient blobServiceClient)
         // Try to find the blob with any supported extension
         foreach (var ext in SupportedExtensions)
         {
-            var blob = container.GetBlobClient($"{bookId}.{ext}");
+            var blob = container.GetBlobClient($"{tenantId}/{bookId}.{ext}");
             if (await blob.ExistsAsync(cancellationToken))
             {
                 return await blob.DownloadContentAsync(cancellationToken);
@@ -57,6 +59,7 @@ public class BlobStorageService(BlobServiceClient blobServiceClient)
 
     public async Task DeleteBookCoverAsync(
         Guid bookId,
+        string tenantId = "default",
         CancellationToken cancellationToken = default)
     {
         var container = await GetContainerAsync(cancellationToken);
@@ -64,7 +67,7 @@ public class BlobStorageService(BlobServiceClient blobServiceClient)
         // Delete blob with any supported extension
         foreach (var ext in SupportedExtensions)
         {
-            var blob = container.GetBlobClient($"{bookId}.{ext}");
+            var blob = container.GetBlobClient($"{tenantId}/{bookId}.{ext}");
             _ = await blob.DeleteIfExistsAsync(cancellationToken: cancellationToken);
         }
     }

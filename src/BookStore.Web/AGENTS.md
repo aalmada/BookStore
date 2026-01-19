@@ -4,7 +4,8 @@
 
 ## Core Rules
 - **Components**: Use `razor` files; keep logic in code-behind or separate classes if complex.
-- **State Management**: Use `ReactiveQuery`, `OptimisticUpdateService`, and `QueryInvalidationService`.
+- **Use State Management**: Use `ReactiveQuery`, `OptimisticUpdateService`, and `QueryInvalidationService`.
+- **Multi-Tenancy**: Inject `TenantService` to access `CurrentTenantId` or `CurrentTenantName`. `X-Tenant-ID` header is automatically handled by `TenantHeaderHandler`.
 
 ## State Management & Data Fetching
 Use `ReactiveQuery<T>` for data fetching, caching, and automatic invalidation.

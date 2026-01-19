@@ -11,16 +11,22 @@ public static class UserCommandHandler
 {
     public static async Task Handle(AddBookToFavorites command, IDocumentSession session)
     {
-        // Load the user profile stream to check current state
         var profile = await session.Events.AggregateStreamAsync<UserProfile>(command.UserId);
 
-        if (profile != null && !profile.FavoriteBookIds.Contains(command.BookId))
+        // Lazy initialization: If no events exist for this user, initialize the stream
+        if (profile == null || profile.Id == Guid.Empty)
         {
-            _ = session.Events.Append(command.UserId, new BookAddedToFavorites(command.BookId));
+            _ = session.Events.StartStream<UserProfile>(
+                command.UserId,
+                new UserProfileCreated(command.UserId)
+            );
         }
-        else if (profile == null)
+
+        // Only add if not already in favorites
+        // Re-aggregate after potential stream start to get updated profile state for the check
+        // Or, more simply, check if profile was null initially OR if it exists and doesn't contain the book
+        if (profile == null || !profile.FavoriteBookIds.Contains(command.BookId))
         {
-            // First event for this user profile stream
             _ = session.Events.Append(command.UserId, new BookAddedToFavorites(command.BookId));
         }
     }
@@ -29,7 +35,7 @@ public static class UserCommandHandler
     {
         var profile = await session.Events.AggregateStreamAsync<UserProfile>(command.UserId);
 
-        if (profile != null && profile.FavoriteBookIds.Contains(command.BookId))
+        if (profile != null)
         {
             _ = session.Events.Append(command.UserId, new BookRemovedFromFavorites(command.BookId));
         }
@@ -45,6 +51,15 @@ public static class UserCommandHandler
 
         var profile = await session.Events.AggregateStreamAsync<UserProfile>(command.UserId);
 
+        // Lazy initialization: If no events exist for this user, initialize the stream
+        if (profile == null || profile.Id == Guid.Empty)
+        {
+            _ = session.Events.StartStream<UserProfile>(
+                command.UserId,
+                new UserProfileCreated(command.UserId)
+            );
+        }
+
         // Always append event (either new rating or update)
         // The Apply method will handle updating the existing rating
         _ = session.Events.Append(command.UserId, new BookRated(command.BookId, command.Rating));
@@ -54,7 +69,7 @@ public static class UserCommandHandler
     {
         var profile = await session.Events.AggregateStreamAsync<UserProfile>(command.UserId);
 
-        if (profile != null && profile.BookRatings.ContainsKey(command.BookId))
+        if (profile != null)
         {
             _ = session.Events.Append(command.UserId, new BookRatingRemoved(command.BookId));
         }
@@ -67,17 +82,31 @@ public static class UserCommandHandler
             throw new ArgumentException("Quantity must be greater than 0", nameof(command.Quantity));
         }
 
+        Console.WriteLine($"[HANDLER] AddBookToCart - UserId: {command.UserId}, BookId: {command.BookId}, Quantity: {command.Quantity}");
+
         var profile = await session.Events.AggregateStreamAsync<UserProfile>(command.UserId);
+        Console.WriteLine($"[HANDLER] AggregateStreamAsync returned - ProfileId: {profile?.Id ?? Guid.Empty}, CartItems: {profile?.ShoppingCartItems?.Count ?? 0}");
+
+        // Lazy initialization: If no events exist for this user, initialize the stream
+        if (profile == null || profile.Id == Guid.Empty)
+        {
+            Console.WriteLine($"[HANDLER] Initializing UserProfile stream for user {command.UserId}");
+            _ = session.Events.StartStream<UserProfile>(
+                command.UserId,
+                new UserProfileCreated(command.UserId)
+            );
+        }
 
         // Always append event - Apply method will handle merging quantities
         _ = session.Events.Append(command.UserId, new BookAddedToCart(command.BookId, command.Quantity));
+        Console.WriteLine($"[HANDLER] Event appended to stream {command.UserId}");
     }
 
     public static async Task Handle(RemoveBookFromCart command, IDocumentSession session)
     {
         var profile = await session.Events.AggregateStreamAsync<UserProfile>(command.UserId);
 
-        if (profile != null && profile.ShoppingCartItems.ContainsKey(command.BookId))
+        if (profile != null)
         {
             _ = session.Events.Append(command.UserId, new BookRemovedFromCart(command.BookId));
         }
@@ -102,7 +131,7 @@ public static class UserCommandHandler
     {
         var profile = await session.Events.AggregateStreamAsync<UserProfile>(command.UserId);
 
-        if (profile != null && profile.ShoppingCartItems.Count > 0)
+        if (profile != null)
         {
             _ = session.Events.Append(command.UserId, new ShoppingCartCleared());
         }

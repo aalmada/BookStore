@@ -1,4 +1,8 @@
-﻿<MudThemeProvider />
+﻿@using BookStore.Web.Services
+@inject TenantService TenantService
+@implements IDisposable
+
+<MudThemeProvider Theme="@_currentTheme" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
@@ -9,3 +13,36 @@
         <FocusOnNavigate RouteData="routeData" Selector="h1" />
     </Found>
 </Router>
+
+@code {
+    private MudTheme _currentTheme = new();
+
+    protected override void OnInitialized()
+    {
+        TenantService.OnChange += UpdateTheme;
+        UpdateTheme();
+    }
+
+    private void UpdateTheme()
+    {
+        _currentTheme = new MudTheme
+        {
+            PaletteLight = new PaletteLight
+            {
+                Primary = TenantService.CurrentTenantPrimaryColor,
+                AppbarBackground = TenantService.CurrentTenantPrimaryColor
+            },
+            PaletteDark = new PaletteDark
+            {
+                Primary = TenantService.CurrentTenantPrimaryColor,
+                AppbarBackground = TenantService.CurrentTenantPrimaryColor
+            }
+        };
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        TenantService.OnChange -= UpdateTheme;
+    }
+}
