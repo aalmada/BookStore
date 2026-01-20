@@ -33,7 +33,7 @@ public static class TenantEndpoints
 
         var tenants = await session.Query<Tenant>()
             .OrderBy(t => t.Id)
-            .Select(t => new TenantInfoDto(t.Id, t.Name, t.Tagline, t.ThemePrimaryColor))
+            .Select(t => new TenantInfoDto(t.Id, t.Name, t.Tagline, t.ThemePrimaryColor, t.IsEnabled))
             .ToListAsync(ct);
 
         return Results.Ok(tenants);

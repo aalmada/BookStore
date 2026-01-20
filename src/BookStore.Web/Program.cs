@@ -51,8 +51,8 @@ builder.Services.AddMudServices();
 
 // Get API base URL from service discovery (Aspire)
 var apiServiceUrl = builder.Configuration[$"services:{BookStore.ServiceDefaults.ResourceNames.ApiService}:https:0"]
-    ?? builder.Configuration[$"services:{BookStore.ServiceDefaults.ResourceNames.ApiService}:http:0"]
-    ?? "http://localhost:5000";
+                    ?? builder.Configuration[$"services:{BookStore.ServiceDefaults.ResourceNames.ApiService}:http:0"]
+                    ?? "http://localhost:5000";
 
 // Configure Polly policies for resilience
 // var retryPolicy = HttpPolicyExtensions
@@ -90,25 +90,22 @@ static void RegisterScopedRefitClients(IServiceCollection services, Uri baseAddr
 
     // Register aggregated clients
     void AddScopedClient<T>() where T : class => _ = services.AddScoped<T>(sp =>
-                                                      {
-                                                          var tokenService = sp.GetRequiredService<TokenService>();
-                                                          var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
-                                                          var correlationService = sp.GetRequiredService<CorrelationService>();
-                                                          var tenantService = sp.GetRequiredService<TenantService>();
+    {
+        var tokenService = sp.GetRequiredService<TokenService>();
+        var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
+        var correlationService = sp.GetRequiredService<CorrelationService>();
+        var tenantService = sp.GetRequiredService<TenantService>();
 
-                                                          var authHandler = new AuthorizationMessageHandler(tokenService, httpContextAccessor, correlationService);
+        var authHandler = new AuthorizationMessageHandler(tokenService, httpContextAccessor, correlationService);
 
-                                                          // Pipeline: Auth -> Tenant -> Network
-                                                          var tenantHandler = new TenantHeaderHandler(tenantService)
-                                                          {
-                                                              InnerHandler = new HttpClientHandler()
-                                                          };
+        // Pipeline: Auth -> Tenant -> Network
+        var tenantHandler = new TenantHeaderHandler(tenantService) { InnerHandler = new HttpClientHandler() };
 
-                                                          authHandler.InnerHandler = tenantHandler;
+        authHandler.InnerHandler = tenantHandler;
 
-                                                          var httpClient = new HttpClient(authHandler) { BaseAddress = baseAddress };
-                                                          return RestService.For<T>(httpClient);
-                                                      });
+        var httpClient = new HttpClient(authHandler) { BaseAddress = baseAddress };
+        return RestService.For<T>(httpClient);
+    });
 
     AddScopedClient<IBooksClient>();
     AddScopedClient<IAuthorsClient>();
@@ -117,6 +114,7 @@ static void RegisterScopedRefitClients(IServiceCollection services, Uri baseAddr
     AddScopedClient<IShoppingCartClient>();
     AddScopedClient<ISystemClient>();
     AddScopedClient<IIdentityClient>();
+    AddScopedClient<IPasskeyClient>();
 }
 
 // Add authentication services (JWT token-based)
@@ -125,8 +123,7 @@ builder.Services.AddScoped<TokenService>();
 builder.Services.AddHttpClient<PasskeyService>(client => client.BaseAddress = new Uri(apiServiceUrl));
 builder.Services.AddScoped<AuthenticationService>();
 builder.Services.AddScoped<JwtAuthenticationStateProvider>();
-builder.Services.AddScoped<AuthenticationStateProvider>(
-    sp => sp.GetRequiredService<JwtAuthenticationStateProvider>());
+builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<JwtAuthenticationStateProvider>());
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddAuthorizationCore();
 
