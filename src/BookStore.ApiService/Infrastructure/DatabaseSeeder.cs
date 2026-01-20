@@ -106,7 +106,7 @@ public class DatabaseSeeder(
         Log.Seeding.DatabaseSeedingCompleted(logger);
 
         // Seed tenant-specific admin user
-        await SeedAdminUserAsync(userManager, store, tenantId);
+        await SeedAdminUserAsync(userManager, tenantId);
 
     }
 
@@ -115,7 +115,6 @@ public class DatabaseSeeder(
     /// </summary>
     public static async Task SeedAdminUserAsync(
         Microsoft.AspNetCore.Identity.UserManager<Models.ApplicationUser> userManager,
-        IDocumentStore store,
         string tenantId)
     {
         // Generate tenant-specific email

@@ -30,7 +30,6 @@ public class TenantSecurityMiddleware(RequestDelegate next, ILogger<TenantSecuri
     }
 }
 
-
 public static class TenantSecurityMiddlewareExtensions
 {
     public static IApplicationBuilder UseTenantSecurity(this IApplicationBuilder builder) => builder.UseMiddleware<TenantSecurityMiddleware>();

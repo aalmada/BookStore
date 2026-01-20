@@ -40,8 +40,8 @@ public static class JwtAuthenticationEndpoints
     /// <summary>
     /// Builds the standard set of claims for a user token
     /// </summary>
-    static List<Claim> BuildUserClaims(ApplicationUser user, string tenantId, IEnumerable<string> roles) =>
-    [
+    static List<Claim> BuildUserClaims(ApplicationUser user, string tenantId, IEnumerable<string> roles)
+    => [
         new(ClaimTypes.NameIdentifier, user.Id.ToString()),
         new(ClaimTypes.Name, user.UserName!),
         new(ClaimTypes.Email, user.Email!),
@@ -223,6 +223,7 @@ public static class JwtAuthenticationEndpoints
                 _ = user.RefreshTokens.Remove(existingToken);
                 _ = await userManager.UpdateAsync(user);
             }
+
             return Results.Unauthorized();
         }
 
