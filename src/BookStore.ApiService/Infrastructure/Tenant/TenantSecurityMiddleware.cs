@@ -7,10 +7,11 @@ public class TenantSecurityMiddleware(RequestDelegate next, ILogger<TenantSecuri
 {
     public async Task InvokeAsync(HttpContext context)
     {
+        var currentTenant = context.Items["TenantId"]?.ToString();
+
         if (context.User.Identity?.IsAuthenticated == true)
         {
             var userTenant = context.User.FindFirst("tenant_id")?.Value;
-            var currentTenant = context.Items["TenantId"]?.ToString();
 
             // Security: Ensure tenant_id claim is present
             if (string.IsNullOrEmpty(userTenant))
@@ -28,6 +29,30 @@ public class TenantSecurityMiddleware(RequestDelegate next, ILogger<TenantSecuri
                 Log.Tenants.CrossTenantAccessAttempted(logger, userTenant, currentTenant);
                 context.Response.StatusCode = StatusCodes.Status403Forbidden;
                 await context.Response.WriteAsJsonAsync(new { error = "Cross-tenant access denied" });
+                return;
+            }
+        }
+        else
+        {
+            // Security: specific tenant access requires authentication
+            // Only the default tenant allows anonymous access (public data)
+            // Exceptions: Authentication endpoints, Tenant Info, Health checks, Docs
+            var path = context.Request.Path;
+            var isAllowedPath = path.StartsWithSegments("/account") ||
+                                path.StartsWithSegments("/api/tenants") ||
+                                path.StartsWithSegments("/health") ||
+                                path.StartsWithSegments("/metrics") ||
+                                path.StartsWithSegments("/api-reference") ||
+                                path.StartsWithSegments("/scalar") ||
+                                path.StartsWithSegments("/openapi");
+
+            if (!isAllowedPath &&
+                !string.IsNullOrEmpty(currentTenant) &&
+                !string.Equals(currentTenant, JasperFx.StorageConstants.DefaultTenantId, StringComparison.OrdinalIgnoreCase))
+            {
+                Log.Tenants.CrossTenantAccessAttempted(logger, "ANONYMOUS", currentTenant);
+                context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                await context.Response.WriteAsJsonAsync(new { error = "Anonymous access to tenant specific data is denied" });
                 return;
             }
         }
