@@ -7,7 +7,7 @@ license: MIT
 Follow this guide to create **integration tests** for API endpoints in `tests/BookStore.AppHost.Tests`.
 
 1. **Create Test Class**
-   - Create file in `tests/BookStore.AppHost.Tests/Tests/`
+   - Create file in `tests/BookStore.AppHost.Tests/`
    - **Naming**: `{Feature}Tests.cs` (e.g., `AuthorCrudTests.cs`)
    - **Template**:
      ```csharp

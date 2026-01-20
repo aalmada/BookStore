@@ -7,7 +7,7 @@ license: MIT
 Follow this guide to implement a state-changing operation in the **Backend** (ApiService) using strict project standards.
 
 1. **Define the Domain Event**
-   - Create a `record` in `src/ApiService/BookStore.ApiService/Events/`.
+   - Create a `record` in `src/BookStore.ApiService/Events/`.
    - **Naming**: Past tense (e.g., `BookPublished`, not `PublishBook`).
    - **Timestamps**: MUST use `DateTimeOffset` (never `DateTime`).
    - **IDs**: MUST use `Guid.CreateVersion7()` (never `Guid.NewGuid()`).
@@ -17,24 +17,24 @@ Follow this guide to implement a state-changing operation in the **Backend** (Ap
      ```
 
 2. **Define the Command**
-   - Create a `record` in `src/ApiService/BookStore.ApiService/Commands/{Resource}/` (e.g., `Commands/Books/`).
+   - Create a `record` in `src/BookStore.ApiService/Commands/{Resource}/` (e.g., `Commands/Books/`).
    - **Template**: `templates/Command.cs`
 
 3. **Implement the Wolverine Handler**
-   - Create/Update `src/ApiService/BookStore.ApiService/Handlers/{Resource}/{Resource}Handlers.cs`.
+   - Create/Update `src/BookStore.ApiService/Handlers/{Resource}/{Resource}Handlers.cs`.
    - **Template**: `templates/Handler.cs`
 
 4. **Expose the Endpoint (Backend)**
-   - Open `src/ApiService/BookStore.ApiService/Endpoints/{Resource}Endpoints.cs`.
+   - Open `src/BookStore.ApiService/Endpoints/{Resource}Endpoints.cs`.
    - **Template**: `templates/Endpoint.cs`
 
 5. **Update Read Model (Projections)**
-   - Open `src/ApiService/BookStore.ApiService/Projections/{Resource}Projection.cs`.
+   - Open `src/BookStore.ApiService/Projections/{Resource}Projection.cs`.
    - Implement `Create` or `Apply` methods.
 
 6. **Enable Real-time Updates (SSE)**
    - **Notification**: Create `record {Event}Notification` in `src/Shared/BookStore.Shared/Notifications/DomainEventNotifications.cs`.
-   - **Listener**: Update `src/ApiService/BookStore.ApiService/Infrastructure/MartenCommitListener.cs`.
+   - **Listener**: Update `src/BookStore.ApiService/Infrastructure/MartenCommitListener.cs`.
      - Add `case {Resource}Projection proj:` in `ProcessDocumentChangeAsync`.
      - Implement `Handle{Resource}ChangeAsync` to `.NotifyAsync()` the new notification.
 

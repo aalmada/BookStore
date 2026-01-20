@@ -266,48 +266,55 @@ var bookLifecycleStats = await session.Events
 ### Program.cs Setup
 
 ```csharp
-using Marten;
-using Marten.Events.Daemon;
-using Marten.Events.Projections;
-using Wolverine.Marten;
+using BookStore.ApiService.Infrastructure.Extensions;
 
-builder.Services.AddMarten(sp =>
+// Register Marten with all configuration (projections, events, metadata)
+builder.Services.AddMartenEventStore(builder.Configuration);
+
+// ... later in Program.cs ...
+
+var app = builder.Build();
+
+// Apply schema to create PostgreSQL extensions (pg_trgm, unaccent)
+// This must remain blocking to ensure schema exists before requests are handled
+using (var scope = app.Services.CreateScope())
 {
-    var connectionString = builder.Configuration.GetConnectionString("bookstore")!;
+    var store = scope.ServiceProvider.GetRequiredService<IDocumentStore>();
+    await store.Storage.ApplyAllConfiguredChangesToDatabaseAsync();
+}
+```
+
+### Configuration Detail (`AddMartenEventStore`)
+
+The configuration is encapsulated in `MartenConfigurationExtensions.cs`:
+
+```csharp
+public static IServiceCollection AddMartenEventStore(this IServiceCollection services, IConfiguration configuration)
+{
+    services.AddMarten(sp =>
+    {
+        var options = new StoreOptions();
+        options.Connection(configuration.GetConnectionString("bookstore"));
+
+        // Enable metadata tracking
+        options.Events.MetadataConfig.CorrelationIdEnabled = true;
+        options.Events.MetadataConfig.CausationIdEnabled = true;
+        options.Events.MetadataConfig.HeadersEnabled = true;
+
+        // Enable Multi-Tenancy (Conjoined)
+        options.Events.TenancyStyle = TenancyStyle.Conjoined;
+        options.Policies.AllDocumentsAreMultiTenanted();
+
+        // Register event types and projections
+        // ...
+        
+        return options;
+    })
+    .AddAsyncDaemon(DaemonMode.Solo)
+    .IntegrateWithWolverine();
     
-    var options = new StoreOptions();
-    options.Connection(connectionString);
-    
-    // Enable metadata tracking
-    options.Events.MetadataConfig.CorrelationIdEnabled = true;
-    options.Events.MetadataConfig.CausationIdEnabled = true;
-    options.Events.MetadataConfig.HeadersEnabled = true;
-    
-    // Configure JSON serialization
-    options.UseSystemTextJsonForSerialization(
-        EnumStorage.AsString, 
-        Casing.CamelCase);
-    
-    // Enable full-text search
-    options.Advanced.UseNGramSearchWithUnaccent = true;
-    
-    // Register event types
-    options.Events.AddEventType<BookAdded>();
-    options.Events.AddEventType<BookUpdated>();
-    
-    // Configure projections
-    options.Projections.Add<BookSearchProjectionBuilder>(
-        ProjectionLifecycle.Async);
-    
-    // Configure indexes
-    options.Schema.For<BookSearchProjection>()
-        .Index(x => x.Title)
-        .NgramIndex(x => x.Title);
-    
-    return options;
-})
-.UseLightweightSessions()      // Faster sessions (no identity map)
-.IntegrateWithWolverine();     // Wolverine integration
+    return services;
+}
 ```
 
 ### Key Configuration Options

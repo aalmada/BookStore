@@ -76,31 +76,35 @@ Follow this guide to create a new **Marten projection** (read model) for efficie
      ```
 
 4. **Configure Marten Projection**
-   - Open `src/BookStore.ApiService/Program.cs`
+   - Open `src/BookStore.ApiService/Infrastructure/Extensions/MartenConfigurationExtensions.cs`
+   - Locate `RegisterProjections(StoreOptions options)` method
    - Register the projection:
      ```csharp
-     builder.Services.AddMarten(options =>
+     static void RegisterProjections(StoreOptions options)
      {
-         // Existing configuration...
+         // ... existing projections
          
-         // Add inline projection
-         options.Projections.Add<AuthorProjection>(ProjectionLifecycle.Inline);
+         // Add inline projection (for immediate consistency)
+         _ = options.Projections.Snapshot<AuthorProjection>(SnapshotLifecycle.Inline);
          
-         // OR for async projection (recommended for production)
-         options.Projections.Add<AuthorProjection>(ProjectionLifecycle.Async);
-     });
+         // OR for async projection (recommended for high volume)
+         // options.Projections.Add<AuthorProjection>(ProjectionLifecycle.Async);
+     }
      ```
+     
+     > [!NOTE]
+     > For Async projections, ensure you also register the `ProjectionCommitListener` to trigger SSE notifications.
 
 5. **Add Indexing (Optional but Recommended)**
-   - For search and filtering performance:
+   - Inside `MartenConfigurationExtensions.cs`, locate `ConfigureIndexes(StoreOptions options)`:
      ```csharp
-     builder.Services.AddMarten(options =>
+     static void ConfigureIndexes(StoreOptions options)
      {
          options.Schema.For<AuthorProjection>()
              .Index(x => x.Name)          // For name searches
              .Index(x => x.Deleted)       // For filtering deleted items
              .GinIndexJsonData();         // For full-text search (if using JSONB)
-     });
+     }
      ```
 
 6. **Create Queries Using the Projection**

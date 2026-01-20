@@ -13,12 +13,12 @@ Follow this guide to implement a read-only endpoint in the **Backend** (ApiServi
    - **Data Maps**: Use `IReadOnlyDictionary<string, T>` for non-text maps (e.g., `Prices`).
 
 2. **Define the Projection**
-   - Open/Create `src/ApiService/BookStore.ApiService/Projections/{Resource}Projection.cs`.
+   - Open/Create `src/BookStore.ApiService/Projections/{Resource}Projection.cs`.
    - **Template**: `templates/Projection.cs`
    - **Localization Storage**: Use `Dictionary<string, string>` for storing all translations (e.g., `Descriptions`, `Biographies`).
 
 3. **Expose the Endpoint**
-   - Open `src/ApiService/BookStore.ApiService/Endpoints/{Resource}Endpoints.cs`.
+   - Open `src/BookStore.ApiService/Endpoints/{Resource}Endpoints.cs`.
    - **Template**: `templates/Endpoint.cs`
 
 4. **Implement Caching (HybridCache)**
