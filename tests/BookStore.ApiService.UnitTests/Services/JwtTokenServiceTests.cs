@@ -26,7 +26,7 @@ public class JwtTokenServiceTests
         };
 
         // Act
-        var token = service.GenerateAccessToken(user);
+        var token = service.GenerateAccessToken(user, "default-tenant");
 
         // Assert
         _ = await Assert.That(token).IsNotNull();
@@ -55,7 +55,7 @@ public class JwtTokenServiceTests
         };
 
         // Act
-        var token = service.GenerateAccessToken(user);
+        var token = service.GenerateAccessToken(user, "default-tenant");
 
         // Assert
         var handler = new JwtSecurityTokenHandler();
@@ -87,7 +87,7 @@ public class JwtTokenServiceTests
         };
 
         // Act
-        var token = service.GenerateAccessToken(user);
+        var token = service.GenerateAccessToken(user, "default-tenant");
 
         // Assert
         var handler = new JwtSecurityTokenHandler();
@@ -117,7 +117,7 @@ public class JwtTokenServiceTests
         };
 
         // Act
-        var token = service.GenerateAccessToken(user);
+        var token = service.GenerateAccessToken(user, "default-tenant");
 
         // Assert
         var handler = new JwtSecurityTokenHandler();
@@ -143,7 +143,7 @@ public class JwtTokenServiceTests
         };
 
         // Act
-        var token = service.GenerateAccessToken(user);
+        var token = service.GenerateAccessToken(user, "default-tenant");
 
         // Assert
         var handler = new JwtSecurityTokenHandler();

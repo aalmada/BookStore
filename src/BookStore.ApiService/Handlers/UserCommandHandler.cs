@@ -36,7 +36,7 @@ public static class UserCommandHandler
     {
         var profile = await session.LoadAsync<UserProfile>(command.UserId);
 
-        if (profile != null)
+        if (profile != null && profile.FavoriteBookIds.Contains(command.BookId))
         {
             _ = session.Events.Append(command.UserId, new BookRemovedFromFavorites(command.BookId));
         }
@@ -70,7 +70,7 @@ public static class UserCommandHandler
     {
         var profile = await session.LoadAsync<UserProfile>(command.UserId);
 
-        if (profile != null)
+        if (profile != null && profile.BookRatings.ContainsKey(command.BookId))
         {
             _ = session.Events.Append(command.UserId, new BookRatingRemoved(command.BookId));
         }
@@ -128,7 +128,7 @@ public static class UserCommandHandler
     {
         var profile = await session.LoadAsync<UserProfile>(command.UserId);
 
-        if (profile != null)
+        if (profile != null && profile.ShoppingCartItems.Count > 0)
         {
             _ = session.Events.Append(command.UserId, new ShoppingCartCleared());
         }

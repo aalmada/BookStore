@@ -111,9 +111,7 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
         // but we might want to invalidate specific user data if cached independently.
         // For now, simply Notify.
 
-#pragma warning disable CA1848 // Use LoggerMessage delegates
-        _logger.LogInformation("[DEBUG_LISTENER] HandleUserChangeAsync for {UserId}. Favorites: {Count}", profile.Id, profile.FavoriteBookIds?.Count ?? -1);
-#pragma warning restore CA1848 // Use LoggerMessage delegates
+        Log.Infrastructure.DebugHandleUserChange(_logger, profile.Id, profile.FavoriteBookIds?.Count ?? -1);
 
         // Use UtcNow as fallback
         var timestamp = DateTimeOffset.UtcNow;

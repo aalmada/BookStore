@@ -166,5 +166,46 @@ public static partial class Log
             string? sessionId,
             string? sessionCid,
             bool hasContext);
+
+        [LoggerMessage(
+            Level = LogLevel.Information,
+            Message = "Background startup task running. Environment: {Environment}, SeedingEnabled: {SeedingEnabled}")]
+        public static partial void StartupTaskRunning(
+            ILogger logger,
+            string environment,
+            bool seedingEnabled);
+
+        [LoggerMessage(
+            Level = LogLevel.Information,
+            Message = "Seeding tenant: {TenantId}")]
+        public static partial void SeedingTenant(
+            ILogger logger,
+            string tenantId);
+
+        [LoggerMessage(
+            Level = LogLevel.Warning,
+            Message = "Database seeding failed (attempt {RetryCount}/{MaxRetries}). Retrying in {RetryDelay}s...")]
+        public static partial void SeedingFailedRetrying(
+            ILogger logger,
+            Exception exception,
+            int retryCount,
+            int maxRetries,
+            double retryDelay);
+
+        [LoggerMessage(
+            Level = LogLevel.Error,
+            Message = "Database seeding failed after {RetryCount} attempts. Application may not behave correctly.")]
+        public static partial void SeedingFailedMaxRetries(
+            ILogger logger,
+            Exception exception,
+            int retryCount);
+
+        [LoggerMessage(
+            Level = LogLevel.Information,
+            Message = "[DEBUG_LISTENER] HandleUserChangeAsync for {UserId}. Favorites: {Count}")]
+        public static partial void DebugHandleUserChange(
+            ILogger logger,
+            Guid userId,
+            int count);
     }
 }

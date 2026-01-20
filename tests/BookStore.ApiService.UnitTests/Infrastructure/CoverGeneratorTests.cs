@@ -11,7 +11,7 @@ public class CoverGeneratorTests
         var bytes = CoverGenerator.GenerateCover("Test Title", "Test Author");
 
         // Assert
-        await Assert.That(bytes).IsNotNull();
-        await Assert.That(bytes).IsNotEmpty();
+        _ = await Assert.That(bytes).IsNotNull();
+        _ = await Assert.That(bytes).IsNotEmpty();
     }
 }

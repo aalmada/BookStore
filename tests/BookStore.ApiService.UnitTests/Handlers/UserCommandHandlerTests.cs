@@ -4,6 +4,7 @@ using BookStore.ApiService.Projections;
 using BookStore.Shared.Messages.Events;
 using Marten;
 using NSubstitute;
+using System.Threading;
 
 #pragma warning disable CS8602 // Dereference of a possibly null reference - Exception.Message is never null for our test scenarios
 
@@ -23,7 +24,7 @@ public class UserCommandHandlerTests
         var command = new AddBookToFavorites(userId, bookId);
 
         var session = Substitute.For<IDocumentSession>();
-        _ = session.Events.AggregateStreamAsync<UserProfile>(userId).Returns((UserProfile?)null);
+        _ = session.LoadAsync<UserProfile>(userId, Arg.Any<CancellationToken>()).Returns((UserProfile?)null);
 
         // Act
         await UserCommandHandler.Handle(command, session);
@@ -49,7 +50,7 @@ public class UserCommandHandlerTests
             Id = userId,
             FavoriteBookIds = [Guid.CreateVersion7()] // Different book
         };
-        _ = session.Events.AggregateStreamAsync<UserProfile>(userId).Returns(existingProfile);
+        _ = session.LoadAsync<UserProfile>(userId, Arg.Any<CancellationToken>()).Returns(existingProfile);
 
         // Act
         await UserCommandHandler.Handle(command, session);
@@ -75,7 +76,7 @@ public class UserCommandHandlerTests
             Id = userId,
             FavoriteBookIds = [bookId] // Already in favorites
         };
-        _ = session.Events.AggregateStreamAsync<UserProfile>(userId).Returns(existingProfile);
+        _ = session.LoadAsync<UserProfile>(userId, Arg.Any<CancellationToken>()).Returns(existingProfile);
 
         // Act
         await UserCommandHandler.Handle(command, session);
@@ -105,7 +106,7 @@ public class UserCommandHandlerTests
             Id = userId,
             FavoriteBookIds = [bookId]
         };
-        _ = session.Events.AggregateStreamAsync<UserProfile>(userId).Returns(existingProfile);
+        _ = session.LoadAsync<UserProfile>(userId, Arg.Any<CancellationToken>()).Returns(existingProfile);
 
         // Act
         await UserCommandHandler.Handle(command, session);
@@ -131,7 +132,7 @@ public class UserCommandHandlerTests
             Id = userId,
             FavoriteBookIds = [Guid.CreateVersion7()] // Different book
         };
-        _ = session.Events.AggregateStreamAsync<UserProfile>(userId).Returns(existingProfile);
+        _ = session.LoadAsync<UserProfile>(userId, Arg.Any<CancellationToken>()).Returns(existingProfile);
 
         // Act
         await UserCommandHandler.Handle(command, session);
@@ -152,7 +153,7 @@ public class UserCommandHandlerTests
         var command = new RemoveBookFromFavorites(userId, bookId);
 
         var session = Substitute.For<IDocumentSession>();
-        _ = session.Events.AggregateStreamAsync<UserProfile>(userId).Returns((UserProfile?)null);
+        _ = session.LoadAsync<UserProfile>(userId, Arg.Any<CancellationToken>()).Returns((UserProfile?)null);
 
         // Act
         await UserCommandHandler.Handle(command, session);
@@ -181,7 +182,7 @@ public class UserCommandHandlerTests
 
         var session = Substitute.For<IDocumentSession>();
         var existingProfile = new UserProfile { Id = userId };
-        _ = session.Events.AggregateStreamAsync<UserProfile>(userId).Returns(existingProfile);
+        _ = session.LoadAsync<UserProfile>(userId, Arg.Any<CancellationToken>()).Returns(existingProfile);
 
         // Act
         await UserCommandHandler.Handle(command, session);
@@ -258,7 +259,7 @@ public class UserCommandHandlerTests
             Id = userId,
             BookRatings = new Dictionary<Guid, int> { [bookId] = 2 } // Previous rating
         };
-        _ = session.Events.AggregateStreamAsync<UserProfile>(userId).Returns(existingProfile);
+        _ = session.LoadAsync<UserProfile>(userId, Arg.Any<CancellationToken>()).Returns(existingProfile);
 
         // Act
         await UserCommandHandler.Handle(command, session);
@@ -279,7 +280,7 @@ public class UserCommandHandlerTests
         var command = new RateBook(userId, bookId, 5);
 
         var session = Substitute.For<IDocumentSession>();
-        _ = session.Events.AggregateStreamAsync<UserProfile>(userId).Returns((UserProfile?)null);
+        _ = session.LoadAsync<UserProfile>(userId, Arg.Any<CancellationToken>()).Returns((UserProfile?)null);
 
         // Act
         await UserCommandHandler.Handle(command, session);
@@ -309,7 +310,7 @@ public class UserCommandHandlerTests
             Id = userId,
             BookRatings = new Dictionary<Guid, int> { [bookId] = 4 }
         };
-        _ = session.Events.AggregateStreamAsync<UserProfile>(userId).Returns(existingProfile);
+        _ = session.LoadAsync<UserProfile>(userId, Arg.Any<CancellationToken>()).Returns(existingProfile);
 
         // Act
         await UserCommandHandler.Handle(command, session);
@@ -333,9 +334,9 @@ public class UserCommandHandlerTests
         var existingProfile = new UserProfile
         {
             Id = userId,
-            BookRatings = new Dictionary<Guid, int>() // No ratings
+            BookRatings = [] // No ratings
         };
-        _ = session.Events.AggregateStreamAsync<UserProfile>(userId).Returns(existingProfile);
+        _ = session.LoadAsync<UserProfile>(userId, Arg.Any<CancellationToken>()).Returns(existingProfile);
 
         // Act
         await UserCommandHandler.Handle(command, session);
@@ -356,7 +357,7 @@ public class UserCommandHandlerTests
         var command = new RemoveBookRating(userId, bookId);
 
         var session = Substitute.For<IDocumentSession>();
-        _ = session.Events.AggregateStreamAsync<UserProfile>(userId).Returns((UserProfile?)null);
+        _ = session.LoadAsync<UserProfile>(userId, Arg.Any<CancellationToken>()).Returns((UserProfile?)null);
 
         // Act
         await UserCommandHandler.Handle(command, session);
@@ -382,7 +383,7 @@ public class UserCommandHandlerTests
 
         var session = Substitute.For<IDocumentSession>();
         var existingProfile = new UserProfile { Id = userId };
-        _ = session.Events.AggregateStreamAsync<UserProfile>(userId).Returns(existingProfile);
+        _ = session.LoadAsync<UserProfile>(userId, Arg.Any<CancellationToken>()).Returns(existingProfile);
 
         // Act
         await UserCommandHandler.Handle(command, session);
@@ -442,7 +443,7 @@ public class UserCommandHandlerTests
             Id = userId,
             ShoppingCartItems = new Dictionary<Guid, int> { [bookId] = 3 } // Already has 3
         };
-        _ = session.Events.AggregateStreamAsync<UserProfile>(userId).Returns(existingProfile);
+        _ = session.LoadAsync<UserProfile>(userId, Arg.Any<CancellationToken>()).Returns(existingProfile);
 
         // Act
         await UserCommandHandler.Handle(command, session);
@@ -472,7 +473,7 @@ public class UserCommandHandlerTests
             Id = userId,
             ShoppingCartItems = new Dictionary<Guid, int> { [bookId] = 2 }
         };
-        _ = session.Events.AggregateStreamAsync<UserProfile>(userId).Returns(existingProfile);
+        _ = session.LoadAsync<UserProfile>(userId, Arg.Any<CancellationToken>()).Returns(existingProfile);
 
         // Act
         await UserCommandHandler.Handle(command, session);
@@ -496,9 +497,9 @@ public class UserCommandHandlerTests
         var existingProfile = new UserProfile
         {
             Id = userId,
-            ShoppingCartItems = new Dictionary<Guid, int>() // Empty cart
+            ShoppingCartItems = [] // Empty cart
         };
-        _ = session.Events.AggregateStreamAsync<UserProfile>(userId).Returns(existingProfile);
+        _ = session.LoadAsync<UserProfile>(userId, Arg.Any<CancellationToken>()).Returns(existingProfile);
 
         // Act
         await UserCommandHandler.Handle(command, session);
@@ -519,7 +520,7 @@ public class UserCommandHandlerTests
         var command = new RemoveBookFromCart(userId, bookId);
 
         var session = Substitute.For<IDocumentSession>();
-        _ = session.Events.AggregateStreamAsync<UserProfile>(userId).Returns((UserProfile?)null);
+        _ = session.LoadAsync<UserProfile>(userId, Arg.Any<CancellationToken>()).Returns((UserProfile?)null);
 
         // Act
         await UserCommandHandler.Handle(command, session);
@@ -549,7 +550,7 @@ public class UserCommandHandlerTests
             Id = userId,
             ShoppingCartItems = new Dictionary<Guid, int> { [bookId] = 2 }
         };
-        _ = session.Events.AggregateStreamAsync<UserProfile>(userId).Returns(existingProfile);
+        _ = session.LoadAsync<UserProfile>(userId, Arg.Any<CancellationToken>()).Returns(existingProfile);
 
         // Act
         await UserCommandHandler.Handle(command, session);
@@ -607,9 +608,9 @@ public class UserCommandHandlerTests
         var existingProfile = new UserProfile
         {
             Id = userId,
-            ShoppingCartItems = new Dictionary<Guid, int>() // Empty cart
+            ShoppingCartItems = [] // Empty cart
         };
-        _ = session.Events.AggregateStreamAsync<UserProfile>(userId).Returns(existingProfile);
+        _ = session.LoadAsync<UserProfile>(userId, Arg.Any<CancellationToken>()).Returns(existingProfile);
 
         // Act
         await UserCommandHandler.Handle(command, session);
@@ -630,7 +631,7 @@ public class UserCommandHandlerTests
         var command = new UpdateCartItemQuantity(userId, bookId, 5);
 
         var session = Substitute.For<IDocumentSession>();
-        _ = session.Events.AggregateStreamAsync<UserProfile>(userId).Returns((UserProfile?)null);
+        _ = session.LoadAsync<UserProfile>(userId, Arg.Any<CancellationToken>()).Returns((UserProfile?)null);
 
         // Act
         await UserCommandHandler.Handle(command, session);
@@ -663,7 +664,7 @@ public class UserCommandHandlerTests
                 [Guid.CreateVersion7()] = 1
             }
         };
-        _ = session.Events.AggregateStreamAsync<UserProfile>(userId).Returns(existingProfile);
+        _ = session.LoadAsync<UserProfile>(userId, Arg.Any<CancellationToken>()).Returns(existingProfile);
 
         // Act
         await UserCommandHandler.Handle(command, session);
@@ -686,9 +687,9 @@ public class UserCommandHandlerTests
         var existingProfile = new UserProfile
         {
             Id = userId,
-            ShoppingCartItems = new Dictionary<Guid, int>() // Empty
+            ShoppingCartItems = [] // Empty
         };
-        _ = session.Events.AggregateStreamAsync<UserProfile>(userId).Returns(existingProfile);
+        _ = session.LoadAsync<UserProfile>(userId, Arg.Any<CancellationToken>()).Returns(existingProfile);
 
         // Act
         await UserCommandHandler.Handle(command, session);
@@ -708,7 +709,7 @@ public class UserCommandHandlerTests
         var command = new ClearShoppingCart(userId);
 
         var session = Substitute.For<IDocumentSession>();
-        _ = session.Events.AggregateStreamAsync<UserProfile>(userId).Returns((UserProfile?)null);
+        _ = session.LoadAsync<UserProfile>(userId, Arg.Any<CancellationToken>()).Returns((UserProfile?)null);
 
         // Act
         await UserCommandHandler.Handle(command, session);
