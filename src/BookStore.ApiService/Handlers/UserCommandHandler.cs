@@ -82,15 +82,11 @@ public static class UserCommandHandler
             throw new ArgumentException("Quantity must be greater than 0", nameof(command.Quantity));
         }
 
-        Console.WriteLine($"[HANDLER] AddBookToCart - UserId: {command.UserId}, BookId: {command.BookId}, Quantity: {command.Quantity}");
-
         var profile = await session.Events.AggregateStreamAsync<UserProfile>(command.UserId);
-        Console.WriteLine($"[HANDLER] AggregateStreamAsync returned - ProfileId: {profile?.Id ?? Guid.Empty}, CartItems: {profile?.ShoppingCartItems?.Count ?? 0}");
 
         // Lazy initialization: If no events exist for this user, initialize the stream
         if (profile == null || profile.Id == Guid.Empty)
         {
-            Console.WriteLine($"[HANDLER] Initializing UserProfile stream for user {command.UserId}");
             _ = session.Events.StartStream<UserProfile>(
                 command.UserId,
                 new UserProfileCreated(command.UserId)
@@ -99,7 +95,6 @@ public static class UserCommandHandler
 
         // Always append event - Apply method will handle merging quantities
         _ = session.Events.Append(command.UserId, new BookAddedToCart(command.BookId, command.Quantity));
-        Console.WriteLine($"[HANDLER] Event appended to stream {command.UserId}");
     }
 
     public static async Task Handle(RemoveBookFromCart command, IDocumentSession session)

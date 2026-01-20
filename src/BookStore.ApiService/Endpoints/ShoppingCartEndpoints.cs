@@ -41,7 +41,6 @@ public static class ShoppingCartEndpoints
         CancellationToken cancellationToken)
     {
         var userId = context.User.GetUserId();
-        Console.WriteLine($"[CART-ENDPOINT] GetCart - UserId: {userId}, TenantId: {tenantContext.TenantId}");
 
         if (userId == Guid.Empty)
         {
@@ -54,13 +53,9 @@ public static class ShoppingCartEndpoints
 
         if (profile == null)
         {
-            // UserProfile doesn't exist - shouldn't happen for authenticated users
-            // Return empty cart for now
-            Console.WriteLine($"[CART-ENDPOINT] GetCart - UserProfile is NULL for UserId: {userId}");
+            // UserProfile doesn't exist - return empty cart
             return TypedResults.Ok(new ShoppingCartDto([], 0));
         }
-
-        Console.WriteLine($"[CART-ENDPOINT] GetCart - UserProfile found, CartItems count: {profile.ShoppingCartItems?.Count ?? 0}");
 
         if (profile.ShoppingCartItems?.Count == 0)
         {
@@ -99,7 +94,6 @@ public static class ShoppingCartEndpoints
         }
 
         var userId = context.User.GetUserId();
-        Console.WriteLine($"[CART-ENDPOINT] AddToCart - UserId: {userId}, BookId: {request.BookId}, Quantity: {request.Quantity}, TenantId: {tenantContext.TenantId}");
 
         if (userId == Guid.Empty)
         {

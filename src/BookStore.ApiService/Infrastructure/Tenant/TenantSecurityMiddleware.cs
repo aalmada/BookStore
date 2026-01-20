@@ -1,3 +1,4 @@
+using BookStore.ApiService.Infrastructure.Logging;
 using Microsoft.AspNetCore.Http;
 
 namespace BookStore.ApiService.Infrastructure.Tenant;
@@ -18,9 +19,7 @@ public class TenantSecurityMiddleware(RequestDelegate next, ILogger<TenantSecuri
                 !string.IsNullOrEmpty(currentTenant) &&
                 !string.Equals(userTenant, currentTenant, StringComparison.OrdinalIgnoreCase))
             {
-#pragma warning disable CA1848
-                logger.LogWarning("Cross-tenant access attempted. User Tenant: {UserTenant}, Target Tenant: {TargetTenant}", userTenant, currentTenant);
-#pragma warning restore CA1848
+                Log.Tenants.CrossTenantAccessAttempted(logger, userTenant, currentTenant);
                 context.Response.StatusCode = StatusCodes.Status403Forbidden;
                 await context.Response.WriteAsJsonAsync(new { error = "Cross-tenant access denied" });
                 return;
@@ -30,6 +29,7 @@ public class TenantSecurityMiddleware(RequestDelegate next, ILogger<TenantSecuri
         await next(context);
     }
 }
+
 
 public static class TenantSecurityMiddlewareExtensions
 {

@@ -1,3 +1,4 @@
+using BookStore.ApiService.Infrastructure.Logging;
 using Microsoft.AspNetCore.Http;
 
 namespace BookStore.ApiService.Infrastructure.Tenant;
@@ -35,8 +36,9 @@ public class TenantResolutionMiddleware
                 else
                 {
                     // Invalid tenant - return 400 Bad Request
+                    Log.Tenants.InvalidTenantRequested(_logger, tenantId);
                     context.Response.StatusCode = StatusCodes.Status400BadRequest;
-                    await context.Response.WriteAsJsonAsync(new { error = $"Invalid Tenant ID: {tenantId}" });
+                    await context.Response.WriteAsJsonAsync(new { error = "Invalid or unknown tenant" });
                     return;
                 }
             }
@@ -49,18 +51,17 @@ public class TenantResolutionMiddleware
         context.Items["TenantId"] = tenantContext.TenantId;
 
         // Audit log: Track tenant access for security monitoring
-#pragma warning disable CA1848
-        _logger.LogInformation(
-            "Tenant {TenantId} accessing {Method} {Path} from {RemoteIp}",
+        Log.Tenants.TenantAccess(
+            _logger,
             tenantContext.TenantId,
             context.Request.Method,
             context.Request.Path,
-            context.Connection.RemoteIpAddress);
-#pragma warning restore CA1848
+            context.Connection.RemoteIpAddress?.ToString());
 
         await _next(context);
     }
 }
+
 
 public static class TenantMiddlewareExtensions
 {

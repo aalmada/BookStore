@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using BookStore.ApiService.Infrastructure.Logging;
+using BookStore.ApiService.Infrastructure.Tenant;
 using BookStore.ApiService.Models;
 using BookStore.Shared.Models;
 using Microsoft.AspNetCore.Identity;
@@ -77,6 +78,7 @@ public static class PasskeyEndpoints
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
             IUserStore<ApplicationUser> userStore,
+            ITenantContext tenantContext,
             BookStore.ApiService.Services.JwtTokenService tokenService,
             Wolverine.IMessageBus bus,
             ILogger<Program> logger,
@@ -204,7 +206,11 @@ public static class PasskeyEndpoints
             var accessToken = tokenService.GenerateAccessToken(newUser);
             var refreshToken = tokenService.GenerateRefreshToken();
 
-            newUser.RefreshTokens.Add(new RefreshTokenInfo(refreshToken, DateTimeOffset.UtcNow.AddDays(7), DateTimeOffset.UtcNow));
+            newUser.RefreshTokens.Add(new RefreshTokenInfo(
+                refreshToken,
+                DateTimeOffset.UtcNow.AddDays(7),
+                DateTimeOffset.UtcNow,
+                tenantContext.TenantId));
             _ = await userManager.UpdateAsync(newUser);
 
             return Results.Ok(new LoginResponse(
@@ -240,6 +246,7 @@ public static class PasskeyEndpoints
             SignInManager<ApplicationUser> signInManager,
             UserManager<ApplicationUser> userManager,
             IUserStore<ApplicationUser> userStore,
+            ITenantContext tenantContext,
             ILogger<Program> logger,
             BookStore.ApiService.Services.JwtTokenService tokenService,
             CancellationToken cancellationToken) =>
@@ -287,7 +294,7 @@ public static class PasskeyEndpoints
                             if (user != null)
                             {
                                 // Issue tokens
-                                return await IssueTokens(user, tokenService, userManager);
+                                return await IssueTokens(user, tokenService, userManager, tenantContext.TenantId);
                             }
                         }
 
@@ -305,7 +312,7 @@ public static class PasskeyEndpoints
                                     var user = await passkeyStore.FindByPasskeyIdAsync(credentialId, cancellationToken);
                                     if (user is not null)
                                     {
-                                        return await IssueTokens(user, tokenService, userManager);
+                                        return await IssueTokens(user, tokenService, userManager, tenantContext.TenantId);
                                     }
                                 }
                             }
@@ -336,12 +343,17 @@ public static class PasskeyEndpoints
     static async Task<IResult> IssueTokens(
         ApplicationUser user,
         BookStore.ApiService.Services.JwtTokenService tokenService,
-        UserManager<ApplicationUser> userManager)
+        UserManager<ApplicationUser> userManager,
+        string tenantId)
     {
         var accessToken = tokenService.GenerateAccessToken(user);
         var refreshToken = tokenService.GenerateRefreshToken();
 
-        user.RefreshTokens.Add(new RefreshTokenInfo(refreshToken, DateTimeOffset.UtcNow.AddDays(7), DateTimeOffset.UtcNow));
+        user.RefreshTokens.Add(new RefreshTokenInfo(
+            refreshToken,
+            DateTimeOffset.UtcNow.AddDays(7),
+            DateTimeOffset.UtcNow,
+            tenantId));
         _ = await userManager.UpdateAsync(user);
 
         return Results.Ok(new LoginResponse(
