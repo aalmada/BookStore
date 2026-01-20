@@ -16,6 +16,26 @@ public static partial class Log
 
         [LoggerMessage(
             Level = LogLevel.Information,
+            Message = "Seeding new tenant: {TenantId}")]
+        public static partial void SeedingNewTenant(ILogger logger, string tenantId);
+
+        [LoggerMessage(
+            Level = LogLevel.Information,
+            Message = "Updated existing tenant: {TenantId}")]
+        public static partial void UpdatedExistingTenant(ILogger logger, string tenantId);
+
+        [LoggerMessage(
+            Level = LogLevel.Information,
+            Message = "Starting database seeding for tenant '{TenantId}'...")]
+        public static partial void StartingTenantSeeding(ILogger logger, string tenantId);
+
+        [LoggerMessage(
+            Level = LogLevel.Information,
+            Message = "Sales already seeded, skipping sales seeding")]
+        public static partial void SalesAlreadySeeded(ILogger logger);
+
+        [LoggerMessage(
+            Level = LogLevel.Information,
             Message = "Starting database seeding")]
         public static partial void StartingDatabaseSeeding(ILogger logger);
 

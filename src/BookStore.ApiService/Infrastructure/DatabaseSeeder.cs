@@ -47,9 +47,7 @@ public class DatabaseSeeder(
                     IsEnabled = true
                 };
                 session.Store(tenant);
-#pragma warning disable CA1848
-                logger.LogInformation("Seeding new tenant: {TenantId}", tenantId);
-#pragma warning restore CA1848
+                Log.Seeding.SeedingNewTenant(logger, tenantId);
             }
             else
             {
@@ -60,9 +58,7 @@ public class DatabaseSeeder(
                 existing.ThemePrimaryColor = color;
                 existing.UpdatedAt = DateTimeOffset.UtcNow;
                 // Marten automatically tracks changes - no need for Update()
-#pragma warning disable CA1848
-                logger.LogInformation("Updated existing tenant: {TenantId}", tenantId);
-#pragma warning restore CA1848
+                Log.Seeding.UpdatedExistingTenant(logger, tenantId);
             }
         }
 
@@ -89,9 +85,7 @@ public class DatabaseSeeder(
             return; // Already seeded
         }
 
-#pragma warning disable CA1848 // Use LoggerMessage delegates
-        logger.LogInformation("Starting database seeding for tenant '{TenantId}'...", tenantId);
-#pragma warning restore CA1848
+        Log.Seeding.StartingTenantSeeding(logger, tenantId);
 
         // Seed in dependency order: Publishers → Authors → Categories → Books
         var publisherIds = SeedPublishers(session, logger);
@@ -545,9 +539,7 @@ public class DatabaseSeeder(
 
         if (booksWithSales)
         {
-#pragma warning disable CA1848
-            logger.LogInformation("Sales already seeded, skipping sales seeding");
-#pragma warning restore CA1848
+            Log.Seeding.SalesAlreadySeeded(logger);
             return;
         }
 

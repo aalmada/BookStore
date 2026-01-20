@@ -140,10 +140,7 @@ if (true)
         var env = app.Services.GetRequiredService<IHostEnvironment>();
         var seedingEnabled = app.Configuration.GetValue("Seeding:Enabled", true);
 
-#pragma warning disable CA1848
-        logger.LogInformation("Background startup task running. Environment: {Environment}, SeedingEnabled: {SeedingEnabled}",
-            env.EnvironmentName, seedingEnabled);
-#pragma warning restore CA1848
+        Log.Infrastructure.StartupTaskRunning(logger, env.EnvironmentName, seedingEnabled);
 
         var retryCount = 0;
         var maxRetries = 10;
@@ -179,9 +176,7 @@ if (true)
 
                     foreach (var tenantId in tenants)
                     {
-#pragma warning disable CA1848 // Use LoggerMessage delegates
-                        logger.LogInformation("Seeding tenant: {TenantId}", tenantId);
-#pragma warning restore CA1848
+                        Log.Infrastructure.SeedingTenant(logger, tenantId);
 
                         // Admin user is now seeded per-tenant in SeedAsync
 
@@ -208,15 +203,11 @@ if (true)
 
                 if (retryCount >= maxRetries)
                 {
-#pragma warning disable CA1848 // Use LoggerMessage delegates
-                    logger.LogError(ex, "Database seeding failed after {RetryCount} attempts. Application may not behave correctly.", retryCount);
-#pragma warning restore CA1848
+                    Log.Infrastructure.SeedingFailedMaxRetries(logger, ex, retryCount);
                     break;
                 }
 
-#pragma warning disable CA1848 // Use LoggerMessage delegates
-                logger.LogWarning(ex, "Database seeding failed (attempt {RetryCount}/{MaxRetries}). Retrying in {RetryDelay}s...", retryCount, maxRetries, retryDelay.TotalSeconds);
-#pragma warning restore CA1848
+                Log.Infrastructure.SeedingFailedRetrying(logger, ex, retryCount, maxRetries, retryDelay.TotalSeconds);
                 await Task.Delay(retryDelay);
             }
         }
