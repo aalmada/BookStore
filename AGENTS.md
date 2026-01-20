@@ -152,6 +152,16 @@ var books = await cache.GetOrCreateAsync("books", async entry => {
 });
 ```
 
+**❌ Configuring Marten in Program.cs**
+```csharp
+// ❌ Wrong - redundant and missing options
+builder.Services.AddMarten(options => { ... });
+
+// ✅ Correct - use extension method
+builder.Services.AddMartenEventStore(builder.Configuration);
+// Configure projections in MartenConfigurationExtensions.cs
+```
+
 ### Testing Mistakes
 
 **❌ Using xUnit/NUnit instead of TUnit**

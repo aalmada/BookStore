@@ -285,6 +285,7 @@ logger.LogInformation(
 ### Middlewares
 
 1. **`MartenMetadataMiddleware`**:
+   - Configured automatically via `AddMartenEventStore`.
    - Captures `X-Correlation-ID` from headers or generates a new one.
    - Sets `CorrelationId` and `CausationId` on the `IDocumentSession`.
    - Captures `RemoteIpAddress` and `User-Agent`.
