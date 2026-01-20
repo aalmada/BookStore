@@ -6,6 +6,8 @@ using BookStore.Shared.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
+using Microsoft.AspNetCore.WebUtilities;
+
 namespace BookStore.ApiService.Endpoints;
 
 public static class PasskeyEndpoints
@@ -125,16 +127,7 @@ public static class PasskeyEndpoints
                     var userHandleBase64 = userHandleElem.GetString();
                     if (!string.IsNullOrEmpty(userHandleBase64))
                     {
-                        // URL-safe Base64 decode
-                        var cleanBase64 = userHandleBase64.Replace('-', '+').Replace('_', '/');
-                        switch (cleanBase64.Length % 4)
-                        {
-                            case 2: cleanBase64 += "=="; break;
-                            case 3: cleanBase64 += "="; break;
-                        }
-
-                        var bytes = Convert.FromBase64String(cleanBase64);
-                        passedUserId = System.Text.Encoding.UTF8.GetString(bytes);
+                        passedUserId = DecodeBase64UrlToString(userHandleBase64);
                     }
                 }
             }
@@ -203,7 +196,8 @@ public static class PasskeyEndpoints
             }
 
             // Auto Login - Issue Token (only when verification is not required)
-            var accessToken = tokenService.GenerateAccessToken(newUser);
+            var roles = await userManager.GetRolesAsync(newUser);
+            var accessToken = tokenService.GenerateAccessToken(newUser, tenantContext.TenantId, roles);
             var refreshToken = tokenService.GenerateRefreshToken();
 
             newUser.RefreshTokens.Add(new RefreshTokenInfo(
@@ -275,15 +269,7 @@ public static class PasskeyEndpoints
                             var userHandleBase64 = userHandleElem.GetString();
                             if (!string.IsNullOrEmpty(userHandleBase64))
                             {
-                                var cleanBase64 = userHandleBase64.Replace('-', '+').Replace('_', '/');
-                                switch (cleanBase64.Length % 4)
-                                {
-                                    case 2: cleanBase64 += "=="; break;
-                                    case 3: cleanBase64 += "="; break;
-                                }
-
-                                var bytes = Convert.FromBase64String(cleanBase64);
-                                userId = System.Text.Encoding.UTF8.GetString(bytes);
+                                userId = DecodeBase64UrlToString(userHandleBase64);
                             }
                         }
 
@@ -346,7 +332,8 @@ public static class PasskeyEndpoints
         UserManager<ApplicationUser> userManager,
         string tenantId)
     {
-        var accessToken = tokenService.GenerateAccessToken(user);
+        var roles = await userManager.GetRolesAsync(user);
+        var accessToken = tokenService.GenerateAccessToken(user, tenantId, roles);
         var refreshToken = tokenService.GenerateRefreshToken();
 
         user.RefreshTokens.Add(new RefreshTokenInfo(
@@ -362,6 +349,15 @@ public static class PasskeyEndpoints
             3600,
             refreshToken
         ));
+    }
+
+    /// <summary>
+    /// Decodes a Base64URL-encoded string to a UTF-8 string.
+    /// </summary>
+    static string DecodeBase64UrlToString(string base64Url)
+    {
+        var bytes = Base64UrlTextEncoder.Decode(base64Url);
+        return System.Text.Encoding.UTF8.GetString(bytes);
     }
 }
 
