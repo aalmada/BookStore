@@ -3,10 +3,13 @@ using System.Security.Claims;
 using BookStore.ApiService.Infrastructure.Logging;
 using BookStore.ApiService.Infrastructure.Tenant;
 using BookStore.ApiService.Models;
+using BookStore.ApiService.Projections;
 using BookStore.ApiService.Services;
+using BookStore.Shared.Messages.Events;
 using BookStore.Shared.Models;
 using Marten;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 
 namespace BookStore.ApiService.Endpoints;
@@ -115,6 +118,7 @@ public static class JwtAuthenticationEndpoints
         UserManager<ApplicationUser> userManager,
         JwtTokenService jwtTokenService,
         ITenantContext tenantContext,
+        [FromServices] IDocumentSession session,
         Wolverine.IMessageBus bus,
         IOptions<Infrastructure.Email.EmailOptions> emailOptions,
         ILogger<Program> logger,
@@ -158,6 +162,10 @@ public static class JwtAuthenticationEndpoints
             tenantContext.TenantId));
 
         _ = await userManager.UpdateAsync(user);
+
+        // Emit UserProfileCreated event to initialize the projection (favorites, cart, etc.)
+        _ = session.Events.StartStream<UserProfile>(user.Id, new UserProfileCreated(user.Id));
+        await session.SaveChangesAsync(cancellationToken);
 
         Log.Users.JwtRegistrationSuccessful(logger, request.Email);
 

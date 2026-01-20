@@ -1,3 +1,5 @@
+using JasperFx;
+
 namespace BookStore.ApiService.Infrastructure.Tenant;
 
 public class TenantContext : ITenantContext
@@ -14,5 +16,5 @@ public class TenantContext : ITenantContext
 
             field = value;
         }
-    } = "default";
+    } = StorageConstants.DefaultTenantId;
 }

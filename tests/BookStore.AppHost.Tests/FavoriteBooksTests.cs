@@ -1,4 +1,4 @@
-using System.Net;
+
 using System.Net.Http.Json;
 using BookStore.Shared.Models;
 
@@ -16,7 +16,6 @@ public class FavoriteBooksTests
         // Create 3 books
         var book1 = await TestHelpers.CreateBookAsync(adminClient);
         var book2 = await TestHelpers.CreateBookAsync(adminClient);
-        var book3 = await TestHelpers.CreateBookAsync(adminClient);
 
         // Add 2 to favorites
         await TestHelpers.AddToFavoritesAsync(httpClient, book1.Id);
@@ -59,7 +58,8 @@ public class FavoriteBooksTests
         // Arrange
         var publicClient = TestHelpers.GetUnauthenticatedClient();
         var globalHooks = GlobalHooks.NotificationService;
-        _ = await globalHooks!.WaitForResourceHealthyAsync("apiservice", CancellationToken.None).WaitAsync(TestConstants.DefaultTimeout);
+        _ = await globalHooks!.WaitForResourceHealthyAsync("apiservice", CancellationToken.None)
+            .WaitAsync(TestConstants.DefaultTimeout);
 
         // Act
         var response = await publicClient.GetAsync("/api/books/favorites");
@@ -76,16 +76,15 @@ public class FavoriteBooksTests
         var httpClient = await TestHelpers.CreateUserAndGetClientAsync();
 
         // Create and favorite at least 5 books
-        var books = new List<BookDto>();
         for (var i = 0; i < 5; i++)
         {
             var book = await TestHelpers.CreateBookAsync(adminClient);
             await TestHelpers.AddToFavoritesAsync(httpClient, book.Id);
-            books.Add(book);
         }
 
         // Act - Request first page with 3 items
-        var response = await httpClient.GetFromJsonAsync<PagedListDto<BookDto>>("/api/books/favorites?page=1&pageSize=3");
+        var response =
+            await httpClient.GetFromJsonAsync<PagedListDto<BookDto>>("/api/books/favorites?page=1&pageSize=3");
 
         // Assert
         _ = await Assert.That(response).IsNotNull();
@@ -103,44 +102,42 @@ public class FavoriteBooksTests
         var httpClient = await TestHelpers.CreateUserAndGetClientAsync();
 
         // Create books with specific titles for sorting
-        var bookA = await TestHelpers.CreateBookAsync(adminClient, new
-        {
-            Title = $"AAA Book {Guid.NewGuid()}",
-            Isbn = "978-3-16-148410-0",
-            Language = "en",
-            Translations = new Dictionary<string, object>
+        var bookA = await TestHelpers.CreateBookAsync(adminClient,
+            new
             {
-                ["en"] = new { Description = "Test description" }
-            },
-            PublicationDate = new { Year = 2024, Month = 1, Day = 1 },
-            PublisherId = (Guid?)null,
-            AuthorIds = new Guid[] { },
-            CategoryIds = new Guid[] { },
-            Prices = new Dictionary<string, decimal> { ["USD"] = 10.0m }
-        });
+                Title = $"AAA Book {Guid.NewGuid()}",
+                Isbn = "978-3-16-148410-0",
+                Language = "en",
+                Translations = new Dictionary<string, object> { ["en"] = new { Description = "Test description" } },
+                PublicationDate = new { Year = 2024, Month = 1, Day = 1 },
+                PublisherId = (Guid?)null,
+                AuthorIds = new Guid[] { },
+                CategoryIds = new Guid[] { },
+                Prices = new Dictionary<string, decimal> { ["USD"] = 10.0m }
+            });
 
-        var bookZ = await TestHelpers.CreateBookAsync(adminClient, new
-        {
-            Title = $"ZZZ Book {Guid.NewGuid()}",
-            Isbn = "978-3-16-148410-1",
-            Language = "en",
-            Translations = new Dictionary<string, object>
+        var bookZ = await TestHelpers.CreateBookAsync(adminClient,
+            new
             {
-                ["en"] = new { Description = "Test description" }
-            },
-            PublicationDate = new { Year = 2024, Month = 1, Day = 1 },
-            PublisherId = (Guid?)null,
-            AuthorIds = new Guid[] { },
-            CategoryIds = new Guid[] { },
-            Prices = new Dictionary<string, decimal> { ["USD"] = 10.0m }
-        });
+                Title = $"ZZZ Book {Guid.NewGuid()}",
+                Isbn = "978-3-16-148410-1",
+                Language = "en",
+                Translations = new Dictionary<string, object> { ["en"] = new { Description = "Test description" } },
+                PublicationDate = new { Year = 2024, Month = 1, Day = 1 },
+                PublisherId = (Guid?)null,
+                AuthorIds = new Guid[] { },
+                CategoryIds = new Guid[] { },
+                Prices = new Dictionary<string, decimal> { ["USD"] = 10.0m }
+            });
 
         // Add to favorites
         await TestHelpers.AddToFavoritesAsync(httpClient, bookA.Id);
         await TestHelpers.AddToFavoritesAsync(httpClient, bookZ.Id);
 
         // Act - Sort by title descending
-        var response = await httpClient.GetFromJsonAsync<PagedListDto<BookDto>>("/api/books/favorites?sortBy=title&sortOrder=desc");
+        var response =
+            await httpClient.GetFromJsonAsync<PagedListDto<BookDto>>(
+                "/api/books/favorites?sortBy=title&sortOrder=desc");
 
         // Assert
         _ = await Assert.That(response).IsNotNull();

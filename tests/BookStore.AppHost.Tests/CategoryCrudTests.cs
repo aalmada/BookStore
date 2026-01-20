@@ -59,11 +59,10 @@ public class CategoryCrudTests
             "CategoryUpdated",
             async () =>
             {
-                var updateResponse = await httpClient.PutAsJsonAsync($"/api/admin/categories/{createdCategory.Id}", (object)updateRequest);
+                var updateResponse = await httpClient.PutAsJsonAsync($"/api/admin/categories/{createdCategory.Id}",
+                    (object)updateRequest);
                 if (updateResponse.StatusCode != HttpStatusCode.NoContent)
                 {
-                    var error = await updateResponse.Content.ReadAsStringAsync();
-                    Console.WriteLine($"UpdateCategory Failed with {updateResponse.StatusCode}: {error}");
                 }
 
                 _ = await Assert.That(updateResponse.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
@@ -100,8 +99,6 @@ public class CategoryCrudTests
                 var deleteResponse = await httpClient.DeleteAsync($"/api/admin/categories/{createdCategory.Id}");
                 if (deleteResponse.StatusCode != HttpStatusCode.NoContent)
                 {
-                    var error = await deleteResponse.Content.ReadAsStringAsync();
-                    Console.WriteLine($"DeleteCategory Failed with {deleteResponse.StatusCode}: {error}");
                 }
 
                 _ = await Assert.That(deleteResponse.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
@@ -147,7 +144,8 @@ public class CategoryCrudTests
     [Arguments("es-MX", "Nombre de la Categoría")]
     [Arguments("fr-FR", "Default Name")]
     [Arguments("en", "Default Name")]
-    public async Task GetCategory_WithLocalizedHeader_ShouldReturnExpectedContent(string acceptLanguage, string expectedName)
+    public async Task GetCategory_WithLocalizedHeader_ShouldReturnExpectedContent(string acceptLanguage,
+        string expectedName)
     {
         // Arrange
         var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
@@ -229,12 +227,10 @@ public class CategoryCrudTests
             "CategoryUpdated",
             async () =>
             {
-                var restoreResponse = await httpClient.PostAsync($"/api/admin/categories/{createdCategory.Id}/restore", null);
+                var restoreResponse =
+                    await httpClient.PostAsync($"/api/admin/categories/{createdCategory.Id}/restore", null);
                 if (!restoreResponse.IsSuccessStatusCode)
                 {
-                    var error = await restoreResponse.Content.ReadAsStringAsync();
-                    Console.WriteLine($"[SSE-TEST] Restore failed: {restoreResponse.StatusCode} - {error}");
-
                 }
 
                 _ = await Assert.That(restoreResponse.StatusCode).IsEqualTo(HttpStatusCode.NoContent);

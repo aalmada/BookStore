@@ -35,15 +35,10 @@ public class BookCrudTests
 
         var response = await httpClient.SendAsync(request);
 
-        if (!response.IsSuccessStatusCode)
-        {
-            var error = await response.Content.ReadAsStringAsync();
-            Console.WriteLine($"[UploadTest] Upload failed: {response.StatusCode} - {error}");
-        }
-
         // Assert
         // We expect OK (200) or No Content (204) depending on implementation
-        _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Or.IsEqualTo(HttpStatusCode.NoContent);
+        _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Or
+            .IsEqualTo(HttpStatusCode.NoContent);
     }
 
     [Test]
@@ -159,7 +154,9 @@ public class BookCrudTests
         await TestHelpers.AddToFavoritesAsync(httpClient, createdBook!.Id);
         _ = await Assert.That(receivedFav).IsTrue();
 
-        HttpResponseMessage response = new(HttpStatusCode.NoContent); // Fake response to satisfy strict replacement if reused below, but act is done inside waiter.
+        HttpResponseMessage
+            response = new(HttpStatusCode
+                .NoContent); // Fake response to satisfy strict replacement if reused below, but act is done inside waiter.
 
         // Assert
         _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
@@ -277,17 +274,20 @@ public class BookCrudTests
         var password = faker.Internet.Password(8, false, "\\w", "Aa1!");
 
         // Register
-        var registerResponse = await anonClient.PostAsJsonAsync("/account/register", new { Email = email, Password = password });
+        var registerResponse =
+            await anonClient.PostAsJsonAsync("/account/register", new { Email = email, Password = password });
         _ = await Assert.That(registerResponse.IsSuccessStatusCode).IsTrue();
 
         // Login
-        var loginResponse = await anonClient.PostAsJsonAsync("/account/login", new { Email = email, Password = password });
+        var loginResponse =
+            await anonClient.PostAsJsonAsync("/account/login", new { Email = email, Password = password });
         _ = await Assert.That(loginResponse.IsSuccessStatusCode).IsTrue();
 
         var loginResult = await loginResponse.Content.ReadFromJsonAsync<LoginResponse>();
 
         var client = TestHelpers.GetUnauthenticatedClient();
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", loginResult!.AccessToken);
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", loginResult!.AccessToken);
         return client;
     }
 

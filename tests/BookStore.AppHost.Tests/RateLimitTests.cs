@@ -16,7 +16,8 @@ public class RateLimitTests
         var notificationService = GlobalHooks.NotificationService!;
         var httpClient = app.CreateHttpClient("apiservice");
 
-        _ = await notificationService.WaitForResourceHealthyAsync("apiservice", CancellationToken.None).WaitAsync(TestConstants.DefaultTimeout);
+        _ = await notificationService.WaitForResourceHealthyAsync("apiservice", CancellationToken.None)
+            .WaitAsync(TestConstants.DefaultTimeout);
 
         // Act & Assert
         // Make an initial request to login endpoint
@@ -29,7 +30,6 @@ public class RateLimitTests
         {
             var remaining = response.Headers.GetValues("X-Rate-Limit-Remaining").FirstOrDefault();
             _ = await Assert.That(remaining).IsNotNull();
-            Console.WriteLine($"[RateLimit] Remaining: {remaining}");
         }
         else
         {

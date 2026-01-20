@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Aspire.Hosting.Testing;
+using JasperFx;
 using Marten;
 using TUnit.Assertions.Extensions;
 using Weasel.Core;
@@ -65,12 +66,11 @@ public class MultiTenantAuthenticationTests : IDisposable
     /// Helper to login as admin for aspecific tenant
     /// </summary>
     // LoginAsAdminAsync moved to TestHelpers
-
     [Test]
     public async Task SeedAsync_CreatesAdminForEachTenant()
     {
         // Act: Try to login as each tenant's admin
-        var defaultLogin = await TestHelpers.LoginAsAdminAsync(_client!, "default");
+        var defaultLogin = await TestHelpers.LoginAsAdminAsync(_client!, StorageConstants.DefaultTenantId);
         var acmeLogin = await TestHelpers.LoginAsAdminAsync(_client!, "acme");
         var contosoLogin = await TestHelpers.LoginAsAdminAsync(_client!, "contoso");
 
@@ -151,8 +151,8 @@ public class MultiTenantAuthenticationTests : IDisposable
         // The middleware should detect tenant mismatch (JWT vs header)
         // Expected: Either 400 Bad Request (invalid tenant) or 403 Forbidden (tenant mismatch)
         var isRejected = response.StatusCode is HttpStatusCode.BadRequest or
-                        HttpStatusCode.Forbidden or
-                        HttpStatusCode.Unauthorized;
+            HttpStatusCode.Forbidden or
+            HttpStatusCode.Unauthorized;
 
         _ = await Assert.That(isRejected).IsTrue();
     }
@@ -189,7 +189,7 @@ public class MultiTenantAuthenticationTests : IDisposable
         // Assert: Should either succeed (201) or fail with validation error (400)
         // but NOT with authorization error (401/403)
         var isAuthorized = response.StatusCode is HttpStatusCode.Created or
-                          HttpStatusCode.BadRequest;
+            HttpStatusCode.BadRequest;
 
         _ = await Assert.That(isAuthorized).IsTrue()
             ;
@@ -211,8 +211,8 @@ public class MultiTenantAuthenticationTests : IDisposable
 
         // Assert: Should be rejected due to tenant mismatch
         var isRejected = response.StatusCode is HttpStatusCode.BadRequest or
-                        HttpStatusCode.Forbidden or
-                        HttpStatusCode.Unauthorized;
+            HttpStatusCode.Forbidden or
+            HttpStatusCode.Unauthorized;
 
         _ = await Assert.That(isRejected).IsTrue();
     }

@@ -11,7 +11,8 @@ public static class UserCommandHandler
 {
     public static async Task Handle(AddBookToFavorites command, IDocumentSession session)
     {
-        var profile = await session.Events.AggregateStreamAsync<UserProfile>(command.UserId);
+
+        var profile = await session.LoadAsync<UserProfile>(command.UserId);
 
         // Lazy initialization: If no events exist for this user, initialize the stream
         if (profile == null || profile.Id == Guid.Empty)
@@ -33,7 +34,7 @@ public static class UserCommandHandler
 
     public static async Task Handle(RemoveBookFromFavorites command, IDocumentSession session)
     {
-        var profile = await session.Events.AggregateStreamAsync<UserProfile>(command.UserId);
+        var profile = await session.LoadAsync<UserProfile>(command.UserId);
 
         if (profile != null)
         {
@@ -49,7 +50,7 @@ public static class UserCommandHandler
             throw new ArgumentException("Rating must be between 1 and 5", nameof(command.Rating));
         }
 
-        var profile = await session.Events.AggregateStreamAsync<UserProfile>(command.UserId);
+        var profile = await session.LoadAsync<UserProfile>(command.UserId);
 
         // Lazy initialization: If no events exist for this user, initialize the stream
         if (profile == null || profile.Id == Guid.Empty)
@@ -67,7 +68,7 @@ public static class UserCommandHandler
 
     public static async Task Handle(RemoveBookRating command, IDocumentSession session)
     {
-        var profile = await session.Events.AggregateStreamAsync<UserProfile>(command.UserId);
+        var profile = await session.LoadAsync<UserProfile>(command.UserId);
 
         if (profile != null)
         {
@@ -82,7 +83,7 @@ public static class UserCommandHandler
             throw new ArgumentException("Quantity must be greater than 0", nameof(command.Quantity));
         }
 
-        var profile = await session.Events.AggregateStreamAsync<UserProfile>(command.UserId);
+        var profile = await session.LoadAsync<UserProfile>(command.UserId);
 
         // Lazy initialization: If no events exist for this user, initialize the stream
         if (profile == null || profile.Id == Guid.Empty)
@@ -99,7 +100,7 @@ public static class UserCommandHandler
 
     public static async Task Handle(RemoveBookFromCart command, IDocumentSession session)
     {
-        var profile = await session.Events.AggregateStreamAsync<UserProfile>(command.UserId);
+        var profile = await session.LoadAsync<UserProfile>(command.UserId);
 
         // Only append event if book is actually in the cart
         if (profile != null && profile.ShoppingCartItems.ContainsKey(command.BookId))
@@ -115,7 +116,7 @@ public static class UserCommandHandler
             throw new ArgumentException("Quantity must be greater than 0", nameof(command.Quantity));
         }
 
-        var profile = await session.Events.AggregateStreamAsync<UserProfile>(command.UserId);
+        var profile = await session.LoadAsync<UserProfile>(command.UserId);
 
         if (profile != null && profile.ShoppingCartItems.ContainsKey(command.BookId))
         {
@@ -125,7 +126,7 @@ public static class UserCommandHandler
 
     public static async Task Handle(ClearShoppingCart command, IDocumentSession session)
     {
-        var profile = await session.Events.AggregateStreamAsync<UserProfile>(command.UserId);
+        var profile = await session.LoadAsync<UserProfile>(command.UserId);
 
         if (profile != null)
         {

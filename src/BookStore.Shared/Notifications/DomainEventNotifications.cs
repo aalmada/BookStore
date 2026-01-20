@@ -222,7 +222,8 @@ public record PingNotification : IDomainEventNotification
 public record UserUpdatedNotification(
     Guid EventId,
     Guid EntityId,
-    DateTimeOffset Timestamp) : IDomainEventNotification
+    DateTimeOffset Timestamp,
+    int FavoritesCount = 0) : IDomainEventNotification
 {
     public string EventType => "UserUpdated";
 }

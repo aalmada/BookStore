@@ -2,9 +2,11 @@ using BookStore.ApiService.Aggregates;
 using BookStore.ApiService.Commands;
 using BookStore.ApiService.Events;
 using BookStore.ApiService.Infrastructure.Logging;
+using BookStore.ApiService.Infrastructure.Tenant;
 using BookStore.ApiService.Projections;
 using BookStore.ApiService.Services;
 using BookStore.Shared.Models;
+using JasperFx;
 using Marten;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -26,7 +28,7 @@ public class DatabaseSeeder(
     {
         // Use a session on the 'default' tenant to manage Tenant documents
         // This assumes Tenant documents are stored in the default tenant
-        await using var session = store.LightweightSession("default");
+        await using var session = store.LightweightSession();
 
         foreach (var tenantId in tenantIds)
         {
@@ -76,6 +78,7 @@ public class DatabaseSeeder(
 
     public async Task SeedAsync(string tenantId)
     {
+        // Since we use "*DEFAULT*" as the default tenant ID, we can pass it directly
         await using var session = store.LightweightSession(tenantId);
 
         // Check if already seeded
@@ -118,7 +121,7 @@ public class DatabaseSeeder(
         string tenantId)
     {
         // Generate tenant-specific email
-        var adminEmail = tenantId == "default"
+        var adminEmail = StorageConstants.DefaultTenantId.Equals(tenantId, StringComparison.OrdinalIgnoreCase)
             ? "admin@bookstore.com"
             : $"admin@{tenantId}.com";
 

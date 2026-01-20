@@ -46,13 +46,8 @@ public class PublisherCrudTests
             "PublisherUpdated",
             async () =>
             {
-                var updateResponse = await httpClient.PutAsJsonAsync($"/api/admin/publishers/{createdPublisher.Id}", (object)updateRequest);
-                if (updateResponse.StatusCode != HttpStatusCode.NoContent)
-                {
-                    var error = await updateResponse.Content.ReadAsStringAsync();
-                    Console.WriteLine($"UpdatePublisher Failed with {updateResponse.StatusCode}: {error}");
-                }
-
+                var updateResponse = await httpClient.PutAsJsonAsync($"/api/admin/publishers/{createdPublisher.Id}",
+                    (object)updateRequest);
                 _ = await Assert.That(updateResponse.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
             },
             TimeSpan.FromSeconds(30));
@@ -77,12 +72,6 @@ public class PublisherCrudTests
             async () =>
             {
                 var deleteResponse = await httpClient.DeleteAsync($"/api/admin/publishers/{createdPublisher.Id}");
-                if (deleteResponse.StatusCode != HttpStatusCode.NoContent)
-                {
-                    var error = await deleteResponse.Content.ReadAsStringAsync();
-                    Console.WriteLine($"DeletePublisher Failed with {deleteResponse.StatusCode}: {error}");
-                }
-
                 _ = await Assert.That(deleteResponse.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
             },
             TimeSpan.FromSeconds(30));
@@ -113,13 +102,8 @@ public class PublisherCrudTests
             "PublisherUpdated",
             async () =>
             {
-                var restoreResponse = await httpClient.PostAsync($"/api/admin/publishers/{createdPublisher.Id}/restore", null);
-                if (!restoreResponse.IsSuccessStatusCode)
-                {
-                    var error = await restoreResponse.Content.ReadAsStringAsync();
-                    Console.WriteLine($"[SSE-TEST] Restore failed: {restoreResponse.StatusCode} - {error}");
-                }
-
+                var restoreResponse =
+                    await httpClient.PostAsync($"/api/admin/publishers/{createdPublisher.Id}/restore", null);
                 _ = await Assert.That(restoreResponse.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
             },
             TimeSpan.FromSeconds(30));

@@ -16,26 +16,32 @@ public sealed class UserProfile
     /// <summary>
     /// IDs of books marked as favorite by the user
     /// </summary>
-    public ICollection<Guid> FavoriteBookIds { get; set; } = [];
+    public List<Guid> FavoriteBookIds { get; set; } = [];
 
     /// <summary>
     /// Book ratings by the user (BookId → Rating 1-5)
     /// </summary>
-    public IDictionary<Guid, int> BookRatings { get; set; } = new Dictionary<Guid, int>();
+    public Dictionary<Guid, int> BookRatings { get; set; } = [];
 
     /// <summary>
     /// Shopping cart items (BookId → Quantity)
     /// </summary>
-    public IDictionary<Guid, int> ShoppingCartItems { get; set; } = new Dictionary<Guid, int>();
+    public Dictionary<Guid, int> ShoppingCartItems { get; set; } = [];
 
     // Apply methods for Marten Self-Aggregating Snapshot
     public void Apply(UserProfileCreated @event) => Id = @event.UserId;
 
     public void Apply(BookAddedToFavorites @event)
     {
+
         if (!FavoriteBookIds.Contains(@event.BookId))
         {
             FavoriteBookIds.Add(@event.BookId);
+
+        }
+        else
+        {
+
         }
     }
 

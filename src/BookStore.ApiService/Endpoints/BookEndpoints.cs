@@ -354,6 +354,7 @@ public static class BookEndpoints
 
         // Load user's profile to get favorite book IDs
         var profile = await session.LoadAsync<UserProfile>(userId, cancellationToken);
+
         if (profile == null || profile.FavoriteBookIds.Count == 0)
         {
             // Return empty list if user has no favorites
@@ -531,12 +532,6 @@ public static class BookEndpoints
                     //.Include(statistics).On(x => x.Id)!
                     //.Include(statistics).On(x => x.Id)!
                     .Where(b => b.Id == id);
-
-                context.Response.Headers.Append("X-Debug-Admin-Status", isAdmin.ToString());
-                context.Response.Headers.Append("X-Debug-User-Name", context.User.Identity?.Name ?? "null");
-
-                context.Response.Headers.Append("X-Debug-Admin-Status", isAdmin.ToString());
-                context.Response.Headers.Append("X-Debug-User-Name", context.User.Identity?.Name ?? "null");
 
                 if (!isAdmin)
                 {

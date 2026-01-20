@@ -1,4 +1,5 @@
 using BookStore.ApiService.Models;
+using JasperFx;
 using Marten;
 
 namespace BookStore.ApiService.Infrastructure.Tenant;
@@ -7,18 +8,15 @@ public class MartenTenantStore(IDocumentStore store) : ITenantStore
 {
     public async Task<bool> IsValidTenantAsync(string tenantId)
     {
-        // Special case for "default" which might not always be in the DB depending on initialization
-        if (tenantId == "default")
+        // Special case for "*DEFAULT*" which might not always be in the DB depending on initialization
+        if (StorageConstants.DefaultTenantId.Equals(tenantId, StringComparison.OrdinalIgnoreCase))
         {
             return true;
         }
 
         // Use a lightweight session to query for the tenant
-        // We query the "default" tenant (or global scope) where tenants are stored
-        // Note: We assume Tenant documents are stored in the default tenant (or are not multi-tenanted themselves)
-        // If Tenant documents are multi-tenanted, we'd have a chicken-and-egg problem.
-        // So we must ensure Tenant documents are treated as global or belonging to 'default'.
-        await using var session = store.LightweightSession("default");
+        // Uses Marten's native default tenant bucket
+        await using var session = store.LightweightSession();
 
         var tenant = await session.LoadAsync<BookStore.ApiService.Models.Tenant>(tenantId);
         return tenant is { IsEnabled: true };
@@ -26,7 +24,8 @@ public class MartenTenantStore(IDocumentStore store) : ITenantStore
 
     public async Task<IEnumerable<string>> GetAllTenantsAsync()
     {
-        await using var session = store.LightweightSession("default");
+        // Uses Marten's native default tenant bucket
+        await using var session = store.LightweightSession();
         return await session.Query<BookStore.ApiService.Models.Tenant>()
             .Select(t => t.Id)
             .ToListAsync();

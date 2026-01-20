@@ -1,7 +1,5 @@
-using System.Net;
 using System.Net.Http.Json;
 using BookStore.Client;
-using BookStore.Shared.Models;
 
 namespace BookStore.AppHost.Tests;
 
@@ -19,13 +17,13 @@ public class ShoppingCartTests
         var createdBook = await TestHelpers.CreateBookAsync(adminClient);
 
         // Act - Add item to cart and wait for async projection
-        await TestHelpers.AddToCartAsync(httpClient, createdBook!.Id, 2);
+        await TestHelpers.AddToCartAsync(httpClient, createdBook.Id, 2);
 
         // Wait for cart to be populated (projection lag)
         await TestHelpers.WaitForConditionAsync(async () =>
         {
             var cart = await httpClient.GetFromJsonAsync<ShoppingCartResponse>("/api/cart");
-            Console.WriteLine($"[TEST-WAIT] Cart TotalItems: {cart?.TotalItems ?? 0}");
+
             return cart?.TotalItems == 2;
         }, TimeSpan.FromSeconds(5), "Cart was not populated after AddToCart");
 
@@ -49,7 +47,7 @@ public class ShoppingCartTests
         var createdBook = await TestHelpers.CreateBookAsync(adminClient);
 
         // Act - Add same book twice
-        await TestHelpers.AddToCartAsync(httpClient, createdBook!.Id, 2);
+        await TestHelpers.AddToCartAsync(httpClient, createdBook.Id, 2);
 
         await TestHelpers.AddToCartAsync(httpClient, createdBook.Id, 3);
 
@@ -71,7 +69,7 @@ public class ShoppingCartTests
         // Create a book first
         var createdBook = await TestHelpers.CreateBookAsync(adminClient);
 
-        var bookId = createdBook!.Id;
+        var bookId = createdBook.Id;
 
         // Add item first
         await TestHelpers.AddToCartAsync(httpClient, bookId, 2);
@@ -95,7 +93,7 @@ public class ShoppingCartTests
         // Create a book first
         var createdBook = await TestHelpers.CreateBookAsync(adminClient);
 
-        var bookId = createdBook!.Id;
+        var bookId = createdBook.Id;
 
         // Add item first
         await TestHelpers.AddToCartAsync(httpClient, bookId, 2);
@@ -126,9 +124,9 @@ public class ShoppingCartTests
         var book3 = await TestHelpers.CreateBookAsync(adminClient);
 
         // Add multiple items
-        await TestHelpers.AddToCartAsync(httpClient, book1!.Id, 2);
-        await TestHelpers.AddToCartAsync(httpClient, book2!.Id, 3);
-        await TestHelpers.AddToCartAsync(httpClient, book3!.Id, 1);
+        await TestHelpers.AddToCartAsync(httpClient, book1.Id, 2);
+        await TestHelpers.AddToCartAsync(httpClient, book2.Id, 3);
+        await TestHelpers.AddToCartAsync(httpClient, book3.Id);
 
         // Verify items exist
         var cartBefore = await httpClient.GetFromJsonAsync<ShoppingCartResponse>("/api/cart");
@@ -186,11 +184,14 @@ public class ShoppingCartTests
         _ = await Assert.That(getResponse.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
 
         // Act & Assert - Add to cart
-        var addResponse = await unauthenticatedClient.PostAsJsonAsync("/api/cart/items", new AddToCartClientRequest(Guid.NewGuid(), 1));
+        var addResponse =
+            await unauthenticatedClient.PostAsJsonAsync("/api/cart/items",
+                new AddToCartClientRequest(Guid.NewGuid(), 1));
         _ = await Assert.That(addResponse.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
 
         // Act & Assert - Update cart item
-        var updateResponse = await unauthenticatedClient.PutAsJsonAsync($"/api/cart/items/{Guid.NewGuid()}", new UpdateCartItemClientRequest(5));
+        var updateResponse = await unauthenticatedClient.PutAsJsonAsync($"/api/cart/items/{Guid.NewGuid()}",
+            new UpdateCartItemClientRequest(5));
         _ = await Assert.That(updateResponse.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
 
         // Act & Assert - Remove from cart

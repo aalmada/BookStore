@@ -1,5 +1,6 @@
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
+using JasperFx;
 
 namespace BookStore.ApiService.Services;
 
@@ -12,9 +13,10 @@ public class BlobStorageService(BlobServiceClient blobServiceClient)
         Guid bookId,
         Stream imageStream,
         string contentType,
-        string tenantId = "default",
+        string? tenantId = null,
         CancellationToken cancellationToken = default)
     {
+        tenantId ??= StorageConstants.DefaultTenantId;
         var container = await GetContainerAsync(cancellationToken);
 
         // Determine file extension from content type
@@ -39,9 +41,10 @@ public class BlobStorageService(BlobServiceClient blobServiceClient)
 
     public async Task<BlobDownloadResult> GetBookCoverAsync(
         Guid bookId,
-        string tenantId = "default",
+        string? tenantId = null,
         CancellationToken cancellationToken = default)
     {
+        tenantId ??= StorageConstants.DefaultTenantId;
         var container = await GetContainerAsync(cancellationToken);
 
         // Try to find the blob with any supported extension
@@ -59,9 +62,10 @@ public class BlobStorageService(BlobServiceClient blobServiceClient)
 
     public async Task DeleteBookCoverAsync(
         Guid bookId,
-        string tenantId = "default",
+        string? tenantId = null,
         CancellationToken cancellationToken = default)
     {
+        tenantId ??= StorageConstants.DefaultTenantId;
         var container = await GetContainerAsync(cancellationToken);
 
         // Delete blob with any supported extension
