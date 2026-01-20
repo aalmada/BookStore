@@ -26,12 +26,8 @@ public class TenantResolutionMiddleware
                 // Validate tenant
                 if (await tenantStore.IsValidTenantAsync(tenantId))
                 {
-                    // Cast to concrete type to set the property
-                    // In a real DI scenario with Scoped lifetime, this works because we resolve the same instance
-                    if (tenantContext is TenantContext concreteContext)
-                    {
-                        concreteContext.TenantId = tenantId;
-                    }
+                    // Set the tenant ID on the context
+                    tenantContext.Initialize(tenantId);
                 }
                 else
                 {

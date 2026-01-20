@@ -12,11 +12,17 @@ public class TenantSecurityMiddleware(RequestDelegate next, ILogger<TenantSecuri
             var userTenant = context.User.FindFirst("tenant_id")?.Value;
             var currentTenant = context.Items["TenantId"]?.ToString();
 
+            // Security: Ensure tenant_id claim is present
+            if (string.IsNullOrEmpty(userTenant))
+            {
+                Log.Tenants.CrossTenantAccessAttempted(logger, "MISSING_CLAIM", currentTenant ?? "UNKNOWN");
+                context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                await context.Response.WriteAsJsonAsync(new { error = "Security violation: Missing tenant claim" });
+                return;
+            }
+
             // Check for tenant mismatch
-            // Note: If userTenant is missing (legacy token), we might allow or block. 
-            // Here we only block if both are present and differ.
-            if (!string.IsNullOrEmpty(userTenant) &&
-                !string.IsNullOrEmpty(currentTenant) &&
+            if (!string.IsNullOrEmpty(currentTenant) &&
                 !string.Equals(userTenant, currentTenant, StringComparison.OrdinalIgnoreCase))
             {
                 Log.Tenants.CrossTenantAccessAttempted(logger, userTenant, currentTenant);
