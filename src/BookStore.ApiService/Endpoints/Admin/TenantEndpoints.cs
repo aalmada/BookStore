@@ -17,8 +17,17 @@ public static class TenantEndpoints
     // GET /api/admin/tenants
     public static async Task<IResult> GetTenants(
         IDocumentStore store,
+        BookStore.ApiService.Infrastructure.Tenant.ITenantContext tenantContext,
         CancellationToken ct)
     {
+        // Security: Only the Default (System) Tenant can see all tenants
+        if (!string.Equals(tenantContext.TenantId, JasperFx.StorageConstants.DefaultTenantId, StringComparison.OrdinalIgnoreCase))
+        {
+            // If strictly tenant-locked, return Forbidden or just their own tenant
+            // For now, let's return Forbidden to indicate this is a System Admin feature
+            return Results.Forbid();
+        }
+
         // Use a lightweight session on the native default tenant (global scope for tenants)
         await using var session = store.LightweightSession();
 
@@ -34,8 +43,15 @@ public static class TenantEndpoints
     public static async Task<IResult> CreateTenant(
         [FromBody] Commands.CreateTenantCommand request,
         IDocumentStore store,
+        BookStore.ApiService.Infrastructure.Tenant.ITenantContext tenantContext,
         CancellationToken ct)
     {
+        // Security check
+        if (!string.Equals(tenantContext.TenantId, JasperFx.StorageConstants.DefaultTenantId, StringComparison.OrdinalIgnoreCase))
+        {
+            return Results.Forbid();
+        }
+
         if (string.IsNullOrWhiteSpace(request.Id))
         {
             return Results.BadRequest("Tenant ID is required.");
@@ -69,8 +85,15 @@ public static class TenantEndpoints
         string id,
         [FromBody] Commands.UpdateTenantCommand request,
         IDocumentStore store,
+        BookStore.ApiService.Infrastructure.Tenant.ITenantContext tenantContext,
         CancellationToken ct)
     {
+        // Security check: Only System Admin can update tenant definitions
+        if (!string.Equals(tenantContext.TenantId, JasperFx.StorageConstants.DefaultTenantId, StringComparison.OrdinalIgnoreCase))
+        {
+            return Results.Forbid();
+        }
+
         await using var session = store.LightweightSession();
 
         var tenant = await session.LoadAsync<Tenant>(id, ct);

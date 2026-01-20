@@ -6,6 +6,7 @@ using BookStore.ApiService.Infrastructure.Extensions;
 using BookStore.ApiService.Infrastructure.Logging;
 using BookStore.ApiService.Infrastructure.Tenant;
 using BookStore.ApiService.Projections;
+using BookStore.Shared.Infrastructure;
 using BookStore.Shared.Models;
 using Marten;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -319,7 +320,8 @@ app.UseTenantSecurity();
 app.UseAuthorization();
 
 // Map OpenAPI endpoint and configure Scalar UI
-app.MapOpenApi();
+// Map OpenAPI endpoint and configure Scalar UI
+app.MapOpenApi().WithMetadata(new AllowAnonymousTenantAttribute());
 
 if (app.Environment.IsDevelopment())
 {
@@ -327,7 +329,8 @@ if (app.Environment.IsDevelopment())
         options => options
             .WithTitle("Book Store API")
             // .WithTheme(ScalarTheme.Purple)
-            .WithDefaultHttpClient(ScalarTarget.CSharp, ScalarClient.HttpClient));
+            .WithDefaultHttpClient(ScalarTarget.CSharp, ScalarClient.HttpClient))
+            .WithMetadata(new AllowAnonymousTenantAttribute());
 }
 
 // Map JWT authentication endpoints

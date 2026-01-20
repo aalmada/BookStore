@@ -2,10 +2,10 @@ using System.Security.Claims;
 using BookStore.ApiService.Infrastructure.Logging;
 using BookStore.ApiService.Infrastructure.Tenant;
 using BookStore.ApiService.Models;
+using BookStore.Shared.Infrastructure;
 using BookStore.Shared.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-
 using Microsoft.AspNetCore.WebUtilities;
 
 namespace BookStore.ApiService.Endpoints;
@@ -15,6 +15,7 @@ public static class PasskeyEndpoints
     public static IEndpointRouteBuilder MapPasskeyEndpoints(this IEndpointRouteBuilder endpoints)
     {
         var paramsGroup = endpoints.MapGroup("/account").RequireRateLimiting("AuthPolicy");
+        _ = paramsGroup.WithMetadata(new AllowAnonymousTenantAttribute());
 
         // 1. Get Creation Options (Authenticated & Unauthenticated)
         _ = paramsGroup.MapPost("/attestation/options", async (

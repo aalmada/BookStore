@@ -1,4 +1,5 @@
 using BookStore.ApiService.Infrastructure.Logging;
+using BookStore.Shared.Infrastructure;
 using Microsoft.AspNetCore.Http;
 
 namespace BookStore.ApiService.Infrastructure.Tenant;
@@ -36,8 +37,12 @@ public class TenantSecurityMiddleware(RequestDelegate next, ILogger<TenantSecuri
         {
             // Security: specific tenant access requires authentication
             // Only the default tenant allows anonymous access (public data)
-            // Exceptions: Authentication endpoints, Tenant Info, Health checks, Docs
-            if (IsAllowedAnonymousPath(context.Request.Path))
+            // Exceptions: Endpoints marked with [AllowAnonymousTenant]
+
+            var endpoint = context.GetEndpoint();
+            var hasAnonymousTenantAttribute = endpoint?.Metadata.GetMetadata<AllowAnonymousTenantAttribute>() != null;
+
+            if (hasAnonymousTenantAttribute)
             {
                 await next(context);
                 return;
@@ -55,14 +60,6 @@ public class TenantSecurityMiddleware(RequestDelegate next, ILogger<TenantSecuri
 
         await next(context);
     }
-
-    static bool IsAllowedAnonymousPath(PathString path) => path.StartsWithSegments("/account") ||
-               path.StartsWithSegments("/api/tenants") ||
-               path.StartsWithSegments("/health") ||
-               path.StartsWithSegments("/metrics") ||
-               path.StartsWithSegments("/api-reference") ||
-               path.StartsWithSegments("/scalar") ||
-               path.StartsWithSegments("/openapi");
 }
 
 public static class TenantSecurityMiddlewareExtensions

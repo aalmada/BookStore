@@ -5,6 +5,7 @@ using BookStore.ApiService.Infrastructure.Tenant;
 using BookStore.ApiService.Models;
 using BookStore.ApiService.Projections;
 using BookStore.ApiService.Services;
+using BookStore.Shared.Infrastructure;
 using BookStore.Shared.Messages.Events;
 using BookStore.Shared.Models;
 using Marten;
@@ -37,6 +38,7 @@ public static class JwtAuthenticationEndpoints
             .WithName("JwtRefresh")
             .WithSummary("Refresh an expired access token using a refresh token");
 
+        _ = group.WithMetadata(new AllowAnonymousTenantAttribute());
         return group.RequireRateLimiting("AuthPolicy");
     }
 
