@@ -5,9 +5,9 @@ namespace BookStore.ApiService.Infrastructure.Tenant;
 
 public class TenantSecurityMiddleware(RequestDelegate next, ILogger<TenantSecurityMiddleware> logger)
 {
-    public async Task InvokeAsync(HttpContext context)
+    public async Task InvokeAsync(HttpContext context, ITenantContext tenantContext)
     {
-        var currentTenant = context.Items["TenantId"]?.ToString();
+        var currentTenant = tenantContext.TenantId;
 
         if (context.User.Identity?.IsAuthenticated == true)
         {
@@ -37,17 +37,13 @@ public class TenantSecurityMiddleware(RequestDelegate next, ILogger<TenantSecuri
             // Security: specific tenant access requires authentication
             // Only the default tenant allows anonymous access (public data)
             // Exceptions: Authentication endpoints, Tenant Info, Health checks, Docs
-            var path = context.Request.Path;
-            var isAllowedPath = path.StartsWithSegments("/account") ||
-                                path.StartsWithSegments("/api/tenants") ||
-                                path.StartsWithSegments("/health") ||
-                                path.StartsWithSegments("/metrics") ||
-                                path.StartsWithSegments("/api-reference") ||
-                                path.StartsWithSegments("/scalar") ||
-                                path.StartsWithSegments("/openapi");
+            if (IsAllowedAnonymousPath(context.Request.Path))
+            {
+                await next(context);
+                return;
+            }
 
-            if (!isAllowedPath &&
-                !string.IsNullOrEmpty(currentTenant) &&
+            if (!string.IsNullOrEmpty(currentTenant) &&
                 !string.Equals(currentTenant, JasperFx.StorageConstants.DefaultTenantId, StringComparison.OrdinalIgnoreCase))
             {
                 Log.Tenants.CrossTenantAccessAttempted(logger, "ANONYMOUS", currentTenant);
@@ -59,6 +55,14 @@ public class TenantSecurityMiddleware(RequestDelegate next, ILogger<TenantSecuri
 
         await next(context);
     }
+
+    static bool IsAllowedAnonymousPath(PathString path) => path.StartsWithSegments("/account") ||
+               path.StartsWithSegments("/api/tenants") ||
+               path.StartsWithSegments("/health") ||
+               path.StartsWithSegments("/metrics") ||
+               path.StartsWithSegments("/api-reference") ||
+               path.StartsWithSegments("/scalar") ||
+               path.StartsWithSegments("/openapi");
 }
 
 public static class TenantSecurityMiddlewareExtensions
