@@ -101,7 +101,8 @@ public static class UserCommandHandler
     {
         var profile = await session.Events.AggregateStreamAsync<UserProfile>(command.UserId);
 
-        if (profile != null)
+        // Only append event if book is actually in the cart
+        if (profile != null && profile.ShoppingCartItems.ContainsKey(command.BookId))
         {
             _ = session.Events.Append(command.UserId, new BookRemovedFromCart(command.BookId));
         }

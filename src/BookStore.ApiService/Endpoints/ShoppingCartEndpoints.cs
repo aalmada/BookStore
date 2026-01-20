@@ -1,5 +1,4 @@
 using BookStore.ApiService.Infrastructure.Extensions;
-using BookStore.ApiService.Infrastructure.Tenant;
 using BookStore.ApiService.Messages.Commands;
 using BookStore.ApiService.Models;
 using BookStore.ApiService.Projections;
@@ -34,9 +33,10 @@ public static class ShoppingCartEndpoints
             .WithName("ClearCart");
     }
 
+    const int MaxQuantityPerItem = 10;
+
     static async Task<Results<Ok<ShoppingCartDto>, NotFound>> GetCart(
         [FromServices] IQuerySession session,
-        [FromServices] ITenantContext tenantContext,
         HttpContext context,
         CancellationToken cancellationToken)
     {
@@ -84,7 +84,7 @@ public static class ShoppingCartEndpoints
     static async Task<Results<NoContent, NotFound, BadRequest<string>>> AddToCart(
         [FromBody] AddToCartRequest request,
         [FromServices] IMessageBus bus,
-        [FromServices] ITenantContext tenantContext,
+        [FromServices] IQuerySession session,
         HttpContext context,
         CancellationToken cancellationToken)
     {
@@ -93,9 +93,20 @@ public static class ShoppingCartEndpoints
             return TypedResults.BadRequest("Quantity must be greater than 0");
         }
 
-        var userId = context.User.GetUserId();
+        if (request.Quantity > MaxQuantityPerItem)
+        {
+            return TypedResults.BadRequest($"Quantity cannot exceed {MaxQuantityPerItem}");
+        }
 
+        var userId = context.User.GetUserId();
         if (userId == Guid.Empty)
+        {
+            return TypedResults.NotFound();
+        }
+
+        // Validate book exists and is not deleted
+        var book = await session.LoadAsync<BookSearchProjection>(request.BookId, cancellationToken);
+        if (book == null || book.Deleted)
         {
             return TypedResults.NotFound();
         }
