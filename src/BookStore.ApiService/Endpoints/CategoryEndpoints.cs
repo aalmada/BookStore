@@ -18,7 +18,6 @@ public static class CategoryEndpoints
 {
     public static RouteGroupBuilder MapCategoryEndpoints(this RouteGroupBuilder group)
     {
-        _ = group.WithMetadata(new AllowAnonymousTenantAttribute());
         _ = group.MapGet("/", GetCategories)
             .WithName("GetCategories")
             .WithSummary("Get all categories");

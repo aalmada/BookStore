@@ -18,7 +18,6 @@ public static class AuthorEndpoints
 {
     public static RouteGroupBuilder MapAuthorEndpoints(this RouteGroupBuilder group)
     {
-        _ = group.WithMetadata(new AllowAnonymousTenantAttribute());
         _ = group.MapGet("/", GetAuthors)
             .WithName("GetAuthors")
             .WithSummary("Get all authors");

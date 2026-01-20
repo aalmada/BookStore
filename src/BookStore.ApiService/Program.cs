@@ -314,6 +314,8 @@ app.UseCors();
 // Enable Rate Limiting
 app.UseRateLimiter();
 
+app.UseRouting();
+
 // Add authentication and authorization
 app.UseAuthentication();
 app.UseTenantSecurity();

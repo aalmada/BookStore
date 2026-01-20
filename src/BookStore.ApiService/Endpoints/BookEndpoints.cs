@@ -24,7 +24,6 @@ public static class BookEndpoints
 {
     public static RouteGroupBuilder MapBookEndpoints(this RouteGroupBuilder group)
     {
-        _ = group.WithMetadata(new AllowAnonymousTenantAttribute());
         // Add cover endpoints mapping
         _ = group.MapBookCoverEndpoints();
 
