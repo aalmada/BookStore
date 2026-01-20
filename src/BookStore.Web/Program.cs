@@ -120,7 +120,7 @@ static void RegisterScopedRefitClients(IServiceCollection services, Uri baseAddr
 // Add authentication services (JWT token-based)
 builder.Services.AddScoped<CorrelationService>();
 builder.Services.AddScoped<TokenService>();
-builder.Services.AddHttpClient<PasskeyService>(client => client.BaseAddress = new Uri(apiServiceUrl));
+builder.Services.AddScoped<PasskeyService>();
 builder.Services.AddScoped<AuthenticationService>();
 builder.Services.AddScoped<JwtAuthenticationStateProvider>();
 builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<JwtAuthenticationStateProvider>());
