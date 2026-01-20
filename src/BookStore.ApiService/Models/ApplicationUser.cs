@@ -75,4 +75,5 @@ public sealed class ApplicationUser
 public record RefreshTokenInfo(
     string Token,
     DateTimeOffset Expires,
-    DateTimeOffset Created);
+    DateTimeOffset Created,
+    string TenantId);

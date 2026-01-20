@@ -42,9 +42,42 @@ graph TB
 #### Backend (API)
 - **`JwtTokenService`**: Responsible for generating signed JWTs (Access Tokens) and secure Refresh Tokens.
 - **`JwtAuthenticationEndpoints`**:
-    - `POST /identity/login`: Exchange credentials for tokens.
-    - `POST /identity/refresh`: Exchange refresh token for new access token.
+    - `POST /account/login`: Exchange credentials for tokens.
+    - `POST /account/refresh-token`: Exchange refresh token for new access token.
 - **Passkey Integration**: Passkey login flow (`/account/assertion/result`) also results in the issuance of standard JWTs, making the frontend agnostic to *how* the user logged in.
+
+## Multi-Tenancy Security
+
+Authentication is tightly integrated with multi-tenancy to prevent cross-tenant access.
+
+### Tenant Claims in JWT
+
+Every JWT access token includes a `tenant_id` claim:
+```json
+{
+  "sub": "user-guid",
+  "email": "user@example.com",
+  "tenant_id": "acme",
+  "role": "Admin"
+}
+```
+
+### Tenant-Aware Refresh Tokens
+
+Refresh tokens store their originating tenant for defense-in-depth:
+```csharp
+public record RefreshTokenInfo(
+    string Token,
+    DateTimeOffset Expires,
+    DateTimeOffset Created,
+    string TenantId);  // Prevents cross-tenant token theft
+```
+
+### Cross-Tenant Protection
+
+`TenantSecurityMiddleware` blocks requests where the JWT's `tenant_id` differs from the `X-Tenant-ID` header:
+- **Mismatch detected**: Returns `403 Forbidden`
+- **Refresh endpoint**: Validates stored token's tenant matches request tenant
 
 ## Authentication Methods
 
@@ -52,15 +85,17 @@ graph TB
 
 Standard email/password login flow.
 
-**Endpoint**: `POST /identity/login`
+**Endpoint**: `POST /account/login`
 **Request**: `{ "email": "...", "password": "..." }`
 **Response**:
 ```json
 {
+  "tokenType": "Bearer",
   "accessToken": "ey...",
-  "refreshToken": "...",
-  "expiresIn": 3600
+  "expiresIn": 3600,
+  "refreshToken": "..."
 }
+```
 ```
 
 ### 2. Passkey Authentication (Passwordless)
@@ -120,7 +155,7 @@ app.MapPost("/api/admin/books", ...)
 
 ## User Model (`ApplicationUser`)
 
-Users are stored in **Marten** (PostgreSQL) as JSON documents.
+Users are stored in **Marten** (PostgreSQL) as JSON documents, scoped per tenant.
 
 ```csharp
 public class ApplicationUser
@@ -128,8 +163,9 @@ public class ApplicationUser
     public Guid Id { get; set; }
     public string Email { get; set; }
     public string PasswordHash { get; set; }
-    public List<string> Roles { get; set; }
-    // ...
+    public ICollection<string> Roles { get; set; }
+    public IList<RefreshTokenInfo> RefreshTokens { get; set; }
+    public IList<UserPasskeyInfo> Passkeys { get; set; }
 }
 ```
 
@@ -145,6 +181,7 @@ To protect against abuse and Denial of Service (DoS) attacks, all authentication
 
 ## Related Guides
 
+- [Multi-Tenancy Guide](multi-tenancy-guide.md)
 - [Passkey Guide](passkey-guide.md)
 - [API Conventions](api-conventions-guide.md)
 - [Marten Guide](marten-guide.md)

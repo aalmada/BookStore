@@ -25,13 +25,13 @@ public class CachedTenantStore(ITenantStore inner, IDistributedCache cache) : IT
         // Cache miss - query the inner store
         var isValid = await inner.IsValidTenantAsync(tenantId);
 
-        // Store in cache
+        // Store in cache with sliding expiration (keeps frequently accessed tenants warm)
         await cache.SetStringAsync(
             cacheKey,
             isValid.ToString(),
             new DistributedCacheEntryOptions
             {
-                AbsoluteExpirationRelativeToNow = CacheDuration
+                SlidingExpiration = CacheDuration
             });
 
         return isValid;
