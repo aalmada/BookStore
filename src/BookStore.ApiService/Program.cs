@@ -68,7 +68,8 @@ builder.Services.AddRateLimiter(options =>
         }
 
         // Per-tenant rate limiting
-        var tenantId = context.Items["TenantId"]?.ToString() ?? "default";
+        var tenantId = context.Items["TenantId"]?.ToString()
+            ?? JasperFx.StorageConstants.DefaultTenantId;
 
         return RateLimitPartition.GetFixedWindowLimiter(tenantId, _ =>
             new FixedWindowRateLimiterOptions
@@ -120,13 +121,30 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 
 var app = builder.Build();
 
+// Apply schema to create PostgreSQL extensions (pg_trgm, unaccent)
+// This must remain blocking to ensure schema exists before requests are handled
+// This fixes the "correlation_id column missing" error in tests
+using (var scope = app.Services.CreateScope())
+{
+    var store = scope.ServiceProvider.GetRequiredService<IDocumentStore>();
+    await store.Storage.ApplyAllConfiguredChangesToDatabaseAsync();
+}
+
 // Start seeding in the background (don't block app startup)
 // We need seeding in all environments for now (including tests)
-if (app.Configuration.GetValue("Seeding:Enabled", true))
+if (true)
 {
     _ = Task.Run(async () =>
     {
         var logger = app.Services.GetRequiredService<ILogger<Program>>();
+        var env = app.Services.GetRequiredService<IHostEnvironment>();
+        var seedingEnabled = app.Configuration.GetValue("Seeding:Enabled", true);
+
+#pragma warning disable CA1848
+        logger.LogInformation("Background startup task running. Environment: {Environment}, SeedingEnabled: {SeedingEnabled}",
+            env.EnvironmentName, seedingEnabled);
+#pragma warning restore CA1848
+
         var retryCount = 0;
         var maxRetries = 10;
         var retryDelay = TimeSpan.FromSeconds(2);
@@ -143,40 +161,41 @@ if (app.Configuration.GetValue("Seeding:Enabled", true))
 
                 Log.Infrastructure.DatabaseSeedingStarted(logger);
 
-                // Apply schema to create PostgreSQL extensions (pg_trgm, unaccent)
-                await store.Storage.ApplyAllConfiguredChangesToDatabaseAsync();
+                // Schema application moved to main thread
 
-                var bus = scope.ServiceProvider.GetRequiredService<Wolverine.IMessageBus>();
-                var seederLogger = scope.ServiceProvider.GetRequiredService<ILogger<DatabaseSeeder>>();
-                var userManager = scope.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.Identity.UserManager<BookStore.ApiService.Models.ApplicationUser>>();
-                var seeder = new DatabaseSeeder(store, bus, seederLogger, userManager);
-                var tenantStore = scope.ServiceProvider.GetRequiredService<ITenantStore>();
-
-                // 1. Ensure Tenants exist in the DB
-                var initialTenants = new[] { "default", "acme", "contoso" };
-                await seeder.SeedTenantsAsync(initialTenants);
-
-                // 2. Refresh the list of tenants from the store (verifying it works)
-                var tenants = initialTenants;
-
-                foreach (var tenantId in tenants)
+                if (app.Configuration.GetValue("Seeding:Enabled", true))
                 {
+                    var bus = scope.ServiceProvider.GetRequiredService<Wolverine.IMessageBus>();
+                    var seederLogger = scope.ServiceProvider.GetRequiredService<ILogger<DatabaseSeeder>>();
+                    var userManager = scope.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.Identity.UserManager<BookStore.ApiService.Models.ApplicationUser>>();
+                    var seeder = new DatabaseSeeder(store, bus, seederLogger, userManager);
+                    var tenantStore = scope.ServiceProvider.GetRequiredService<ITenantStore>();
+
+                    // 1. Ensure Tenants exist in the DB
+                    await seeder.SeedTenantsAsync(TenantConstants.KnownTenants);
+
+                    // 2. Refresh the list of tenants from the store (verifying it works)
+                    var tenants = TenantConstants.KnownTenants;
+
+                    foreach (var tenantId in tenants)
+                    {
 #pragma warning disable CA1848 // Use LoggerMessage delegates
-                    logger.LogInformation("Seeding tenant: {TenantId}", tenantId);
+                        logger.LogInformation("Seeding tenant: {TenantId}", tenantId);
 #pragma warning restore CA1848
 
-                    // Admin user is now seeded per-tenant in SeedAsync
+                        // Admin user is now seeded per-tenant in SeedAsync
 
-                    await seeder.SeedAsync(tenantId);
+                        await seeder.SeedAsync(tenantId);
 
-                    // Wait for async projections to process the seeded events for this tenant
-                    await WaitForProjectionsAsync(store, logger, tenantId);
+                        // Wait for async projections to process the seeded events for this tenant
+                        await WaitForProjectionsAsync(store, logger, tenantId);
 
-                    // Seed sales AFTER projections are ready
-                    await seeder.SeedSalesAsync(tenantId);
+                        // Seed sales AFTER projections are ready
+                        await seeder.SeedSalesAsync(tenantId);
 
-                    // Wait AGAIN for projections
-                    await WaitForProjectionsAsync(store, logger, tenantId, expectSales: true);
+                        // Wait AGAIN for projections
+                        await WaitForProjectionsAsync(store, logger, tenantId, expectSales: true);
+                    }
                 }
 
                 Log.Infrastructure.DatabaseSeedingCompleted(logger);

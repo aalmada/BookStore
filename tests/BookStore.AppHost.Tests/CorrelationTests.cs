@@ -20,18 +20,19 @@ public class CorrelationTests
         var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
 
         var correlationId = Guid.NewGuid().ToString();
-        var fakeBookId = Guid.NewGuid(); // Random ID, it will fail conceptually but event should be stored or rejected, 
-                                         // actually better to use a real action that succeeds to guarantee persistence.
-                                         // Let's use AddToCart which doesn't check for book existence in the aggregate *before* stream load?
-                                         // Actually UserCommandHandler loads user profile.
-                                         // Let's use rate book on a random book. The command handler might validate, 
-                                         // checking Handlers/UserCommandHandler.cs: RateBook validates rating range, 
-                                         // then appends event. It doesn't check if book exists in the projection 
-                                         // inside the command handler (it might be done in UI or client).
-                                         // Wait, UserCommandHandler does:
-                                         // public static async Task Handle(RateBook command, IDocumentSession session)
-                                         // { ... _ = session.Events.Append(..., new BookRated(...)); }
-                                         // It *always* appends. Perfect.
+        var fakeBookId =
+            Guid.NewGuid(); // Random ID, it will fail conceptually but event should be stored or rejected, 
+        // actually better to use a real action that succeeds to guarantee persistence.
+        // Let's use AddToCart which doesn't check for book existence in the aggregate *before* stream load?
+        // Actually UserCommandHandler loads user profile.
+        // Let's use rate book on a random book. The command handler might validate, 
+        // checking Handlers/UserCommandHandler.cs: RateBook validates rating range, 
+        // then appends event. It doesn't check if book exists in the projection 
+        // inside the command handler (it might be done in UI or client).
+        // Wait, UserCommandHandler does:
+        // public static async Task Handle(RateBook command, IDocumentSession session)
+        // { ... _ = session.Events.Append(..., new BookRated(...)); }
+        // It *always* appends. Perfect.
 
         var request = new HttpRequestMessage(HttpMethod.Post, $"/api/books/{fakeBookId}/rating");
         request.Content = JsonContent.Create(new { Rating = 5 });
@@ -88,24 +89,18 @@ public class CorrelationTests
             _ = await Assert.That(dbHeadersJson).Contains("\"remote-ip\"");
             _ = await Assert.That(dbHeadersJson).Contains("\"user-agent\"");
             _ = await Assert.That(dbHeadersJson).Contains("TUnit-Test-Agent");
-
-            Console.WriteLine($"[TEST] Found Event! CorrelationId: {dbCorrelationId}, CausationId: {dbCausationId}");
-            Console.WriteLine($"[TEST] Headers: {dbHeadersJson}");
         }
         else
         {
             // Diagnostics: print last 5 events
             reader.Close();
             using var diagCmd = new NpgsqlCommand(
-                "SELECT stream_id, type, correlation_id, causation_id, headers FROM mt_events ORDER BY seq_id DESC LIMIT 5", conn);
+                "SELECT stream_id, type, correlation_id, causation_id, headers FROM mt_events ORDER BY seq_id DESC LIMIT 5",
+                conn);
             using var diagReader = await diagCmd.ExecuteReaderAsync();
-            Console.WriteLine("[TEST-DIAG] Last 5 events in mt_events:");
-            while (await diagReader.ReadAsync())
-            {
-                Console.WriteLine($"[TEST-DIAG] Stream: {diagReader["stream_id"]}, Type: {diagReader["type"]}, Correlation: {diagReader["correlation_id"] ?? "NULL"}, Headers: {diagReader["headers"] ?? "NULL"}");
-            }
 
-            Assert.Fail($"Event with correlation_id '{correlationId}' not found in mt_events table despite receiving SSE notification.");
+            Assert.Fail(
+                $"Event with correlation_id '{correlationId}' not found in mt_events table despite receiving SSE notification.");
         }
     }
 
@@ -144,8 +139,6 @@ public class CorrelationTests
                 responseCorrelationId = response.Headers.GetValues("X-Correlation-ID").FirstOrDefault();
                 _ = await Assert.That(responseCorrelationId).IsNotNull();
                 _ = await Assert.That(Guid.TryParse(responseCorrelationId, out _)).IsTrue();
-
-                Console.WriteLine($"[TEST] Generated CorrelationId: {responseCorrelationId}");
             },
             TestConstants.DefaultEventTimeout);
 

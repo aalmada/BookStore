@@ -47,11 +47,10 @@ public class AuthorCrudTests
             "AuthorUpdated",
             async () =>
             {
-                var updateResponse = await httpClient.PutAsJsonAsync($"/api/admin/authors/{createdAuthor.Id}", (object)updateRequest);
+                var updateResponse =
+                    await httpClient.PutAsJsonAsync($"/api/admin/authors/{createdAuthor.Id}", (object)updateRequest);
                 if (updateResponse.StatusCode != HttpStatusCode.NoContent)
                 {
-                    var error = await updateResponse.Content.ReadAsStringAsync();
-                    Console.WriteLine($"UpdateAuthor Failed with {updateResponse.StatusCode}: {error}");
                 }
 
                 _ = await Assert.That(updateResponse.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
@@ -80,8 +79,6 @@ public class AuthorCrudTests
                 var deleteResponse = await httpClient.DeleteAsync($"/api/admin/authors/{createdAuthor.Id}");
                 if (deleteResponse.StatusCode != HttpStatusCode.NoContent)
                 {
-                    var error = await deleteResponse.Content.ReadAsStringAsync();
-                    Console.WriteLine($"DeleteAuthor Failed with {deleteResponse.StatusCode}: {error}");
                 }
 
                 _ = await Assert.That(deleteResponse.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
@@ -114,11 +111,10 @@ public class AuthorCrudTests
             "AuthorUpdated",
             async () =>
             {
-                var restoreResponse = await httpClient.PostAsync($"/api/admin/authors/{createdAuthor.Id}/restore", null);
+                var restoreResponse =
+                    await httpClient.PostAsync($"/api/admin/authors/{createdAuthor.Id}/restore", null);
                 if (!restoreResponse.IsSuccessStatusCode)
                 {
-                    var error = await restoreResponse.Content.ReadAsStringAsync();
-                    Console.WriteLine($"[SSE-TEST] Restore failed: {restoreResponse.StatusCode} - {error}");
                 }
 
                 _ = await Assert.That(restoreResponse.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
@@ -134,7 +130,8 @@ public class AuthorCrudTests
     [Arguments("es-MX", "Biografía en Español")]
     [Arguments("fr-FR", "Default Biography")]
     [Arguments("en", "Default Biography")]
-    public async Task GetAuthor_WithLocalizedHeader_ShouldReturnExpectedContent(string acceptLanguage, string expectedBiography)
+    public async Task GetAuthor_WithLocalizedHeader_ShouldReturnExpectedContent(string acceptLanguage,
+        string expectedBiography)
     {
         // Arrange
         var httpClient = await TestHelpers.GetAuthenticatedClientAsync();

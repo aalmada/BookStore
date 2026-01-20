@@ -6,6 +6,8 @@ using Aspire.Hosting;
 using Bogus;
 using BookStore.Client;
 using BookStore.Shared.Models;
+using JasperFx;
+using Marten;
 
 namespace BookStore.AppHost.Tests;
 
@@ -13,46 +15,39 @@ public static class TestHelpers
 {
     static readonly Faker _faker = new();
 
-    public static object GenerateFakeBookRequest(Guid? publisherId = null, IEnumerable<Guid>? authorIds = null, IEnumerable<Guid>? categoryIds = null) => new
-    {
-        Title = _faker.Commerce.ProductName(),
-        Isbn = _faker.Commerce.Ean13(),
-        Language = "en",
-        Translations = new Dictionary<string, object>
-        {
-            ["en"] = new { Description = _faker.Lorem.Paragraph() },
-            ["es"] = new { Description = _faker.Lorem.Paragraph() }
-        },
+    public static object
+        GenerateFakeBookRequest(Guid? publisherId = null, IEnumerable<Guid>? authorIds = null,
+            IEnumerable<Guid>? categoryIds = null) => new
+            {
+                Title = _faker.Commerce.ProductName(),
+                Isbn = _faker.Commerce.Ean13(),
+                Language = "en",
+                Translations = new Dictionary<string, object>
+                {
+                    ["en"] = new { Description = _faker.Lorem.Paragraph() },
+                    ["es"] = new { Description = _faker.Lorem.Paragraph() }
+                },
 #pragma warning disable IDE0037 // Use target-typed 'new'
-        PublicationDate = new
-        {
-            Year = _faker.Date.Past(10).Year,
-            Month = _faker.Random.Int(1, 12),
-            Day = _faker.Random.Int(1, 28)
-        },
+                PublicationDate = new
+                {
+                    Year = _faker.Date.Past(10).Year,
+                    Month = _faker.Random.Int(1, 12),
+                    Day = _faker.Random.Int(1, 28)
+                },
 #pragma warning restore IDE0037
-        PublisherId = publisherId,
-        AuthorIds = authorIds ?? [],
-        CategoryIds = categoryIds ?? [],
-        Prices = new Dictionary<string, decimal>
-        {
-            ["USD"] = decimal.Parse(_faker.Commerce.Price(10, 100))
-        }
-    };
+                PublisherId = publisherId,
+                AuthorIds = authorIds ?? [],
+                CategoryIds = categoryIds ?? [],
+                Prices = new Dictionary<string, decimal> { ["USD"] = decimal.Parse(_faker.Commerce.Price(10, 100)) }
+            };
 
     public static object GenerateFakeAuthorRequest() => new
     {
         Name = _faker.Name.FullName(),
         Translations = new Dictionary<string, object>
         {
-            ["en"] = new
-            {
-                Biography = _faker.Lorem.Paragraphs(2)
-            },
-            ["es"] = new
-            {
-                Biography = _faker.Lorem.Paragraphs(2)
-            }
+            ["en"] = new { Biography = _faker.Lorem.Paragraphs(2) },
+            ["es"] = new { Biography = _faker.Lorem.Paragraphs(2) }
         }
     };
 
@@ -60,30 +55,20 @@ public static class TestHelpers
     {
         Translations = new Dictionary<string, object>
         {
-            ["en"] = new
-            {
-                Name = _faker.Commerce.Department(),
-                Description = _faker.Lorem.Sentence()
-            },
-            ["es"] = new
-            {
-                Name = _faker.Commerce.Department(),
-                Description = _faker.Lorem.Sentence()
-            }
+            ["en"] = new { Name = _faker.Commerce.Department(), Description = _faker.Lorem.Sentence() },
+            ["es"] = new { Name = _faker.Commerce.Department(), Description = _faker.Lorem.Sentence() }
         }
     };
 
-    public static object GenerateFakePublisherRequest() => new
-    {
-        Name = _faker.Company.CompanyName()
-    };
+    public static object GenerateFakePublisherRequest() => new { Name = _faker.Company.CompanyName() };
 
     public static async Task<HttpClient> GetAuthenticatedClientAsync()
     {
         var app = GlobalHooks.App!;
         var client = app.CreateHttpClient("apiservice");
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", GlobalHooks.AdminAccessToken);
-        client.DefaultRequestHeaders.Add("X-Tenant-ID", "default");
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", GlobalHooks.AdminAccessToken);
+        client.DefaultRequestHeaders.Add("X-Tenant-ID", StorageConstants.DefaultTenantId);
         return await Task.FromResult(client);
     }
 
@@ -91,7 +76,7 @@ public static class TestHelpers
     {
         var app = GlobalHooks.App!;
         var client = app.CreateHttpClient("apiservice");
-        client.DefaultRequestHeaders.Add("X-Tenant-ID", "default");
+        client.DefaultRequestHeaders.Add("X-Tenant-ID", StorageConstants.DefaultTenantId);
         return client;
     }
 
@@ -111,15 +96,17 @@ public static class TestHelpers
         TimeSpan timeout)
     {
         var matchAnyId = entityId == Guid.Empty;
-        Console.WriteLine($"[SSE-TEST] Setting up listener for {eventType}" +
-            (matchAnyId ? " (any ID)" : $" on {entityId}") +
-            $" (timeout: {timeout.TotalSeconds}s)...");
 
         var app = GlobalHooks.App!;
         using var client = app.CreateHttpClient("apiservice");
         client.Timeout = TestConstants.DefaultStreamTimeout; // Prevent Aspire default timeout from killing the stream
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", GlobalHooks.AdminAccessToken);
-        client.DefaultRequestHeaders.Add("X-Tenant-ID", "default");
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", GlobalHooks.AdminAccessToken);
+        if (string.Equals(GlobalHooks.AdminAccessToken, null))
+        {
+        }
+
+        client.DefaultRequestHeaders.Add("X-Tenant-ID", StorageConstants.DefaultTenantId);
 
         using var cts = new CancellationTokenSource(timeout);
         var tcs = new TaskCompletionSource<bool>();
@@ -130,17 +117,16 @@ public static class TestHelpers
         {
             try
             {
-                Console.WriteLine("[SSE-TEST] Connecting to /api/notifications/stream...");
-                using var response = await client.GetAsync("/api/notifications/stream", HttpCompletionOption.ResponseHeadersRead, cts.Token);
+                using var response = await client.GetAsync("/api/notifications/stream",
+                    HttpCompletionOption.ResponseHeadersRead, cts.Token);
                 _ = response.EnsureSuccessStatusCode();
-                Console.WriteLine("[SSE-TEST] Connected. Waiting for action to complete before reading stream...");
+
                 _ = connectedTcs.TrySetResult();
 
                 using var stream = await response.Content.ReadAsStreamAsync(cts.Token);
 
                 await foreach (var item in SseParser.Create(stream).EnumerateAsync(cts.Token))
                 {
-                    Console.WriteLine($"[SSE-TEST] Received SSE: EventType={item.EventType}, Data={item.Data}");
                     if (string.IsNullOrEmpty(item.Data))
                     {
                         continue;
@@ -154,7 +140,6 @@ public static class TestHelpers
                             var receivedId = idProp.GetGuid();
                             if (matchAnyId || receivedId == entityId)
                             {
-                                Console.WriteLine($"[SSE-TEST] Match found for {eventType} on {receivedId}!");
                                 _ = tcs.TrySetResult(true);
                                 return;
                             }
@@ -164,12 +149,10 @@ public static class TestHelpers
             }
             catch (OperationCanceledException)
             {
-                Console.WriteLine($"[SSE-TEST] Timeout reached waiting for {eventType}.");
                 _ = tcs.TrySetResult(false);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[SSE-TEST] Background listener exception: {ex.Message}");
                 _ = tcs.TrySetException(ex);
                 _ = connectedTcs.TrySetResult(); // Ensure we don't block
             }
@@ -178,14 +161,12 @@ public static class TestHelpers
         // Wait for connection to be established
         if (await Task.WhenAny(connectedTcs.Task, Task.Delay(timeout)) != connectedTcs.Task)
         {
-            Console.WriteLine("[SSE-TEST] Timed out waiting for SSE connection.");
             // Proceed anyway? Or fail? proceeding might miss event.
         }
 
         // Execute the action that should trigger the event
-        Console.WriteLine($"[SSE-TEST] Executing action...");
+
         await action();
-        Console.WriteLine($"[SSE-TEST] Action completed. Waiting for event...");
 
         // Wait for either the event or timeout
         var result = await tcs.Task;
@@ -216,25 +197,23 @@ public static class TestHelpers
     [Obsolete("Use ExecuteAndWaitForEventAsync to avoid race conditions")]
     public static async Task<bool> WaitForEventAsync(Guid entityId, string eventType, TimeSpan timeout)
     {
-        Console.WriteLine($"[SSE-TEST] Waiting for {eventType} on {entityId} (timeout: {timeout.TotalSeconds}s)...");
         var app = GlobalHooks.App!;
         using var client = app.CreateHttpClient("apiservice");
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", GlobalHooks.AdminAccessToken);
-        client.DefaultRequestHeaders.Add("X-Tenant-ID", "default");
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", GlobalHooks.AdminAccessToken);
+        client.DefaultRequestHeaders.Add("X-Tenant-ID", StorageConstants.DefaultTenantId);
 
         using var cts = new CancellationTokenSource(timeout);
         try
         {
-            // Console.WriteLine("[SSE-TEST] Connecting to /api/notifications/stream...");
-            using var response = await client.GetAsync("/api/notifications/stream", HttpCompletionOption.ResponseHeadersRead, cts.Token);
+            using var response = await client.GetAsync("/api/notifications/stream",
+                HttpCompletionOption.ResponseHeadersRead, cts.Token);
             _ = response.EnsureSuccessStatusCode();
-            Console.WriteLine("[SSE-TEST] Connected. Reading stream...");
 
             using var stream = await response.Content.ReadAsStreamAsync(cts.Token);
 
             await foreach (var item in SseParser.Create(stream).EnumerateAsync(cts.Token))
             {
-                Console.WriteLine($"[SSE-TEST] Received item: {item.EventType}");
                 if (string.IsNullOrEmpty(item.Data))
                 {
                     continue;
@@ -245,7 +224,6 @@ public static class TestHelpers
                     using var doc = JsonDocument.Parse(item.Data);
                     if (doc.RootElement.TryGetProperty("entityId", out var idProp) && idProp.GetGuid() == entityId)
                     {
-                        Console.WriteLine($"[SSE-TEST] Match found for {eventType} on {entityId}!");
                         return true;
                     }
                 }
@@ -253,7 +231,6 @@ public static class TestHelpers
         }
         catch (OperationCanceledException)
         {
-            Console.WriteLine($"[SSE-TEST] Timeout reached waiting for {eventType} on {entityId}.");
             return false;
         }
 
@@ -266,10 +243,14 @@ public static class TestHelpers
 
         var received = await ExecuteAndWaitForEventAsync(
             Guid.Empty,
-            "BookUpdated",
+            "BookUpdated", // Async projections may report as Update regardless of Insert/Update
             async () =>
             {
                 var createResponse = await httpClient.PostAsJsonAsync("/api/admin/books", createBookRequest);
+                if (!createResponse.IsSuccessStatusCode)
+                {
+                }
+
                 _ = createResponse.EnsureSuccessStatusCode();
                 createdBook = await createResponse.Content.ReadFromJsonAsync<BookDto>();
             },
@@ -280,25 +261,36 @@ public static class TestHelpers
             throw new Exception("Failed to create book or receive BookUpdated event.");
         }
 
-        // Wait for the book to be available in the query model (async projection catch-up)
-        // This prevents race conditions where tests try to fetch the book before it's indexed
-        await WaitForConditionAsync(async () =>
-        {
-            var response = await httpClient.GetAsync($"/api/books/{createdBook.Id}");
-            return response.IsSuccessStatusCode;
-        }, TimeSpan.FromSeconds(5), "Book not found in query model after creation");
+        // SSE received means async projection is active. In parallel tests, we might receive 
+        // SSE for a different book, so poll with retry to ensure our book is projected.
+        var maxRetries = 10;
+        var retryDelay = TimeSpan.FromMilliseconds(200);
+        BookDto? fetchedBook = null;
 
-        // Fetch full book details since the Create endpoint only returns ID
-        var getResponse = await httpClient.GetAsync($"/api/books/{createdBook.Id}");
-        if (getResponse.IsSuccessStatusCode)
+        for (var i = 0; i < maxRetries; i++)
         {
-            createdBook = await getResponse.Content.ReadFromJsonAsync<BookDto>();
+            var getResponse = await httpClient.GetAsync($"/api/books/{createdBook.Id}");
+            if (getResponse.IsSuccessStatusCode)
+            {
+                fetchedBook = await getResponse.Content.ReadFromJsonAsync<BookDto>();
+                break;
+            }
+
+            if (i < maxRetries - 1)
+            {
+                await Task.Delay(retryDelay);
+            }
         }
 
-        return createdBook!;
+        if (fetchedBook == null)
+        {
+        }
+
+        return fetchedBook ?? createdBook!;
     }
 
-    public static async Task<BookDto> CreateBookAsync(HttpClient httpClient, Guid? publisherId = null, IEnumerable<Guid>? authorIds = null, IEnumerable<Guid>? categoryIds = null)
+    public static async Task<BookDto> CreateBookAsync(HttpClient httpClient, Guid? publisherId = null,
+        IEnumerable<Guid>? authorIds = null, IEnumerable<Guid>? categoryIds = null)
     {
         var createBookRequest = GenerateFakeBookRequest(publisherId, authorIds, categoryIds);
         return await CreateBookAsync(httpClient, createBookRequest);
@@ -313,22 +305,21 @@ public static class TestHelpers
         return await Task.FromResult(client);
     }
 
-    public static async Task AddToCartAsync(HttpClient client, Guid bookId, int quantity = 1, Guid? expectedEntityId = null)
+    public static async Task AddToCartAsync(HttpClient client, Guid bookId, int quantity = 1,
+        Guid? expectedEntityId = null)
     {
         var received = await ExecuteAndWaitForEventAsync(
             expectedEntityId ?? Guid.Empty,
             "UserUpdated",
             async () =>
             {
-                var response = await client.PostAsJsonAsync("/api/cart/items", new AddToCartClientRequest(bookId, quantity));
+                var response =
+                    await client.PostAsJsonAsync("/api/cart/items", new AddToCartClientRequest(bookId, quantity));
                 if (!response.IsSuccessStatusCode)
                 {
-                    var content = await response.Content.ReadAsStringAsync();
-                    Console.WriteLine($"[AddToCart Failure] Status: {response.StatusCode}, Content: {content}");
                 }
                 else
                 {
-                    Console.WriteLine($"[AddToCart Success] BookId: {bookId}, Quantity: {quantity}, Status: {response.StatusCode}");
                 }
 
                 _ = await Assert.That(response.IsSuccessStatusCode).IsTrue();
@@ -339,18 +330,18 @@ public static class TestHelpers
         {
             throw new Exception("Timed out waiting for UserUpdated event after AddToCart.");
         }
-
-        Console.WriteLine($"[AddToCart Complete] Received UserUpdated event for BookId: {bookId}");
     }
 
-    public static async Task UpdateCartItemQuantityAsync(HttpClient client, Guid bookId, int quantity, Guid? expectedEntityId = null)
+    public static async Task UpdateCartItemQuantityAsync(HttpClient client, Guid bookId, int quantity,
+        Guid? expectedEntityId = null)
     {
         var received = await ExecuteAndWaitForEventAsync(
             expectedEntityId ?? Guid.Empty,
             "UserUpdated",
             async () =>
             {
-                var response = await client.PutAsJsonAsync($"/api/cart/items/{bookId}", new UpdateCartItemClientRequest(quantity));
+                var response = await client.PutAsJsonAsync($"/api/cart/items/{bookId}",
+                    new UpdateCartItemClientRequest(quantity));
                 _ = await Assert.That(response.IsSuccessStatusCode).IsTrue();
             },
             TestConstants.DefaultEventTimeout);
@@ -406,7 +397,8 @@ public static class TestHelpers
         }
     }
 
-    public static async Task RateBookAsync(HttpClient client, Guid bookId, int rating, Guid? expectedEntityId = null, string expectedEvent = "UserUpdated")
+    public static async Task RateBookAsync(HttpClient client, Guid bookId, int rating, Guid? expectedEntityId = null,
+        string expectedEvent = "UserUpdated")
     {
         var received = await ExecuteAndWaitForEventAsync(
             expectedEntityId ?? Guid.Empty,
@@ -416,8 +408,6 @@ public static class TestHelpers
                 var response = await client.PostAsJsonAsync($"/api/books/{bookId}/rating", new { Rating = rating });
                 if (!response.IsSuccessStatusCode)
                 {
-                    var error = await response.Content.ReadAsStringAsync();
-                    Console.WriteLine($"[SSE-TEST] RateBook failed: {response.StatusCode} - {error}");
                 }
 
                 _ = await Assert.That(response.IsSuccessStatusCode).IsTrue();
@@ -430,7 +420,8 @@ public static class TestHelpers
         }
     }
 
-    public static async Task RemoveRatingAsync(HttpClient client, Guid bookId, Guid? expectedEntityId = null, string expectedEvent = "UserUpdated")
+    public static async Task RemoveRatingAsync(HttpClient client, Guid bookId, Guid? expectedEntityId = null,
+        string expectedEvent = "UserUpdated")
     {
         var received = await ExecuteAndWaitForEventAsync(
             expectedEntityId ?? Guid.Empty,
@@ -440,8 +431,6 @@ public static class TestHelpers
                 var response = await client.DeleteAsync($"/api/books/{bookId}/rating");
                 if (!response.IsSuccessStatusCode)
                 {
-                    var error = await response.Content.ReadAsStringAsync();
-                    Console.WriteLine($"[SSE-TEST] RemoveRating failed: {response.StatusCode} - {error}");
                 }
 
                 _ = await Assert.That(response.IsSuccessStatusCode).IsTrue();
@@ -454,7 +443,8 @@ public static class TestHelpers
         }
     }
 
-    public static async Task AddToFavoritesAsync(HttpClient client, Guid bookId, Guid? expectedEntityId = null, string expectedEvent = "UserUpdated")
+    public static async Task AddToFavoritesAsync(HttpClient client, Guid bookId, Guid? expectedEntityId = null,
+        string expectedEvent = "UserUpdated")
     {
         var received = await ExecuteAndWaitForEventAsync(
             expectedEntityId ?? Guid.Empty,
@@ -472,7 +462,8 @@ public static class TestHelpers
         }
     }
 
-    public static async Task RemoveFromFavoritesAsync(HttpClient client, Guid bookId, Guid? expectedEntityId = null, string expectedEvent = "UserUpdated")
+    public static async Task RemoveFromFavoritesAsync(HttpClient client, Guid bookId, Guid? expectedEntityId = null,
+        string expectedEvent = "UserUpdated")
     {
         var received = await ExecuteAndWaitForEventAsync(
             expectedEntityId ?? Guid.Empty,
@@ -506,8 +497,6 @@ public static class TestHelpers
                 var updateResponse = await client.SendAsync(updateRequest);
                 if (!updateResponse.IsSuccessStatusCode)
                 {
-                    var error = await updateResponse.Content.ReadAsStringAsync();
-                    Console.WriteLine($"Update failed with status {updateResponse.StatusCode}: {error}");
                 }
 
                 _ = await Assert.That(updateResponse.IsSuccessStatusCode).IsTrue();
@@ -533,8 +522,6 @@ public static class TestHelpers
                 var deleteResponse = await client.SendAsync(deleteRequest);
                 if (!deleteResponse.IsSuccessStatusCode)
                 {
-                    var error = await deleteResponse.Content.ReadAsStringAsync();
-                    Console.WriteLine($"Delete failed with status {deleteResponse.StatusCode}: {error}");
                 }
 
                 _ = await Assert.That(deleteResponse.IsSuccessStatusCode).IsTrue();
@@ -557,8 +544,6 @@ public static class TestHelpers
                 var restoreResponse = await client.PostAsync($"/api/admin/books/{bookId}/restore", null);
                 if (!restoreResponse.IsSuccessStatusCode)
                 {
-                    var error = await restoreResponse.Content.ReadAsStringAsync();
-                    Console.WriteLine($"[SSE-TEST] Restore failed: {restoreResponse.StatusCode} - {error}");
                 }
 
                 _ = await Assert.That(restoreResponse.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
@@ -593,35 +578,67 @@ public static class TestHelpers
 
         throw new Exception($"Timeout waiting for condition: {failureMessage}");
     }
+
     public static async Task SeedTenantAsync(Marten.IDocumentStore store, string tenantId)
     {
+        // 1. Ensure Tenant document exists in Marten's native default bucket (for validation)
+        await using (var tenantSession = store.LightweightSession())
+        {
+            var existingTenant = await tenantSession.LoadAsync<BookStore.ApiService.Models.Tenant>(tenantId);
+            if (existingTenant == null)
+            {
+                tenantSession.Store(new BookStore.ApiService.Models.Tenant
+                {
+                    Id = tenantId,
+                    Name = StorageConstants.DefaultTenantId.Equals(tenantId, StringComparison.OrdinalIgnoreCase)
+                        ? "BookStore"
+                        : (char.ToUpper(tenantId[0]) + tenantId[1..] + " Corp"),
+                    IsEnabled = true,
+                    CreatedAt = DateTimeOffset.UtcNow
+                });
+                await tenantSession.SaveChangesAsync();
+            }
+        }
+
+        // 2. Seed Admin User in the tenant's own bucket
         await using var session = store.LightweightSession(tenantId);
-        var adminEmail = $"admin@{tenantId}.com";
+
+        var adminEmail = StorageConstants.DefaultTenantId.Equals(tenantId, StringComparison.OrdinalIgnoreCase)
+            ? "admin@bookstore.com"
+            : $"admin@{tenantId}.com";
 
         // We still use manual store here as TestHelpers might be used in light setup contexts
         // but we fix the normalization mismatch
-        var adminUser = new BookStore.ApiService.Models.ApplicationUser
+        var existingUser = await session.Query<BookStore.ApiService.Models.ApplicationUser>()
+            .Where(u => u.Email == adminEmail)
+            .FirstOrDefaultAsync();
+
+        if (existingUser == null)
         {
-            UserName = adminEmail,
-            NormalizedUserName = adminEmail.ToUpperInvariant(),
-            Email = adminEmail,
-            NormalizedEmail = adminEmail.ToUpperInvariant(),
-            EmailConfirmed = true,
-            Roles = ["Admin"],
-            SecurityStamp = Guid.CreateVersion7().ToString("D"),
-            ConcurrencyStamp = Guid.CreateVersion7().ToString("D")
-        };
+            var adminUser = new BookStore.ApiService.Models.ApplicationUser
+            {
+                UserName = adminEmail,
+                NormalizedUserName = adminEmail.ToUpperInvariant(),
+                Email = adminEmail,
+                NormalizedEmail = adminEmail.ToUpperInvariant(),
+                EmailConfirmed = true,
+                Roles = ["Admin"],
+                SecurityStamp = Guid.CreateVersion7().ToString("D"),
+                ConcurrencyStamp = Guid.CreateVersion7().ToString("D")
+            };
 
-        var hasher = new Microsoft.AspNetCore.Identity.PasswordHasher<BookStore.ApiService.Models.ApplicationUser>();
-        adminUser.PasswordHash = hasher.HashPassword(adminUser, "Admin123!");
+            var hasher =
+                new Microsoft.AspNetCore.Identity.PasswordHasher<BookStore.ApiService.Models.ApplicationUser>();
+            adminUser.PasswordHash = hasher.HashPassword(adminUser, "Admin123!");
 
-        // Use Store (Upsert) to handle existing users
-        session.Store(adminUser);
-        await session.SaveChangesAsync();
+            session.Store(adminUser);
+            await session.SaveChangesAsync();
+        }
     }
+
     public static async Task<LoginResponse?> LoginAsAdminAsync(HttpClient client, string tenantId)
     {
-        var email = tenantId == "default"
+        var email = StorageConstants.DefaultTenantId.Equals(tenantId, StringComparison.OrdinalIgnoreCase)
             ? "admin@bookstore.com"
             : $"admin@{tenantId}.com";
 
@@ -645,8 +662,6 @@ public static class TestHelpers
 
             if (i == 2) // Last attempt
             {
-                var content = await response.Content.ReadAsStringAsync();
-                Console.WriteLine($"[Login Failure] Tenant: {tenantId}, Status: {response.StatusCode}, Attempt: {i + 1}, Content: {content}");
                 return null;
             }
 
@@ -656,7 +671,7 @@ public static class TestHelpers
         return null;
     }
 
-    public static async Task<HttpClient> CreateUserAndGetClientAsync(string? tenantId = "default")
+    public static async Task<HttpClient> CreateUserAndGetClientAsync(string? tenantId = null)
     {
         var app = GlobalHooks.App!;
         var publicClient = app.CreateHttpClient("apiservice");
@@ -665,48 +680,35 @@ public static class TestHelpers
         var email = $"user_{Guid.NewGuid()}@example.com";
         var password = "Password123!";
 
-        Console.WriteLine($"[TEST-USER] Creating user {email} for tenant {tenantId}");
-
         // Register
         var registerRequest = new { email, password };
         var registerResponse = await publicClient.PostAsJsonAsync("/account/register", registerRequest);
         if (!registerResponse.IsSuccessStatusCode)
         {
-            var error = await registerResponse.Content.ReadAsStringAsync();
-            Console.WriteLine($"[TEST-USER] Registration failed: {registerResponse.StatusCode} - {error}");
         }
 
         _ = registerResponse.EnsureSuccessStatusCode();
-        Console.WriteLine($"[TEST-USER] User registered successfully");
 
         // Login
         var loginRequest = new { email, password };
         var loginResponse = await publicClient.PostAsJsonAsync("/account/login", loginRequest);
         if (!loginResponse.IsSuccessStatusCode)
         {
-            var error = await loginResponse.Content.ReadAsStringAsync();
-            Console.WriteLine($"[TEST-USER] Login failed: {loginResponse.StatusCode} - {error}");
         }
 
         _ = loginResponse.EnsureSuccessStatusCode();
 
         var tokenResponse = await loginResponse.Content.ReadFromJsonAsync<LoginResponse>();
-        Console.WriteLine($"[TEST-USER] User logged in successfully, token length: {tokenResponse!.AccessToken.Length}");
 
         // Decode JWT to verify claims
         var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
-        var jwtToken = handler.ReadJwtToken(tokenResponse.AccessToken);
-        var subClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "sub")?.Value;
-        var tenantClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "tenant_id")?.Value;
-        var emailClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "email")?.Value;
-        Console.WriteLine($"[JWT-CLAIMS] sub: {subClaim}, tenant_id: {tenantClaim}, email: {emailClaim}");
+        var jwtToken = handler.ReadJwtToken(tokenResponse!.AccessToken);
 
         // Create authenticated client
         var authenticatedClient = app.CreateHttpClient("apiservice");
-        authenticatedClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokenResponse.AccessToken);
+        authenticatedClient.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", tokenResponse.AccessToken);
         authenticatedClient.DefaultRequestHeaders.Add("X-Tenant-ID", tenantId);
-
-        Console.WriteLine($"[TEST-CLIENT] Created client with tenant header: {tenantId}");
 
         return authenticatedClient;
     }

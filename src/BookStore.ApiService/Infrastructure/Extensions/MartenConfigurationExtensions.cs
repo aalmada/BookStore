@@ -1,4 +1,5 @@
 using BookStore.ApiService.Infrastructure.Tenant;
+using BookStore.ApiService.Models;
 using BookStore.ApiService.Projections;
 using BookStore.Shared.Infrastructure.Json;
 using BookStore.Shared.Models;
@@ -71,6 +72,8 @@ public static class MartenConfigurationExtensions
         .IntegrateWithWolverine();
 
         // Register IDocumentSession with proper tenant scoping
+        // Since we use Marten's "*DEFAULT*" for the default tenant,
+        // we can pass tenant ID directly to LightweightSession
         _ = services.AddScoped<IDocumentSession>(sp =>
         {
             var store = sp.GetRequiredService<IDocumentStore>();
@@ -151,7 +154,7 @@ public static class MartenConfigurationExtensions
         _ = options.Projections.Snapshot<AuthorProjection>(SnapshotLifecycle.Async);
         _ = options.Projections.Snapshot<BookSearchProjection>(SnapshotLifecycle.Async);
         _ = options.Projections.Snapshot<PublisherProjection>(SnapshotLifecycle.Async);
-        _ = options.Projections.Snapshot<UserProfile>(SnapshotLifecycle.Async);
+        _ = options.Projections.Snapshot<UserProfile>(SnapshotLifecycle.Inline);
         options.Projections.Add<BookStatisticsProjection>(ProjectionLifecycle.Async);
     }
 
@@ -184,6 +187,12 @@ public static class MartenConfigurationExtensions
             .Index(x => x.Name)         // B-tree index for sorting
             .NgramIndex(x => x.Name)    // NGram search on publisher name
             .Index(x => x.Deleted);     // Index for soft-delete filtering
+
+        // ApplicationUser indexes (Identity)
+        _ = options.Schema.For<ApplicationUser>()
+            .UniqueIndex(x => x.Email!)
+            .Index(x => x.NormalizedEmail)
+            .Index(x => x.NormalizedUserName);
     }
 
     static void RegisterChangeListeners(StoreOptions options, IServiceProvider sp)

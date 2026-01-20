@@ -106,9 +106,14 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
 
     async Task HandleUserChangeAsync(UserProfile profile, ChangeType _, CancellationToken token)
     {
+
         // For users, we don't have a generic list cache to invalidate (yet), 
         // but we might want to invalidate specific user data if cached independently.
         // For now, simply Notify.
+
+#pragma warning disable CA1848 // Use LoggerMessage delegates
+        _logger.LogInformation("[DEBUG_LISTENER] HandleUserChangeAsync for {UserId}. Favorites: {Count}", profile.Id, profile.FavoriteBookIds?.Count ?? -1);
+#pragma warning restore CA1848 // Use LoggerMessage delegates
 
         // Use UtcNow as fallback
         var timestamp = DateTimeOffset.UtcNow;
@@ -119,7 +124,7 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
         // - Shopping cart operations: BookAddedToCart, BookRemovedFromCart, CartItemQuantityUpdated, ShoppingCartCleared
         // "UserUpdated" is a good catch-all for ReactiveQuery invalidation.
 
-        IDomainEventNotification notification = new UserUpdatedNotification(Guid.Empty, profile.Id, timestamp);
+        IDomainEventNotification notification = new UserUpdatedNotification(Guid.Empty, profile.Id, timestamp, profile.FavoriteBookIds?.Count ?? 0);
 
         await NotifyAsync("User", notification, token);
     }

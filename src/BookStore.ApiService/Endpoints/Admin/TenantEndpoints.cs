@@ -19,8 +19,8 @@ public static class TenantEndpoints
         IDocumentStore store,
         CancellationToken ct)
     {
-        // Use a lightweight session on the "default" tenant (global scope for tenants)
-        await using var session = store.LightweightSession("default");
+        // Use a lightweight session on the native default tenant (global scope for tenants)
+        await using var session = store.LightweightSession();
 
         var tenants = await session.Query<Tenant>()
             .OrderBy(t => t.Id)
@@ -41,8 +41,8 @@ public static class TenantEndpoints
             return Results.BadRequest("Tenant ID is required.");
         }
 
-        // Use a lightweight session on the "default" tenant
-        await using var session = store.LightweightSession("default");
+        // Use a lightweight session on the native default tenant
+        await using var session = store.LightweightSession();
 
         var existing = await session.LoadAsync<Tenant>(request.Id, ct);
         if (existing != null)
@@ -71,7 +71,7 @@ public static class TenantEndpoints
         IDocumentStore store,
         CancellationToken ct)
     {
-        await using var session = store.LightweightSession("default");
+        await using var session = store.LightweightSession();
 
         var tenant = await session.LoadAsync<Tenant>(id, ct);
         if (tenant == null)

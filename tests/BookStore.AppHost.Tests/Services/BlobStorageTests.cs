@@ -2,6 +2,7 @@ using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using BookStore.ApiService.Services;
 using BookStore.ServiceDefaults;
+using JasperFx;
 using Microsoft.Extensions.Hosting;
 
 namespace BookStore.AppHost.Tests.Services;
@@ -54,7 +55,8 @@ public class BlobStorageTests
         var contentType = "image/jpeg";
 
         // Act
-        var uri = await _blobStorageService!.UploadBookCoverAsync(bookId, stream, contentType, "default");
+        var uri = await _blobStorageService!.UploadBookCoverAsync(bookId, stream, contentType,
+            StorageConstants.DefaultTenantId);
 
         // Assert
         _ = await Assert.That(uri).IsNotNull();
@@ -63,7 +65,7 @@ public class BlobStorageTests
 
         // Verify blob exists
         var container = _blobServiceClient!.GetBlobContainerClient(ContainerName);
-        var blob = container.GetBlobClient($"default/{bookId}.jpg");
+        var blob = container.GetBlobClient($"{StorageConstants.DefaultTenantId}/{bookId}.jpg");
         var exists = await blob.ExistsAsync();
         _ = await Assert.That(exists.Value).IsTrue();
     }
@@ -79,7 +81,8 @@ public class BlobStorageTests
         var contentType = "image/png";
 
         // Upload first
-        _ = await _blobStorageService!.UploadBookCoverAsync(bookId, stream, contentType, "default");
+        _ = await _blobStorageService!.UploadBookCoverAsync(bookId, stream, contentType,
+            StorageConstants.DefaultTenantId);
 
         // Act
         var result = await _blobStorageService.GetBookCoverAsync(bookId);
@@ -111,11 +114,12 @@ public class BlobStorageTests
         using var stream = new MemoryStream(content);
         var contentType = "image/webp";
 
-        _ = await _blobStorageService!.UploadBookCoverAsync(bookId, stream, contentType, "default");
+        _ = await _blobStorageService!.UploadBookCoverAsync(bookId, stream, contentType,
+            StorageConstants.DefaultTenantId);
 
         // Verify existence before delete
         var container = _blobServiceClient!.GetBlobContainerClient(ContainerName);
-        var blob = container.GetBlobClient($"default/{bookId}.webp");
+        var blob = container.GetBlobClient($"{StorageConstants.DefaultTenantId}/{bookId}.webp");
         var existsBefore = await blob.ExistsAsync();
         _ = await Assert.That(existsBefore.Value).IsTrue();
 

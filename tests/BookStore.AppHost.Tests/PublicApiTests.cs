@@ -12,7 +12,8 @@ public class PublicApiTests
         var notificationService = GlobalHooks.NotificationService!;
         var httpClient = app.CreateHttpClient("apiservice");
 
-        _ = await notificationService.WaitForResourceHealthyAsync("apiservice", CancellationToken.None).WaitAsync(TestConstants.DefaultTimeout);
+        _ = await notificationService.WaitForResourceHealthyAsync("apiservice", CancellationToken.None)
+            .WaitAsync(TestConstants.DefaultTimeout);
 
         // Act
         var response = await httpClient.GetAsync("/api/books");
@@ -29,7 +30,8 @@ public class PublicApiTests
         var notificationService = GlobalHooks.NotificationService!;
         var httpClient = app.CreateHttpClient("apiservice");
 
-        _ = await notificationService.WaitForResourceHealthyAsync("apiservice", CancellationToken.None).WaitAsync(TestConstants.DefaultTimeout);
+        _ = await notificationService.WaitForResourceHealthyAsync("apiservice", CancellationToken.None)
+            .WaitAsync(TestConstants.DefaultTimeout);
 
         // Act
         var response = await httpClient.GetAsync("/api/authors");
@@ -46,7 +48,8 @@ public class PublicApiTests
         var notificationService = GlobalHooks.NotificationService!;
         var httpClient = app.CreateHttpClient("apiservice");
 
-        _ = await notificationService.WaitForResourceHealthyAsync("apiservice", CancellationToken.None).WaitAsync(TestConstants.DefaultTimeout);
+        _ = await notificationService.WaitForResourceHealthyAsync("apiservice", CancellationToken.None)
+            .WaitAsync(TestConstants.DefaultTimeout);
 
         // Act
         var response = await httpClient.GetAsync("/api/categories");
@@ -63,15 +66,14 @@ public class PublicApiTests
         var notificationService = GlobalHooks.NotificationService!;
         var httpClient = app.CreateHttpClient("apiservice");
 
-        _ = await notificationService.WaitForResourceHealthyAsync("apiservice", CancellationToken.None).WaitAsync(TestConstants.DefaultTimeout);
+        _ = await notificationService.WaitForResourceHealthyAsync("apiservice", CancellationToken.None)
+            .WaitAsync(TestConstants.DefaultTimeout);
 
         // Act
         var response = await httpClient.GetAsync("/api/publishers");
 
         if (response.StatusCode != HttpStatusCode.OK)
         {
-            var error = await response.Content.ReadAsStringAsync();
-            Console.WriteLine($"GetPublishers failed with status {response.StatusCode}: {error}");
         }
 
         // Assert

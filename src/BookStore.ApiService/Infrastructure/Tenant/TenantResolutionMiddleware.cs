@@ -44,8 +44,8 @@ public class TenantResolutionMiddleware
             }
         }
 
-        // Use "default" if no header provided (TenantContext defaults to "default")
-        // No else block needed as TenantContext initializes to "default"
+        // Use "*DEFAULT*" if no header provided (TenantContext defaults to StorageConstants.DefaultTenantId)
+        // No else block needed as TenantContext initializes to "*DEFAULT*"
 
         // Make tenant ID available in Items for other middleware/logs
         context.Items["TenantId"] = tenantContext.TenantId;

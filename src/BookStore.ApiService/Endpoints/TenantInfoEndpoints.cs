@@ -18,7 +18,7 @@ public static class TenantInfoEndpoints
         IDocumentStore store,
         CancellationToken ct)
     {
-        await using var session = store.LightweightSession("default");
+        await using var session = store.LightweightSession();
         var tenants = await session.Query<Tenant>()
             .Where(t => t.IsEnabled)
             .OrderBy(t => t.Id)
@@ -34,7 +34,7 @@ public static class TenantInfoEndpoints
         IDocumentStore store,
         CancellationToken ct)
     {
-        await using var session = store.LightweightSession("default");
+        await using var session = store.LightweightSession();
 
         var tenant = await session.LoadAsync<Tenant>(id, ct);
 

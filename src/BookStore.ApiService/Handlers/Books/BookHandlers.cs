@@ -124,8 +124,8 @@ public static class BookHandlers
                 descriptions,
                 command.PublicationDate,
                 command.PublisherId,
-                [.. command.AuthorIds],
-                [.. command.CategoryIds],
+                [.. command.AuthorIds ?? []],
+                [.. command.CategoryIds ?? []],
                 command.Prices?.ToDictionary(kvp => kvp.Key, kvp => kvp.Value) ?? []);
 
             _ = session.Events.StartStream<BookAggregate>(command.Id, @event);

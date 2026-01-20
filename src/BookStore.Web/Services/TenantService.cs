@@ -5,8 +5,13 @@ using Microsoft.AspNetCore.Components.Routing;
 
 namespace BookStore.Web.Services;
 
+/// <summary>
+/// Default tenant ID matching Marten's DefaultTenantId
+/// </summary>
 public class TenantService : IDisposable
 {
+    const string DefaultTenantId = "*DEFAULT*";
+
     readonly ITenantClient _tenantClient;
     readonly NavigationManager _navigation;
     readonly ILocalStorageService _localStorage;
@@ -21,9 +26,17 @@ public class TenantService : IDisposable
         _navigation.LocationChanged += HandleLocationChanged;
     }
 
-    public string CurrentTenantId { get; private set; } = "default";
-    public string CurrentTenantName { get => field ?? "BookStore"; private set; }
-    public string CurrentTenantTagline { get; private set; } = "Discover your next great read from our curated collection";
+    public string CurrentTenantId { get; private set; } = DefaultTenantId;
+
+    public string CurrentTenantName
+    {
+        get => field ?? "BookStore";
+        private set;
+    }
+
+    public string CurrentTenantTagline { get; private set; } =
+        "Discover your next great read from our curated collection";
+
     public string CurrentTenantPrimaryColor { get; private set; } = "#594AE2";
     public bool IsLoading { get; private set; }
 
@@ -48,7 +61,7 @@ public class TenantService : IDisposable
             else
             {
                 // Priority 3: Default tenant
-                await SetTenantAsync("default");
+                await SetTenantAsync(DefaultTenantId);
             }
         }
     }
@@ -78,7 +91,7 @@ public class TenantService : IDisposable
             }
             else
             {
-                await SetTenantAsync("default");
+                await SetTenantAsync(DefaultTenantId);
             }
         }
     }
@@ -105,7 +118,8 @@ public class TenantService : IDisposable
             var info = await _tenantClient.GetTenantAsync(tenantId);
             CurrentTenantName = info?.Name ?? "BookStore";
             CurrentTenantTagline = info?.Tagline ?? "Discover your next great read from our curated collection";
-            CurrentTenantPrimaryColor = !string.IsNullOrEmpty(info?.ThemePrimaryColor) ? info.ThemePrimaryColor : "#594AE2";
+            CurrentTenantPrimaryColor =
+                !string.IsNullOrEmpty(info?.ThemePrimaryColor) ? info.ThemePrimaryColor : "#594AE2";
 
             // Save to localStorage
             await _localStorage.SetItemAsStringAsync("selected-tenant", tenantId);

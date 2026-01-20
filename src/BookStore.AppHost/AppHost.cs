@@ -36,6 +36,12 @@ var apiService = builder.AddProject<Projects.BookStore_ApiService>(ResourceNames
         url.Url += ResourceNames.ApiReferenceUrl;
     });
 
+var seedingEnabled = builder.Configuration["Seeding:Enabled"];
+if (!string.IsNullOrEmpty(seedingEnabled))
+{
+    _ = apiService.WithEnvironment("Seeding__Enabled", seedingEnabled);
+}
+
 builder.AddProject<Projects.BookStore_Web>(ResourceNames.WebFrontend)
     .WithExternalHttpEndpoints()
     .WithHttpHealthCheck(ResourceNames.HealthCheckEndpoint)
