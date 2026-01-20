@@ -1,7 +1,9 @@
 using System.Globalization;
 using BookStore.ApiService.Infrastructure;
 using BookStore.ApiService.Infrastructure.Extensions;
+using BookStore.ApiService.Infrastructure.Tenant;
 using BookStore.ApiService.Projections;
+using BookStore.Shared.Infrastructure;
 using BookStore.Shared.Models;
 using Marten;
 using Marten.Pagination;
@@ -16,6 +18,7 @@ public static class CategoryEndpoints
 {
     public static RouteGroupBuilder MapCategoryEndpoints(this RouteGroupBuilder group)
     {
+        _ = group.WithMetadata(new AllowAnonymousTenantAttribute());
         _ = group.MapGet("/", GetCategories)
             .WithName("GetCategories")
             .WithSummary("Get all categories");
