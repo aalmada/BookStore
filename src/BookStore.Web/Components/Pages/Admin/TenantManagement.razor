@@ -1,0 +1,157 @@
+@page "/admin/tenants"
+@using Microsoft.AspNetCore.Authorization
+@using BookStore.Client
+@using MudBlazor
+@inject ITenantClient TenantClient
+@inject ISnackbar Snackbar
+@attribute [Authorize(Roles = "Admin")]
+
+<PageTitle>Tenant Management - BookStore</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-8">
+    <MudText Typo="Typo.h4" GutterBottom="true">Tenant Management</MudText>
+
+    <MudPaper Class="pa-4 mb-4">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenCreateDialog" StartIcon="@Icons.Material.Filled.Add">
+            Create New Tenant
+        </MudButton>
+    </MudPaper>
+
+    <MudTable Items="@_tenants" Loading="@_isLoading" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="4">
+        <HeaderContent>
+            <MudTh>ID</MudTh>
+            <MudTh>Name</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh>Actions</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="ID">@context.Id</MudTd>
+            <MudTd DataLabel="Name">@context.Name</MudTd>
+            <MudTd DataLabel="Status">
+                <MudChip T="string" Color="@(context.IsEnabled ? Color.Success : Color.Error)" Size="Size.Small">
+                    @(context.IsEnabled ? "Enabled" : "Disabled")
+                </MudChip>
+            </MudTd>
+            <MudTd DataLabel="Actions">
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Info" OnClick="@(() => OpenEditDialog(context))"/>
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+</MudContainer>
+
+<MudDialog @bind-Visible="_isDialogVisible" Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            @(_isEditing ? "Edit Tenant" : "Create Tenant")
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form">
+            <MudTextField @bind-Value="_model.Id" Label="Tenant ID" Required="true" Disabled="_isEditing" HelperText="Unique identifier for the tenant"/>
+            <MudTextField @bind-Value="_model.Name" Label="Tenant Name" Required="true"/>
+            <MudCheckBox @bind-Value="_model.IsEnabled" Label="Enabled" Color="Color.Primary"/>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit">@(_isEditing ? "Update" : "Create")</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private List<TenantInfoDto> _tenants = new();
+    private bool _isLoading = true;
+    private bool _isDialogVisible;
+    private bool _isEditing;
+    private TenantModel _model = new();
+    private MudForm? _form;
+    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTenantsAsync();
+    }
+
+    private async Task LoadTenantsAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            _tenants = await TenantClient.GetAllTenantsAdminAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load tenants: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OpenCreateDialog()
+    {
+        _isEditing = false;
+        _model = new TenantModel { IsEnabled = true };
+        _isDialogVisible = true;
+    }
+
+    private void OpenEditDialog(TenantInfoDto tenant)
+    {
+        _isEditing = true;
+        _model = new TenantModel
+        {
+            Id = tenant.Id,
+            Name = tenant.Name,
+            IsEnabled = tenant.IsEnabled
+        };
+        _isDialogVisible = true;
+    }
+
+    private void Cancel() => _isDialogVisible = false;
+
+    private async Task Submit()
+    {
+        if (_form == null) return;
+        await _form.Validate();
+        if (!_form.IsValid) return;
+
+        try
+        {
+            if (_isEditing)
+            {
+                await TenantClient.UpdateTenantAsync(_model.Id, new UpdateTenantCommand
+                {
+                    Name = _model.Name,
+                    IsEnabled = _model.IsEnabled
+                });
+                Snackbar.Add("Tenant updated successfully", Severity.Success);
+            }
+            else
+            {
+                await TenantClient.CreateTenantAsync(new CreateTenantCommand
+                {
+                    Id = _model.Id,
+                    Name = _model.Name,
+                    IsEnabled = _model.IsEnabled
+                });
+                Snackbar.Add("Tenant created successfully", Severity.Success);
+            }
+
+            _isDialogVisible = false;
+            await LoadTenantsAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Operation failed: {ex.Message}", Severity.Error);
+        }
+    }
+
+    public class TenantModel
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public bool IsEnabled { get; set; }
+    }
+
+}
