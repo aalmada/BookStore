@@ -62,7 +62,6 @@ public class TenantResolutionMiddleware
     }
 }
 
-
 public static class TenantMiddlewareExtensions
 {
     public static IApplicationBuilder UseTenantResolution(this IApplicationBuilder builder) => builder.UseMiddleware<TenantResolutionMiddleware>();
