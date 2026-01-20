@@ -1,7 +1,9 @@
 using BookStore.ApiService.Aggregates;
 using BookStore.ApiService.Infrastructure;
 using BookStore.ApiService.Infrastructure.Extensions;
+using BookStore.ApiService.Infrastructure.Tenant;
 using BookStore.ApiService.Projections;
+using BookStore.Shared.Infrastructure;
 using BookStore.Shared.Models;
 using Marten;
 using Marten.Pagination;
@@ -16,6 +18,7 @@ public static class PublisherEndpoints
 {
     public static RouteGroupBuilder MapPublisherEndpoints(this RouteGroupBuilder group)
     {
+        _ = group.WithMetadata(new AllowAnonymousTenantAttribute());
         _ = group.MapGet("/", GetPublishers)
             .WithName("GetPublishers")
             .WithSummary("Get all publishers");
