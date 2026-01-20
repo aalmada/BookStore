@@ -18,7 +18,6 @@ public static class PublisherEndpoints
 {
     public static RouteGroupBuilder MapPublisherEndpoints(this RouteGroupBuilder group)
     {
-        _ = group.WithMetadata(new AllowAnonymousTenantAttribute());
         _ = group.MapGet("/", GetPublishers)
             .WithName("GetPublishers")
             .WithSummary("Get all publishers");

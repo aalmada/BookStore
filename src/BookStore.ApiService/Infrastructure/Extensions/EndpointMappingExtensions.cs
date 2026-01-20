@@ -1,6 +1,7 @@
 using BookStore.ApiService.Endpoints;
 using BookStore.ApiService.Endpoints.Admin;
 using Scalar.AspNetCore;
+using BookStore.Shared.Infrastructure;
 
 namespace BookStore.ApiService.Infrastructure.Extensions;
 
@@ -41,18 +42,22 @@ public static class EndpointMappingExtensions
             .WithApiVersionSet(apiVersionSet);
 
         _ = publicApi.MapGroup("/books")
+            .WithMetadata(new AllowAnonymousTenantAttribute())
             .MapBookEndpoints()
             .WithTags("Books");
 
         _ = publicApi.MapGroup("/authors")
+            .WithMetadata(new AllowAnonymousTenantAttribute())
             .MapAuthorEndpoints()
             .WithTags("Authors");
 
         _ = publicApi.MapGroup("/categories")
+            .WithMetadata(new AllowAnonymousTenantAttribute())
             .MapCategoryEndpoints()
             .WithTags("Categories");
 
         _ = publicApi.MapGroup("/publishers")
+            .WithMetadata(new AllowAnonymousTenantAttribute())
             .MapPublisherEndpoints()
             .WithTags("Publishers");
 

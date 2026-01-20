@@ -10,6 +10,19 @@ public class TenantSecurityMiddleware(RequestDelegate next, ILogger<TenantSecuri
     {
         var currentTenant = tenantContext.TenantId;
 
+        // Security: specific tenant access requires authentication
+        // Only the default tenant allows anonymous access (public data)
+        // Exceptions: Endpoints marked with [AllowAnonymousTenant]
+
+        var endpoint = context.GetEndpoint();
+        var hasAnonymousTenantAttribute = endpoint?.Metadata.GetMetadata<AllowAnonymousTenantAttribute>() != null;
+
+        if (hasAnonymousTenantAttribute)
+        {
+            await next(context);
+            return;
+        }
+
         if (context.User.Identity?.IsAuthenticated == true)
         {
             var userTenant = context.User.FindFirst("tenant_id")?.Value;
@@ -35,19 +48,6 @@ public class TenantSecurityMiddleware(RequestDelegate next, ILogger<TenantSecuri
         }
         else
         {
-            // Security: specific tenant access requires authentication
-            // Only the default tenant allows anonymous access (public data)
-            // Exceptions: Endpoints marked with [AllowAnonymousTenant]
-
-            var endpoint = context.GetEndpoint();
-            var hasAnonymousTenantAttribute = endpoint?.Metadata.GetMetadata<AllowAnonymousTenantAttribute>() != null;
-
-            if (hasAnonymousTenantAttribute)
-            {
-                await next(context);
-                return;
-            }
-
             if (!string.IsNullOrEmpty(currentTenant) &&
                 !string.Equals(currentTenant, JasperFx.StorageConstants.DefaultTenantId, StringComparison.OrdinalIgnoreCase))
             {
