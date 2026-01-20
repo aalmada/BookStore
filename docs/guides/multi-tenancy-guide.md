@@ -188,6 +188,26 @@ _logger.LogInformation(
     context.Connection.RemoteIpAddress);
 ```
 
+### Path-Based Security (Middleware)
+
+The `TenantSecurityMiddleware` enforces strict isolation:
+- **Authenticated Users**: Validates that the `tenant_id` claim in their JWT matches the `X-Tenant-ID` header. Prevents cross-tenant token theft.
+- **Anonymous Users**: Only allowed to access the **Default** tenant (`*DEFAULT*`) unless the endpoint is explicitly whitelisted.
+
+### The `[AllowAnonymousTenant]` Attribute
+
+For public endpoints that should be accessible from *any* tenant context without authentication (e.g., login, tenant info, health checks), use the `AllowAnonymousTenantAttribute`.
+
+```csharp
+// Example: Whitelisting a group of endpoints
+group.WithMetadata(new AllowAnonymousTenantAttribute());
+```
+
+### Administrative Restrictions
+
+- **System Admin**: Only the **Default** tenant administrator (`admin@bookstore.com`) can access global management endpoints under `/api/admin/tenants`.
+- **Tenant Admin**: Authenticated administrators for specific tenants (e.g., `acme`) are restricted to their own data and cannot list or manage other tenants.
+
 ### Rate Limiting
 
 - **Global**: 1000 req/min per tenant
@@ -242,7 +262,11 @@ var key = $"book:{id}:tenant={tenantContext.TenantId}";
 var key = $"book:{id}";
 ```
 
-### 3. Test Multi-Tenancy
+### 3. Use `[AllowAnonymousTenant]` for Public Endpoints
+
+If you create a new public endpoint that must be accessible from any tenant (like a shared resource or authentication flow), remember to apply the `AllowAnonymousTenantAttribute` to the route mapping.
+
+### 4. Test Multi-Tenancy
 
 ```csharp
 [Test]

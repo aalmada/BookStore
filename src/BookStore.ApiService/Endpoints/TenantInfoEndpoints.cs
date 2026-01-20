@@ -1,4 +1,5 @@
 using BookStore.ApiService.Models;
+using BookStore.Shared.Infrastructure;
 using BookStore.Shared.Models;
 using Marten;
 
@@ -8,6 +9,9 @@ public static class TenantInfoEndpoints
 {
     public static RouteGroupBuilder MapTenantInfoEndpoints(this RouteGroupBuilder group)
     {
+        // Public endpoints for listing tenants
+        _ = group.WithMetadata(new AllowAnonymousTenantAttribute());
+
         _ = group.MapGet("/", GetTenants);
         _ = group.MapGet("/{id}", GetTenantInfo);
         return group;

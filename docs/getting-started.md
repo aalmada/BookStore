@@ -115,32 +115,43 @@ You'll see interactive API documentation where you can:
 
 ## Logging In
 
-### 1. Per-Tenant Admin Accounts
+### 1. Multi-Tenancy Admin Accounts
 
-The application uses **multi-tenancy** with isolated data per tenant. Each tenant has its own admin account seeded for development:
+The application uses **multi-tenancy** with isolated data per tenant. There are two levels of administration:
+
+#### System Administrator
+The admin of the **Default** tenant has global privileges and is the only account that can manage the platform itself (creating and listing other tenants).
 
 | Tenant | Admin Email | Password | Tenant Header |
 |--------|-------------|----------|---------------|
-| Default | `admin@bookstore.com` | `Admin123!` | `X-Tenant-ID: default` |
+| Default (System) | `admin@bookstore.com` | `Admin123!` | `X-Tenant-ID: *DEFAULT*` |
+
+#### Tenant Administrators
+Each specific tenant (like `acme` or `contoso`) has its own admin account. These are restricted to managing only their own tenant's books, authors, etc.
+
+| Tenant | Admin Email | Password | Tenant Header |
+|--------|-------------|----------|---------------|
 | Acme | `admin@acme.com` | `Admin123!` | `X-Tenant-ID: acme` |
 | Contoso | `admin@contoso.com` | `Admin123!` | `X-Tenant-ID: contoso` |
 
 > [!IMPORTANT]
-> Each admin can only access their own tenant's data. For example, `admin@acme.com` cannot login as the `contoso` tenant or access contoso's books.
+> **Security Restrictions**:
+> - Each admin can only access their own tenant's data.
+> - Only the **System Administrator** (`admin@bookstore.com`) can access `/api/admin/tenants`.
+> - Requests from other admins to global tenant management endpoints will return `403 Forbidden`.
 
 **Testing Multi-Tenancy**:
 ```bash
 # Login as Acme admin
-curl -X POST http://localhost:5000/identity/login \
+curl -X POST http://localhost:5000/account/login \
   -H "Content-Type: application/json" \
   -H "X-Tenant-ID: acme" \
   -d '{"email": "admin@acme.com", "password": "Admin123!"}'
 
-# Login as Contoso admin  
-curl -X POST http://localhost:5000/identity/login \
-  -H "Content-Type: application/json" \
-  -H "X-Tenant-ID: contoso" \
-  -d '{"email": "admin@contoso.com", "password": "Admin123!"}'
+# List all tenants (ONLY works for System Admin)
+curl -X GET http://localhost:5000/api/admin/tenants \
+  -H "Authorization: Bearer <system-admin-token>" \
+  -H "X-Tenant-ID: *DEFAULT*"
 ```
 
 > [!TIP]

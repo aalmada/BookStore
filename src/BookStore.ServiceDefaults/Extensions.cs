@@ -1,3 +1,4 @@
+using BookStore.Shared.Infrastructure;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.DependencyInjection;
@@ -44,7 +45,8 @@ public static class Extensions
         return builder;
     }
 
-    public static TBuilder ConfigureOpenTelemetry<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
+    public static TBuilder ConfigureOpenTelemetry<TBuilder>(this TBuilder builder)
+        where TBuilder : IHostApplicationBuilder
     {
         // Configure structured logging
         _ = builder.Logging.AddOpenTelemetry(logging =>
@@ -55,8 +57,8 @@ public static class Extensions
 
         // Configure console logging for better structured output
         _ = builder.Logging.AddConsole(options => options.FormatterName = builder.Environment.IsDevelopment()
-            ? "simple"  // Human-readable for development
-            : "json");  // JSON for production/structured logging
+            ? "simple" // Human-readable for development
+            : "json"); // JSON for production/structured logging
 
         // Configure simple console formatter for development
         if (builder.Environment.IsDevelopment())
@@ -121,7 +123,8 @@ public static class Extensions
         return builder;
     }
 
-    public static TBuilder AddDefaultHealthChecks<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
+    public static TBuilder AddDefaultHealthChecks<TBuilder>(this TBuilder builder)
+        where TBuilder : IHostApplicationBuilder
     {
         _ = builder.Services.AddHealthChecks()
             // Add a default liveness check to ensure app is responsive
@@ -139,13 +142,13 @@ public static class Extensions
         // See https://aka.ms/dotnet/aspire/healthchecks for more details.
 
         // Readiness probe: All health checks must pass for app to be ready to accept traffic
-        _ = app.MapHealthChecks(HealthEndpointPath);
+        _ = app.MapHealthChecks(HealthEndpointPath)
+            .WithMetadata(new BookStore.Shared.Infrastructure.AllowAnonymousTenantAttribute());
 
         // Liveness probe: Only "live" tagged checks must pass for app to be considered alive
-        _ = app.MapHealthChecks(AlivenessEndpointPath, new HealthCheckOptions
-        {
-            Predicate = r => r.Tags.Contains("live")
-        });
+        _ = app.MapHealthChecks(AlivenessEndpointPath,
+                new HealthCheckOptions { Predicate = r => r.Tags.Contains("live") })
+            .WithMetadata(new BookStore.Shared.Infrastructure.AllowAnonymousTenantAttribute());
 
         return app;
     }
