@@ -39,6 +39,7 @@ public static class BookStoreClientExtensions
         _ = AddClient<ISystemClient>();
         _ = AddClient<IIdentityClient>();
         _ = AddClient<ITenantClient>();
+        _ = AddClient<IPasskeyClient>();
 
         return services;
     }
