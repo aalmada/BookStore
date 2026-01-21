@@ -152,7 +152,26 @@ Common Roslynator suggestions you'll see:
 - Use pattern matching where applicable
 - Optimize string operations
 
-All analyzer settings are configured in `Directory.Build.props` and apply to all projects in the solution.
+### Global Build Configuration
+
+The `Directory.Build.props` file at the root of the solution defines settings shared by **all** projects. This ensures consistency across the codebase.
+
+Common configurations include:
+- **Build Settings**: `TargetFramework` (.NET 10), `LangVersion` (latest), `Nullable` (enable), `ImplicitUsings`.
+- **Code Quality**: `TreatWarningsAsErrors`, `EnforceCodeStyleInBuild`, and analyzer settings.
+- **Metadata**: `Authors` and `Copyright` information.
+- **Common Dependencies**: Global package references like `Roslynator.Analyzers` and `Microsoft.SourceLink.GitHub`.
+
+All projects automatically inherit these settings, so you don't need to repeat them in individual `.csproj` files.
+
+### Dependency Management
+
+This project uses **Central Package Management (CPM)**.
+
+- **Manage versions in `Directory.Packages.props`**: Do not specify versions in individual `.csproj` files unless necessary for a specific override.
+- **Global Dependencies**: Common dependencies (like Analyzers) defined in `Directory.Build.props` also use versions from `Directory.Packages.props`.
+- **Add packages normally**: `dotnet add package <PackageName>` will automatically update `Directory.Packages.props` or the project file as needed (requires .NET 10 SDK or newer).
+- **Check for updates**: Use `dotnet outdated` to see available updates for all packages in the solution.
 
 ### Event Sourcing Patterns
 
