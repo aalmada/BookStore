@@ -649,6 +649,7 @@ public static class BookEndpoints
     static async Task<Results<NoContent, NotFound>> AddFavorite(
         Guid id,
         [FromServices] IMessageBus bus,
+        [FromServices] ITenantContext tenantContext,
         HttpContext context,
         CancellationToken cancellationToken)
     {
@@ -658,7 +659,7 @@ public static class BookEndpoints
             return TypedResults.NotFound();
         }
 
-        await bus.InvokeAsync(new AddBookToFavorites(userId, id), cancellationToken);
+        await bus.InvokeAsync(new AddBookToFavorites(userId, id), new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
 
         return TypedResults.NoContent();
     }
@@ -666,6 +667,7 @@ public static class BookEndpoints
     static async Task<Results<NoContent, NotFound>> RemoveFavorite(
         Guid id,
         [FromServices] IMessageBus bus,
+        [FromServices] ITenantContext tenantContext,
         HttpContext context,
         CancellationToken cancellationToken)
     {
@@ -675,7 +677,7 @@ public static class BookEndpoints
             return TypedResults.NotFound();
         }
 
-        await bus.InvokeAsync(new RemoveBookFromFavorites(userId, id), cancellationToken);
+        await bus.InvokeAsync(new RemoveBookFromFavorites(userId, id), new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
 
         return TypedResults.NoContent();
     }
@@ -684,6 +686,7 @@ public static class BookEndpoints
         Guid id,
         [FromBody] RateBookRequest request,
         [FromServices] IMessageBus bus,
+        [FromServices] ITenantContext tenantContext,
         HttpContext context,
         CancellationToken cancellationToken)
     {
@@ -698,7 +701,7 @@ public static class BookEndpoints
             return TypedResults.NotFound();
         }
 
-        await bus.InvokeAsync(new RateBook(userId, id, request.Rating), cancellationToken);
+        await bus.InvokeAsync(new RateBook(userId, id, request.Rating), new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
 
         return TypedResults.NoContent();
     }
@@ -706,6 +709,7 @@ public static class BookEndpoints
     static async Task<Results<NoContent, NotFound>> RemoveRating(
         Guid id,
         [FromServices] IMessageBus bus,
+        [FromServices] ITenantContext tenantContext,
         HttpContext context,
         CancellationToken cancellationToken)
     {
@@ -715,7 +719,7 @@ public static class BookEndpoints
             return TypedResults.NotFound();
         }
 
-        await bus.InvokeAsync(new RemoveBookRating(userId, id), cancellationToken);
+        await bus.InvokeAsync(new RemoveBookRating(userId, id), new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
 
         return TypedResults.NoContent();
     }
@@ -724,6 +728,7 @@ public static class BookEndpoints
         Guid id,
         [FromBody] ScheduleSaleRequest request,
         [FromServices] IMessageBus bus,
+        [FromServices] ITenantContext tenantContext,
         HttpContext context,
         CancellationToken cancellationToken)
     {
@@ -733,13 +738,14 @@ public static class BookEndpoints
             ETag = etag
         };
 
-        return await bus.InvokeAsync<IResult>(command, cancellationToken);
+        return await bus.InvokeAsync<IResult>(command, new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
     }
 
     static async Task<IResult> CancelSale(
         Guid id,
         [FromQuery] DateTimeOffset saleStart,
         [FromServices] IMessageBus bus,
+        [FromServices] ITenantContext tenantContext,
         HttpContext context,
         CancellationToken cancellationToken)
     {
@@ -749,7 +755,7 @@ public static class BookEndpoints
             ETag = etag
         };
 
-        return await bus.InvokeAsync<IResult>(command, cancellationToken);
+        return await bus.InvokeAsync<IResult>(command, new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
     }
 
     record RateBookRequest(int Rating);

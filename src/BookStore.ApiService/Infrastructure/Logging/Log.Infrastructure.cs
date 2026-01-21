@@ -9,7 +9,6 @@ public static partial class Log
 {
     public static partial class Infrastructure
     {
-        // Marten Metadata Middleware
         [LoggerMessage(
             Level = LogLevel.Information,
             Message = "Marten metadata set for {Method} {Path}: CorrelationId={CorrelationId}, CausationId={CausationId}, UserId={UserId}, RemoteIp={RemoteIp}")]

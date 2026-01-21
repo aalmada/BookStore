@@ -1,4 +1,5 @@
 using BookStore.ApiService.Infrastructure.Extensions;
+using BookStore.ApiService.Infrastructure.Tenant;
 using BookStore.ApiService.Messages.Commands;
 using BookStore.ApiService.Models;
 using BookStore.ApiService.Projections;
@@ -85,6 +86,7 @@ public static class ShoppingCartEndpoints
         [FromBody] AddToCartRequest request,
         [FromServices] IMessageBus bus,
         [FromServices] IQuerySession session,
+        [FromServices] ITenantContext tenantContext,
         HttpContext context,
         CancellationToken cancellationToken)
     {
@@ -111,7 +113,7 @@ public static class ShoppingCartEndpoints
             return TypedResults.NotFound();
         }
 
-        await bus.InvokeAsync(new AddBookToCart(userId, request.BookId, request.Quantity), cancellationToken);
+        await bus.InvokeAsync(new AddBookToCart(userId, request.BookId, request.Quantity), new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
 
         return TypedResults.NoContent();
     }
@@ -120,6 +122,7 @@ public static class ShoppingCartEndpoints
         Guid bookId,
         [FromBody] UpdateCartItemRequest request,
         [FromServices] IMessageBus bus,
+        [FromServices] ITenantContext tenantContext,
         HttpContext context,
         CancellationToken cancellationToken)
     {
@@ -134,7 +137,7 @@ public static class ShoppingCartEndpoints
             return TypedResults.NotFound();
         }
 
-        await bus.InvokeAsync(new UpdateCartItemQuantity(userId, bookId, request.Quantity), cancellationToken);
+        await bus.InvokeAsync(new UpdateCartItemQuantity(userId, bookId, request.Quantity), new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
 
         return TypedResults.NoContent();
     }
@@ -142,6 +145,7 @@ public static class ShoppingCartEndpoints
     static async Task<Results<NoContent, NotFound>> RemoveFromCart(
         Guid bookId,
         [FromServices] IMessageBus bus,
+        [FromServices] ITenantContext tenantContext,
         HttpContext context,
         CancellationToken cancellationToken)
     {
@@ -151,13 +155,14 @@ public static class ShoppingCartEndpoints
             return TypedResults.NotFound();
         }
 
-        await bus.InvokeAsync(new RemoveBookFromCart(userId, bookId), cancellationToken);
+        await bus.InvokeAsync(new RemoveBookFromCart(userId, bookId), new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
 
         return TypedResults.NoContent();
     }
 
     static async Task<Results<NoContent, NotFound>> ClearCart(
         [FromServices] IMessageBus bus,
+        [FromServices] ITenantContext tenantContext,
         HttpContext context,
         CancellationToken cancellationToken)
     {
@@ -167,7 +172,7 @@ public static class ShoppingCartEndpoints
             return TypedResults.NotFound();
         }
 
-        await bus.InvokeAsync(new ClearShoppingCart(userId), cancellationToken);
+        await bus.InvokeAsync(new ClearShoppingCart(userId), new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
 
         return TypedResults.NoContent();
     }

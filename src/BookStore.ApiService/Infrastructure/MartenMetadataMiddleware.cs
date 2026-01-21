@@ -21,45 +21,68 @@ public class MartenMetadataMiddleware
 
     public async Task InvokeAsync(HttpContext context, Marten.IDocumentSession session)
     {
-        // Get correlation ID from header or generate new one
-        var correlationId = context.Request.Headers["X-Correlation-ID"].FirstOrDefault()
-            ?? Activity.Current?.RootId
-            ?? Guid.CreateVersion7().ToString();
+        // Get correlation ID from header (StringValues implicitly converts to string, avoiding LINQ)
+        string? correlationId = context.Request.Headers["X-Correlation-ID"];
+        if (string.IsNullOrEmpty(correlationId))
+        {
+            correlationId = Activity.Current?.RootId ?? Guid.CreateVersion7().ToString();
+        }
 
-        // Get causation ID from header (usually the previous event/command ID)
-        var causationId = context.Request.Headers["X-Causation-ID"].FirstOrDefault()
-            ?? Activity.Current?.ParentId
-            ?? correlationId;
+        // Get causation ID from header
+        string? causationId = context.Request.Headers["X-Causation-ID"];
+        if (string.IsNullOrEmpty(causationId))
+        {
+            causationId = Activity.Current?.ParentId ?? correlationId;
+        }
 
-        // Set on Marten session - these will be automatically stored with events
+        // Set on Marten session
         session.CorrelationId = correlationId;
         session.CausationId = causationId;
 
-        // Store in HttpContext.Items for other middlewares (Logging, Wolverine)
+        // Store in HttpContext.Items
         context.Items["CorrelationId"] = correlationId;
         context.Items["CausationId"] = causationId;
 
-        // Ensure Activity (if present) carries the correlation ID as a tag
-        if (Activity.Current != null)
+        // Ensure Activity carries the correlation ID
+        // Only access Activity.Current once
+        var activity = Activity.Current;
+        if (activity != null)
         {
-            _ = Activity.Current.SetTag("correlation_id", correlationId);
-            _ = Activity.Current.SetTag("causation_id", causationId);
+            _ = activity.SetTag("correlation_id", correlationId);
+            _ = activity.SetTag("causation_id", causationId);
         }
 
-        // Capture technical metadata (using GUID ID to avoid PII)
-        var userId = context.User?.GetUserId().ToString();
-        var remoteIp = context.Connection.RemoteIpAddress?.ToString();
-        var userAgent = context.Request.Headers["User-Agent"].FirstOrDefault();
-
-        // Set technical headers on Marten session
-        if (!string.IsNullOrEmpty(userId))
+        // PII-safe metadata
+        var user = context.User;
+        // Avoid ToString() allocations if not needed for logging immediately
+        // ClaimsPrincipalExtensions.GetUserId returns Guid.Empty if missing/invalid
+        var userId = user?.GetUserId();
+        if (userId == Guid.Empty)
         {
-            session.SetHeader("user-id", userId);
+            userId = null;
         }
 
-        if (!string.IsNullOrEmpty(remoteIp))
+        var remoteIp = context.Connection.RemoteIpAddress;
+
+        string? userAgent = context.Request.Headers["User-Agent"];
+
+        // TenantId is usually a string in our system
+        var tenantId = context.Items["TenantId"] as string;
+
+        // Set headers on Marten session - Marten handles object values efficiently
+        if (!string.IsNullOrEmpty(tenantId))
         {
-            session.SetHeader("remote-ip", remoteIp);
+            session.SetHeader("tenant-id", tenantId);
+        }
+
+        if (userId.HasValue)
+        {
+            session.SetHeader("user-id", userId.Value.ToString());
+        }
+
+        if (remoteIp != null)
+        {
+            session.SetHeader("remote-ip", remoteIp.ToString());
         }
 
         if (!string.IsNullOrEmpty(userAgent))
@@ -67,15 +90,16 @@ public class MartenMetadataMiddleware
             session.SetHeader("user-agent", userAgent);
         }
 
-        // Add correlation ID to response headers
-        context.Response.OnStarting(() =>
+        // Use static lambda with state to avoid closure allocation
+        context.Response.OnStarting(static state =>
         {
-            context.Response.Headers["X-Correlation-ID"] = correlationId;
+            var (ctx, cId) = ((HttpContext, string))state;
+            ctx.Response.Headers["X-Correlation-ID"] = cId;
             return Task.CompletedTask;
-        });
+        }, (context, correlationId));
 
-        // Log the Marten metadata setup
-        Log.Infrastructure.MartenMetadataApplied(_logger, context.Request.Method, context.Request.Path, correlationId, causationId, userId ?? "anonymous", remoteIp);
+        // Log using the optimized signature
+        Log.Infrastructure.MartenMetadataApplied(_logger, context.Request.Method, context.Request.Path, correlationId!, causationId!, userId?.ToString() ?? "anonymous", remoteIp?.ToString());
 
         await _next(context);
     }
