@@ -1,35 +1,36 @@
 ﻿@inherits LayoutComponentBase
 
 <MudLayout>
+    <BookStore.Web.Components.Shared.LogEnricher/>
     <MudAppBar Elevation="1">
-        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer" />
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer"/>
         <MudText Typo="Typo.h5" Class="ml-3">
             @if (TenantService.IsLoading)
             {
-                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2"/>
             }
             @TenantService.CurrentTenantName
         </MudText>
-        <MudSpacer />
+        <MudSpacer/>
         <MudMenu Icon="@Icons.Material.Filled.Business" Color="Color.Inherit" Class="mr-2">
             @foreach (var tenant in _tenants)
             {
                 <MudMenuItem OnClick="@(() => SwitchTenant(tenant.Id))">@tenant.Name</MudMenuItem>
             }
         </MudMenu>
-        <MudSelect T="string" Value="@CurrencyService.CurrentCurrency" ValueChanged="CurrencyService.SetCurrencyAsync" 
+        <MudSelect T="string" Value="@CurrencyService.CurrentCurrency" ValueChanged="CurrencyService.SetCurrencyAsync"
                    Style="width: 100px;" Class="mr-4" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
             <MudSelectItem Value="@("USD")">USD</MudSelectItem>
             <MudSelectItem Value="@("EUR")">EUR</MudSelectItem>
             <MudSelectItem Value="@("GBP")">GBP</MudSelectItem>
         </MudSelect>
-        <LoginDisplay />
+        <LoginDisplay/>
     </MudAppBar>
-    
+
     <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2">
-        <NavMenu />
+        <NavMenu/>
     </MudDrawer>
-    
+
     <MudMainContent>
         <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
             @Body
@@ -65,4 +66,5 @@
     {
         TenantService.OnChange -= StateHasChanged;
     }
+
 }

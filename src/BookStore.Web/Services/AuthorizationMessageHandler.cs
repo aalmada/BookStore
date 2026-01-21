@@ -1,7 +1,5 @@
 using System.Net.Http.Headers;
 using BookStore.Client.Services;
-using BookStore.Web.Services;
-using Microsoft.AspNetCore.Http;
 
 namespace BookStore.Web.Services;
 
@@ -13,26 +11,26 @@ public class AuthorizationMessageHandler : DelegatingHandler
     readonly TokenService _tokenService;
     readonly TenantService _tenantService;
     readonly IHttpContextAccessor _httpContextAccessor;
-    readonly CorrelationService _correlationService;
+    readonly ClientContextService _clientContextService;
 
     public AuthorizationMessageHandler(
         TokenService tokenService,
         TenantService tenantService,
         IHttpContextAccessor httpContextAccessor,
-        CorrelationService correlationService)
+        ClientContextService clientContextService)
     {
         _tokenService = tokenService;
         _tenantService = tenantService;
         _httpContextAccessor = httpContextAccessor;
-        _correlationService = correlationService;
+        _clientContextService = clientContextService;
     }
 
     protected override async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request, CancellationToken cancellationToken)
     {
         // Add Correlation and Causation IDs
-        request.Headers.Add("X-Correlation-ID", _correlationService.CorrelationId);
-        request.Headers.Add("X-Causation-ID", _correlationService.CausationId);
+        request.Headers.Add("X-Correlation-ID", _clientContextService.CorrelationId);
+        request.Headers.Add("X-Causation-ID", _clientContextService.CausationId);
 
         var token = _tokenService.GetAccessToken(_tenantService.CurrentTenantId);
         if (!string.IsNullOrEmpty(token))
@@ -69,7 +67,7 @@ public class AuthorizationMessageHandler : DelegatingHandler
             var eventId = eventIds.FirstOrDefault();
             if (!string.IsNullOrEmpty(eventId))
             {
-                _correlationService.UpdateCausationId(eventId);
+                _clientContextService.UpdateCausationId(eventId);
             }
         }
 

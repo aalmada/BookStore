@@ -34,10 +34,16 @@ public static class PasskeyEndpoints
                 var userName = await userManager.GetUserNameAsync(user) ?? "User";
                 var userEntity = new PasskeyUserEntity { Id = userId, Name = userName, DisplayName = userName };
 
-                // The MakePasskeyCreationOptionsAsync method returns a JSON string in this version of Identity.
-                // We must return it as raw content to avoid double-serialization.
-                var options = await signInManager.MakePasskeyCreationOptionsAsync(userEntity);
-                return Results.Content(options.ToString(), "application/json");
+                var creationOptions = await signInManager.MakePasskeyCreationOptionsAsync(userEntity);
+
+                // Return consistent response format (same as unauthenticated flow)
+                var response = new
+                {
+                    options = System.Text.Json.JsonDocument.Parse(creationOptions.ToString()).RootElement,
+                    userId
+                };
+
+                return Results.Ok(response);
             }
 
             // If anonymous, we are in "Register new Account" flow
@@ -65,13 +71,13 @@ public static class PasskeyEndpoints
             var newOptions = await signInManager.MakePasskeyCreationOptionsAsync(newUserEntity);
 
             // Return both the options AND the user ID so the client can send it back
-            var response = new
+            var newResponse = new
             {
                 options = System.Text.Json.JsonDocument.Parse(newOptions.ToString()).RootElement,
                 userId = newUserId
             };
 
-            return Results.Ok(response);
+            return Results.Ok(newResponse);
         });
 
         // 2. Register Passkey (Finish Registration)
@@ -103,6 +109,8 @@ public static class PasskeyEndpoints
                 if (userStore is IUserPasskeyStore<ApplicationUser> passkeyStore)
                 {
                     await passkeyStore.AddOrUpdatePasskeyAsync(user, attestation.Passkey, cancellationToken);
+                    // Persist the changes to the database
+                    _ = await userManager.UpdateAsync(user);
                 }
 
                 return Results.Ok(new { Message = "Passkey added." });
@@ -221,12 +229,32 @@ public static class PasskeyEndpoints
             [FromBody] PasskeyLoginOptionsRequest request,
             SignInManager<ApplicationUser> signInManager,
             UserManager<ApplicationUser> userManager,
+            IUserStore<ApplicationUser> userStore,
             CancellationToken cancellationToken) =>
         {
             ApplicationUser? user = null;
             if (!string.IsNullOrEmpty(request.Email))
             {
                 user = await userManager.FindByEmailAsync(request.Email);
+            }
+
+            // Security: Use consistent error message to prevent email enumeration
+            const string genericError = "Invalid email or no passkeys registered.";
+
+            // If user doesn't exist, return generic error
+            if (user == null)
+            {
+                return Results.BadRequest(genericError);
+            }
+
+            // Check if user has any passkeys registered
+            if (userStore is IUserPasskeyStore<ApplicationUser> passkeyStore)
+            {
+                var passkeys = await passkeyStore.GetPasskeysAsync(user, cancellationToken);
+                if (passkeys.Count == 0)
+                {
+                    return Results.BadRequest(genericError);
+                }
             }
 
             // Generate options (assertion challenge)
@@ -314,6 +342,7 @@ public static class PasskeyEndpoints
                 }
                 else
                 {
+                    Log.Users.PasskeyAssertionFailed(logger, result.IsLockedOut, result.IsNotAllowed, result.RequiresTwoFactor);
                     return Results.BadRequest("Invalid passkey assertion.");
                 }
             }
@@ -323,6 +352,76 @@ public static class PasskeyEndpoints
                 return Results.BadRequest($"Login failed: {ex.Message}");
             }
         });
+
+        // 5. List Passkeys (Authenticated)
+        _ = paramsGroup.MapGet("/passkeys", async (
+            HttpContext context,
+            UserManager<ApplicationUser> userManager,
+            IUserStore<ApplicationUser> userStore,
+            CancellationToken cancellationToken) =>
+        {
+            var user = await userManager.GetUserAsync(context.User);
+            if (user is null)
+            {
+                return Results.Unauthorized();
+            }
+
+            if (userStore is IUserPasskeyStore<ApplicationUser> passkeyStore)
+            {
+                var passkeys = await passkeyStore.GetPasskeysAsync(user, cancellationToken);
+                var response = passkeys.Select(p => new PasskeyInfo(
+                    Id: Convert.ToBase64String(p.CredentialId),
+                    Name: p.Name ?? "Passkey",
+                    CreatedAt: p.CreatedAt
+                )).ToList();
+                return Results.Ok(response);
+            }
+
+            return Results.Ok(Array.Empty<PasskeyInfo>());
+        }).RequireAuthorization();
+
+        // 6. Delete Passkey (Authenticated)
+        _ = paramsGroup.MapDelete("/passkeys/{id}", async (
+            string id,
+            HttpContext context,
+            UserManager<ApplicationUser> userManager,
+            IUserStore<ApplicationUser> userStore,
+            CancellationToken cancellationToken) =>
+        {
+            var user = await userManager.GetUserAsync(context.User);
+            if (user is null)
+            {
+                return Results.Unauthorized();
+            }
+
+            try
+            {
+                var credentialId = Convert.FromBase64String(id);
+                if (userStore is IUserPasskeyStore<ApplicationUser> passkeyStore)
+                {
+                    // Prevent deleting last passkey if user has no password
+                    var passkeys = await passkeyStore.GetPasskeysAsync(user, cancellationToken);
+                    if (passkeys.Count <= 1)
+                    {
+                        var hasPassword = await userManager.HasPasswordAsync(user);
+                        if (!hasPassword)
+                        {
+                            return Results.BadRequest("Cannot delete your only passkey. You would be locked out of your account. Set a password first.");
+                        }
+                    }
+
+                    await passkeyStore.RemovePasskeyAsync(user, credentialId, cancellationToken);
+                    _ = await userManager.UpdateAsync(user);
+                    return Results.Ok(new { Message = "Passkey deleted." });
+                }
+
+                return Results.BadRequest("Passkey store not available.");
+            }
+            catch (FormatException)
+            {
+                return Results.BadRequest("Invalid passkey ID format.");
+            }
+        }).RequireAuthorization();
 
         return endpoints;
     }
@@ -365,3 +464,4 @@ public static class PasskeyEndpoints
 public record RegisterPasskeyRequest(string CredentialJson, string? Email = null, string? UserId = null);
 public record PasskeyCreationRequest(string? Email = null);
 public record PasskeyLoginOptionsRequest(string? Email);
+public record PasskeyInfo(string Id, string Name, DateTimeOffset? CreatedAt);

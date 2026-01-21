@@ -44,7 +44,10 @@ function normalizeKeys(obj) {
 window.passkey = {
     register: async (optionsJson) => {
         try {
-            let options = JSON.parse(optionsJson);
+            let parsed = JSON.parse(optionsJson);
+
+            // Handle wrapped response format: { options: {...}, userId: "..." }
+            let options = parsed.options || parsed.Options || parsed;
 
             // Normalize all keys to camelCase (handling PascalCase from server)
             options = normalizeKeys(options);

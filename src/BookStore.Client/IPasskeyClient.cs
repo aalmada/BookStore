@@ -4,6 +4,8 @@ public interface IPasskeyClient :
     IGetPasskeyCreationOptionsEndpoint,
     IRegisterPasskeyEndpoint,
     IGetPasskeyLoginOptionsEndpoint,
-    ILoginPasskeyEndpoint
+    ILoginPasskeyEndpoint,
+    IListPasskeysEndpoint,
+    IDeletePasskeyEndpoint
 {
 }

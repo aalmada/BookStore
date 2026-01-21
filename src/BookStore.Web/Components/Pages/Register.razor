@@ -9,6 +9,7 @@
 @inject IJSRuntime JS
 @using Microsoft.JSInterop
 @using BookStore.Shared.Validation
+@inject BookStore.Web.Helpers.AuthErrorHelper AuthErrorHelper
 
 
 <PageTitle>Register - BookStore</PageTitle>
@@ -275,7 +276,7 @@
             }
             else
             {
-                errorMessage = result.Error ?? "Registration failed";
+                errorMessage = AuthErrorHelper.GetFriendlyErrorMessage(result.Error);
             }
         }
         finally
@@ -353,12 +354,12 @@
             }
             else
             {
-                errorMessage = result?.Error ?? "Passkey registration failed on server.";
+                errorMessage = AuthErrorHelper.GetFriendlyErrorMessage(result?.Error);
             }
         }
         catch (Exception ex)
         {
-            errorMessage = $"Error: {ex.Message}";
+            errorMessage = AuthErrorHelper.GetFriendlyErrorMessage(ex.Message);
         }
         finally
         {

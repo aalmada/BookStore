@@ -48,3 +48,24 @@ public interface ILoginPasskeyEndpoint
         [Body] RegisterPasskeyRequest request,
         CancellationToken cancellationToken = default);
 }
+
+public interface IListPasskeysEndpoint
+{
+    /// <summary>
+    /// List all passkeys for the current user
+    /// </summary>
+    [Get("/account/passkeys")]
+    Task<IReadOnlyList<PasskeyInfo>> ListPasskeysAsync(
+        CancellationToken cancellationToken = default);
+}
+
+public interface IDeletePasskeyEndpoint
+{
+    /// <summary>
+    /// Delete a passkey by ID
+    /// </summary>
+    [Delete("/account/passkeys/{id}")]
+    Task DeletePasskeyAsync(
+        string id,
+        CancellationToken cancellationToken = default);
+}

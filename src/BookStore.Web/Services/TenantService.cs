@@ -2,6 +2,7 @@ using Blazored.LocalStorage;
 using BookStore.Client;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
+using Microsoft.JSInterop;
 
 namespace BookStore.Web.Services;
 
@@ -15,24 +16,47 @@ public class TenantService : IDisposable
     readonly ITenantClient _tenantClient;
     readonly NavigationManager _navigation;
     readonly ILocalStorageService _localStorage;
+    readonly IJSRuntime _js;
 
     public event Action? OnChange;
 
-    public TenantService(ITenantClient tenantClient, NavigationManager navigation, ILocalStorageService localStorage)
+    bool _isSubscribed;
+
+    public TenantService(ITenantClient tenantClient, NavigationManager navigation, ILocalStorageService localStorage,
+        IJSRuntime js)
     {
         _tenantClient = tenantClient;
         _navigation = navigation;
         _localStorage = localStorage;
+        _js = js;
 
         // NavigationManager may not be initialized during prerendering
         try
         {
             _navigation.LocationChanged += HandleLocationChanged;
+            _isSubscribed = true;
         }
         catch (InvalidOperationException)
         {
             // During prerendering, NavigationManager is not initialized yet
             // The subscription will be set up when the component actually renders
+        }
+    }
+
+    // ... (rest of the class)
+
+    public void Dispose()
+    {
+        if (_isSubscribed)
+        {
+            try
+            {
+                _navigation.LocationChanged -= HandleLocationChanged;
+            }
+            catch (InvalidOperationException)
+            {
+                // Ignore if specific environment issues
+            }
         }
     }
 
@@ -133,6 +157,20 @@ public class TenantService : IDisposable
 
             // Save to localStorage
             await _localStorage.SetItemAsStringAsync("selected-tenant", tenantId);
+
+            // Save to cookie for server-side middleware (SSR)
+            try
+            {
+                // Load the module only when needed
+                var module = await _js.InvokeAsync<IJSObjectReference>("import", "/js/cookie-storage.js");
+                await module.InvokeVoidAsync("setCookie", "tenant", tenantId, 365);
+                await module.DisposeAsync();
+            }
+            catch (Exception ex)
+            {
+                // Ignore JS errors (e.g. during prerendering if not interactive yet)
+                _ = ex;
+            }
         }
         catch (Exception)
         {
@@ -159,6 +197,4 @@ public class TenantService : IDisposable
             return [];
         }
     }
-
-    public void Dispose() => _navigation.LocationChanged -= HandleLocationChanged;
 }

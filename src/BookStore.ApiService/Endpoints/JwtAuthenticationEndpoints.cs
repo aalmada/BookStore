@@ -82,7 +82,7 @@ public static class JwtAuthenticationEndpoints
         }
 
         var result = await signInManager.CheckPasswordSignInAsync(
-            user, request.Password, lockoutOnFailure: false);
+            user, request.Password, lockoutOnFailure: true);
 
         if (!result.Succeeded)
         {

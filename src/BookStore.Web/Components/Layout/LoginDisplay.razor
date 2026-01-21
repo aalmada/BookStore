@@ -12,9 +12,13 @@
             <MudMenuItem>
                 <MudText Typo="Typo.body2">@context.User.Identity?.Name</MudText>
             </MudMenuItem>
-            <MudDivider />
+            <MudDivider/>
+            <MudMenuItem Href="/account/passkeys">
+                <MudIcon Icon="@Icons.Material.Filled.Key" Class="mr-2"/>
+                Manage Passkeys
+            </MudMenuItem>
             <MudMenuItem OnClick="HandleLogout">
-                <MudIcon Icon="@Icons.Material.Filled.Logout" Class="mr-2" />
+                <MudIcon Icon="@Icons.Material.Filled.Logout" Class="mr-2"/>
                 Logout
             </MudMenuItem>
         </MudMenu>
@@ -30,14 +34,15 @@
 </AuthorizeView>
 
 @code {
+
     async Task HandleLogout()
     {
         await AuthService.LogoutAsync();
-        
+
         // Notify the authentication state provider that the user has logged out
         // This triggers UI updates for AuthorizeView and other auth-dependent components
         await AuthStateProvider.NotifyUserLogout();
-        
+
         // Notify other tabs via BroadcastChannel
         try
         {
@@ -47,8 +52,9 @@
         {
             // BroadcastChannel might not be available, continue anyway
         }
-        
+
         // Navigate without forceLoad - state is already updated
         Navigation.NavigateTo("/");
     }
+
 }
