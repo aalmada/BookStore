@@ -23,7 +23,17 @@ public class TenantService : IDisposable
         _tenantClient = tenantClient;
         _navigation = navigation;
         _localStorage = localStorage;
-        _navigation.LocationChanged += HandleLocationChanged;
+
+        // NavigationManager may not be initialized during prerendering
+        try
+        {
+            _navigation.LocationChanged += HandleLocationChanged;
+        }
+        catch (InvalidOperationException)
+        {
+            // During prerendering, NavigationManager is not initialized yet
+            // The subscription will be set up when the component actually renders
+        }
     }
 
     public string CurrentTenantId { get; private set; } = DefaultTenantId;

@@ -11,15 +11,18 @@ namespace BookStore.Web.Services;
 public class AuthorizationMessageHandler : DelegatingHandler
 {
     readonly TokenService _tokenService;
+    readonly TenantService _tenantService;
     readonly IHttpContextAccessor _httpContextAccessor;
     readonly CorrelationService _correlationService;
 
     public AuthorizationMessageHandler(
         TokenService tokenService,
+        TenantService tenantService,
         IHttpContextAccessor httpContextAccessor,
         CorrelationService correlationService)
     {
         _tokenService = tokenService;
+        _tenantService = tenantService;
         _httpContextAccessor = httpContextAccessor;
         _correlationService = correlationService;
     }
@@ -31,7 +34,7 @@ public class AuthorizationMessageHandler : DelegatingHandler
         request.Headers.Add("X-Correlation-ID", _correlationService.CorrelationId);
         request.Headers.Add("X-Causation-ID", _correlationService.CausationId);
 
-        var token = _tokenService.GetAccessToken();
+        var token = _tokenService.GetAccessToken(_tenantService.CurrentTenantId);
         if (!string.IsNullOrEmpty(token))
         {
             request.Headers.Authorization =

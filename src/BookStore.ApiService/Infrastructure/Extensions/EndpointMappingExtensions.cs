@@ -1,7 +1,7 @@
 using BookStore.ApiService.Endpoints;
 using BookStore.ApiService.Endpoints.Admin;
-using Scalar.AspNetCore;
 using BookStore.Shared.Infrastructure;
+using Scalar.AspNetCore;
 
 namespace BookStore.ApiService.Infrastructure.Extensions;
 

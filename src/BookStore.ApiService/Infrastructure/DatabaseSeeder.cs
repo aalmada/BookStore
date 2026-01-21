@@ -20,8 +20,7 @@ namespace BookStore.ApiService.Infrastructure;
 public class DatabaseSeeder(
     IDocumentStore store,
     IMessageBus bus,
-    ILogger<DatabaseSeeder> logger,
-    Microsoft.AspNetCore.Identity.UserManager<Models.ApplicationUser> userManager)
+    ILogger<DatabaseSeeder> logger)
 {
 
     public async Task SeedTenantsAsync(string[] tenantIds)
@@ -102,8 +101,8 @@ public class DatabaseSeeder(
 
         Log.Seeding.DatabaseSeedingCompleted(logger);
 
-        // Seed tenant-specific admin user
-        await SeedAdminUserAsync(userManager, tenantId);
+        // Seed tenant-specific admin user using the tenant-scoped session
+        await SeedAdminUserAsync(session, tenantId);
 
     }
 
@@ -111,7 +110,7 @@ public class DatabaseSeeder(
     /// Seeds a tenant-specific admin user for development purposes
     /// </summary>
     public static async Task SeedAdminUserAsync(
-        Microsoft.AspNetCore.Identity.UserManager<Models.ApplicationUser> userManager,
+        IDocumentSession session,
         string tenantId)
     {
         // Generate tenant-specific email
@@ -121,43 +120,45 @@ public class DatabaseSeeder(
 
         const string adminPassword = "Admin123!";
 
-        // Check if admin user already exists
-        // UserManager.FindByEmailAsync will use the tenant-scoped session
-        var existingAdmin = await userManager.FindByEmailAsync(adminEmail);
+        // Check if admin user already exists in THIS tenant
+        var existingAdmin = await session.Query<Models.ApplicationUser>()
+            .Where(u => u.Email == adminEmail)
+            .FirstOrDefaultAsync();
 
         if (existingAdmin is not null)
         {
-            // Ensure admin user has the Admin role
-            if (!await userManager.IsInRoleAsync(existingAdmin, "Admin"))
+            // User already exists in this tenant, ensure they have Admin role
+            if (!existingAdmin.Roles.Contains("Admin"))
             {
-                _ = await userManager.AddToRoleAsync(existingAdmin, "Admin");
+                existingAdmin.Roles.Add("Admin");
+                session.Store(existingAdmin);
+                await session.SaveChangesAsync();
             }
 
-            // In development seeding, we can re-hash the password to ensure it's correct
-            // even if it was seeded with a different approach previously
-            var resetToken = await userManager.GeneratePasswordResetTokenAsync(existingAdmin);
-            _ = await userManager.ResetPasswordAsync(existingAdmin, resetToken, adminPassword);
             return;
         }
 
-        // Create admin user using UserManager to ensure proper normalization and field initialization
+        // Create admin user directly in the tenant-scoped session
+        // This ensures the user is created in the CORRECT tenant
         var adminUser = new Models.ApplicationUser
         {
             UserName = adminEmail,
+            NormalizedUserName = adminEmail.ToUpperInvariant(),
             Email = adminEmail,
-            EmailConfirmed = true
+            NormalizedEmail = adminEmail.ToUpperInvariant(),
+            EmailConfirmed = true,
+            Roles = ["Admin"],
+            SecurityStamp = Guid.CreateVersion7().ToString("D"),
+            ConcurrencyStamp = Guid.CreateVersion7().ToString("D")
         };
 
-        var result = await userManager.CreateAsync(adminUser, adminPassword);
-        if (!result.Succeeded)
-        {
-            // Log errors but don't throw - seeding should be idempotent
-            // In production, you might want to log these errors
-            return;
-        }
+        // Hash the password
+        var hasher = new Microsoft.AspNetCore.Identity.PasswordHasher<Models.ApplicationUser>();
+        adminUser.PasswordHash = hasher.HashPassword(adminUser, adminPassword);
 
-        // Add Admin role
-        _ = await userManager.AddToRoleAsync(adminUser, "Admin");
+        // Store in the tenant-scoped session
+        session.Store(adminUser);
+        await session.SaveChangesAsync();
     }
 
     static Dictionary<string, PublisherAdded> SeedPublishers(IDocumentSession session, ILogger logger)

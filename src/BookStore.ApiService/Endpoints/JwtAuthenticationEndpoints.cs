@@ -71,6 +71,7 @@ public static class JwtAuthenticationEndpoints
         var user = await userManager.FindByEmailAsync(request.Email);
         if (user == null)
         {
+
             Log.Users.LoginFailedUserNotFound(logger, request.Email);
             return Results.Unauthorized();
         }

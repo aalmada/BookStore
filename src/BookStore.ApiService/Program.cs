@@ -165,8 +165,7 @@ if (true)
                 {
                     var bus = scope.ServiceProvider.GetRequiredService<Wolverine.IMessageBus>();
                     var seederLogger = scope.ServiceProvider.GetRequiredService<ILogger<DatabaseSeeder>>();
-                    var userManager = scope.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.Identity.UserManager<BookStore.ApiService.Models.ApplicationUser>>();
-                    var seeder = new DatabaseSeeder(store, bus, seederLogger, userManager);
+                    var seeder = new DatabaseSeeder(store, bus, seederLogger);
                     var tenantStore = scope.ServiceProvider.GetRequiredService<ITenantStore>();
 
                     // 1. Ensure Tenants exist in the DB
