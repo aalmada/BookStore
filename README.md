@@ -28,10 +28,32 @@ A complete book store management system featuring:
 ## 📸 Screenshots
 
 ### Book Catalog
-![Book Catalog](docs/images/book-list.png)
+<p float="left">
+  <a href="docs/images/book-list-acme.png"><img src="docs/images/book-list-acme.png" width="49%" alt="Acme Teant Book List" /></a>
+  <a href="docs/images/book-list-contoso.png"><img src="docs/images/book-list-contoso.png" width="49%" alt="Contoso Tenant Book List" /></a>
+</p>
 
 ### Book Details
-![Book Details](docs/images/book-details.png)
+<p float="left">
+  <a href="docs/images/book-details-acme.png"><img src="docs/images/book-details-acme.png" width="49%" alt="Acme Tenant Book Details" /></a>
+  <a href="docs/images/book-details-contoso.png"><img src="docs/images/book-details-contoso.png" width="49%" alt="Contoso Tenant Book Details" /></a>
+</p>
+
+## 🔐 Authentication
+
+### Password-based
+<p float="left">
+  <a href="docs/images/auth-login-password.png"><img src="docs/images/auth-login-password.png" width="49%" alt="Login Password" /></a>
+  <a href="docs/images/auth-register-password.png"><img src="docs/images/auth-register-password.png" width="49%" alt="Register Password" /></a>
+</p>
+
+
+
+### Passkey-based (Passwordless)
+<p float="left">
+  <a href="docs/images/auth-login-passkey.png"><img src="docs/images/auth-login-passkey.png" width="49%" alt="Login Passkey" /></a>
+  <a href="docs/images/auth-register-passkey.png"><img src="docs/images/auth-register-passkey.png" width="49%" alt="Register Passkey" /></a>
+</p>
 
 ## 🏗️ Architectural Philosophy
 
