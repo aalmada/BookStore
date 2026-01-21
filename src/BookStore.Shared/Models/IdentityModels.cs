@@ -38,3 +38,8 @@ public record UpdateUserInfoRequest(
     string? NewEmail = null,
     string? NewPassword = null,
     string? OldPassword = null);
+
+/// <summary>
+/// Request to logout and invalidate refresh token
+/// </summary>
+public record LogoutRequest(string? RefreshToken);

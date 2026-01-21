@@ -2,6 +2,7 @@
 @using BookStore.Web.Services
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.JSInterop
+@using BookStore.Shared.Validation
 @inject AuthenticationService AuthService
 @inject PasskeyService PasskeyService
 @inject JwtAuthenticationStateProvider AuthStateProvider
@@ -15,7 +16,7 @@
 <MudContainer MaxWidth="MaxWidth.Small" Class="mt-8">
     <MudPaper Elevation="4" Class="pa-8" Style="border-radius: 12px;">
         <MudText Typo="Typo.h4" Align="Align.Center" Class="mb-6">
-            <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Large" Class="mr-2" />
+            <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Large" Class="mr-2"/>
             Login
         </MudText>
 
@@ -33,7 +34,7 @@
                                   Required="true"
                                   RequiredError="Email is required"
                                   Validation="@(new Func<string, string?>(ValidateEmail))"
-                                  Class="mb-4" />
+                                  Class="mb-4"/>
 
                     <MudTextField @bind-Value="password"
                                   Label="Password"
@@ -45,7 +46,7 @@
                                   AdornmentAriaLabel="Show Password"
                                   Required="true"
                                   RequiredError="Password is required"
-                                  Class="mb-4" />
+                                  Class="mb-4"/>
 
                     <MudButton Variant="Variant.Filled"
                                Color="Color.Primary"
@@ -56,7 +57,7 @@
                                Class="mb-4">
                         @if (isLoading)
                         {
-                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2"/>
                             <span>Logging in...</span>
                         }
                         else
@@ -70,7 +71,7 @@
                 <MudText Typo="Typo.body1" Class="mb-4">
                     Login using your device's biometric authenticator (FaceID, TouchID) or security key.
                 </MudText>
-                
+
                 <MudForm>
                     <MudTextField @bind-Value="email"
                                   Label="Email"
@@ -79,7 +80,7 @@
                                   RequiredError="Email is required"
                                   Validation="@(new Func<string, string?>(ValidateEmail))"
                                   Immediate="true"
-                                  Class="mb-4" />
+                                  Class="mb-4"/>
 
                     <MudButton Variant="Variant.Outlined"
                                StartIcon="@Icons.Material.Filled.Fingerprint"
@@ -95,7 +96,7 @@
             </MudTabPanel>
         </MudTabs>
 
-        <MudDivider Class="my-4" />
+        <MudDivider Class="my-4"/>
 
         <MudText Align="Align.Center">
             Don't have an account?
@@ -130,8 +131,7 @@
         }
     }
 
-    [SupplyParameterFromQuery]
-    public string? ReturnUrl { get; set; }
+    [SupplyParameterFromQuery] public string? ReturnUrl { get; set; }
 
     async Task LoginWithPasskey()
     {
@@ -141,26 +141,26 @@
         try
         {
             Logger.LogInformation("Attempting passkey login");
-            
+
             // 1. Get Options
-            var optionsJson = await PasskeyService.GetLoginOptionsAsync(email); 
+            var optionsJson = await PasskeyService.GetLoginOptionsAsync(email);
             if (string.IsNullOrEmpty(optionsJson))
             {
                 errorMessage = "Passkey login not supported or failed to initialize.";
                 return;
             }
-            
+
             // 2. JS WebAuthn Get
             var credentialJson = await JS.InvokeAsync<string>("passkey.login", optionsJson);
-            
+
             // 3. Login on Server
             var result = await PasskeyService.LoginWithPasskeyAsync(credentialJson);
-            
+
             if (result != null && result.Success && !string.IsNullOrEmpty(result.AccessToken))
             {
-                 Logger.LogInformation("Passkey login successful");
-                 await AuthStateProvider.NotifyUserAuthentication(result.AccessToken);
-                 Navigation.NavigateTo(ReturnUrl ?? "/");
+                Logger.LogInformation("Passkey login successful");
+                await AuthStateProvider.NotifyUserAuthentication(result.AccessToken, result.RefreshToken);
+                Navigation.NavigateTo(ReturnUrl ?? "/");
             }
             else
             {
@@ -202,11 +202,11 @@
             if (result.Success && result.AccessToken != null)
             {
                 Logger.LogInformation("Login successful, notifying auth state provider");
-                
+
                 // Notify the authentication state provider with the new token
                 // This triggers UI updates for AuthorizeView and other auth-dependent components
-                await AuthStateProvider.NotifyUserAuthentication(result.AccessToken);
-                
+                await AuthStateProvider.NotifyUserAuthentication(result.AccessToken, result.RefreshToken);
+
                 // Notify other tabs via BroadcastChannel
                 try
                 {
@@ -216,9 +216,9 @@
                 {
                     Logger.LogWarning("BroadcastChannel error: {Error}", ex.Message);
                 }
-                
+
                 Logger.LogInformation("Navigating to {ReturnUrl}", ReturnUrl ?? "/");
-                
+
                 // Navigate without forceLoad - state is already updated
                 Navigation.NavigateTo(ReturnUrl ?? "/");
             }
@@ -239,18 +239,6 @@
         }
     }
 
-    static string? ValidateEmail(string email)
-    {
-        if (string.IsNullOrWhiteSpace(email))
-        {
-            return "Email is required";
-        }
+    static string? ValidateEmail(string email) => EmailValidator.GetError(email);
 
-        if (!email.Contains('@'))
-        {
-            return "Invalid email format";
-        }
-
-        return null;
-    }
 }

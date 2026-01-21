@@ -1,12 +1,16 @@
 using BookStore.Client;
 using BookStore.Shared.Models;
+using BookStore.Shared.Validation;
 
 namespace BookStore.Web.Services;
 
 /// <summary>
-/// Service for managing user authentication using cookie-based authentication
+/// Service for managing user authentication using JWT token-based authentication
 /// </summary>
-public class AuthenticationService(IIdentityClient identityClient)
+public class AuthenticationService(
+    IIdentityClient identityClient,
+    TokenService tokenService,
+    TenantService tenantService)
 {
     public async Task<bool> ConfirmEmailAsync(string userId, string code)
     {
@@ -20,6 +24,7 @@ public class AuthenticationService(IIdentityClient identityClient)
             return false;
         }
     }
+
     /// <summary>
     /// Login with email and password (JWT token-based)
     /// </summary>
@@ -79,7 +84,8 @@ public class AuthenticationService(IIdentityClient identityClient)
             using var doc = System.Text.Json.JsonDocument.Parse(content);
             if (doc.RootElement.ValueKind == System.Text.Json.JsonValueKind.Object)
             {
-                if (doc.RootElement.TryGetProperty("errors", out var errors) && errors.ValueKind == System.Text.Json.JsonValueKind.Array)
+                if (doc.RootElement.TryGetProperty("errors", out var errors) &&
+                    errors.ValueKind == System.Text.Json.JsonValueKind.Array)
                 {
                     foreach (var error in errors.EnumerateArray())
                     {
@@ -89,6 +95,7 @@ public class AuthenticationService(IIdentityClient identityClient)
                         }
                     }
                 }
+
                 // Try to parse standard ProblemDetails "detail"
                 if (doc.RootElement.TryGetProperty("detail", out var detail))
                 {
@@ -122,60 +129,26 @@ public class AuthenticationService(IIdentityClient identityClient)
     }
 
     /// <summary>
-    /// Logout the current user
+    /// Logout the current user and invalidate refresh token on server
     /// </summary>
     public async Task LogoutAsync()
     {
         try
         {
-            // Call logout endpoint to clear the cookie on the server
-            // Note: This requires adding IIdentityLogoutEndpoint to BookStore.Client
-            // For now, the cookie will expire naturally or on browser close
-            await Task.CompletedTask;
+            var currentTenant = tenantService.CurrentTenantId;
+            var refreshToken = tokenService.GetRefreshToken(currentTenant);
+            await identityClient.LogoutAsync(new LogoutRequest(refreshToken));
         }
         catch
         {
-            // Logout failures are non-critical
+            // Logout failures are non-critical - local tokens will still be cleared
         }
     }
 
     /// <summary>
-    /// Validate password strength
+    /// Validate password strength using shared validator
     /// </summary>
-    static string? ValidatePassword(string password)
-    {
-        if (string.IsNullOrWhiteSpace(password))
-        {
-            return "Password is required";
-        }
-
-        if (password.Length < 8)
-        {
-            return "Password must be at least 8 characters long";
-        }
-
-        if (!password.Any(char.IsDigit))
-        {
-            return "Password must contain at least one digit";
-        }
-
-        if (!password.Any(char.IsLower))
-        {
-            return "Password must contain at least one lowercase letter";
-        }
-
-        if (!password.Any(char.IsUpper))
-        {
-            return "Password must contain at least one uppercase letter";
-        }
-
-        if (!password.Any(ch => !char.IsLetterOrDigit(ch)))
-        {
-            return "Password must contain at least one special character";
-        }
-
-        return null;
-    }
+    static string? ValidatePassword(string password) => PasswordValidator.GetFirstError(password);
 }
 
 /// <summary>

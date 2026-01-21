@@ -38,6 +38,11 @@ public static class JwtAuthenticationEndpoints
             .WithName("JwtRefresh")
             .WithSummary("Refresh an expired access token using a refresh token");
 
+        _ = group.MapPost("/logout", LogoutAsync)
+            .WithName("JwtLogout")
+            .WithSummary("Logout and invalidate refresh token")
+            .RequireAuthorization();
+
         _ = group.WithMetadata(new AllowAnonymousTenantAttribute());
         return group.RequireRateLimiting("AuthPolicy");
     }
@@ -273,5 +278,46 @@ public static class JwtAuthenticationEndpoints
             ExpiresIn: 3600,
             RefreshToken: newRefreshToken
         ));
+    }
+
+    static async Task<IResult> LogoutAsync(
+        LogoutRequest request,
+        UserManager<ApplicationUser> userManager,
+        ClaimsPrincipal user,
+        ILogger<Program> logger,
+        CancellationToken cancellationToken)
+    {
+        var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out var userGuid))
+        {
+            return Results.Unauthorized();
+        }
+
+        var appUser = await userManager.FindByIdAsync(userId);
+        if (appUser == null)
+        {
+            return Results.Unauthorized();
+        }
+
+        if (!string.IsNullOrEmpty(request.RefreshToken))
+        {
+            // Remove specific refresh token
+            var tokenToRemove = appUser.RefreshTokens.FirstOrDefault(rt => rt.Token == request.RefreshToken);
+            if (tokenToRemove != null)
+            {
+                _ = appUser.RefreshTokens.Remove(tokenToRemove);
+                Log.Users.LogoutSuccessful(logger, appUser.UserName);
+            }
+        }
+        else
+        {
+            // Remove all refresh tokens for this user (full logout)
+            appUser.RefreshTokens.Clear();
+            Log.Users.LogoutSuccessful(logger, appUser.UserName);
+        }
+
+        _ = await userManager.UpdateAsync(appUser);
+
+        return Results.Ok();
     }
 }
