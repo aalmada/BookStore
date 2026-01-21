@@ -6,51 +6,59 @@ namespace BookStore.Web.Services;
 
 /// <summary>
 /// Authentication state provider for JWT token-based authentication.
-/// Reads authentication state from tokens stored in TokenService.
+/// Supports multi-tenant sessions by storing tokens per-tenant.
 /// </summary>
-public class JwtAuthenticationStateProvider : AuthenticationStateProvider
+public class JwtAuthenticationStateProvider : AuthenticationStateProvider, IDisposable
 {
     readonly TokenService _tokenService;
     readonly Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage.ProtectedLocalStorage _localStorage;
+    readonly TenantService _tenantService;
 
-    public JwtAuthenticationStateProvider(TokenService tokenService, Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage.ProtectedLocalStorage localStorage)
+    public JwtAuthenticationStateProvider(
+        TokenService tokenService,
+        Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage.ProtectedLocalStorage localStorage,
+        TenantService tenantService)
     {
         _tokenService = tokenService;
         _localStorage = localStorage;
+        _tenantService = tenantService;
+        _tenantService.OnChange += HandleTenantChanged;
     }
+
+    void HandleTenantChanged() => NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
+
+    string GetStorageKey(string tenantId) => $"accessToken_{tenantId}";
 
     public override async Task<AuthenticationState> GetAuthenticationStateAsync()
     {
-        var token = _tokenService.GetAccessToken();
+        var currentTenant = _tenantService.CurrentTenantId;
+        var token = _tokenService.GetAccessToken(currentTenant);
 
         if (string.IsNullOrEmpty(token))
         {
-            // Try to hydrate from LocalStorage
+            // Try to hydrate from LocalStorage with tenant-specific key
             try
             {
-                var result = await _localStorage.GetAsync<string>("accessToken");
+                var result = await _localStorage.GetAsync<string>(GetStorageKey(currentTenant));
                 if (result.Success && !string.IsNullOrEmpty(result.Value))
                 {
                     token = result.Value;
-                    _tokenService.SetTokens(token);
+                    _tokenService.SetTokens(currentTenant, token);
                 }
             }
             catch (InvalidOperationException)
             {
-                // JavaScript interop calls cannot be issued at this time (Prerendering).
-                // This is expected.
+                // JavaScript interop calls cannot be issued at this time (Prerendering)
             }
             catch (Exception ex)
             {
-                // Storage failure, ignore
                 System.Diagnostics.Debug.WriteLine($"Storage hydration failed: {ex.Message}");
             }
         }
 
         if (string.IsNullOrEmpty(token))
         {
-            var anonymous = new ClaimsPrincipal(new ClaimsIdentity());
-            return new AuthenticationState(anonymous);
+            return CreateAnonymousState();
         }
 
         try
@@ -60,70 +68,74 @@ public class JwtAuthenticationStateProvider : AuthenticationStateProvider
 
             if (jwtToken.ValidTo < DateTime.UtcNow)
             {
-                // Token expired
-                _tokenService.ClearTokens();
-                var anonymous = new ClaimsPrincipal(new ClaimsIdentity());
-                return new AuthenticationState(anonymous);
+                _tokenService.ClearTokens(currentTenant);
+                return CreateAnonymousState();
             }
 
-            var claims = jwtToken.Claims;
-            var identity = new ClaimsIdentity(claims, "jwt");
-            var user = new ClaimsPrincipal(identity);
+            // Verify token belongs to current tenant
+            var tokenTenant = jwtToken.Claims.FirstOrDefault(c => c.Type == "tenant_id")?.Value;
+            if (string.IsNullOrEmpty(tokenTenant) ||
+                !string.Equals(tokenTenant, currentTenant, StringComparison.OrdinalIgnoreCase))
+            {
+                return CreateAnonymousState();
+            }
 
-            return new AuthenticationState(user);
+            var identity = new ClaimsIdentity(jwtToken.Claims, "jwt");
+            return new AuthenticationState(new ClaimsPrincipal(identity));
         }
         catch
         {
-            // Invalid token
-            _tokenService.ClearTokens();
-            var anonymous = new ClaimsPrincipal(new ClaimsIdentity());
-            return new AuthenticationState(anonymous);
+            _tokenService.ClearTokens(currentTenant);
+            return CreateAnonymousState();
         }
     }
 
+    static AuthenticationState CreateAnonymousState()
+        => new(new ClaimsPrincipal(new ClaimsIdentity()));
+
+    public void Dispose() => _tenantService.OnChange -= HandleTenantChanged;
+
     /// <summary>
-    /// Notify that user has authenticated with a new token
+    /// Notify that user has authenticated with a new token for the current tenant
     /// </summary>
     public async Task NotifyUserAuthentication(string token)
     {
-        _tokenService.SetTokens(token);
+        var currentTenant = _tenantService.CurrentTenantId;
+        _tokenService.SetTokens(currentTenant, token);
 
         try
         {
-            await _localStorage.SetAsync("accessToken", token);
+            await _localStorage.SetAsync(GetStorageKey(currentTenant), token);
         }
-        catch { /* checking write permission error? */ }
-
-        try
+        catch
         {
-            var claims = ParseClaimsFromJwt(token);
-            var identity = new ClaimsIdentity(claims, "jwt");
-            var user = new ClaimsPrincipal(identity);
+            /* Storage write error */
+        }
 
-            NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(user)));
-        }
-        catch (Exception)
-        {
-            // Log the error if logger was injected, or just rethrow
-            throw;
-        }
+        var claims = ParseClaimsFromJwt(token);
+        var identity = new ClaimsIdentity(claims, "jwt");
+        var user = new ClaimsPrincipal(identity);
+        NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(user)));
     }
 
     /// <summary>
-    /// Notify that user has logged out
+    /// Notify that user has logged out of the current tenant
     /// </summary>
     public async Task NotifyUserLogout()
     {
-        _tokenService.ClearTokens();
+        var currentTenant = _tenantService.CurrentTenantId;
+        _tokenService.ClearTokens(currentTenant);
 
         try
         {
-            await _localStorage.DeleteAsync("accessToken");
+            await _localStorage.DeleteAsync(GetStorageKey(currentTenant));
         }
-        catch { }
+        catch
+        {
+            /* Storage delete error */
+        }
 
-        var anonymous = new ClaimsPrincipal(new ClaimsIdentity());
-        NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(anonymous)));
+        NotifyAuthenticationStateChanged(Task.FromResult(CreateAnonymousState()));
     }
 
     static IEnumerable<Claim> ParseClaimsFromJwt(string jwt)

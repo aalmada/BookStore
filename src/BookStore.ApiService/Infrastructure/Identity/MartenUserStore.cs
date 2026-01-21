@@ -16,13 +16,19 @@ public sealed class MartenUserStore :
     IUserPasskeyStore<ApplicationUser>
 {
     readonly IDocumentSession _session;
+    readonly ILogger<MartenUserStore> _logger;
 
-    public MartenUserStore(IDocumentSession session) => _session = session;
+    public MartenUserStore(IDocumentSession session, ILogger<MartenUserStore> logger)
+    {
+        _session = session;
+        _logger = logger;
+    }
 
     #region IUserStore
 
     public async Task<IdentityResult> CreateAsync(ApplicationUser user, CancellationToken cancellationToken)
     {
+
         _session.Store(user);
         await _session.SaveChangesAsync(cancellationToken);
         return IdentityResult.Success;
@@ -119,8 +125,7 @@ public sealed class MartenUserStore :
         return Task.CompletedTask;
     }
 
-    public Task<ApplicationUser?> FindByEmailAsync(string normalizedEmail, CancellationToken cancellationToken)
-        => _session.Query<ApplicationUser>()
+    public Task<ApplicationUser?> FindByEmailAsync(string normalizedEmail, CancellationToken cancellationToken) => _session.Query<ApplicationUser>()
             .FirstOrDefaultAsync(u => u.NormalizedEmail == normalizedEmail, cancellationToken);
 
     #endregion

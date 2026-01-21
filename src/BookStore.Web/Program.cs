@@ -96,7 +96,8 @@ static void RegisterScopedRefitClients(IServiceCollection services, Uri baseAddr
         var correlationService = sp.GetRequiredService<CorrelationService>();
         var tenantService = sp.GetRequiredService<TenantService>();
 
-        var authHandler = new AuthorizationMessageHandler(tokenService, httpContextAccessor, correlationService);
+        var authHandler =
+            new AuthorizationMessageHandler(tokenService, tenantService, httpContextAccessor, correlationService);
 
         // Pipeline: Auth -> Tenant -> Network
         var tenantHandler = new TenantHeaderHandler(tenantService) { InnerHandler = new HttpClientHandler() };

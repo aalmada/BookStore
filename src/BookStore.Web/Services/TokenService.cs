@@ -2,43 +2,42 @@ namespace BookStore.Web.Services;
 
 /// <summary>
 /// Service for storing authentication tokens in memory (per-circuit).
-/// Tokens are cleared when the circuit ends, providing better security than LocalStorage.
+/// Tokens are stored per-tenant to support multi-tenant sessions.
 /// </summary>
 public class TokenService
 {
-    string? _accessToken;
-    string? _refreshToken;
+    readonly Dictionary<string, (string AccessToken, string? RefreshToken)> _tokens = [];
 
     /// <summary>
-    /// Store authentication tokens
+    /// Store authentication tokens for a specific tenant
     /// </summary>
-    public void SetTokens(string accessToken, string? refreshToken = null)
-    {
-        _accessToken = accessToken;
-        _refreshToken = refreshToken;
-    }
+    public void SetTokens(string tenantId, string accessToken, string? refreshToken = null) => _tokens[tenantId] = (accessToken, refreshToken);
 
     /// <summary>
-    /// Get the current access token
+    /// Get the current access token for a specific tenant
     /// </summary>
-    public string? GetAccessToken() => _accessToken;
+    public string? GetAccessToken(string tenantId)
+        => _tokens.TryGetValue(tenantId, out var tokens) ? tokens.AccessToken : null;
 
     /// <summary>
-    /// Get the current refresh token
+    /// Get the current refresh token for a specific tenant
     /// </summary>
-    public string? GetRefreshToken() => _refreshToken;
+    public string? GetRefreshToken(string tenantId)
+        => _tokens.TryGetValue(tenantId, out var tokens) ? tokens.RefreshToken : null;
 
     /// <summary>
-    /// Check if user is authenticated (has valid token)
+    /// Check if user is authenticated for a specific tenant
     /// </summary>
-    public bool IsAuthenticated() => !string.IsNullOrEmpty(_accessToken);
+    public bool IsAuthenticated(string tenantId)
+        => _tokens.TryGetValue(tenantId, out var tokens) && !string.IsNullOrEmpty(tokens.AccessToken);
 
     /// <summary>
-    /// Clear all tokens (logout)
+    /// Clear tokens for a specific tenant (logout)
     /// </summary>
-    public void ClearTokens()
-    {
-        _accessToken = null;
-        _refreshToken = null;
-    }
+    public void ClearTokens(string tenantId) => _tokens.Remove(tenantId);
+
+    /// <summary>
+    /// Clear all tokens for all tenants
+    /// </summary>
+    public void ClearAllTokens() => _tokens.Clear();
 }
