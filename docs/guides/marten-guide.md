@@ -1999,7 +1999,7 @@ Marten provides:
 
 - **[Event Sourcing Guide](event-sourcing-guide.md)** - Event sourcing concepts and patterns
 - **[Wolverine Guide](wolverine-guide.md)** - Command/handler pattern with automatic transaction management
-- **[Architecture Overview](architecture.md)** - System design and patterns
+- [Architecture](../architecture.md)** - System design and patterns
 - **[ETag Guide](etag-guide.md)** - Optimistic concurrency with stream versions
 - **[Correlation/Causation Guide](correlation-causation-guide.md)** - Distributed tracing with metadata
 

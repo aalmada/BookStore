@@ -4,7 +4,7 @@
 [![Nightly Integration Tests](https://github.com/aalmada/BookStore/actions/workflows/nightly-integration.yml/badge.svg)](https://github.com/aalmada/BookStore/actions/workflows/nightly-integration.yml)
 [![Documentation](https://github.com/aalmada/BookStore/actions/workflows/docs.yml/badge.svg)](https://github.com/aalmada/BookStore/actions/workflows/docs.yml)
 [![CodeQL](https://github.com/aalmada/BookStore/actions/workflows/codeql.yml/badge.svg)](https://github.com/aalmada/BookStore/actions/workflows/codeql.yml)
-[![License](https://img.shields.io/github/license/aalmada/BookStore)](LICENSE)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)](https://dotnet.microsoft.com/download/dotnet/10.0)
 
 Full-stack .NET online book store application with event-sourced backend API and Blazor frontend, orchestrated by Aspire.
@@ -22,7 +22,7 @@ A complete book store management system featuring:
 - **Orchestration**: Aspire for local development, deployment, and observability
 - **Database**: PostgreSQL with event store and read model projections
 - **Modern Stack**: .NET 10 with C# 14 (latest language features)
-- **AI-Ready**: Built for AI agents with context-aware guidance and automated skills (see [Agent Guide](docs/guides/agent-guide.md))
+- **AI-Ready**: Built for AI agents with context-aware guidance and automated skills (see- [**Agents & Skills**](docs/guides/agent-guide.md))
 
 
 ## 📸 Screenshots
@@ -142,9 +142,7 @@ The project includes a custom **Roslyn Analyzer** (`BookStore.ApiService.Analyze
 - ✅ Handlers follow Wolverine conventions
 - ✅ Consistent namespace organization
 
-See [Analyzer Rules Documentation](docs/guides/analyzer-rules.md) for details.
-
-- **Native OpenAPI** with Scalar UI
+See [Analyzers](docs/guides/analyzer-rules.md) | Custom Roslyn analyzers to enforce architectural rules and prevent common mistakes. |Scalar UI
 - **Structured Logging** with correlation IDs
 
 ### Infrastructure (Aspire)
@@ -156,38 +154,37 @@ See [Analyzer Rules Documentation](docs/guides/analyzer-rules.md) for details.
 
 ## 📁 Project Structure
 
-For a detailed breakdown of the project structure, please refer to the [Getting Started Guide](docs/getting-started.md#project-structure).
-
+See the [Project Structure](docs/getting-started.md#project-structure) guide for a detailed breakdown of the solution.
 ## 📖 Documentation
 
-- **[Getting Started](docs/getting-started.md)** - Setup and first steps
-- **[Architecture Overview](docs/architecture.md)** - System design and patterns
-- **[Event Sourcing Guide](docs/guides/event-sourcing-guide.md)** - Event sourcing concepts and implementation
-- **[Aspire Orchestration Guide](docs/guides/aspire-guide.md)** - Service orchestration and local development
-- **[Marten Guide](docs/guides/marten-guide.md)** - Document DB and Event Store features
-- **[Wolverine Integration](docs/guides/wolverine-guide.md)** - Command/handler pattern with Wolverine
-- **[Configuration Guide](docs/guides/configuration-guide.md)** - Options pattern and validation
-- **[API Conventions](docs/guides/api-conventions-guide.md)** - Time handling and JSON serialization standards
-- **[API Client Generation](docs/guides/api-client-generation.md)** - Type-safe API client with Refit
-- **[Authentication Guide](docs/guides/authentication-guide.md)** - JWT authentication and role-based authorization
-- **[Passkey Guide](docs/guides/passkey-guide.md)** - Passwordless authentication with WebAuthn/FIDO2
+- [**Getting Started**](docs/getting-started.md) - Setup and first steps
+- [**Architecture Overview**](docs/architecture.md) - System design and patterns
+- [**Event Sourcing**](docs/guides/event-sourcing-guide.md) - Event sourcing concepts and implementation
+- [**Aspire & Orchestration**](docs/guides/aspire-guide.md) - Service orchestration and local development
+- [**Marten (Data/Events)**](docs/guides/marten-guide.md) - Document DB and Event Store features
+- [**Wolverine (Messaging)**](docs/guides/wolverine-guide.md) - Command/handler pattern with Wolverine
+- [**Configuration**](docs/guides/configuration-guide.md) - Options pattern and validation
+- [**API Conventions**](docs/guides/api-conventions-guide.md) - Time handling and JSON serialization standards
+- [**API Client Generation**](docs/guides/api-client-generation.md) - Type-safe API client with Refit
+- [**Authentication**](docs/guides/authentication-guide.md) - JWT authentication and role-based authorization
+- [**Passkeys**](docs/guides/passkey-guide.md) - Passwordless authentication with WebAuthn/FIDO2
 - **[Real-time Notifications](#) <!-- TODO: Create SSE guide -->** - Server-Sent Events (SSE) for push notifications
-- **[Logging Guide](docs/guides/logging-guide.md)** - Structured logging with source-generated log messages
-- **[Correlation & Causation IDs](docs/guides/correlation-causation-guide.md)** - Distributed tracing
-- **[Localization Guide](docs/guides/localization-guide.md)** - Multi-language support
-- **[Multi-Tenancy Guide](docs/guides/multi-tenancy-guide.md)** - Enterprise multi-tenancy with Marten
-- **[Database Indexes Guide](docs/guides/database-indexes-guide.md)** - Production database optimization
-- **[Caching Guide](docs/guides/caching-guide.md)** - Hybrid caching with Redis and localization support
-- **[Real-time Notifications Guide](docs/guides/real-time-notifications.md)** - Server-Sent Events (SSE) implementation
-- **[ETag Support](docs/guides/etag-guide.md)** - Optimistic concurrency and caching
-- **[Performance Guide](docs/guides/performance-guide.md)** - GC optimization and performance tuning
-- **[Testing Guide](docs/guides/testing-guide.md)** - Unit testing with TUnit, assertions, and best practices
-- **[Integration Testing Guide](docs/guides/integration-testing-guide.md)** - End-to-end testing with Aspire and Bogus
-- **[Agent Development Guide](docs/guides/agent-guide.md)** - AI assistant configuration system (AGENTS.md files and Claude skills)
-- **[Aspire Deployment Guide](docs/guides/aspire-deployment-guide.md)** - Deploy to Azure and Kubernetes
-- **[Production Scaling Guide](docs/guides/production-scaling-guide.md)** - Scale applications and databases in production
-- **[Documentation Guide](docs/guides/documentation-guide.md)** - How to build and contribute to documentation
-- **[Contributing Guidelines](CONTRIBUTING.md)** - How to contribute to this project
+- [**Logging**](docs/guides/logging-guide.md) - Structured logging with source-generated log messages
+- [**Correlation & Causation**](docs/guides/correlation-causation-guide.md) - Distributed tracing
+- [**Localization**](docs/guides/localization-guide.md) - Multi-language support
+- [**Multi-Tenancy**](docs/guides/multi-tenancy-guide.md) - Enterprise multi-tenancy with Marten
+- [**Database Indexes**](docs/guides/database-indexes-guide.md) - Production database optimization
+- [**Caching**](docs/guides/caching-guide.md) - Hybrid caching with Redis and localization support
+- [**Real-time Notifications**](docs/guides/real-time-notifications.md) - Server-Sent Events (SSE) implementation
+- [**ETags**](docs/guides/etag-guide.md) - Optimistic concurrency and caching
+- [**Performance**](docs/guides/performance-guide.md) - GC optimization and performance tuning
+- [**Testing**](docs/guides/testing-guide.md) - Unit testing with TUnit, assertions, and best practices
+- [**Integration Testing**](docs/guides/integration-testing-guide.md) - End-to-end testing with Aspire and Bogus
+- [**AI Agents**](docs/guides/agent-guide.md): Build strict, maintainable agentic workflows with typed skills and tool-use by design.
+- [**Aspire Deployment**](docs/guides/aspire-deployment-guide.md) - Deploy to Azure and Kubernetes
+- [**Production Scaling**](docs/guides/production-scaling-guide.md) - Scale applications and databases in production
+- [**Documentation Guide**](docs/guides/documentation-guide.md) - How to build and contribute to documentation
+- [**Contributing**](CONTRIBUTING.md) - How to contribute to this project
 
 ## 🔧 Technology Stack
 
@@ -346,19 +343,12 @@ dotnet run --project tests/ApiService/BookStore.ApiService.UnitTests/BookStore.A
 
 ## 📝 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the [MIT License](LICENSE).
 
 Copyright (c) 2025 Antao Almada
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please read our [Contributing Guidelines](CONTRIBUTING.md) for details on:
-
-- How to report issues
-- How to suggest features
-- Development setup and workflow
-- Coding standards and best practices
-- Pull request process
+Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests to us.
 
 By contributing, you agree that your contributions will be licensed under the MIT License.
-

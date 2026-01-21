@@ -690,5 +690,5 @@ Event Sourcing provides:
 
 - **[Marten Guide](marten-guide.md)** - Implementation with Marten
 - **[Wolverine Guide](wolverine-guide.md)** - Command/handler pattern
-- **[Architecture Overview](architecture.md)** - System design
-- **[Getting Started](getting-started.md)** - Setup and running
+- [Architecture](../architecture.md)** - System design
+- [Getting Started](../getting-started.md)** - Setup and running

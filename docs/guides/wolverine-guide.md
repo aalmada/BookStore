@@ -758,6 +758,6 @@ The pattern is simple:
 
 - **[Event Sourcing Guide](event-sourcing-guide.md)** - Event sourcing concepts and patterns
 - **[Marten Guide](marten-guide.md)** - Event sourcing, streams, aggregates, and projections
-- **[Architecture Overview](architecture.md)** - System design and CQRS patterns
+- [Architecture](../architecture.md)** - System design and CQRS patterns
 - **[ETag Guide](etag-guide.md)** - Optimistic concurrency implementation
-- **[Getting Started](getting-started.md)** - Setup and running the application
+- [Getting Started](../getting-started.md)** - Setup and running the application

@@ -391,9 +391,9 @@ The BookStore project follows these standards to ensure agent compatibility and 
 ## Further Reading
 
 ### Getting Started
-- [Getting Started](getting-started.md) - Setting up the development environment
-- [Architecture Overview](architecture.md) - High-level system design
-- [README](../README.md) - Project overview and quick start
+- **Getting Started**: [getting-started.md](../getting-started.md) - Setting up the development environment
+- **Architecture**: [architecture.md](../architecture.md) - High-level system design
+- **Read Me**: [README.md](../../README.md) - Project overview and quick start
 
 ### Deep Dives
 - [Event Sourcing Guide](event-sourcing-guide.md) - Event Sourcing patterns and Marten
@@ -405,5 +405,5 @@ The BookStore project follows these standards to ensure agent compatibility and 
 - [Aspire Deployment Guide](aspire-deployment-guide.md) - Azure and Kubernetes deployment
 
 ### Skills Reference
-- [Skills README](../.claude/skills/README.md) - Complete skill catalog
-- [Skill Templates](../.claude/skills/) - Browse all 17 skills
+- **Skills**: [.claude/skills/README.md](../../.claude/skills/README.md) - Complete skill catalog
+- **Skills Directory**: [.claude/skills/](../../.claude/skills/) - Browse all 17 skills

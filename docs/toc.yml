@@ -2,8 +2,9 @@
   href: getting-started.md
 - name: Architecture
   href: architecture.md
-- name: API Reference
-  href: api/index.md
+  items:
+    - name: Api Documentation
+      href: api/index.md
 - name: Guides
   items:
     - name: Event Sourcing

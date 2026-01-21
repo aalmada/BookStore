@@ -495,7 +495,8 @@ dotnet build
 
 ## Getting Help
 
-- Check the [API Reference](../api/index.md) for endpoint details
+Please refer to the [API Documentation](api/index.md) for more details.
 - Review [Architecture](architecture.md) for design patterns
 - Explore the Scalar UI for interactive documentation
 - Check Aspire dashboard logs for debugging
+```

@@ -472,4 +472,4 @@ dotnet test --project src/BookStore.ApiService.Analyzers.Tests/BookStore.ApiServ
 - [Event Sourcing Guide](event-sourcing-guide.md)
 - [Marten Guide](marten-guide.md)
 - [Wolverine Guide](wolverine-guide.md)
-- [Architecture Overview](architecture.md)
+- [Architecture](../architecture.md)
