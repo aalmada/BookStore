@@ -34,14 +34,22 @@ class AuthBroadcast {
         switch (data.type) {
             case 'logout':
                 console.log('Logout event received from another tab');
-                // Redirect to login page to clear the authentication state
+                // Dispatch custom event for Blazor to handle reactively
+                window.dispatchEvent(new CustomEvent('auth-state-changed', {
+                    detail: { type: 'logout', timestamp: data.timestamp }
+                }));
+                // Also redirect to login for smooth UX
                 window.location.href = '/login';
                 break;
 
             case 'login':
                 console.log('Login event received from another tab');
-                // Reload the page to refresh authentication state
-                window.location.reload();
+                // Dispatch custom event for Blazor to handle reactively
+                window.dispatchEvent(new CustomEvent('auth-state-changed', {
+                    detail: { type: 'login', timestamp: data.timestamp }
+                }));
+                // Force auth state refresh without full page reload
+                // The event listener in Blazor will trigger GetAuthenticationStateAsync
                 break;
 
             default:

@@ -53,3 +53,14 @@ public interface IIdentityRefreshEndpoint
         CancellationToken cancellationToken = default);
 }
 
+public interface IIdentityLogoutEndpoint
+{
+    /// <summary>
+    /// Logout and invalidate refresh token
+    /// </summary>
+    [Post("/account/logout")]
+    Task LogoutAsync(
+        [Body] LogoutRequest request,
+        CancellationToken cancellationToken = default);
+}
+

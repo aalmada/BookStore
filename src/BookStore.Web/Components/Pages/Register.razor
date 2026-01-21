@@ -8,6 +8,7 @@
 @implements IDisposable
 @inject IJSRuntime JS
 @using Microsoft.JSInterop
+@using BookStore.Shared.Validation
 
 
 <PageTitle>Register - BookStore</PageTitle>
@@ -15,7 +16,7 @@
 <MudContainer MaxWidth="MaxWidth.Small" Class="mt-8">
     <MudPaper Elevation="4" Class="pa-8" Style="border-radius: 12px;">
         <MudText Typo="Typo.h4" Align="Align.Center" Class="mb-6">
-            <MudIcon Icon="@Icons.Material.Filled.PersonAdd" Size="Size.Large" Class="mr-2" />
+            <MudIcon Icon="@Icons.Material.Filled.PersonAdd" Size="Size.Large" Class="mr-2"/>
             Create Account
         </MudText>
 
@@ -30,11 +31,11 @@
                 Registration successful!
                 @if (requiresVerification)
                 {
-                   <text> Please check your email to verify your account.</text>
+                    <text> Please check your email to verify your account.</text>
                 }
                 else
                 {
-                   <text> Redirecting to login...</text>
+                    <text> Redirecting to login...</text>
                 }
             </MudAlert>
         }
@@ -48,7 +49,7 @@
                                   Required="true"
                                   RequiredError="Email is required"
                                   Validation="@(new Func<string, string?>(ValidateEmail))"
-                                  Class="mb-4" />
+                                  Class="mb-4"/>
 
                     <MudTextField @bind-Value="password"
                                   Label="Password"
@@ -61,12 +62,14 @@
                                   Required="true"
                                   RequiredError="Password is required"
                                   OnBlur="ValidatePasswordStrength"
-                                  Class="mb-4" />
+                                  Class="mb-4"/>
 
                     @if (passwordErrors.Any())
                     {
                         <MudAlert Severity="Severity.Warning" Class="mb-4">
-                            <MudText Typo="Typo.body2" Class="mb-2"><strong>Password must meet the following requirements:</strong></MudText>
+                            <MudText Typo="Typo.body2" Class="mb-2">
+                                <strong>Password must meet the following requirements:</strong>
+                            </MudText>
                             <ul style="margin: 0; padding-left: 20px;">
                                 @foreach (var error in passwordErrors)
                                 {
@@ -87,7 +90,7 @@
                                   Required="true"
                                   RequiredError="Please confirm your password"
                                   Validation="@(new Func<string, string?>(ValidateConfirmPassword))"
-                                  Class="mb-4" />
+                                  Class="mb-4"/>
 
                     <MudButton Variant="Variant.Filled"
                                Color="Color.Primary"
@@ -98,7 +101,7 @@
                                Class="mb-4">
                         @if (isLoading)
                         {
-                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2"/>
                             <span>Creating account...</span>
                         }
                         else
@@ -112,7 +115,7 @@
                 <MudText Typo="Typo.body1" Class="mb-4">
                     Register securely without a password using your device's biometric authenticator (FaceID, TouchID) or security key.
                 </MudText>
-                
+
                 <MudForm>
                     <MudTextField @bind-Value="email"
                                   Label="Email"
@@ -121,7 +124,7 @@
                                   RequiredError="Email is required"
                                   Validation="@(new Func<string, string?>(ValidateEmail))"
                                   Immediate="true"
-                                  Class="mb-4" />
+                                  Class="mb-4"/>
 
                     <MudButton Variant="Variant.Outlined"
                                StartIcon="@Icons.Material.Filled.Fingerprint"
@@ -133,7 +136,7 @@
                                Class="mb-4">
                         @if (isLoading)
                         {
-                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2"/>
                             <span>Creating account...</span>
                         }
                         else
@@ -145,7 +148,7 @@
             </MudTabPanel>
         </MudTabs>
 
-        <MudDivider Class="my-4" />
+        <MudDivider Class="my-4"/>
 
         <MudText Align="Align.Center">
             Already have an account?
@@ -163,11 +166,11 @@
     bool isShow;
     InputType PasswordInput = InputType.Password;
     string PasswordInputIcon = Icons.Material.Filled.VisibilityOff;
-    
+
     bool isConfirmShow;
     InputType ConfirmPasswordInput = InputType.Password;
     string ConfirmPasswordInputIcon = Icons.Material.Filled.VisibilityOff;
-    
+
     bool isLoading;
 
     void ButtonTestclick()
@@ -201,6 +204,7 @@
             ConfirmPasswordInput = InputType.Text;
         }
     }
+
     bool registrationSuccess;
     bool requiresVerification;
     List<string> passwordErrors = new();
@@ -247,27 +251,27 @@
                 // If enabled, email is sent.
                 // If we want to FORCE verification, we should NOT return tokens in RegisterAsync if !EmailConfirmed.
                 // But let's assume for now, we just notify.
-                
+
                 // Correction based on typical flow:
                 // If verification enabled, we want the user to click the link.
                 // If tokens are returned, they are logged in.
                 // We should check the result.AccessToken.
-                
-               requiresVerification = false; // Default to old behavior until we know better.
-               // Actually, `RegisterResult` does not have AccessToken. `AuthenticationService.RegisterAsync` returns `RegisterResult`.
-               // `LoginResult` has AccessToken.
-               // `AuthenticationService.RegisterAsync` calls endpoint which returns LoginResponse? No, `IIdentityRegisterEndpoint` returns Task (void).
-               // Ah, `JwtAuthenticationEndpoints.RegisterAsync` returns `LoginResponse`. 
-               // But `IIdentityRegisterEndpoint` is defined as `Task Execute`. It ignores the response body?
-               // Let's check `IIdentityEndpoints.cs`: `Task Execute` -> it effectively ignores the JSON body unless wrapped in Task<LoginResponse>.
-               // `AuthenticationService.RegisterAsync` returns `RegisterResult` (Success/Error).
-               
-               // So the client doesn't get the token automatically here.
-               // This means the user is redirected to Login.
-               // If verification is on, Login might fail or succeed depending on policy (ASP.NET Core Identity by default allows login unless configured otherwise).
 
-               // Design decision: We show "Check email".
-               requiresVerification = true; // Safe default for UI message.
+                requiresVerification = false; // Default to old behavior until we know better.
+                // Actually, `RegisterResult` does not have AccessToken. `AuthenticationService.RegisterAsync` returns `RegisterResult`.
+                // `LoginResult` has AccessToken.
+                // `AuthenticationService.RegisterAsync` calls endpoint which returns LoginResponse? No, `IIdentityRegisterEndpoint` returns Task (void).
+                // Ah, `JwtAuthenticationEndpoints.RegisterAsync` returns `LoginResponse`. 
+                // But `IIdentityRegisterEndpoint` is defined as `Task Execute`. It ignores the response body?
+                // Let's check `IIdentityEndpoints.cs`: `Task Execute` -> it effectively ignores the JSON body unless wrapped in Task<LoginResponse>.
+                // `AuthenticationService.RegisterAsync` returns `RegisterResult` (Success/Error).
+
+                // So the client doesn't get the token automatically here.
+                // This means the user is redirected to Login.
+                // If verification is on, Login might fail or succeed depending on policy (ASP.NET Core Identity by default allows login unless configured otherwise).
+
+                // Design decision: We show "Check email".
+                requiresVerification = true; // Safe default for UI message.
             }
             else
             {
@@ -279,28 +283,28 @@
             isLoading = false;
         }
     }
-    
+
     async Task RegisterWithPasskey()
     {
         errorMessage = null;
         var emailError = ValidateEmail(email);
         if (emailError != null)
         {
-             errorMessage = emailError;
-             return;
+            errorMessage = emailError;
+            return;
         }
 
         isLoading = true;
-        try 
+        try
         {
             // 1. Get Options
             var (options, error) = await PasskeyService.GetCreationOptionsAsync(email);
             if (string.IsNullOrEmpty(options))
             {
-                 errorMessage = error ?? "Failed to initialize passkey registration. User may already exist.";
-                 return;
+                errorMessage = error ?? "Failed to initialize passkey registration. User may already exist.";
+                return;
             }
-            
+
             // Extract userId from the options response
             string? userId = null;
             string optionsJson = options;
@@ -311,7 +315,7 @@
                 {
                     userId = userIdElem.GetString();
                 }
-                
+
                 // Get the actual options object
                 if (doc.RootElement.TryGetProperty("options", out var optionsElem))
                 {
@@ -322,19 +326,19 @@
             {
                 // If parsing fails, use the whole response as options
             }
-            
+
             // 2. JS WebAuthn Create
             var credentialJson = await JS.InvokeAsync<string>("passkey.register", optionsJson);
-            
+
             // 3. Submit to Server with userId
             var result = await PasskeyService.RegisterPasskeyAsync(credentialJson, email, userId);
-            
+
             if (result != null && result.Success)
             {
                 if (!string.IsNullOrEmpty(result.AccessToken))
                 {
                     // Auto-login success (when email verification is not required)
-                    await AuthStateProvider.NotifyUserAuthentication(result.AccessToken);
+                    await AuthStateProvider.NotifyUserAuthentication(result.AccessToken, result.RefreshToken);
                     registrationSuccess = true;
                     requiresVerification = false;
                     await Task.Delay(2000);
@@ -351,7 +355,6 @@
             {
                 errorMessage = result?.Error ?? "Passkey registration failed on server.";
             }
-
         }
         catch (Exception ex)
         {
@@ -361,7 +364,6 @@
         {
             isLoading = false;
         }
-    
     }
 
     protected override void OnInitialized()
@@ -395,53 +397,11 @@
 
     void ValidatePasswordStrength()
     {
-        passwordErrors.Clear();
-
-        if (string.IsNullOrWhiteSpace(password))
-        {
-            return;
-        }
-
-        if (password.Length < 8)
-        {
-            passwordErrors.Add("At least 8 characters");
-        }
-
-        if (!password.Any(char.IsUpper))
-        {
-            passwordErrors.Add("At least one uppercase letter");
-        }
-
-        if (!password.Any(char.IsLower))
-        {
-            passwordErrors.Add("At least one lowercase letter");
-        }
-
-        if (!password.Any(char.IsDigit))
-        {
-            passwordErrors.Add("At least one number");
-        }
-
-        if (!password.Any(ch => !char.IsLetterOrDigit(ch)))
-        {
-            passwordErrors.Add("At least one special character");
-        }
+        var (_, errors) = PasswordValidator.Validate(password);
+        passwordErrors = errors.ToList();
     }
 
-    static string? ValidateEmail(string email)
-    {
-        if (string.IsNullOrWhiteSpace(email))
-        {
-            return "Email is required";
-        }
-
-        if (!email.Contains('@'))
-        {
-            return "Invalid email format";
-        }
-
-        return null;
-    }
+    static string? ValidateEmail(string email) => EmailValidator.GetError(email);
 
     string? ValidateConfirmPassword(string confirmPwd)
     {
@@ -457,4 +417,5 @@
 
         return null;
     }
+
 }

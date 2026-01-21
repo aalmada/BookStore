@@ -76,5 +76,10 @@ public static partial class Log
             Level = LogLevel.Error,
             Message = "Unhandled exception during passkey login")]
         public static partial void PasskeyLoginUnhandledException(ILogger logger, Exception ex);
+
+        [LoggerMessage(
+            Level = LogLevel.Information,
+            Message = "Logout successful for {User}")]
+        public static partial void LogoutSuccessful(ILogger logger, string? user);
     }
 }
