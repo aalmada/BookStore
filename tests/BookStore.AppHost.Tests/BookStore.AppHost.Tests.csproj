@@ -8,18 +8,18 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Aspire.Hosting.Testing" Version="13.1.0" />
-    <PackageReference Include="Azure.Storage.Blobs" Version="12.27.0" />
-    <PackageReference Include="Bogus" Version="35.6.5" />
-    <PackageReference Include="coverlet.collector" Version="6.0.4">
+    <PackageReference Include="Aspire.Hosting.Testing" />
+    <PackageReference Include="Azure.Storage.Blobs" />
+    <PackageReference Include="Bogus" />
+    <PackageReference Include="coverlet.collector">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.1" />
-    <PackageReference Include="Marten" Version="8.17.0" />
-    <PackageReference Include="Npgsql" Version="10.0.1" />
-    <PackageReference Include="TUnit" Version="1.9.45" />
-    <PackageReference Include="Weasel.Core" Version="8.4.3" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" />
+    <PackageReference Include="Marten" />
+    <PackageReference Include="Npgsql" />
+    <PackageReference Include="TUnit" />
+    <PackageReference Include="Weasel.Core" />
   </ItemGroup>
 
   <ItemGroup>
