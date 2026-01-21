@@ -1,3 +1,4 @@
+using System.Net;
 using Blazored.LocalStorage;
 using BookStore.Client;
 using BookStore.Client.Services;
@@ -6,7 +7,12 @@ using BookStore.Web.Infrastructure;
 using BookStore.Web.Services;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.Extensions.Http.Resilience;
 using MudBlazor.Services;
+using Polly;
+using Polly.CircuitBreaker;
+using Polly.Retry;
+using Polly.Timeout;
 using Refit;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -52,41 +58,56 @@ var apiServiceUrl = builder.Configuration[$"services:{BookStore.ServiceDefaults.
                     ?? builder.Configuration[$"services:{BookStore.ServiceDefaults.ResourceNames.ApiService}:http:0"]
                     ?? "http://localhost:5000";
 
-// Configure Polly policies for resilience
-// var retryPolicy = HttpPolicyExtensions
-//     .HandleTransientHttpError()
-//     .WaitAndRetryAsync(3, retryAttempt =>
-//         TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
+// Create resilience pipeline for API calls
+// This provides retry, circuit breaker, and timeout protection for all API requests
+var resiliencePipeline = new ResiliencePipelineBuilder<HttpResponseMessage>()
+    .AddRetry(new RetryStrategyOptions<HttpResponseMessage>
+    {
+        MaxRetryAttempts = 3,
+        BackoffType = DelayBackoffType.Exponential,
+        UseJitter = true,
+        Delay = TimeSpan.FromMilliseconds(500),
+        ShouldHandle = new PredicateBuilder<HttpResponseMessage>()
+            .HandleResult(r => (int)r.StatusCode >= 500 || r.StatusCode == HttpStatusCode.RequestTimeout)
+            .Handle<HttpRequestException>()
+            .Handle<TaskCanceledException>()
+    })
+    .AddCircuitBreaker(new CircuitBreakerStrategyOptions<HttpResponseMessage>
+    {
+        FailureRatio = 0.5,
+        SamplingDuration = TimeSpan.FromSeconds(30),
+        MinimumThroughput = 5,
+        BreakDuration = TimeSpan.FromSeconds(30),
+        ShouldHandle = new PredicateBuilder<HttpResponseMessage>()
+            .HandleResult(r => (int)r.StatusCode >= 500)
+            .Handle<HttpRequestException>()
+    })
+    .AddTimeout(TimeSpan.FromSeconds(30))
+    .Build();
 
-// var circuitBreakerPolicy = HttpPolicyExtensions
-//     .HandleTransientHttpError()
-//     .CircuitBreakerAsync(5, TimeSpan.FromSeconds(30));
+// Register BookStore API clients with authorization handler and resilience
+// We must register clients as Scoped to ensure handlers share the same
+// TokenService/TenantService instances as the Blazor Circuit.
+RegisterScopedRefitClients(builder.Services, new Uri(apiServiceUrl), resiliencePipeline);
 
-// Register AuthorizationMessageHandler for JWT token injection
-builder.Services.AddTransient<AuthorizationMessageHandler>();
-
-// Register BookStore API client with authorization handler
-// Register BookStore API client with authorization handler - MANUAL SCOPED REGISTRATION
-// We must register clients as Scoped to ensure AuthorizationMessageHandler shares the same
-// TokenService instance as the Blazor Circuit.
-RegisterScopedRefitClients(builder.Services, new Uri(apiServiceUrl));
-
-static void RegisterScopedRefitClients(IServiceCollection services, Uri baseAddress)
+static void RegisterScopedRefitClients(
+    IServiceCollection services,
+    Uri baseAddress,
+    ResiliencePipeline<HttpResponseMessage> resiliencePipeline)
 {
     // Register TenantService & Handler
     _ = services.AddScoped<TenantService>();
     _ = services.AddTransient<TenantHeaderHandler>();
 
-    // Register ITenantClient separately (No TenantHeaderHandler context to prevent circular dep)
+    // Register ITenantClient separately (No TenantHeaderHandler to prevent circular dep)
     _ = services.AddScoped<ITenantClient>(_ =>
     {
-        // Use a simple client or one with just Auth handler if needed
-        // For public endpoint, base client is enough
         var httpClient = new HttpClient { BaseAddress = baseAddress };
         return RestService.For<ITenantClient>(httpClient);
     });
 
-    // Register aggregated clients
+    // Register aggregated clients with Polly resilience
+    // Handler chain: Resilience (Polly) -> Auth -> Tenant -> Network
     void AddScopedClient<T>() where T : class => _ = services.AddScoped<T>(sp =>
     {
         var tokenService = sp.GetRequiredService<TokenService>();
@@ -94,15 +115,17 @@ static void RegisterScopedRefitClients(IServiceCollection services, Uri baseAddr
         var correlationService = sp.GetRequiredService<ClientContextService>();
         var tenantService = sp.GetRequiredService<TenantService>();
 
-        var authHandler =
-            new AuthorizationMessageHandler(tokenService, tenantService, httpContextAccessor, correlationService);
+        // Build handler chain: Auth -> Tenant -> Network
+        var networkHandler = new HttpClientHandler();
+        var tenantHandler = new TenantHeaderHandler(tenantService) { InnerHandler = networkHandler };
+        var authHandler = new AuthorizationMessageHandler(
+            tokenService, tenantService, httpContextAccessor, correlationService)
+        { InnerHandler = tenantHandler };
 
-        // Pipeline: Auth -> Tenant -> Network
-        var tenantHandler = new TenantHeaderHandler(tenantService) { InnerHandler = new HttpClientHandler() };
+        // Wrap with resilience handler: Resilience -> Auth -> Tenant -> Network
+        var resilienceHandler = new ResilienceHandler(resiliencePipeline) { InnerHandler = authHandler };
 
-        authHandler.InnerHandler = tenantHandler;
-
-        var httpClient = new HttpClient(authHandler) { BaseAddress = baseAddress };
+        var httpClient = new HttpClient(resilienceHandler) { BaseAddress = baseAddress };
         return RestService.For<T>(httpClient);
     });
 
