@@ -9,6 +9,7 @@
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 @inject ILogger<Login> Logger
+@inject BookStore.Web.Helpers.AuthErrorHelper AuthErrorHelper
 
 
 <PageTitle>Login - BookStore</PageTitle>
@@ -164,7 +165,7 @@
             }
             else
             {
-                errorMessage = result?.Error ?? "Passkey login failed.";
+                errorMessage = AuthErrorHelper.GetFriendlyErrorMessage(result?.Error);
             }
         }
         catch (Exception ex)
@@ -225,13 +226,13 @@
             else
             {
                 Logger.LogWarning("Login failed: {Error}", result.Error);
-                errorMessage = result.Error ?? "Login failed";
+                errorMessage = AuthErrorHelper.GetFriendlyErrorMessage(result.Error);
             }
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Login exception: {Message}", ex.Message);
-            errorMessage = $"Error: {ex.Message}";
+            errorMessage = AuthErrorHelper.GetFriendlyErrorMessage(ex.Message);
         }
         finally
         {

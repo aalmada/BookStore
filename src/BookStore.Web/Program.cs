@@ -1,19 +1,12 @@
-using System.Text.Json;
 using Blazored.LocalStorage;
 using BookStore.Client;
 using BookStore.Client.Services;
-using BookStore.Shared.Infrastructure.Json;
-using BookStore.Web;
 using BookStore.Web.Components;
 using BookStore.Web.Infrastructure;
 using BookStore.Web.Services;
 using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 using Microsoft.AspNetCore.HttpOverrides;
-using Microsoft.Extensions.DependencyInjection;
 using MudBlazor.Services;
-using Polly;
-using Polly.Extensions.Http;
 using Refit;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -24,6 +17,11 @@ builder.AddServiceDefaults();
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
+
+builder.Services.AddSingleton<Microsoft.AspNetCore.SignalR.IHubFilter, LoggingHubFilter>();
+
 builder.Services.AddHttpContextAccessor();
 
 // Add Blazored LocalStorage
@@ -80,7 +78,7 @@ static void RegisterScopedRefitClients(IServiceCollection services, Uri baseAddr
     _ = services.AddTransient<TenantHeaderHandler>();
 
     // Register ITenantClient separately (No TenantHeaderHandler context to prevent circular dep)
-    _ = services.AddScoped<ITenantClient>(sp =>
+    _ = services.AddScoped<ITenantClient>(_ =>
     {
         // Use a simple client or one with just Auth handler if needed
         // For public endpoint, base client is enough
@@ -93,7 +91,7 @@ static void RegisterScopedRefitClients(IServiceCollection services, Uri baseAddr
     {
         var tokenService = sp.GetRequiredService<TokenService>();
         var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
-        var correlationService = sp.GetRequiredService<CorrelationService>();
+        var correlationService = sp.GetRequiredService<ClientContextService>();
         var tenantService = sp.GetRequiredService<TenantService>();
 
         var authHandler =
@@ -119,7 +117,7 @@ static void RegisterScopedRefitClients(IServiceCollection services, Uri baseAddr
 }
 
 // Add authentication services (JWT token-based)
-builder.Services.AddScoped<CorrelationService>();
+builder.Services.AddScoped<ClientContextService>();
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<PasskeyService>();
 builder.Services.AddScoped<AuthenticationService>();
@@ -148,6 +146,9 @@ builder.Services.AddScoped<CurrencyService>();
 // Register SSE events service
 builder.Services.AddBookStoreEvents(new Uri(apiServiceUrl));
 
+// Register Auth Error Helper
+builder.Services.AddScoped<BookStore.Web.Helpers.AuthErrorHelper>();
+
 builder.Services.AddOutputCache();
 
 var app = builder.Build();
@@ -161,6 +162,17 @@ if (!app.Environment.IsDevelopment())
 
 // Add Forwarded Headers middleware early in the pipeline
 app.UseForwardedHeaders();
+
+var supportedCultures = new[] { "en-US" };
+var localizationOptions = new RequestLocalizationOptions()
+    .SetDefaultCulture(supportedCultures[0])
+    .AddSupportedCultures(supportedCultures)
+    .AddSupportedUICultures(supportedCultures);
+
+app.UseRequestLocalization(localizationOptions);
+
+// Add Log Enrichment Middleware
+app.UseMiddleware<LogEnrichmentMiddleware>();
 
 app.UseHttpsRedirection();
 

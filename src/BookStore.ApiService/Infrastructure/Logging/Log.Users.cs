@@ -81,5 +81,10 @@ public static partial class Log
             Level = LogLevel.Information,
             Message = "Logout successful for {User}")]
         public static partial void LogoutSuccessful(ILogger logger, string? user);
+
+        [LoggerMessage(
+            Level = LogLevel.Warning,
+            Message = "Passkey assertion failed. IsLockedOut: {IsLockedOut}, IsNotAllowed: {IsNotAllowed}, RequiresTwoFactor: {RequiresTwoFactor}")]
+        public static partial void PasskeyAssertionFailed(ILogger logger, bool isLockedOut, bool isNotAllowed, bool requiresTwoFactor);
     }
 }

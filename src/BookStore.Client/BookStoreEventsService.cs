@@ -14,7 +14,7 @@ public class BookStoreEventsService : IAsyncDisposable
 {
     readonly HttpClient _httpClient;
     readonly ILogger<BookStoreEventsService> _logger;
-    readonly Services.CorrelationService _correlationService;
+    readonly Services.ClientContextService _clientContext;
     CancellationTokenSource? _cts;
     Task? _listenerTask;
 
@@ -38,11 +38,11 @@ public class BookStoreEventsService : IAsyncDisposable
     public BookStoreEventsService(
         HttpClient httpClient,
         ILogger<BookStoreEventsService> logger,
-        Services.CorrelationService correlationService)
+        Services.ClientContextService clientContext)
     {
         _httpClient = httpClient;
         _logger = logger;
-        _correlationService = correlationService;
+        _clientContext = clientContext;
     }
 
     public void StartListening()
@@ -82,7 +82,7 @@ public class BookStoreEventsService : IAsyncDisposable
                         {
                             if (notification.EventId != Guid.Empty)
                             {
-                                _correlationService.UpdateCausationId(notification.EventId.ToString());
+                                _clientContext.UpdateCausationId(notification.EventId.ToString());
                             }
 
                             OnNotificationReceived?.Invoke(notification);

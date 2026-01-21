@@ -1,0 +1,37 @@
+@using BookStore.Client.Services
+@inject ClientContextService ClientContext
+@inject IJSRuntime Js
+
+@code {
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Fetch browser info after initial render so we don't block the UI
+            var browserInfo = await GetBrowserInfoAsync();
+            if (browserInfo != null)
+            {
+                // Update the service. The LoggingHubFilter will pick it up for interactive events.
+                ClientContext.SetBrowserInfo(browserInfo);
+            }
+        }
+    }
+
+    async Task<ClientContextService.BrowserInfo?> GetBrowserInfoAsync()
+    {
+        try
+        {
+            var module = await Js.InvokeAsync<IJSObjectReference>("import", "/js/browser-info.js");
+            var info = await module.InvokeAsync<ClientContextService.BrowserInfo>("getBrowserInfo");
+            await module.DisposeAsync();
+            return info;
+        }
+        catch (Exception)
+        {
+            // Ignore JS errors (e.g., during prerendering or disconnection)
+            return null;
+        }
+    }
+
+}
