@@ -20,7 +20,7 @@ public class TenantSecurityTests
         // Test 1: Valid token (tenant=acme), Header=contoso -> Should Fail
         // This confirms the middleware CHECKS the claim against the header.
 
-        var request = new HttpRequestMessage(HttpMethod.Get, "/api/books");
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/cart");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", validToken);
         // Admin token is for *DEFAULT* tenant usually (or acme/contoso depending on which one we picked).
         // GlobalHooks authenticates as admin@bookstore.com -> Default Tenant.
@@ -51,7 +51,7 @@ public class TenantSecurityTests
         // but we want it to be Forbidden or Defaulted.
         // Plan: Reject non-default tenant access for Anonymous users.
 
-        var request = new HttpRequestMessage(HttpMethod.Get, "/api/books");
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/cart");
         // No Authorization header
         request.Headers.Add("X-Tenant-ID", "acme");
 
@@ -82,9 +82,12 @@ public class TenantSecurityTests
         // If I am authenticated as "BookStore" (default), and I try to access "acme", I should be forbidden.
 
         var validToken = GlobalHooks.AdminAccessToken!;
-        var request = new HttpRequestMessage(HttpMethod.Get, "/api/books");
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/cart");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", validToken);
-        request.Headers.Add("X-Tenant-ID", "acme");
+        // Admin token is for *DEFAULT* tenant usually (or acme/contoso depending on which one we picked).
+        // GlobalHooks authenticates as admin@bookstore.com -> Default Tenant.
+
+        request.Headers.Add("X-Tenant-ID", "acme"); // Mismatch!
 
         var response = await client.SendAsync(request);
 

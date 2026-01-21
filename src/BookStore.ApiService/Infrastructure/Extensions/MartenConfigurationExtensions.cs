@@ -11,9 +11,12 @@ using JasperFx.Events.Projections;
 using Marten;
 using Marten.Events.Daemon;
 using Marten.Events.Projections;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Weasel.Core;
 using Weasel.Postgresql;
+using Wolverine;
 using Wolverine.Marten;
 
 namespace BookStore.ApiService.Infrastructure.Extensions;
@@ -77,6 +80,15 @@ public static class MartenConfigurationExtensions
         _ = services.AddScoped<IDocumentSession>(sp =>
         {
             var store = sp.GetRequiredService<IDocumentStore>();
+
+            // If running within a Wolverine message handler, use the envelope's tenant ID
+            var messageContext = sp.GetService<IMessageContext>();
+            if (messageContext?.TenantId != null)
+            {
+                return store.LightweightSession(messageContext.TenantId);
+            }
+
+            // Otherwise fall back to ASP.NET Core tenant context
             var tenantContext = sp.GetRequiredService<ITenantContext>();
             return store.LightweightSession(tenantContext.TenantId);
         });

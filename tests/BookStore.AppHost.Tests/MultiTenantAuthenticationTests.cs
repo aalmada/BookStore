@@ -1,12 +1,8 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using Aspire.Hosting.Testing;
 using JasperFx;
 using Marten;
-using TUnit.Assertions.Extensions;
-using Weasel.Core;
-using Weasel.Postgresql;
 
 namespace BookStore.AppHost.Tests;
 
@@ -141,7 +137,7 @@ public class MultiTenantAuthenticationTests : IDisposable
         _ = await Assert.That(acmeLogin).IsNotNull();
 
         // Act: Try to access books with acme JWT but contoso tenant header
-        var request = new HttpRequestMessage(HttpMethod.Get, "/api/books");
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/cart");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", acmeLogin!.AccessToken);
         request.Headers.Add("X-Tenant-ID", "contoso");
 
@@ -203,7 +199,7 @@ public class MultiTenantAuthenticationTests : IDisposable
         _ = await Assert.That(contosoLogin).IsNotNull();
 
         // Act: Try to access acme books with contoso credentials
-        var request = new HttpRequestMessage(HttpMethod.Get, "/api/books");
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/cart");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", contosoLogin!.AccessToken);
         request.Headers.Add("X-Tenant-ID", "acme");
 
