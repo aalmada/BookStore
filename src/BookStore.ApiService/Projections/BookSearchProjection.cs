@@ -2,7 +2,6 @@ using BookStore.ApiService.Events;
 using BookStore.Shared.Models;
 using Marten;
 using Marten.Events.Aggregation;
-using Marten.Metadata;
 
 namespace BookStore.ApiService.Projections;
 

@@ -1338,6 +1338,167 @@ public BookStatisticsProjection()
 }
 ```
 
+### Event Enrichment
+
+When projections need data from other documents (like looking up Publisher details when processing a `BookAdded` event), naive implementations can cause N+1 query problems during batch processing. Marten provides **declarative event enrichment** to efficiently batch-load related documents.
+
+#### The N+1 Problem in Projections
+
+**Before (N+1 queries)**:
+```csharp
+// Each event in a batch triggers a separate database query
+public async Task<ProviderShift> Create(ProviderJoined joined, IQuerySession session)
+{
+    // This query runs ONCE PER EVENT - N+1 problem!
+    var provider = await session.LoadAsync<Provider>(joined.ProviderId);
+    return new ProviderShift(joined.BoardId, provider);
+}
+```
+
+**After (Batched enrichment)**:
+```csharp
+public override async Task EnrichEventsAsync(
+    SliceGroup<ProviderShift, Guid> group,
+    IQuerySession querySession,
+    CancellationToken cancellation)
+{
+    await group
+        .EnrichWith<Provider>()              // What document type to load
+        .ForEvent<ProviderJoined>()          // Which events need enrichment
+        .ForEntityId(x => x.ProviderId)      // How to extract the ID
+        .EnrichAsync((slice, e, provider) => // Apply the enrichment
+        {
+            // Replace with enhanced event containing the loaded data
+            slice.ReplaceEvent(e, new EnhancedProviderJoined(e.Data.BoardId, provider));
+        });
+}
+```
+
+#### Using `References<T>` for Simpler Enrichment
+
+Instead of creating enhanced event types, use the built-in `References<T>` wrapper:
+
+```csharp
+public override async Task EnrichEventsAsync(
+    SliceGroup<BookSearchProjection, Guid> group,
+    IQuerySession querySession,
+    CancellationToken cancellation)
+{
+    // Load and attach publisher data to events
+    await group
+        .EnrichWith<PublisherProjection>()
+        .ForEvent<BookAdded>()
+        .ForEntityId(x => x.PublisherId)
+        .AddReferences();  // Adds References<PublisherProjection> events
+
+    // Load and attach author data
+    await group
+        .EnrichWith<AuthorProjection>()
+        .ForEvent<BookAdded>()
+        .ForEntityId(x => x.AuthorIds)  // Works with collections!
+        .AddReferences();
+}
+```
+
+Then access the enriched data in your `Evolve` method:
+
+```csharp
+public override BookSearchProjection Evolve(
+    BookSearchProjection snapshot, 
+    Guid id, 
+    IEvent e)
+{
+    switch (e.Data)
+    {
+        case BookAdded added:
+            snapshot = new BookSearchProjection { Id = id, Title = added.Title };
+            break;
+            
+        case References<PublisherProjection> publisher:
+            snapshot.PublisherName = publisher.Entity.Name;
+            break;
+            
+        case References<AuthorProjection> author:
+            snapshot.AuthorNames = string.Join(", ", 
+                author.Entities.Select(a => a.Name));
+            break;
+    }
+    return snapshot;
+}
+```
+
+> [!NOTE]
+> See the [official documentation on event enrichment](https://martendb.io/events/projections/enrichment.html) for more details.
+
+### Composite Projections
+
+Composite Projections allow running multiple projections together in stages, enabling downstream projections to use the build products of upstream projections.
+
+**Use Cases**:
+- Building denormalized views that need data from multiple upstream projections
+- Eliminating duplicate logic between related projections
+- Improving throughput by batching event fetching across projections
+
+#### Registration
+
+```csharp
+opts.Projections.CompositeProjectionFor("TeleHealth", projection =>
+{
+    // Stage 1: Build base projections
+    projection.Add<ProviderShiftProjection>();
+    projection.Add<AppointmentProjection>();
+    projection.Snapshot<Board>();
+    
+    // Stage 2: Build projections that depend on Stage 1
+    projection.Add<AppointmentDetailsProjection>(2);
+    projection.Add<BoardSummaryProjection>(2);
+});
+```
+
+#### Using `Updated<T>` Events
+
+Stage 2 projections receive synthetic `Updated<T>` events containing the latest snapshot from Stage 1:
+
+```csharp
+public class AppointmentDetailsProjection : MultiStreamProjection<AppointmentDetails, Guid>
+{
+    public AppointmentDetailsProjection()
+    {
+        // Listen for updates from upstream projections
+        Identity<Updated<Appointment>>(x => x.Entity.Id);
+        Identity<Updated<Board>>(x => x.Entity.Id);
+    }
+
+    public override AppointmentDetails Evolve(
+        AppointmentDetails snapshot, 
+        Guid id, 
+        IEvent e)
+    {
+        switch (e.Data)
+        {
+            case Updated<Appointment> updated:
+                // Access the latest Appointment snapshot directly
+                snapshot.Status = updated.Entity.Status;
+                snapshot.EstimatedTime = updated.Entity.EstimatedTime;
+                break;
+                
+            case Updated<Board> board:
+                snapshot.BoardName = board.Entity.Name;
+                break;
+        }
+        return snapshot;
+    }
+}
+```
+
+**Key Benefits**:
+- **Consistency**: Downstream projections see the exact correct upstream data for each point in the event sequence
+- **Efficiency**: Events are read once for all constituent projections
+- **Batching**: Updates are applied to all projections at once, reducing database round trips
+
+> [!NOTE]
+> See the [official documentation on composite projections](https://martendb.io/events/projections/composite.html) for information about rebuilding, versioning, and non-stale querying.
+
 ### Querying Projections
 
 ```csharp
@@ -1360,6 +1521,27 @@ var page = await session.Query<BookSearchProjection>()
     .Take(pageSize)
     .ToListAsync();
 ```
+
+### Deep Dive: Aggregation Lifecycle (Async Daemon)
+
+Understanding how the Async Daemon processes events is crucial for optimizing high-performance projections. The lifecycle for a batch of events follows this "Functional Decider" flow:
+
+1.  **Daemon Fetching**: The daemon pulls a range of events (e.g., Sequence 1000-2000) from the event store.
+2.  **Slicing**: Events are grouped into `EventSlice` objects.
+    *   **Single Stream**: Automatically sliced by `StreamId`.
+    *   **Multi-Stream**: Sliced via your custom `AggregateGrouper` (e.g., routing `BookAdded` to `AuthorStatistics`).
+    *   *Tip*: Use `LoadManyAsync` in your custom grouper (Step 2) to batch-load state needed for *routing decisions*, effectively combining slicing and fetching for logic that depends on prior state.
+3.  **Fetching**: Marten batch-loads the current state of all aggregate documents referenced in the slices.
+4.  **Enrichment**: `EnrichWith` hooks execute here. This is the ideal place to batch-load *reference data* needed for the projection (e.g., loading `Publisher` name when processing `BookAdded`) to avoid N+1 queries during the Apply step.
+5.  **Evolve (Apply)**: Pure logic step. `(EventSlice, Snapshot)` → `New Snapshot`.
+    *   Methods should be pure and side-effect free.
+    *   Avoid database queries here; use data pre-loaded in Step 4.
+6.  **Side Effects**: Using `RaiseSideEffects`, you can emit new messages (e.g., "AuthorGoalReached") just before commitment. This integrates with Wolverine for robust messaging.
+7.  **Persist**: Marten commits all changes (Upserts, Inserts, Outbox messages) to the database in a **single transaction batch**.
+8.  **Post-Commit**: Observers run (e.g., actually publishing the outboxed messages).
+
+> [!NOTE]
+> This "Fetch -> Slice -> Enrich -> Evolve -> Commit" pipeline is designed to minimize database round-trips. Always aim to push IO to the "Slicing" (Grouper) or "Enrichment" phases rather than the "Evolve" (Apply) phase.
 
 ## Projection Commit Listeners
 

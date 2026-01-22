@@ -1,4 +1,6 @@
 using BookStore.ApiService.Events;
+using JasperFx.Events;
+using JasperFx.Events.Grouping;
 using Marten;
 using Marten.Events.Aggregation;
 using Marten.Events.Projections;
@@ -10,87 +12,151 @@ public class PublisherStatistics
 {
     public Guid Id { get; set; } // Publisher ID
     public int BookCount { get; set; }
+
+    // Track which books are counted for idempotency
+    public HashSet<Guid> BookIds { get; set; } = [];
 }
 
+/// <summary>
+/// Multi-stream projection that tracks book counts per publisher.
+/// Uses a custom grouper with LoadManyAsync to route events to both
+/// added and removed publishers, avoiding N+1 queries.
+/// </summary>
 public class PublisherStatisticsProjectionBuilder : MultiStreamProjection<PublisherStatistics, Guid>
 {
     public PublisherStatisticsProjectionBuilder()
     {
-        // Listen to book events
-        Identity<BookAdded>(x => x.Id);
-        Identity<BookUpdated>(x => x.Id);
-        Identity<BookSoftDeleted>(x => x.Id);
-        Identity<BookRestored>(x => x.Id);
+        Options.CacheLimitPerTenant = 1000;
 
-        // Also listen to publisher creation to initialize stats
         Identity<PublisherAdded>(x => x.Id);
+        CustomGrouping(new PublisherStatisticsGrouper());
     }
 
-    // Initialize stats when publisher is created
     public PublisherStatistics Create(PublisherAdded @event) => new()
     {
         Id = @event.Id,
         BookCount = 0
     };
 
-    // When a book is added, increment count if it uses this publisher
-    public async Task Apply(BookAdded @event, PublisherStatistics projection, IQuerySession _)
+    public void Apply(Guid id, BookAdded @event, PublisherStatistics state)
     {
-        if (@event.PublisherId == projection.Id)
+        state.Id = id;
+        if (@event.PublisherId == id)
         {
-            projection.BookCount++;
+            _ = state.BookIds.Add(@event.Id);
+            state.BookCount = state.BookIds.Count;
         }
     }
 
-    // When a book is updated, recalculate if publisher changed
-    public async Task Apply(BookUpdated @event, PublisherStatistics projection, IQuerySession session)
+    public void Apply(Guid id, BookUpdated @event, PublisherStatistics state)
     {
-        var book = await session.LoadAsync<BookSearchProjection>(@event.Id);
-        if (book == null)
+        state.Id = id;
+        if (@event.PublisherId == id)
         {
+            _ = state.BookIds.Add(@event.Id);
+        }
+        else
+        {
+            // If routed here but currently not the publisher, it means it was removed
+            _ = state.BookIds.Remove(@event.Id);
+        }
+
+        state.BookCount = state.BookIds.Count;
+    }
+
+    public void Apply(Guid id, BookSoftDeleted @event, PublisherStatistics state)
+    {
+        state.Id = id;
+        _ = state.BookIds.Remove(@event.Id);
+        state.BookCount = state.BookIds.Count;
+    }
+
+    public void Apply(Guid id, BookRestored @event, PublisherStatistics state)
+    {
+        state.Id = id;
+        _ = state.BookIds.Add(@event.Id);
+        state.BookCount = state.BookIds.Count;
+    }
+}
+
+public class PublisherStatisticsGrouper : IAggregateGrouper<Guid>
+{
+    public async Task Group(
+        IQuerySession session,
+        IEnumerable<IEvent> events,
+        IEventGrouping<Guid> grouping)
+    {
+        var bookEvents = events
+            .Where(e => e.Data is BookUpdated or BookSoftDeleted or BookRestored)
+            .ToList();
+
+        if (bookEvents.Count == 0)
+        {
+            RouteSimpleEvents(events, grouping);
             return;
         }
 
-        var wasPublisher = book.PublisherId == projection.Id;
-        var isPublisher = @event.PublisherId == projection.Id;
+        var bookIds = bookEvents.Select(e => e.StreamId).Distinct().ToArray();
+        var books = await session.LoadManyAsync<BookSearchProjection>(bookIds);
+        var bookMap = books.ToDictionary(b => b.Id);
 
-        if (!wasPublisher && isPublisher)
+        foreach (var @event in events)
         {
-            projection.BookCount++;
-        }
-        else if (wasPublisher && !isPublisher)
-        {
-            projection.BookCount = int.Max(0, projection.BookCount - 1);
+            switch (@event.Data)
+            {
+                case PublisherAdded added:
+                    grouping.AddEvent(added.Id, @event);
+                    break;
+
+                case BookAdded bookAdded:
+                    if (bookAdded.PublisherId.HasValue)
+                    {
+                        grouping.AddEvent(bookAdded.PublisherId.Value, @event);
+                    }
+
+                    break;
+
+                case BookUpdated bookUpdated:
+                    // Route to new publisher
+                    if (bookUpdated.PublisherId.HasValue)
+                    {
+                        grouping.AddEvent(bookUpdated.PublisherId.Value, @event);
+                    }
+
+                    // Route to old publisher if different
+                    if (bookMap.TryGetValue(@event.StreamId, out var previousBook) && previousBook.PublisherId.HasValue)
+                    {
+                        if (previousBook.PublisherId != bookUpdated.PublisherId)
+                        {
+                            grouping.AddEvent(previousBook.PublisherId.Value, @event);
+                        }
+                    }
+
+                    break;
+
+                case BookSoftDeleted or BookRestored:
+                    if (bookMap.TryGetValue(@event.StreamId, out var existingBook) && existingBook.PublisherId.HasValue)
+                    {
+                        grouping.AddEvent(existingBook.PublisherId.Value, @event);
+                    }
+
+                    break;
+            }
         }
     }
 
-    // When a book is soft-deleted, decrement count
-    public async Task Apply(BookSoftDeleted @event, PublisherStatistics projection, IQuerySession session)
+    static void RouteSimpleEvents(IEnumerable<IEvent> events, IEventGrouping<Guid> grouping)
     {
-        var book = await session.LoadAsync<BookSearchProjection>(@event.Id);
-        if (book == null)
+        foreach (var @event in events)
         {
-            return;
-        }
-
-        if (book.PublisherId == projection.Id)
-        {
-            projection.BookCount = int.Max(0, projection.BookCount - 1);
-        }
-    }
-
-    // When a book is restored, increment count
-    public async Task Apply(BookRestored @event, PublisherStatistics projection, IQuerySession session)
-    {
-        var book = await session.LoadAsync<BookSearchProjection>(@event.Id);
-        if (book == null)
-        {
-            return;
-        }
-
-        if (book.PublisherId == projection.Id)
-        {
-            projection.BookCount++;
+            if (@event.Data is PublisherAdded publisherAdded)
+            {
+                grouping.AddEvent(publisherAdded.Id, @event);
+            }
+            else if (@event.Data is BookAdded bookAdded && bookAdded.PublisherId.HasValue)
+            {
+                grouping.AddEvent(bookAdded.PublisherId.Value, @event);
+            }
         }
     }
 }

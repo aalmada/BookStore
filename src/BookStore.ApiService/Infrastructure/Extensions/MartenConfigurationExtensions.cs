@@ -160,14 +160,16 @@ public static class MartenConfigurationExtensions
     static void RegisterProjections(StoreOptions options)
     {
         // Configure projections using SingleStreamProjection pattern
-        // Simple projections use Inline lifecycle for immediate consistency (important for UI updates/SSE)
-        // BookSearchProjection remains Async as it's more complex (indexes, heavy processing)
+        // Simple projections use Async lifecycle for eventual consistency
         _ = options.Projections.Snapshot<CategoryProjection>(SnapshotLifecycle.Async);
         _ = options.Projections.Snapshot<AuthorProjection>(SnapshotLifecycle.Async);
         _ = options.Projections.Snapshot<BookSearchProjection>(SnapshotLifecycle.Async);
         _ = options.Projections.Snapshot<PublisherProjection>(SnapshotLifecycle.Async);
         _ = options.Projections.Snapshot<UserProfile>(SnapshotLifecycle.Inline);
         options.Projections.Add<BookStatisticsProjection>(ProjectionLifecycle.Async);
+        options.Projections.Add<AuthorStatisticsProjectionBuilder>(ProjectionLifecycle.Async);
+        options.Projections.Add<CategoryStatisticsProjectionBuilder>(ProjectionLifecycle.Async);
+        options.Projections.Add<PublisherStatisticsProjectionBuilder>(ProjectionLifecycle.Async);
     }
 
     static void ConfigureIndexes(StoreOptions options)

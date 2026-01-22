@@ -9,14 +9,29 @@ namespace BookStore.ApiService.UnitTests.Projections;
 public class AuthorStatisticsProjectionTests
 {
     readonly AuthorStatisticsProjectionBuilder _projection = new();
-    readonly IQuerySession _session = Substitute.For<IQuerySession>();
+
 
     // Helper to create a projection state
-    static AuthorStatistics CreateState(Guid authorId, int count) => new()
+    static AuthorStatistics CreateState(Guid authorId, int count, Guid? includeBookId = null)
     {
-        Id = authorId,
-        BookCount = count
-    };
+        var stats = new AuthorStatistics
+        {
+            Id = authorId,
+            BookCount = count
+        };
+        
+        if (includeBookId.HasValue)
+        {
+            stats.BookIds.Add(includeBookId.Value);
+        }
+        
+        while (stats.BookIds.Count < count)
+        {
+            stats.BookIds.Add(Guid.CreateVersion7());
+        }
+        
+        return stats;
+    }
 
     [Test]
     [Category("Unit")]
@@ -59,7 +74,7 @@ public class AuthorStatisticsProjectionTests
             []);
 
         // Act
-        await _projection.Apply(@event, state, _session);
+        _projection.Apply(authorId, @event, state);
 
         // Assert
         _ = await Assert.That(state.BookCount).IsEqualTo(1);
@@ -86,7 +101,7 @@ public class AuthorStatisticsProjectionTests
             []);
 
         // Act
-        await _projection.Apply(@event, state, _session);
+        _projection.Apply(authorId, @event, state);
 
         // Assert
         _ = await Assert.That(state.BookCount).IsEqualTo(0);
@@ -99,15 +114,7 @@ public class AuthorStatisticsProjectionTests
         // Arrange
         var authorId = Guid.CreateVersion7();
         var bookId = Guid.CreateVersion7();
-        var state = CreateState(authorId, 5);
-
-        // Previous state of book: Author was NOT in it
-        var previousBookState = new BookSearchProjection
-        {
-            Id = bookId,
-            AuthorIds = [Guid.CreateVersion7()]
-        };
-        _ = _session.LoadAsync<BookSearchProjection>(bookId).Returns(previousBookState);
+        var state = CreateState(authorId, 5); // Random 5
 
         // Update event: Author IS in it
         var @event = new BookUpdated(
@@ -123,7 +130,7 @@ public class AuthorStatisticsProjectionTests
             []);
 
         // Act
-        await _projection.Apply(@event, state, _session);
+        _projection.Apply(authorId, @event, state);
 
         // Assert
         _ = await Assert.That(state.BookCount).IsEqualTo(6);
@@ -136,15 +143,7 @@ public class AuthorStatisticsProjectionTests
         // Arrange
         var authorId = Guid.CreateVersion7();
         var bookId = Guid.CreateVersion7();
-        var state = CreateState(authorId, 5);
-
-        // Previous state of book: Author WAS in it
-        var previousBookState = new BookSearchProjection
-        {
-            Id = bookId,
-            AuthorIds = [authorId]
-        };
-        _ = _session.LoadAsync<BookSearchProjection>(bookId).Returns(previousBookState);
+        var state = CreateState(authorId, 5, bookId); // Ensure bookId is in the set
 
         // Update event: Author is NOT in it
         var @event = new BookUpdated(
@@ -160,7 +159,7 @@ public class AuthorStatisticsProjectionTests
             []);
 
         // Act
-        await _projection.Apply(@event, state, _session);
+        _projection.Apply(authorId, @event, state);
 
         // Assert
         _ = await Assert.That(state.BookCount).IsEqualTo(4);
@@ -173,19 +172,12 @@ public class AuthorStatisticsProjectionTests
         // Arrange
         var authorId = Guid.CreateVersion7();
         var bookId = Guid.CreateVersion7();
-        var state = CreateState(authorId, 5);
-
-        var previousBookState = new BookSearchProjection
-        {
-            Id = bookId,
-            AuthorIds = [authorId]
-        };
-        _ = _session.LoadAsync<BookSearchProjection>(bookId).Returns(previousBookState);
+        var state = CreateState(authorId, 5, bookId); // Ensure bookId is in the set
 
         var @event = new BookSoftDeleted(bookId, DateTimeOffset.UtcNow);
 
         // Act
-        await _projection.Apply(@event, state, _session);
+        _projection.Apply(authorId, @event, state);
 
         // Assert
         _ = await Assert.That(state.BookCount).IsEqualTo(4);
@@ -198,21 +190,15 @@ public class AuthorStatisticsProjectionTests
         // Arrange
         var authorId = Guid.CreateVersion7();
         var bookId = Guid.CreateVersion7();
-        var state = CreateState(authorId, 5);
-
-        var previousBookState = new BookSearchProjection
-        {
-            Id = bookId,
-            AuthorIds = [authorId]
-        };
-        _ = _session.LoadAsync<BookSearchProjection>(bookId).Returns(previousBookState);
+        var state = CreateState(authorId, 5); // 5 randoms, doesn't include bookId (assumed deleted)
 
         var @event = new BookRestored(bookId, DateTimeOffset.UtcNow);
 
         // Act
-        await _projection.Apply(@event, state, _session);
+        _projection.Apply(authorId, @event, state);
 
         // Assert
         _ = await Assert.That(state.BookCount).IsEqualTo(6);
     }
 }
+
