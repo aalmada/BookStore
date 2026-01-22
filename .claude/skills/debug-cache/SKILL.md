@@ -4,7 +4,24 @@ description: Debug HybridCache and Redis caching issues when data isn't being ca
 license: MIT
 ---
 
-Use this guide to troubleshoot **HybridCache** and **Redis** caching issues in the BookStore application.
+Use this guide to troubleshoot **HybridCache** and **Redis** caching issues.
+
+## Quick Path (80% of issues)
+
+// turbo
+1. **Check Redis is running**:
+   ```bash
+   docker ps | grep redis && redis-cli ping
+   ```
+   Should see: `PONG`
+
+2. **Check cache tags match** between `GetOrCreateAsync` and `RemoveByTagAsync`
+3. **Check cache key includes all params** (page, culture, userId)
+4. **Check `RemoveByTagAsync`** is called after mutations
+
+If still broken, continue to full debugging below.
+
+---
 
 ## Symptoms
 
@@ -14,6 +31,9 @@ Use this guide to troubleshoot **HybridCache** and **Redis** caching issues in t
 - ✗ Redis connection errors
 
 ## Related Skills
+
+**Prerequisites**:
+- `/start-solution` - Solution must be running to debug cache
 
 **First Steps**:
 - `/verify-feature` - Run basic checks before caching-specific debugging
@@ -99,14 +119,14 @@ public static async Task<IResult> GetBooks(
             {
                 Expiration = TimeSpan.FromMinutes(5)
             });
-            
+
             await using var session = store.QuerySession();
             return await session.Query<BookProjection>().ToListAsync();
         },
         tags: [CacheTags.BookList],  // ✅ Tags for invalidation
         cancellationToken: cancellationToken
     );
-    
+
     return Results.Ok(books);
 }
 
@@ -134,10 +154,10 @@ public static async Task<IResult> UpdateBook(
     CancellationToken cancellationToken)
 {
     // ... mutation logic ...
-    
+
     // ✅ Correct - invalidate by tag
     await cache.RemoveByTagAsync(CacheTags.BookList, cancellationToken);
-    
+
     return Results.Ok();
 }
 
@@ -156,7 +176,7 @@ public static class CacheTags
     public const string BookList = "book-list";
     public const string BookDetails = "book-details";
     public const string AuthorList = "author-list";
-    
+
     // ❌ Missing: Your resource tags
 }
 ```
@@ -245,7 +265,7 @@ public static async Task<IResult> GetBooks(
     CancellationToken cancellationToken = default)
 {
     logger.LogInformation("Fetching books from cache");
-    
+
     var books = await cache.GetOrCreateAsync(
         "books:list",
         async entry =>
@@ -257,7 +277,7 @@ public static async Task<IResult> GetBooks(
         tags: [CacheTags.BookList],
         cancellationToken: cancellationToken
     );
-    
+
     logger.LogInformation("Returning {Count} books", books.Count);
     return Results.Ok(books);
 }
@@ -360,7 +380,7 @@ var cacheKey = "books:list";
 entry.SetOptions(new HybridCacheEntryOptions
 {
     Expiration = TimeSpan.FromMinutes(5),        // Distributed cache
-    LocalCacheExpiration = TimeSpan.FromMinutes(1)  // In-memory cache  
+    LocalCacheExpiration = TimeSpan.FromMinutes(1)  // In-memory cache
 });
 
 // ✗ Wrong - cache never expires
@@ -416,10 +436,21 @@ logger.LogInformation("Cache callback executed (MISS)");
 - ❌ Don't cache user-specific data without user ID in key
 - ❌ Don't use very long expirations (causes stale data)
 
-## Next Steps
+## Related Skills
 
-Once cache is working:
-- Monitor hit/miss rates in production
-- Tune expiration times based on data volatility
-- Consider cache warming for frequently accessed data
-- Add cache metrics to Aspire dashboard
+**First Steps**:
+- `/verify-feature` - Run basic checks before caching-specific debugging
+
+**Related Debugging**:
+- `/debug-sse` - If issue seems SSE-related instead of cache
+- `/doctor` - Verify Docker and Redis are installed
+
+**After Fixing**:
+- `/verify-feature` - Confirm caching works correctly
+- `/scaffold-test` - Add tests for cache scenarios
+
+**See Also**:
+- [scaffold-read](../scaffold-read/SKILL.md) - Cache implementation patterns
+- [scaffold-write](../scaffold-write/SKILL.md) - Cache invalidation on mutations
+- [caching-guide](../../../docs/guides/caching-guide.md) - HybridCache configuration and patterns
+- ApiService AGENTS.md - HybridCache configuration

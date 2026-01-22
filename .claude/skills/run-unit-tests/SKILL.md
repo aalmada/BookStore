@@ -1,5 +1,5 @@
 ---
-name: Run Unit Tests
+name: run-unit-tests
 description: Run unit tests for the API Service and Analyzers. Use this to verify business logic, individual components, and code analyzers.
 license: MIT
 ---
@@ -24,6 +24,12 @@ To verify the logic, endpoints, and custom analyzers of the API Service:
      dotnet test tests/ApiService/BookStore.ApiService.Analyzers.UnitTests/BookStore.ApiService.Analyzers.UnitTests.csproj
      ```
 
+4. **Analyze Results**
+   - **Pass**: Core logic and static analysis rules are correct.
+   - **Fail**:
+     - Check the specific failing test and project.
+     - Analyzer tests often fail if code samples in tests don't match expected diagnostics.
+
 ## Related Skills
 
 **Used By**:
@@ -34,11 +40,6 @@ To verify the logic, endpoints, and custom analyzers of the API Service:
 - `/verify-feature` - Complete verification (build + format + all tests)
 
 **See Also**:
+- [testing-guide](../../../docs/guides/testing-guide.md) - TUnit testing patterns
 - ApiService.UnitTests AGENTS.md - Unit test patterns
 - Analyzers.UnitTests AGENTS.md - Analyzer testing patterns
-
-4. **Analyze Results**
-   - **Pass**: Core logic and static analysis rules are correct.
-   - **Fail**:
-     - Check the specific failing test and project.
-     - Analyzer tests often fail if code samples in tests don't match expected diagnostics.

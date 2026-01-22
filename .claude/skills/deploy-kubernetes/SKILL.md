@@ -425,10 +425,19 @@ kubectl apply -f deploy/k8s/
 - ✅ Use persistent volumes for stateful services
 - ✅ Enable network policies for security
 
-## Next Steps
+## Related Skills
 
-- Configure monitoring (Prometheus, Grafana)
-- Set up CI/CD pipeline
-- Implement autoscaling policies
-- Configure backup for database
-- Set up cert-manager for TLS
+**Prerequisites**:
+- `/doctor` - Check kubectl, Docker, and Aspire CLI installation
+- `/verify-feature` - Ensure build and tests pass before deployment
+
+**Alternatives**:
+- `/deploy-to-azure` - For simpler Azure Container Apps deployment
+
+**Recovery**:
+- `/rollback-deployment` - Rollback failed Kubernetes deployment
+
+**See Also**:
+- [aspire-deployment-guide](../../../docs/guides/aspire-deployment-guide.md) - Kubernetes deployment with Aspire
+- [aspire-guide](../../../docs/guides/aspire-guide.md) - Aspire orchestration overview
+- AppHost AGENTS.md - Aspire orchestration configuration
