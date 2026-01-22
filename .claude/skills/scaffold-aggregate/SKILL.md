@@ -15,7 +15,7 @@ Follow this guide to create a new **event-sourced aggregate** in the ApiService 
    - **Example**:
      ```csharp
      namespace BookStore.ApiService.Events;
-     
+
      public record AuthorCreated(
          Guid Id,
          string Name,
@@ -29,7 +29,7 @@ Follow this guide to create a new **event-sourced aggregate** in the ApiService 
    - **Template**:
      ```csharp
      namespace BookStore.ApiService.Aggregates;
-     
+
      public record Author
      {
          public Guid Id { get; init; }
@@ -37,7 +37,7 @@ Follow this guide to create a new **event-sourced aggregate** in the ApiService 
          public string Biography { get; init; } = string.Empty;
          public bool Deleted { get; init; }
          public int Version { get; init; }
-         
+
          // Factory method for new aggregates
          public static Author Create(AuthorCreated @event)
          {
@@ -48,13 +48,13 @@ Follow this guide to create a new **event-sourced aggregate** in the ApiService 
                  Biography = @event.Biography
              };
          }
-         
+
          // Apply method for Marten (MUST be void, single parameter)
          public void Apply(AuthorCreated @event)
          {
              // Marten uses this for event replay - do not return anything
          }
-         
+
          // Apply method for subsequent events
          public void Apply(AuthorUpdated @event)
          {
@@ -72,10 +72,10 @@ Follow this guide to create a new **event-sourced aggregate** in the ApiService 
      {
          if (Deleted)
              throw new InvalidOperationException("Cannot update deleted author");
-             
+
          if (string.IsNullOrWhiteSpace(name))
              throw new ArgumentException("Name is required", nameof(name));
-         
+
          return new AuthorUpdated(Id, name, biography, DateTimeOffset.UtcNow);
      }
      ```
@@ -87,7 +87,7 @@ Follow this guide to create a new **event-sourced aggregate** in the ApiService 
      builder.Services.AddMarten(options =>
      {
          // Existing configuration...
-         
+
          // Add your aggregate
          options.Events.StreamIdentity = StreamIdentity.AsGuid;
      });
@@ -99,7 +99,7 @@ Follow this guide to create a new **event-sourced aggregate** in the ApiService 
      ```csharp
      using TUnit.Core;
      using TUnit.Assertions.Extensions;
-     
+
      public class AuthorTests
      {
          [Test]
@@ -112,21 +112,21 @@ Follow this guide to create a new **event-sourced aggregate** in the ApiService 
                  "Author and speaker",
                  DateTimeOffset.UtcNow
              );
-             
+
              // Act
              var author = Author.Create(created);
-             
+
              // Assert
              await Assert.That(author.Id).IsEqualTo(created.Id);
              await Assert.That(author.Name).IsEqualTo("Martin Fowler");
          }
-         
+
          [Test]
          public async Task Update_DeletedAuthor_ThrowsException()
          {
              // Arrange
              var author = new Author { Deleted = true };
-             
+
              // Act & Assert
              await Assert.That(() => author.Update("New Name", "Bio"))
                  .Throws<InvalidOperationException>();
@@ -150,7 +150,7 @@ Follow this guide to create a new **event-sourced aggregate** in the ApiService 
 ## Related Skills
 
 **Prerequisites**:
-- None - this is a foundational skill
+- None - this is a foundational skill for event sourcing
 
 **Next Steps**:
 - `/scaffold-projection` - Create read models from aggregate events
@@ -160,7 +160,10 @@ Follow this guide to create a new **event-sourced aggregate** in the ApiService 
 
 **See Also**:
 - [scaffold-write](../scaffold-write/SKILL.md) - Complete write operation workflow
-- [Events Guide](../../../../docs/event-sourcing-guide.md) - Event Sourcing patterns
+- [event-sourcing-guide](../../../docs/guides/event-sourcing-guide.md) - Event Sourcing patterns
+- [marten-guide](../../../docs/guides/marten-guide.md) - Marten event store integration
+- [analyzer-rules](../../../docs/guides/analyzer-rules.md) - Code analyzer rules (BS1xxx-BS4xxx)
+- ApiService AGENTS.md - Backend patterns and conventions
 
 ## Key Rules to Remember
 

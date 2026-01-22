@@ -1,10 +1,13 @@
 # Shared Library Instructions
 
-**Scope**: `src/Shared/BookStore.Shared/**`
+**Scope**: `src/BookStore.Shared/**`
 
-## Core Rules
-- **Purity**: No business logic, only contracts, models, and shared utilities.
-- **Serialization**: Ensure models are serializable/deserializable (JSON-friendly properties).
-- **Notifications**: Define `IDomainEventNotification` implementations here for SSE.
-- **DTOs**: Define request/response DTOs using `record` types.
-- **Immutability**: Prefer `init` accessors and immutable collections.
+## Guides
+- `docs/guides/localization-guide.md` - Localization patterns
+- `docs/guides/real-time-notifications.md` - Notification models
+
+## Rules
+- No business logic - only contracts, models, DTOs, notifications
+- Use `record` types with `init` accessors
+- Define `IDomainEventNotification` implementations for SSE
+- Ensure JSON-friendly (camelCase, ISO 8601)

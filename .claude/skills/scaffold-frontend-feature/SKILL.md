@@ -1,5 +1,5 @@
 ---
-name: Scaffold Frontend Feature
+name: scaffold-frontend-feature
 description: Guide for adding a new feature to the Web Frontend (Blazor), focusing on Reactive State, Optimistic Updates, and Cache Invalidation.
 license: MIT
 ---
@@ -46,6 +46,13 @@ Follow this guide to implement a responsive frontend feature in `src/Web/BookSto
    - Add cases to `GetInvalidationKeys(IDomainEventNotification notification)`.
    - **Rule**: Map the Domain Event (e.g., `BookCreated`) to the Query Keys you defined in Step 2 (e.g., `"Books"`).
 
+6. **Verify**
+   - Run the app and verify:
+     1. Data loads.
+     2. Mutations update UI instantly.
+     3. SSE events (from other tabs/users) trigger auto-refetch.
+   - Run `/verify-feature` for complete verification.
+
 ## Related Skills
 
 **Prerequisites**:
@@ -63,15 +70,7 @@ Follow this guide to implement a responsive frontend feature in `src/Web/BookSto
 - `/debug-cache` - If query data is stale
 
 **See Also**:
-- Web AGENTS.md - ReactiveQuery patterns and SSE integration
+- [real-time-notifications](../../../docs/guides/real-time-notifications.md) - SSE architecture
 - [scaffold-write](../scaffold-write/SKILL.md) - Backend mutations
 - [scaffold-read](../scaffold-read/SKILL.md) - Backend queries
-
-## Verification
-
-6. **Verify**
-   - Run the app and verify:
-     1. Data loads.
-     2. Mutations update UI instantly.
-     3. SSE events (from other internal tabs/users) trigger auto-refetch.
-     4. **Multi-Tenancy**: Switch tenants (url var `?tenant=xxx`) and verify data isolation.
+- Web AGENTS.md - ReactiveQuery patterns and SSE integration

@@ -13,7 +13,7 @@ Follow this guide to create a new **Marten projection** (read model) for efficie
    - **Template**:
      ```csharp
      namespace BookStore.ApiService.Projections;
-     
+
      public class AuthorProjection
      {
          public Guid Id { get; set; }
@@ -23,7 +23,7 @@ Follow this guide to create a new **Marten projection** (read model) for efficie
          public int Version { get; set; }
          public DateTimeOffset CreatedAt { get; set; }
          public DateTimeOffset? UpdatedAt { get; set; }
-         
+
          // For localized content, use Dictionary<string, string>
          public Dictionary<string, string> Biographies { get; set; } = new();
      }
@@ -59,14 +59,14 @@ Follow this guide to create a new **Marten projection** (read model) for efficie
          UpdatedAt = @event.UpdatedAt;
          Version++;
      }
-     
+
      public void Apply(AuthorDeleted @event)
      {
          Deleted = true;
          UpdatedAt = @event.DeletedAt;
          Version++;
      }
-     
+
      public void Apply(AuthorRestored @event)
      {
          Deleted = false;
@@ -82,16 +82,16 @@ Follow this guide to create a new **Marten projection** (read model) for efficie
      ```csharp
      static void RegisterProjections(StoreOptions options)
      {
-         // ... existing projections
-         
-         // Add inline projection (for immediate consistency)
-         _ = options.Projections.Snapshot<AuthorProjection>(SnapshotLifecycle.Inline);
-         
-         // OR for async projection (recommended for high volume)
-         // options.Projections.Add<AuthorProjection>(ProjectionLifecycle.Async);
-     }
+         // Existing configuration...
+
+         // Add inline projection
+         options.Projections.Add<AuthorProjection>(ProjectionLifecycle.Inline);
+
+         // OR for async projection (recommended for production)
+         options.Projections.Add<AuthorProjection>(ProjectionLifecycle.Async);
+     });
      ```
-     
+
      > [!NOTE]
      > For Async projections, ensure you also register the `ProjectionCommitListener` to trigger SSE notifications.
 
@@ -117,12 +117,12 @@ Follow this guide to create a new **Marten projection** (read model) for efficie
          CancellationToken cancellationToken = default)
      {
          await using var session = store.QuerySession();
-         
+
          var authors = await session.Query<AuthorProjection>()
              .Where(x => !x.Deleted)
              .OrderBy(x => x.Name)
              .ToPagedListAsync(page, pageSize, cancellationToken);
-         
+
          return Results.Ok(authors);
      }
      ```
@@ -138,7 +138,7 @@ Follow this guide to create a new **Marten projection** (read model) for efficie
          CancellationToken cancellationToken = default)
      {
          var cacheKey = $"authors:page:{page}:size:{pageSize}";
-         
+
          var authors = await cache.GetOrCreateAsync(
              cacheKey,
              async entry =>
@@ -148,7 +148,7 @@ Follow this guide to create a new **Marten projection** (read model) for efficie
                      Expiration = TimeSpan.FromMinutes(5),
                      LocalCacheExpiration = TimeSpan.FromMinutes(1)
                  });
-                 
+
                  await using var session = store.QuerySession();
                  return await session.Query<AuthorProjection>()
                      .Where(x => !x.Deleted)
@@ -158,7 +158,7 @@ Follow this guide to create a new **Marten projection** (read model) for efficie
              tags: [CacheTags.AuthorList],
              cancellationToken: cancellationToken
          );
-         
+
          return Results.Ok(authors);
      }
      ```
@@ -192,7 +192,7 @@ public class AuthorProjection
 {
     // Store all translations
     public Dictionary<string, string> Biographies { get; set; } = new();
-    
+
     // Helper method to get localized value
     public string GetBiography(string culture, string defaultCulture = "en")
     {
@@ -246,4 +246,5 @@ public class AuthorProjection
 - [scaffold-aggregate](../scaffold-aggregate/SKILL.md) - Event and aggregate patterns
 - [scaffold-read](../scaffold-read/SKILL.md) - Query endpoint implementation
 - [scaffold-write](../scaffold-write/SKILL.md) - SSE notification setup
+- [marten-guide](../../../docs/guides/marten-guide.md) - Marten event store and projections
 - ApiService AGENTS.md - Projection patterns and Marten configuration

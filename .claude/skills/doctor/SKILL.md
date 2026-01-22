@@ -1,6 +1,6 @@
 ---
-name: Doctor
-description: specific tools and SDKs required for the BookStore project. Use this to diagnose environment issues.
+name: doctor
+description: Check specific tools and SDKs required for the BookStore project. Use this to diagnose environment issues.
 license: MIT
 ---
 
@@ -26,20 +26,27 @@ Perform a health check on the development environment to ensure all prerequisite
    - **Requirement**: Valid client version installed.
    - *Action*: Required for Kubernetes deployment commands.
 
-5. **Aspire Workload** (for orchestration)
-   - Run: `dotnet workload list`
-   - Should show `aspire` in installed workloads.
-   - **Requirement**: The `aspire` workload must be present.
-   - *Action*: If missing, run `dotnet workload install aspire`.
+5. **Aspire CLI** (for orchestration)
+   - Run: `aspire --version`
+   - **Requirement**: Aspire CLI must be installed.
+   - *Action*: If missing, see [Install instructions](https://aspire.dev/get-started/install-cli/)
 
-Report a summary: "Environment is healthy" or list specific missing tools.
+6. **Report Summary**
+   - If all checks pass: "✅ Environment is healthy"
+   - If issues found: List specific missing tools with installation instructions
 
 ## Related Skills
 
 **Run Before**:
 - `/deploy-to-azure` - Check azd and Docker before deployment
 - `/deploy-kubernetes` - Check kubectl and Docker before deployment
+- `/verify-feature` - Ensure environment is correct before verification
+
+**Next Steps**:
+- If issues found, resolve them and re-run `/doctor`
+- `/rebuild-clean` - Clean rebuild after environment changes
 
 **See Also**:
-- [Getting Started Guide](../../docs/getting-started.md) - Installation instructions
+- [getting-started](../../../docs/getting-started.md) - Installation instructions
+- [aspire-guide](../../../docs/guides/aspire-guide.md) - Aspire orchestration
 - README.md - Prerequisites section

@@ -4,7 +4,24 @@ description: Debug Server-Sent Events (SSE) notification issues when real-time u
 license: MIT
 ---
 
-Use this guide to troubleshoot Server-Sent Events (SSE) issues when real-time notifications aren't working.
+Use this guide to troubleshoot Server-Sent Events (SSE) issues.
+
+## Quick Path (80% of issues)
+
+// turbo
+1. **Test SSE endpoint**:
+   ```bash
+   curl -N -H "Accept: text/event-stream" http://localhost:5000/api/events
+   ```
+   Should see: `data: {"type":"Connected",...}`
+
+2. **Check MartenCommitListener** has case for your projection
+3. **Check QueryInvalidationService** maps notification to query keys
+4. **Check ReactiveQuery** uses matching `queryKeys`
+
+If still broken, continue to full debugging below.
+
+---
 
 ## Symptoms
 
@@ -14,6 +31,9 @@ Use this guide to troubleshoot Server-Sent Events (SSE) issues when real-time no
 - ✗ Events not received in browser
 
 ## Related Skills
+
+**Prerequisites**:
+- `/start-solution` - Solution must be running to debug SSE
 
 **First Steps**:
 - `/verify-feature` - Run basic checks (build, tests) before deep debugging
@@ -68,7 +88,7 @@ public record BookCreatedNotification(Guid Id, string Title);
 
 ### 3. Verify MartenCommitListener Configuration
 
-Open `src/ApiService/BookStore.ApiService/Infrastructure/MartenCommitListener.cs`:
+Open `src/BookStore.ApiService/Infrastructure/MartenCommitListener.cs`:
 
 **Check if your projection has a handler**:
 
@@ -82,7 +102,7 @@ private async Task ProcessDocumentChangeAsync(
         case BookProjection proj:
             await HandleBookChangeAsync(proj, cancellationToken);
             break;
-            
+
         // ❌ Missing: Your projection case
         case AuthorProjection proj:
             await HandleAuthorChangeAsync(proj, cancellationToken);
@@ -99,10 +119,10 @@ private async Task HandleBookChangeAsync(
     CancellationToken cancellationToken)
 {
     var notification = new BookUpdatedNotification(book.Id, book.Title);
-    
+
     // ✅ Correct - sends notification
     await _notificationService.NotifyAsync(notification, cancellationToken);
-    
+
     // ✗ Wrong - forgot to send
     // (no NotifyAsync call)
 }
@@ -126,10 +146,10 @@ public IEnumerable<string> GetInvalidationKeys(IDomainEventNotification notifica
     {
         BookCreatedNotification => new[] { "Books" },
         BookUpdatedNotification => new[] { "Books" },
-        
+
         // ❌ Missing: Your notification
         AuthorUpdatedNotification => new[] { "Authors" },
-        
+
         _ => Array.Empty<string>()
     };
 }
@@ -272,9 +292,22 @@ case "BookUpdated":              // ✗ Wrong
 - React DevTools → Check component re-renders
 - Network tab → Verify EventSource connection
 
-## Next Steps
+## Related Skills
 
-Once SSE is working:
-- Add integration tests with `TestHelpers.ExecuteAndWaitForEventAsync`
-- Monitor Aspire dashboard for notification throughput
-- Consider adding retry logic for dropped connections
+**First Steps**:
+- `/verify-feature` - Run basic checks (build, tests) before deep debugging
+
+**Related Debugging**:
+- `/debug-cache` - If issue seems cache-related instead of SSE
+- `/doctor` - Check if environment setup is correct
+
+**After Fixing**:
+- `/verify-feature` - Confirm fix works
+- `/scaffold-test` - Add tests to prevent regression
+
+**See Also**:
+- [scaffold-write](../scaffold-write/SKILL.md) - SSE notification setup in MartenCommitListener
+- [scaffold-frontend-feature](../scaffold-frontend-feature/SKILL.md) - Frontend SSE integration
+- [real-time-notifications](../../../docs/guides/real-time-notifications.md) - SSE architecture and data flow
+- ApiService AGENTS.md - Backend notification patterns
+- Web AGENTS.md - Frontend SSE patterns

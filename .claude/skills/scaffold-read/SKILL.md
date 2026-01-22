@@ -1,5 +1,5 @@
 ---
-name: Scaffold Read
+name: scaffold-read
 description: Guide for adding a new read operation (query) to the Backend. Focuses on Marten queries, Projections, Caching, and Pagination.
 license: MIT
 ---
@@ -16,15 +16,18 @@ Follow this guide to implement a read-only endpoint in the **Backend** (ApiServi
    - Open/Create `src/BookStore.ApiService/Projections/{Resource}Projection.cs`.
    - **Template**: `templates/Projection.cs`
    - **Localization Storage**: Use `Dictionary<string, string>` for storing all translations (e.g., `Descriptions`, `Biographies`).
+   - **Reference**: See [marten-guide](../../../docs/guides/marten-guide.md) for projection patterns.
 
 3. **Expose the Endpoint**
    - Open `src/BookStore.ApiService/Endpoints/{Resource}Endpoints.cs`.
    - **Template**: `templates/Endpoint.cs`
 
 4. **Implement Caching (HybridCache)**
-   - Wrap logic in `cache.GetOrCreateLocalizedAsync`.
-   - **Key**: Include page, size, sort, order, AND culture.
-   - **Tags**: Use `CacheTags.{Resource}List`.
+   - Wrap logic in `cache.GetOrCreateLocalizedAsync` (auto-appends culture to cache key).
+   - **Key**: Include page, size, sort, order (culture added automatically).
+   - **Tags**: Use `CacheTags.{Resource}List` or `$\"{Resource.ToLower()}:{id}\"`.
+   - **Options**: Set `Expiration` (L2/Redis) and `LocalCacheExpiration` (L1/memory).
+   - **Reference**: See [caching-guide](../../../docs/guides/caching-guide.md) for HybridCache patterns.
 
 5. **Implement Query (Marten)**
    - Use `await using var session = store.QuerySession();`.
@@ -41,9 +44,9 @@ Follow this guide to implement a read-only endpoint in the **Backend** (ApiServi
    - **Interface**: Create `src/Client/BookStore.Client/IGet{Resource}Endpoint.cs` manually.
    - **Registration**: Add to `BookStoreClientExtensions.cs`.
 
-8. **Multi-Tenancy Check**
-   - Ensure explicit `ITenantContext` injection if managing cache keys (e.g., `tenant={tenantId}`).
-   - Verify queries are using `IDocumentSession` (tenant-scoped) and NOT `IDocumentStore`.
+// turbo
+8. **Verify**
+   - Run `/verify-feature` to ensure build and tests pass.
 
 ## Related Skills
 
@@ -56,15 +59,12 @@ Follow this guide to implement a read-only endpoint in the **Backend** (ApiServi
 - `/scaffold-test` - Create integration tests for the endpoint
 - `/verify-feature` - Complete verification
 
-**Related**:
+**Debugging**:
 - `/debug-cache` - If caching issues occur
 
 **See Also**:
 - [scaffold-projection](../scaffold-projection/SKILL.md) - Advanced projection patterns
 - [scaffold-write](../scaffold-write/SKILL.md) - Related write operations
+- [caching-guide](../../../docs/guides/caching-guide.md) - HybridCache patterns
+- [localization-guide](../../../docs/guides/localization-guide.md) - Localization patterns
 - ApiService AGENTS.md - Caching and localization patterns
-
-## Verification
-
-8. **Verify**
-   - Run `/verify-feature` to ensure build and tests pass.

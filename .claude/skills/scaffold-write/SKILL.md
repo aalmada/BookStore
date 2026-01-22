@@ -1,5 +1,5 @@
 ---
-name: Scaffold Write
+name: scaffold-write
 description: Guide for adding a new write operation (command/mutation) to the Backend. Focuses on Event Sourcing, Wolverine commands, and Projections.
 license: MIT
 ---
@@ -37,15 +37,16 @@ Follow this guide to implement a state-changing operation in the **Backend** (Ap
    - **Listener**: Update `src/BookStore.ApiService/Infrastructure/MartenCommitListener.cs`.
      - Add `case {Resource}Projection proj:` in `ProcessDocumentChangeAsync`.
      - Implement `Handle{Resource}ChangeAsync` to `.NotifyAsync()` the new notification.
+   - **Reference**: See [real-time-notifications](../../../docs/guides/real-time-notifications.md) for the complete data flow.
 
 7. **Client Integration**
    - **Interface**: Create `src/Client/BookStore.Client/I{Action}{Resource}Endpoint.cs` manually.
    - **DTOs**: If a Request DTO is needed, create it in `src/Shared/BookStore.Shared/Models/` (do not rely on auto-generation).
    - **Registration**: Add to `BookStoreClientExtensions.cs`.
 
-8. **Multi-Tenancy Check**
-   - Ensure explicit `ITenantContext` injection if managing cache keys.
-   - Verify `TenantId` propagates in any background jobs.
+// turbo
+8. **Verify**
+   - Run `/verify-feature` to ensure build, format, and tests pass.
 
 ## Related Skills
 
@@ -65,9 +66,5 @@ Follow this guide to implement a state-changing operation in the **Backend** (Ap
 **See Also**:
 - [scaffold-aggregate](../scaffold-aggregate/SKILL.md) - Detailed aggregate patterns
 - [scaffold-projection](../scaffold-projection/SKILL.md) - Projection creation
+- [wolverine-guide](../../../docs/guides/wolverine-guide.md) - Wolverine command/handler patterns
 - ApiService AGENTS.md - Backend patterns and conventions
-
-## Verification
-
-8. **Verify**
-   - Run `/verify-feature` to ensure build, format, and tests pass.

@@ -26,7 +26,7 @@ Use this guide to rollback a failed deployment to restore service quickly.
 - ✗ Application crashes after deployment
 - ✗ Critical functionality broken
 - ✗ Performance degradation
-- ✗ Database migration failure  
+- ✗ Database migration failure
 - ✗ Unacceptable user-facing errors
 
 ## Azure Deployment Rollback
@@ -404,11 +404,23 @@ After rollback:
 - [ ] Schedule post-mortem
 - [ ] Plan fix and redeployment
 
-## Next Steps
+## Related Skills
 
-After successful rollback:
-1. Run `/debug-sse` or `/debug-cache` if relevant
-2. Review logs for root cause
-3. Fix issues locally
-4. Test in staging environment
-5. Deploy fix using `/deploy-to-azure` or `/deploy-kubernetes`
+**Prerequisites**:
+- You must have deployed using one of:
+  - `/deploy-to-azure` - Azure Container Apps
+  - `/deploy-kubernetes` - Kubernetes cluster
+
+**Debugging**:
+- `/debug-sse` - If rollback was due to SSE issues
+- `/debug-cache` - If rollback was due to caching issues
+- `/doctor` - Check environment after rollback
+
+**After Fix**:
+- `/verify-feature` - Verify application health after rollback
+- `/deploy-to-azure` or `/deploy-kubernetes` - Redeploy fixed version
+
+**See Also**:
+- [aspire-deployment-guide](../../../docs/guides/aspire-deployment-guide.md) - Deployment documentation
+- [aspire-guide](../../../docs/guides/aspire-guide.md) - Aspire orchestration
+- AppHost AGENTS.md - Aspire orchestration configuration

@@ -14,9 +14,9 @@ Follow this guide to create **integration tests** for API endpoints in `tests/Bo
      using TUnit.Core;
      using TUnit.Assertions.Extensions;
      using BookStore.Shared.Models;
-     
+
      namespace BookStore.AppHost.Tests.Tests;
-     
+
      public class AuthorCrudTests
      {
          // Test methods here
@@ -34,7 +34,7 @@ Follow this guide to create **integration tests** for API endpoints in `tests/Bo
          // Arrange
          var client = await TestHelpers.GetAuthenticatedClientAsync();
          var request = TestHelpers.GenerateFakeAuthorRequest();
-         
+
          // Act - ExecuteAndWaitForEventAsync automatically:
          // 1. Makes the HTTP request
          // 2. Waits for SSE notification
@@ -45,7 +45,7 @@ Follow this guide to create **integration tests** for API endpoints in `tests/Bo
              "AuthorUpdated",  // Wait for this SSE event
              timeout: TimeSpan.FromSeconds(10)
          );
-         
+
          // Assert
          await Assert.That(author).IsNotNull();
          await Assert.That(author!.Name).IsEqualTo(request.Name);
@@ -63,26 +63,26 @@ Follow this guide to create **integration tests** for API endpoints in `tests/Bo
          // Arrange
          var client = await TestHelpers.GetAuthenticatedClientAsync();
          var createRequest = TestHelpers.GenerateFakeAuthorRequest();
-         
+
          // Create author first
          var (created, _) = await TestHelpers.ExecuteAndWaitForEventAsync<AuthorDto>(
              client,
              async () => await client.PostAsJsonAsync("/api/admin/authors", createRequest),
              "AuthorUpdated"
          );
-         
+
          var updateRequest = new UpdateAuthorRequest(
              Name: "Updated Name",
              Biography: "Updated Biography"
          );
-         
+
          // Act
          var (updated, _) = await TestHelpers.ExecuteAndWaitForEventAsync<AuthorDto>(
              client,
              async () => await client.PutAsJsonAsync($"/api/admin/authors/{created!.Id}", updateRequest),
              "AuthorUpdated"
          );
-         
+
          // Assert
          await Assert.That(updated).IsNotNull();
          await Assert.That(updated!.Name).IsEqualTo("Updated Name");
@@ -100,21 +100,21 @@ Follow this guide to create **integration tests** for API endpoints in `tests/Bo
          // Arrange
          var client = await TestHelpers.GetAuthenticatedClientAsync();
          var request = TestHelpers.GenerateFakeAuthorRequest();
-         
+
          var (created, _) = await TestHelpers.ExecuteAndWaitForEventAsync<AuthorDto>(
              client,
              async () => await client.PostAsJsonAsync("/api/admin/authors", request),
              "AuthorUpdated"
          );
-         
+
          // Act - Delete
          var deleteResponse = await client.DeleteAsync($"/api/admin/authors/{created!.Id}");
          await Assert.That(deleteResponse.IsSuccessStatusCode).IsTrue();
-         
+
          // Verify not in public list
          var listResponse = await TestHelpers.GetUnauthenticatedClient()
              .GetFromJsonAsync<PagedListDto<AuthorDto>>("/api/authors");
-         
+
          await Assert.That(listResponse).IsNotNull();
          await Assert.That(listResponse!.Items.Any(a => a.Id == created.Id)).IsFalse();
      }
@@ -128,37 +128,37 @@ Follow this guide to create **integration tests** for API endpoints in `tests/Bo
      {
          // Arrange
          var client = TestHelpers.GetUnauthenticatedClient();
-         
+
          // Act
          var response = await client.GetFromJsonAsync<PagedListDto<AuthorDto>>(
              "/api/authors?page=1&pageSize=20"
          );
-         
+
          // Assert
          await Assert.That(response).IsNotNull();
          await Assert.That(response!.Items).IsNotNull();
          await Assert.That(response.TotalCount).IsGreaterThanOrEqualTo(0);
      }
-     
+
      [Test]
      public async Task GetAuthorById_ExistingId_ReturnsAuthor()
      {
          // Arrange - Create an author first
          var client = await TestHelpers.GetAuthenticatedClientAsync();
          var request = TestHelpers.GenerateFakeAuthorRequest();
-         
+
          var (created, _) = await TestHelpers.ExecuteAndWaitForEventAsync<AuthorDto>(
              client,
              async () => await client.PostAsJsonAsync("/api/admin/authors", request),
              "AuthorUpdated"
          );
-         
+
          // Act - Get by ID (public endpoint)
          var unauthClient = TestHelpers.GetUnauthenticatedClient();
          var author = await unauthClient.GetFromJsonAsync<AuthorDto>(
              $"/api/authors/{created!.Id}"
          );
-         
+
          // Assert
          await Assert.That(author).IsNotNull();
          await Assert.That(author!.Id).IsEqualTo(created.Id);
@@ -174,16 +174,16 @@ Follow this guide to create **integration tests** for API endpoints in `tests/Bo
          CreateAuthorRequest? request = null)
      {
          request ??= GenerateFakeAuthorRequest();
-         
+
          var (author, _) = await ExecuteAndWaitForEventAsync<AuthorDto>(
              client,
              async () => await client.PostAsJsonAsync("/api/admin/authors", request),
              "AuthorUpdated"
          );
-         
+
          return author!;
      }
-     
+
      public static CreateAuthorRequest GenerateFakeAuthorRequest()
      {
          var faker = new Faker();
@@ -203,24 +203,24 @@ Follow this guide to create **integration tests** for API endpoints in `tests/Bo
          // Arrange
          var client = await TestHelpers.GetAuthenticatedClientAsync();
          var request = new CreateAuthorRequest(Name: "", Biography: "Bio");
-         
+
          // Act
          var response = await client.PostAsJsonAsync("/api/admin/authors", request);
-         
+
          // Assert
          await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
      }
-     
+
      [Test]
      public async Task DeleteAuthor_Unauthenticated_ReturnsUnauthorized()
      {
          // Arrange
          var client = TestHelpers.GetUnauthenticatedClient();
          var authorId = Guid.CreateVersion7();
-         
+
          // Act
          var response = await client.DeleteAsync($"/api/admin/authors/{authorId}");
-         
+
          // Assert
          await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
      }
@@ -292,7 +292,7 @@ await Assert.That(() => action()).Throws<InvalidOperationException>();
 Once tests are created, use the dedicated test runner skills:
 
 - **`/run-integration-tests`** - Execute all integration tests with Aspire
-- **`/run-unit-tests`** - Execute unit tests for API and analyzers  
+- **`/run-unit-tests`** - Execute unit tests for API and analyzers
 - **`/verify-feature`** - Complete verification (build + format + all tests)
 
 For specific test filtering or manual commands, see:
@@ -339,14 +339,12 @@ dotnet test --filter "FullyQualifiedName~AuthorCrudTests"
 **Next Steps**:
 - `/run-integration-tests` - Execute the tests you created
 - `/verify-feature` - Complete verification workflow
+- Check coverage and add edge cases for boundary conditions
 
 **See Also**:
 - [verify-feature](../verify-feature/SKILL.md) - Definition of Done verification
+- [run-integration-tests](../run-integration-tests/SKILL.md) - Integration test execution
+- [run-unit-tests](../run-unit-tests/SKILL.md) - Unit test execution
+- [integration-testing-guide](../../../docs/guides/integration-testing-guide.md) - Aspire integration testing
+- [testing-guide](../../../docs/guides/testing-guide.md) - TUnit unit testing
 - AppHost.Tests AGENTS.md - Test project patterns
-
-## Next Steps
-
-After creating tests, run:
-1. **Verify**: `/verify-feature` to ensure all tests pass
-2. **Check Coverage**: Review which scenarios are tested
-3. **Add Edge Cases**: Test boundary conditions and error scenarios
