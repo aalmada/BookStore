@@ -33,6 +33,11 @@ jobs:
       - name: Build docs
         run: docfx docs/docfx.json
 
+      - name: Fix README images
+        run: |
+          mkdir -p docs/_site/docs/images
+          cp -r docs/images/* docs/_site/docs/images/
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v4
         with:
