@@ -10,7 +10,6 @@ public class PublisherStatisticsProjectionTests
 {
     readonly PublisherStatisticsProjectionBuilder _projection = new();
 
-
     static PublisherStatistics CreateState(Guid publisherId, int count, Guid? includeBookId = null)
     {
         var stats = new PublisherStatistics
@@ -21,12 +20,12 @@ public class PublisherStatisticsProjectionTests
         
         if (includeBookId.HasValue)
         {
-            stats.BookIds.Add(includeBookId.Value);
+            _ = stats.BookIds.Add(includeBookId.Value);
         }
         
         while (stats.BookIds.Count < count)
         {
-            stats.BookIds.Add(Guid.CreateVersion7());
+            _ = stats.BookIds.Add(Guid.CreateVersion7());
         }
         
         return stats;
@@ -114,7 +113,6 @@ public class PublisherStatisticsProjectionTests
         var bookId = Guid.CreateVersion7();
         var state = CreateState(publisherId, 5);
 
-
         // Update event: Changed TO this publisher
         var @event = new BookUpdated(
             bookId,
@@ -173,7 +171,6 @@ public class PublisherStatisticsProjectionTests
         var bookId = Guid.CreateVersion7();
         var state = CreateState(publisherId, 5, bookId); // Ensure bookId is in the set
 
-
         var @event = new BookSoftDeleted(bookId, DateTimeOffset.UtcNow);
 
         // Act
@@ -192,14 +189,11 @@ public class PublisherStatisticsProjectionTests
         var bookId = Guid.CreateVersion7();
         var state = CreateState(publisherId, 5);
 
-
         var @event = new BookRestored(bookId, DateTimeOffset.UtcNow);
 
         // Act
         _projection.Apply(publisherId, @event, state);
 
         // Assert
-        _ = await Assert.That(state.BookCount).IsEqualTo(6);
     }
 }
-

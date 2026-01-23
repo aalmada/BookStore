@@ -4,6 +4,7 @@
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
     <EnableMicrosoftTestingPlatform>true</EnableMicrosoftTestingPlatform>
+    <CollectCoverage>true</CollectCoverage>
     <!-- Suppress warnings for old framework dependencies in testing library -->
     <NoWarn>$(NoWarn);NU1701</NoWarn>
   </PropertyGroup>

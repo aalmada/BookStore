@@ -10,7 +10,6 @@ public class CategoryStatisticsProjectionTests
 {
     readonly CategoryStatisticsProjectionBuilder _projection = new();
 
-
     static CategoryStatistics CreateState(Guid categoryId, int count, Guid? includeBookId = null)
     {
         var stats = new CategoryStatistics
@@ -21,12 +20,12 @@ public class CategoryStatisticsProjectionTests
         
         if (includeBookId.HasValue)
         {
-            stats.BookIds.Add(includeBookId.Value);
+            _ = stats.BookIds.Add(includeBookId.Value);
         }
         
         while (stats.BookIds.Count < count)
         {
-            stats.BookIds.Add(Guid.CreateVersion7());
+            _ = stats.BookIds.Add(Guid.CreateVersion7());
         }
         
         return stats;
@@ -114,7 +113,6 @@ public class CategoryStatisticsProjectionTests
         var bookId = Guid.CreateVersion7();
         var state = CreateState(categoryId, 5);
 
-
         // Update event: Category IS in it
         var @event = new BookUpdated(
             bookId,
@@ -191,7 +189,6 @@ public class CategoryStatisticsProjectionTests
         var bookId = Guid.CreateVersion7();
         var state = CreateState(categoryId, 5);
 
-
         var @event = new BookRestored(bookId, DateTimeOffset.UtcNow);
 
         // Act
@@ -201,4 +198,3 @@ public class CategoryStatisticsProjectionTests
         _ = await Assert.That(state.BookCount).IsEqualTo(6);
     }
 }
-
