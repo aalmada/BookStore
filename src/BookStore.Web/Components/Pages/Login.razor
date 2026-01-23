@@ -178,7 +178,7 @@
                 message = parts[^1].Trim();
             }
 
-            errorMessage = message;
+            errorMessage = AuthErrorHelper.GetFriendlyErrorMessage(message);
         }
         finally
         {

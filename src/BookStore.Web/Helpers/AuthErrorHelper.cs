@@ -15,7 +15,14 @@ public class AuthErrorHelper
             return _localizer["DefaultError"];
         }
 
-        var errorLower = backendError.ToLowerInvariant();
+        // Clean up JS stack trace if present (common in Blazor JS interop exceptions)
+        var message = backendError;
+        if (message.Contains(" at ") && (message.Contains(".js:") || message.Contains(" (")))
+        {
+            message = message.Split('\n')[0].Split(" at ")[0].Trim();
+        }
+
+        var errorLower = message.ToLowerInvariant();
 
         if (errorLower.Contains("fetch") ||
             errorLower.Contains("network") ||
@@ -74,6 +81,6 @@ public class AuthErrorHelper
         // but often backend returns validation errors we want to show (e.g. "Password too short").
         // Let's return the original if it's not one of the technical ones above, 
         // assuming Refit/API returns safe messages for business logic errors.
-        return backendError;
+        return message;
     }
 }

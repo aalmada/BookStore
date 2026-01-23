@@ -6,6 +6,7 @@
 @inject IJSRuntime JS
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
+@inject BookStore.Web.Helpers.AuthErrorHelper AuthErrorHelper
 @attribute [Authorize]
 
 <PageTitle>Manage Passkeys</PageTitle>
@@ -148,13 +149,12 @@
             var message = ex.Message;
             if (message.Contains("Error:"))
             {
-                // If it's a JSException it often already contains "Error:"
-                // We just want the relevant part.
                 var parts = message.Split("Error:", 2);
                 message = parts[^1].Trim();
             }
 
-            ShowError(message);
+            var friendlyMessage = AuthErrorHelper.GetFriendlyErrorMessage(message);
+            ShowError(friendlyMessage);
         }
         finally
         {
