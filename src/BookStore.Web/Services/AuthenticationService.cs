@@ -149,6 +149,62 @@ public class AuthenticationService(
     /// Validate password strength using shared validator
     /// </summary>
     static string? ValidatePassword(string password) => PasswordValidator.GetFirstError(password);
+
+    public async Task<PasswordOperationResult> ChangePasswordAsync(string currentPassword, string newPassword)
+    {
+        var validationError = ValidatePassword(newPassword);
+        if (validationError != null)
+        {
+            return new PasswordOperationResult(false, validationError);
+        }
+
+        if (currentPassword == newPassword)
+        {
+            return new PasswordOperationResult(false, "New password cannot be the same as the current password.");
+        }
+
+        try
+        {
+            await identityClient.ChangePasswordAsync(new ChangePasswordRequest(currentPassword, newPassword));
+            return new PasswordOperationResult(true, null);
+        }
+        catch (Refit.ApiException ex)
+        {
+            return new PasswordOperationResult(false, ParseError(ex.Content));
+        }
+    }
+
+    public async Task<PasswordOperationResult> AddPasswordAsync(string newPassword)
+    {
+        var validationError = ValidatePassword(newPassword);
+        if (validationError != null)
+        {
+            return new PasswordOperationResult(false, validationError);
+        }
+
+        try
+        {
+            await identityClient.AddPasswordAsync(new AddPasswordRequest(newPassword));
+            return new PasswordOperationResult(true, null);
+        }
+        catch (Refit.ApiException ex)
+        {
+            return new PasswordOperationResult(false, ParseError(ex.Content));
+        }
+    }
+
+    public async Task<bool> HasPasswordAsync()
+    {
+        try
+        {
+            var response = await identityClient.GetPasswordStatusAsync();
+            return response.HasPassword;
+        }
+        catch
+        {
+            return false;
+        }
+    }
 }
 
 /// <summary>
@@ -160,3 +216,5 @@ public record LoginResult(bool Success, string? Error, string? AccessToken = nul
 /// Result of a registration attempt
 /// </summary>
 public record RegisterResult(bool Success, string? Error);
+
+public record PasswordOperationResult(bool Success, string? Error);

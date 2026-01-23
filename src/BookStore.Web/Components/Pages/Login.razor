@@ -171,7 +171,14 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Passkey login error");
-            errorMessage = $"Error: {ex.Message}";
+            var message = ex.Message;
+            if (message.Contains("Error:"))
+            {
+                var parts = message.Split("Error:", 2);
+                message = parts[^1].Trim();
+            }
+
+            errorMessage = message;
         }
         finally
         {

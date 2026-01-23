@@ -43,3 +43,7 @@ public record UpdateUserInfoRequest(
 /// Request to logout and invalidate refresh token
 /// </summary>
 public record LogoutRequest(string? RefreshToken);
+
+public record ChangePasswordRequest(string CurrentPassword, string NewPassword);
+public record AddPasswordRequest(string NewPassword);
+public record PasswordStatusResponse(bool HasPassword);

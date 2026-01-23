@@ -90,7 +90,15 @@ window.passkey = {
             return JSON.stringify(response);
         } catch (error) {
             console.error('Passkey registration error', error);
-            throw error;
+            if (error.name === 'InvalidStateError' || error.name === 'ConstraintError') {
+                throw new Error("This authenticator is already registered for this account.");
+            }
+
+            if (error.name === 'NotAllowedError') {
+                throw new Error("Registration was cancelled or timed out.");
+            }
+
+            throw error instanceof Error ? error : new Error(String(error));
         }
     },
 
@@ -130,7 +138,10 @@ window.passkey = {
             return JSON.stringify(response);
         } catch (error) {
             console.error('Passkey login error', error);
-            throw error;
+            if (error.name === 'NotAllowedError') {
+                throw new Error("Login was cancelled or timed out.");
+            }
+            throw error instanceof Error ? error : new Error(String(error));
         }
     },
 

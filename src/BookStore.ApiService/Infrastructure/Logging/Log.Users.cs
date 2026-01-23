@@ -86,5 +86,40 @@ public static partial class Log
             Level = LogLevel.Warning,
             Message = "Passkey assertion failed. IsLockedOut: {IsLockedOut}, IsNotAllowed: {IsNotAllowed}, RequiresTwoFactor: {RequiresTwoFactor}")]
         public static partial void PasskeyAssertionFailed(ILogger logger, bool isLockedOut, bool isNotAllowed, bool requiresTwoFactor);
+
+        [LoggerMessage(
+            Level = LogLevel.Information,
+            Message = "Adding passkey to existing user {Email}")]
+        public static partial void PasskeyAttestationAttempt(ILogger logger, string? email);
+
+        [LoggerMessage(
+            Level = LogLevel.Warning,
+            Message = "Passkey attestation failed for user {Email}: {Error}")]
+        public static partial void PasskeyAttestationFailed(ILogger logger, string? email, string? error);
+
+        [LoggerMessage(
+            Level = LogLevel.Error,
+            Message = "Failed to update user {Email} after adding passkey: {Errors}")]
+        public static partial void PasskeyUpdateUserFailed(ILogger logger, string? email, string errors);
+
+        [LoggerMessage(
+            Level = LogLevel.Information,
+            Message = "Passkey added successfully for user {Email}")]
+        public static partial void PasskeyRegistrationSuccessful(ILogger logger, string? email);
+
+        [LoggerMessage(
+            Level = LogLevel.Warning,
+            Message = "Invalid GUID format for user ID from {Source}: {Value}. Generating new ID.")]
+        public static partial void PasskeyInvalidGuidFormat(ILogger logger, string source, string value);
+
+        [LoggerMessage(
+            Level = LogLevel.Information,
+            Message = "Creating new user for passkey registration with ID {UserId} from {Source}")]
+        public static partial void PasskeyCreatingNewUser(ILogger logger, Guid userId, string source);
+
+        [LoggerMessage(
+            Level = LogLevel.Error,
+            Message = "Unhandled exception during passkey registration/addition")]
+        public static partial void PasskeyRegistrationUnhandledException(ILogger logger, Exception ex);
     }
 }

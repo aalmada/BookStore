@@ -12,7 +12,10 @@
 
 <MudContainer MaxWidth="MaxWidth.Small" Class="mt-8">
     <MudText Typo="Typo.h4" GutterBottom="true">Manage Passkeys</MudText>
-    <MudText Typo="Typo.body1" Class="mb-4">Register a passkey to sign in without a password.</MudText>
+    <MudText Typo="Typo.body1" Class="mb-4">
+        Register a passkey to sign in without a password.
+        <MudLink Href="/account/password" Color="Color.Primary">Manage your password here.</MudLink>
+    </MudText>
 
     <MudPaper Class="pa-4">
         @if (_isSupported == null)
@@ -142,7 +145,16 @@
         }
         catch (Exception ex)
         {
-            ShowError($"Error: {ex.Message}");
+            var message = ex.Message;
+            if (message.Contains("Error:"))
+            {
+                // If it's a JSException it often already contains "Error:"
+                // We just want the relevant part.
+                var parts = message.Split("Error:", 2);
+                message = parts[^1].Trim();
+            }
+
+            ShowError(message);
         }
         finally
         {
@@ -155,7 +167,7 @@
         _isDeleting = true;
         try
         {
-            var success = await PasskeyService.DeletePasskeyAsync(id);
+            var (success, error) = await PasskeyService.DeletePasskeyAsync(id);
             if (success)
             {
                 Snackbar.Add("Passkey deleted.", Severity.Success);
@@ -163,7 +175,7 @@
             }
             else
             {
-                Snackbar.Add("Failed to delete passkey.", Severity.Error);
+                Snackbar.Add(error ?? "Failed to delete passkey.", Severity.Error);
             }
         }
         finally

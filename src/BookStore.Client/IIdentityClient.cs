@@ -7,6 +7,9 @@ public interface IIdentityClient :
     IIdentityRegisterEndpoint,
     IIdentityConfirmEmailEndpoint,
     IIdentityRefreshEndpoint,
-    IIdentityLogoutEndpoint
+    IIdentityLogoutEndpoint,
+    IIdentityChangePasswordEndpoint,
+    IIdentityAddPasswordEndpoint,
+    IIdentityGetPasswordStatusEndpoint
 {
 }
