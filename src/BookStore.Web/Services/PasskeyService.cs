@@ -74,6 +74,7 @@ public class PasskeyService
         catch (Exception ex)
         {
             Log.RegistrationCompleteError(_logger, ex);
+
             return new LoginResult(false, ex.Message, null, null);
         }
     }
@@ -102,6 +103,7 @@ public class PasskeyService
         catch (Exception ex)
         {
             Log.LoginCompleteError(_logger, ex);
+
             return new LoginResult(false, ex.Message, null, null);
         }
     }

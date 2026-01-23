@@ -87,7 +87,8 @@ window.passkey = {
             // Pass extensions/transports if needed
             if (credential.authenticatorAttachment) response.authenticatorAttachment = credential.authenticatorAttachment;
 
-            return JSON.stringify(response);
+            const result = JSON.stringify(response);
+            return result;
         } catch (error) {
             console.error('Passkey registration error', error);
             if (error.name === 'InvalidStateError' || error.name === 'ConstraintError') {

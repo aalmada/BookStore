@@ -1,5 +1,6 @@
 using BookStore.ApiService.Models;
 using Marten;
+using Marten.Linq.MatchesSql;
 using Microsoft.AspNetCore.Identity;
 
 namespace BookStore.ApiService.Infrastructure.Identity;
@@ -16,19 +17,13 @@ public sealed class MartenUserStore :
     IUserPasskeyStore<ApplicationUser>
 {
     readonly IDocumentSession _session;
-    readonly ILogger<MartenUserStore> _logger;
 
-    public MartenUserStore(IDocumentSession session, ILogger<MartenUserStore> logger)
-    {
-        _session = session;
-        _logger = logger;
-    }
+    public MartenUserStore(IDocumentSession session) => _session = session;
 
     #region IUserStore
 
     public async Task<IdentityResult> CreateAsync(ApplicationUser user, CancellationToken cancellationToken)
     {
-
         _session.Store(user);
         await _session.SaveChangesAsync(cancellationToken);
         return IdentityResult.Success;
@@ -193,10 +188,10 @@ public sealed class MartenUserStore :
         => Task.FromResult<IList<UserPasskeyInfo>>([.. user.Passkeys]);
 
     public Task<ApplicationUser?> FindByPasskeyIdAsync(byte[] credentialId, CancellationToken cancellationToken)
-        // Marten LINQ query to find user containing the passkey
-        // specific byte[] comparison might need care, but trying standard LINQ first
         => _session.Query<ApplicationUser>()
-            .FirstOrDefaultAsync(u => u.Passkeys.Any(p => p.CredentialId == credentialId), cancellationToken);
+            .Where(u => u.MatchesSql("data -> 'passkeys' @> ?::jsonb",
+                $"[{{\"credentialId\": \"{Convert.ToBase64String(credentialId)}\"}}]"))
+            .FirstOrDefaultAsync(cancellationToken);
 
     public Task<UserPasskeyInfo?> FindPasskeyAsync(ApplicationUser user, byte[] credentialId, CancellationToken cancellationToken)
         => Task.FromResult(user.Passkeys.FirstOrDefault(p => p.CredentialId.SequenceEqual(credentialId)));
