@@ -1,0 +1,72 @@
+using System.Threading.RateLimiting;
+using BookStore.Shared.Models;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace BookStore.ApiService.Infrastructure.Extensions;
+
+public static class RateLimitingExtensions
+{
+    public static IServiceCollection AddCustomRateLimiting(this IServiceCollection services, IConfiguration configuration)
+    {
+        return services.AddRateLimiter(options =>
+        {
+            options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+            var rateLimitOptions = new RateLimitOptions();
+            configuration.GetSection(RateLimitOptions.SectionName).Bind(rateLimitOptions);
+
+            options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+            {
+                // Exempt health checks and metrics
+                if (context.Request.Path.StartsWithSegments("/health") ||
+                    context.Request.Path.StartsWithSegments("/metrics"))
+                {
+                    return RateLimitPartition.GetNoLimiter("exempt");
+                }
+
+                // Per-tenant rate limiting
+                var tenantId = context.Items["TenantId"]?.ToString()
+                    ?? JasperFx.StorageConstants.DefaultTenantId;
+
+                return RateLimitPartition.GetFixedWindowLimiter(tenantId, _ =>
+                    new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 1000,
+                        Window = TimeSpan.FromMinutes(1),
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                        QueueLimit = 10
+                    });
+            });
+
+            // Stricter rate limiting for authentication endpoints
+            options.AddFixedWindowLimiter("AuthPolicy", opt =>
+            {
+                opt.PermitLimit = rateLimitOptions.AuthPermitLimit;
+                opt.Window = TimeSpan.FromSeconds(rateLimitOptions.AuthWindowSeconds);
+                opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+                opt.QueueLimit = rateLimitOptions.AuthQueueLimit;
+            });
+
+            options.OnRejected = async (context, cancellationToken) =>
+            {
+                context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+
+                double? retryAfterSeconds = null;
+                if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+                {
+                    retryAfterSeconds = retryAfter.TotalSeconds;
+                }
+
+                await context.HttpContext.Response.WriteAsJsonAsync(new
+                {
+                    error = "Rate limit exceeded",
+                    retryAfter = retryAfterSeconds
+                }, cancellationToken);
+            };
+        });
+    }
+}

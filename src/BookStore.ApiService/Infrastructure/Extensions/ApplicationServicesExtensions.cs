@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 
@@ -56,7 +57,23 @@ public static class ApplicationServicesExtensions
         // Configure Identity with JWT authentication
         AddIdentityServices(services, configuration);
 
+        // Configure Forwarded Headers
+        AddForwardedHeaders(services);
+
         return services;
+    }
+
+    static void AddForwardedHeaders(IServiceCollection services)
+    {
+        _ = services.Configure<ForwardedHeadersOptions>(options =>
+        {
+            options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+            // Clear known networks/proxies to trust standard proxies in the environment (Aspire/Docker)
+            options.KnownIPNetworks.Clear();
+            options.KnownProxies.Clear();
+            options.ForwardLimit = null;
+            options.RequireHeaderSymmetry = false;
+        });
     }
 
     static void AddApiVersioning(IServiceCollection services) => services.AddApiVersioning(options =>
