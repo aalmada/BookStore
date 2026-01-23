@@ -17,18 +17,15 @@ public static class DatabaseExtensions
     {
         // Apply schema to create PostgreSQL extensions (pg_trgm, unaccent)
         // This must remain blocking to ensure schema exists before requests are handled
-        using (var scope = app.Services.CreateScope())
-        {
-            var store = scope.ServiceProvider.GetRequiredService<IDocumentStore>();
-            await store.Storage.ApplyAllConfiguredChangesToDatabaseAsync();
-        }
+        using var scope = app.Services.CreateScope();
+        var store = scope.ServiceProvider.GetRequiredService<IDocumentStore>();
+        await store.Storage.ApplyAllConfiguredChangesToDatabaseAsync();
     }
 
     public static void RunDatabaseSeedingAsync(this WebApplication app)
-    {
         // Start seeding in the background (don't block app startup)
         // We need seeding in all environments for now (including tests)
-        _ = Task.Run(async () =>
+        => _ = Task.Run(async () =>
         {
             var logger = app.Services.GetRequiredService<ILogger<Program>>();
             var env = app.Services.GetRequiredService<IHostEnvironment>();
@@ -100,9 +97,8 @@ public static class DatabaseExtensions
                 }
             }
         });
-    }
 
-    private static async Task WaitForProjectionsAsync(IDocumentStore store, ILogger logger, string tenantId, bool expectSales = false)
+    static async Task WaitForProjectionsAsync(IDocumentStore store, ILogger logger, string tenantId, bool expectSales = false)
     {
         Log.Infrastructure.WaitingForProjections(logger);
 

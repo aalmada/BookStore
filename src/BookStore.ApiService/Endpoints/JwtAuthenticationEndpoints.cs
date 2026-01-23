@@ -207,13 +207,20 @@ public static class JwtAuthenticationEndpoints
         string code,
         UserManager<ApplicationUser> userManager,
         Wolverine.IMessageBus bus,
+        ILogger<Program> logger,
         CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(code))
+        {
+            return Results.BadRequest("Error confirming email.");
+        }
+
         var user = await userManager.FindByIdAsync(userId);
         if (user == null)
         {
+            Log.Users.ConfirmationFailedUserNotFound(logger, userId);
             // Don't reveal that the user does not exist
-            return Results.NotFound("Invalid user ID or code.");
+            return Results.BadRequest("Error confirming email.");
         }
 
         var result = await userManager.ConfirmEmailAsync(user, code);
@@ -223,6 +230,7 @@ public static class JwtAuthenticationEndpoints
             return Results.Ok("Email confirmed successfully.");
         }
 
+        Log.Users.ConfirmationFailedInvalidCode(logger, user.Id.ToString(), string.Join(", ", result.Errors.Select(e => e.Description)));
         return Results.BadRequest("Error confirming email.");
     }
 

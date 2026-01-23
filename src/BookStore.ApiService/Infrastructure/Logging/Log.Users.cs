@@ -126,5 +126,16 @@ public static partial class Log
             Level = LogLevel.Error,
             Message = "Unhandled exception during passkey registration/addition")]
         public static partial void PasskeyRegistrationUnhandledException(ILogger logger, Exception ex);
+
+        [LoggerMessage(
+            Level = LogLevel.Warning,
+            Message = "Email confirmation failed: User not found {UserId}")]
+        public static partial void ConfirmationFailedUserNotFound(ILogger logger, string userId);
+
+        [LoggerMessage(
+             Level = LogLevel.Warning,
+             Message = "Email confirmation failed: Invalid code for user {UserId}. Errors: {Errors}")]
+        public static partial void ConfirmationFailedInvalidCode(ILogger logger, string userId, string errors);
+
     }
 }

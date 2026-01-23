@@ -8,7 +8,7 @@ namespace BookStore.AppHost.Tests;
 
 public class RateLimitTests
 {
-    // [Test]
+    [Test]
     public async Task GetFromAuthEndpoint_RepeatedRequests_ShouldConsumeQuota()
     {
         // Arrange

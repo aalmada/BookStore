@@ -9,7 +9,6 @@ using BookStore.ApiService.Infrastructure.Tenant;
 using BookStore.Shared.Infrastructure;
 using BookStore.Shared.Models;
 
-
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Options;
 using Scalar.AspNetCore;
@@ -53,8 +52,6 @@ builder.Services.AddCors(options => options.AddDefaultPolicy(policy => _ = polic
 // Add Rate Limiting
 // Add Rate Limiting (using extension)
 builder.Services.AddCustomRateLimiting(builder.Configuration);
-
-
 
 var app = builder.Build();
 
@@ -105,8 +102,6 @@ var requestLocalizationOptions = new RequestLocalizationOptions()
     .AddSupportedUICultures(localizationOptions.SupportedCultures);
 
 app.UseRequestLocalization(requestLocalizationOptions);
-
-
 
 // Add Tenant Resolution Middleware
 app.UseTenantResolution();
