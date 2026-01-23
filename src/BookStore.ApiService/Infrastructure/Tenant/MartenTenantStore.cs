@@ -30,4 +30,6 @@ public class MartenTenantStore(IDocumentStore store) : ITenantStore
             .Select(t => t.Id)
             .ToListAsync();
     }
+
+    public Task InvalidateCacheAsync(string tenantId) => Task.CompletedTask;
 }

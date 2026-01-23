@@ -137,7 +137,8 @@ Each specific tenant (like `acme` or `contoso`) has its own admin account. These
 > [!IMPORTANT]
 > **Security Restrictions**:
 > - Each admin can only access their own tenant's data.
-> - Only the **System Administrator** (`admin@bookstore.com`) can access `/api/admin/tenants`.
+> - **Tenant Management**: Only the **System Administrator** belonging to the **Default** tenant can access the management interface (`/admin/tenants`) and its associated API endpoints.
+> - The "Tenants" link in the navigation menu is dynamically hidden if the logged-in user is not a system administrator.
 > - Requests from other admins to global tenant management endpoints will return `403 Forbidden`.
 
 **Testing Multi-Tenancy**:

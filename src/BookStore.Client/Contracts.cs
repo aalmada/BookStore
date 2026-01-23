@@ -505,31 +505,6 @@ namespace BookStore.Client
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class CreateTenantCommand
-    {
-        [System.Text.Json.Serialization.JsonPropertyName("id")]
-        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
-        public string Id { get; set; }
-
-        [System.Text.Json.Serialization.JsonPropertyName("name")]
-        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
-        public string Name { get; set; }
-
-        [System.Text.Json.Serialization.JsonPropertyName("isEnabled")]
-        public bool IsEnabled { get; set; } = true;
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class UpdateTenantCommand
-    {
-        [System.Text.Json.Serialization.JsonPropertyName("name")]
-        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
-        public string Name { get; set; }
-
-        [System.Text.Json.Serialization.JsonPropertyName("isEnabled")]
-        public bool IsEnabled { get; set; }
-    }
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PasskeyInfo
     {
         [System.Text.Json.Serialization.JsonPropertyName("id")]

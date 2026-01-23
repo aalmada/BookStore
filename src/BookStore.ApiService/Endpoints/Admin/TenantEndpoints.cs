@@ -1,4 +1,7 @@
+using BookStore.ApiService.Infrastructure;
+using BookStore.ApiService.Infrastructure.Tenant;
 using BookStore.ApiService.Models;
+using BookStore.Shared.Models;
 using Marten;
 using Microsoft.AspNetCore.Mvc;
 
@@ -17,7 +20,7 @@ public static class TenantEndpoints
     // GET /api/admin/tenants
     public static async Task<IResult> GetTenants(
         IDocumentStore store,
-        BookStore.ApiService.Infrastructure.Tenant.ITenantContext tenantContext,
+        ITenantContext tenantContext,
         CancellationToken ct)
     {
         // Security: Only the Default (System) Tenant can see all tenants
@@ -41,9 +44,12 @@ public static class TenantEndpoints
 
     // POST /api/admin/tenants
     public static async Task<IResult> CreateTenant(
-        [FromBody] Commands.CreateTenantCommand request,
+        [FromBody] CreateTenantCommand request,
         IDocumentStore store,
-        BookStore.ApiService.Infrastructure.Tenant.ITenantContext tenantContext,
+        ITenantContext tenantContext,
+        ITenantStore tenantStore,
+        [FromServices] Wolverine.IMessageBus bus,
+        [FromServices] Microsoft.Extensions.Options.IOptions<BookStore.ApiService.Infrastructure.Email.EmailOptions> emailOptions,
         CancellationToken ct)
     {
         // Security check
@@ -55,6 +61,29 @@ public static class TenantEndpoints
         if (string.IsNullOrWhiteSpace(request.Id))
         {
             return Results.BadRequest("Tenant ID is required.");
+        }
+
+        var (isValid, errors) = BookStore.Shared.Validation.TenantIdValidator.Validate(request.Id);
+        if (!isValid)
+        {
+            return Results.BadRequest(errors.FirstOrDefault() ?? "Invalid Tenant ID.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.AdminPassword))
+        {
+            var (isPasswordValid, passwordErrors) = BookStore.Shared.Validation.PasswordValidator.Validate(request.AdminPassword);
+            if (!isPasswordValid)
+            {
+                return Results.BadRequest(passwordErrors.FirstOrDefault() ?? "Invalid Password.");
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.AdminEmail))
+        {
+            if (!BookStore.Shared.Validation.EmailValidator.IsValid(request.AdminEmail))
+            {
+                return Results.BadRequest("Invalid Admin Email.");
+            }
         }
 
         // Use a lightweight session on the native default tenant
@@ -70,6 +99,8 @@ public static class TenantEndpoints
         {
             Id = request.Id,
             Name = request.Name,
+            Tagline = request.Tagline,
+            ThemePrimaryColor = request.ThemePrimaryColor,
             IsEnabled = request.IsEnabled,
             CreatedAt = DateTimeOffset.UtcNow
         };
@@ -77,15 +108,34 @@ public static class TenantEndpoints
         session.Store(tenant);
         await session.SaveChangesAsync(ct);
 
+        // Seed initial admin user if provided
+        if (!string.IsNullOrWhiteSpace(request.AdminEmail))
+        {
+            var verificationRequired = emailOptions.Value.DeliveryMethod != "None";
+
+            // Invoke the seeding command in the context of the NEW tenant
+            var seedCommand = new Messages.Commands.SeedTenantAdmin(
+                tenant.Id,
+                request.AdminEmail,
+                request.AdminPassword,
+                verificationRequired);
+
+            await bus.InvokeAsync(seedCommand, new Wolverine.DeliveryOptions { TenantId = tenant.Id }, ct);
+        }
+
+        // Invalidate cache
+        await tenantStore.InvalidateCacheAsync(tenant.Id);
+
         return Results.Created($"/api/admin/tenants/{tenant.Id}", tenant);
     }
 
     // PUT /api/admin/tenants/{id}
     public static async Task<IResult> UpdateTenant(
         string id,
-        [FromBody] Commands.UpdateTenantCommand request,
+        [FromBody] UpdateTenantCommand request,
         IDocumentStore store,
-        BookStore.ApiService.Infrastructure.Tenant.ITenantContext tenantContext,
+        ITenantContext tenantContext,
+        ITenantStore tenantStore,
         CancellationToken ct)
     {
         // Security check: Only System Admin can update tenant definitions
@@ -103,11 +153,16 @@ public static class TenantEndpoints
         }
 
         tenant.Name = request.Name;
+        tenant.Tagline = request.Tagline;
+        tenant.ThemePrimaryColor = request.ThemePrimaryColor;
         tenant.IsEnabled = request.IsEnabled;
         tenant.UpdatedAt = DateTimeOffset.UtcNow;
 
         session.Store(tenant);
         await session.SaveChangesAsync(ct);
+
+        // Invalidate cache
+        await tenantStore.InvalidateCacheAsync(id);
 
         return Results.Ok(tenant);
     }

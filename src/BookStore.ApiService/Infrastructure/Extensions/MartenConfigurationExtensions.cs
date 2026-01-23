@@ -206,7 +206,9 @@ public static class MartenConfigurationExtensions
         _ = options.Schema.For<ApplicationUser>()
             .UniqueIndex(x => x.Email!)
             .Index(x => x.NormalizedEmail)
-            .Index(x => x.NormalizedUserName);
+            .Index(x => x.NormalizedUserName)
+            .GinIndexJsonData()
+            .NgramIndex(x => x.Email!);
     }
 
     static void RegisterChangeListeners(StoreOptions options, IServiceProvider sp)

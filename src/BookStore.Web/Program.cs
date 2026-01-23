@@ -12,7 +12,6 @@ using MudBlazor.Services;
 using Polly;
 using Polly.CircuitBreaker;
 using Polly.Retry;
-using Polly.Timeout;
 using Refit;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -137,6 +136,8 @@ static void RegisterScopedRefitClients(
     AddScopedClient<ISystemClient>();
     AddScopedClient<IIdentityClient>();
     AddScopedClient<IPasskeyClient>();
+    AddScopedClient<IAdminTenantClient>();
+    AddScopedClient<IAdminUserClient>();
 }
 
 // Add authentication services (JWT token-based)
@@ -147,7 +148,9 @@ builder.Services.AddScoped<AuthenticationService>();
 builder.Services.AddScoped<JwtAuthenticationStateProvider>();
 builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<JwtAuthenticationStateProvider>());
 builder.Services.AddCascadingAuthenticationState();
-builder.Services.AddAuthorizationCore();
+builder.Services.AddAuthorizationCore(options => options.AddPolicy("SystemAdmin",
+    policy => policy.RequireRole("Admin")
+        .RequireClaim("tenant_id", "*DEFAULT*")));
 
 // Add Polly resilience policies to all HTTP clients
 // builder.Services.ConfigureHttpClientDefaults(http =>

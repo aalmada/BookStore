@@ -189,6 +189,14 @@ public static class PasskeyEndpoints
                     newUserGuid = Guid.CreateVersion7();
                 }
 
+                // SECURITY FIX: Check if user already exists to prevent overwrite
+                var conflictingUserById = await userManager.FindByIdAsync(newUserGuid.ToString());
+                if (conflictingUserById != null)
+                {
+                    Log.Users.PasskeyRegistrationIdConflict(logger, newUserGuid);
+                    return Results.BadRequest("User ID already exists.");
+                }
+
                 Log.Users.PasskeyCreatingNewUser(logger, newUserGuid, userIdSource);
 
                 var newUser = new ApplicationUser
@@ -346,7 +354,7 @@ public static class PasskeyEndpoints
                             if (user != null)
                             {
                                 // Issue tokens
-                                return await IssueTokens(user, tokenService, userManager, tenantContext.TenantId);
+                                return await IssueTokens(user, tokenService, userManager, signInManager, tenantContext.TenantId);
                             }
                         }
 
@@ -364,7 +372,7 @@ public static class PasskeyEndpoints
                                     var user = await passkeyStore.FindByPasskeyIdAsync(credentialId, cancellationToken);
                                     if (user is not null)
                                     {
-                                        return await IssueTokens(user, tokenService, userManager, tenantContext.TenantId);
+                                        return await IssueTokens(user, tokenService, userManager, signInManager, tenantContext.TenantId);
                                     }
                                 }
                             }
@@ -467,8 +475,15 @@ public static class PasskeyEndpoints
         ApplicationUser user,
         BookStore.ApiService.Services.JwtTokenService tokenService,
         UserManager<ApplicationUser> userManager,
+        SignInManager<ApplicationUser> signInManager,
         string tenantId)
     {
+        // Check if user is allowed to sign in (checks RequireConfirmedEmail, Lockout, etc.)
+        if (!await signInManager.CanSignInAsync(user))
+        {
+            return Results.BadRequest("User is not allowed to sign in (e.g. unconfirmed email).");
+        }
+
         var roles = await userManager.GetRolesAsync(user);
         var accessToken = tokenService.GenerateAccessToken(user, tenantId, roles);
         var refreshToken = tokenService.GenerateRefreshToken();

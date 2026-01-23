@@ -94,5 +94,9 @@ public static class EndpointMappingExtensions
         _ = adminApi.MapGroup("/projections")
             .MapProjectionEndpoints()
             .WithTags("Admin - System");
+
+        _ = adminApi.MapGroup("/users")
+            .MapAdminUserEndpoints()
+            .WithTags("Admin - Users");
     }
 }

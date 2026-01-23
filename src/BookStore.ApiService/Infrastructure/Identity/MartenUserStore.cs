@@ -129,9 +129,10 @@ public sealed class MartenUserStore :
 
     public Task AddToRoleAsync(ApplicationUser user, string roleName, CancellationToken cancellationToken)
     {
-        if (!user.Roles.Contains(roleName))
+        var normalizedRole = NormalizeRole(roleName);
+        if (!user.Roles.Contains(normalizedRole))
         {
-            user.Roles.Add(roleName);
+            user.Roles.Add(normalizedRole);
         }
 
         return Task.CompletedTask;
@@ -139,7 +140,12 @@ public sealed class MartenUserStore :
 
     public Task RemoveFromRoleAsync(ApplicationUser user, string roleName, CancellationToken cancellationToken)
     {
-        _ = user.Roles.Remove(roleName);
+        var existingRole = user.Roles.FirstOrDefault(r => string.Equals(r, roleName, StringComparison.OrdinalIgnoreCase));
+        if (existingRole != null)
+        {
+            _ = user.Roles.Remove(existingRole);
+        }
+
         return Task.CompletedTask;
     }
 
@@ -147,15 +153,20 @@ public sealed class MartenUserStore :
         => Task.FromResult<IList<string>>([.. user.Roles]);
 
     public Task<bool> IsInRoleAsync(ApplicationUser user, string roleName, CancellationToken cancellationToken)
-        => Task.FromResult(user.Roles.Contains(roleName));
+        => Task.FromResult(user.Roles.Any(r => string.Equals(r, roleName, StringComparison.OrdinalIgnoreCase)));
 
     public async Task<IList<ApplicationUser>> GetUsersInRoleAsync(string roleName, CancellationToken cancellationToken)
     {
+        // Marten query remains case-insensitive enough if we use normalized role name or a broader query
+        // But for consistency let's use the normalized name
+        var normalizedRole = NormalizeRole(roleName);
         var users = await _session.Query<ApplicationUser>()
-            .Where(u => u.Roles.Contains(roleName))
+            .Where(u => u.Roles.Contains(normalizedRole))
             .ToListAsync(cancellationToken);
         return (IList<ApplicationUser>)users;
     }
+
+    static string NormalizeRole(string roleName) => string.Equals(roleName, "admin", StringComparison.OrdinalIgnoreCase) ? "Admin" : roleName;
 
     #endregion
 

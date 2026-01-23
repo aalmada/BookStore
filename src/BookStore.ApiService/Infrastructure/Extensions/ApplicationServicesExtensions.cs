@@ -106,6 +106,9 @@ public static class ApplicationServicesExtensions
                 options.Password.RequireNonAlphanumeric = true;
                 options.Password.RequiredLength = 8;
 
+                // Require email confirmation for login
+                options.SignIn.RequireConfirmedEmail = true;
+
             })
             .AddUserStore<Identity.MartenUserStore>()
             .AddSignInManager() // This registers SignInManager and IPasskeyHandler

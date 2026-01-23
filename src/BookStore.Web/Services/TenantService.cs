@@ -73,12 +73,15 @@ public class TenantService : IDisposable
 
     public string CurrentTenantPrimaryColor { get; private set; } = "#594AE2";
     public bool IsLoading { get; private set; }
+    public List<TenantInfoDto> AvailableTenants { get; private set; } = [];
 
     public async Task InitializeAsync()
     {
         // Priority 1: Check URL parameter
         var uri = _navigation.ToAbsoluteUri(_navigation.Uri);
         var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+
+        await RefreshAvailableTenantsAsync();
 
         if (query.TryGetValue("tenant", out var tenantId) && !string.IsNullOrWhiteSpace(tenantId))
         {
@@ -150,10 +153,10 @@ public class TenantService : IDisposable
         try
         {
             var info = await _tenantClient.GetTenantAsync(tenantId);
-            CurrentTenantName = info?.Name ?? "BookStore";
-            CurrentTenantTagline = info?.Tagline ?? "Discover your next great read from our curated collection";
+            CurrentTenantName = info.Name;
+            CurrentTenantTagline = info.Tagline ?? "Discover your next great read from our curated collection";
             CurrentTenantPrimaryColor =
-                !string.IsNullOrEmpty(info?.ThemePrimaryColor) ? info.ThemePrimaryColor : "#594AE2";
+                !string.IsNullOrEmpty(info.ThemePrimaryColor) ? info.ThemePrimaryColor : "#594AE2";
 
             // Save to localStorage
             await _localStorage.SetItemAsStringAsync("selected-tenant", tenantId);
@@ -174,10 +177,19 @@ public class TenantService : IDisposable
         }
         catch (Exception)
         {
-            // Fallback for invalid/unknown tenant
-            CurrentTenantName = "Unknown Tenant";
-            CurrentTenantTagline = "Discover your next great read from our curated collection";
-            CurrentTenantPrimaryColor = "#594AE2";
+            // Fallback for invalid/unknown/disabled tenant
+            if (tenantId != DefaultTenantId)
+            {
+                // If not already on default, redirect to default
+                await SetTenantAsync(DefaultTenantId);
+            }
+            else
+            {
+                // Absolute fallback (should not happen if system is healthy)
+                CurrentTenantName = "BookStore";
+                CurrentTenantTagline = "Discover your next great read from our curated collection";
+                CurrentTenantPrimaryColor = "#594AE2";
+            }
         }
         finally
         {
@@ -186,15 +198,26 @@ public class TenantService : IDisposable
         }
     }
 
-    public async Task<List<TenantInfoDto>> GetAvailableTenantsAsync()
+    public async Task RefreshAvailableTenantsAsync()
     {
         try
         {
-            return await _tenantClient.GetTenantsAsync();
+            AvailableTenants = await _tenantClient.GetTenantsAsync();
+            OnChange?.Invoke();
         }
         catch (Exception)
         {
-            return [];
+            AvailableTenants = [];
         }
+    }
+
+    public async Task<List<TenantInfoDto>> GetAvailableTenantsAsync()
+    {
+        if (AvailableTenants.Count == 0)
+        {
+            await RefreshAvailableTenantsAsync();
+        }
+
+        return AvailableTenants;
     }
 }
