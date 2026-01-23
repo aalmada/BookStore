@@ -33,5 +33,13 @@ public static partial class Log
         public static partial void InvalidTenantRequested(
             ILogger logger,
             string tenantId);
+
+        [LoggerMessage(
+            Level = LogLevel.Information,
+            Message = "Seeding admin user for tenant {TenantId} (Session Tenant: {SessionTenant})")]
+        public static partial void SeedingAdminUser(
+            ILogger logger,
+            string tenantId,
+            string sessionTenant);
     }
 }

@@ -47,3 +47,8 @@ public record LogoutRequest(string? RefreshToken);
 public record ChangePasswordRequest(string CurrentPassword, string NewPassword);
 public record AddPasswordRequest(string NewPassword);
 public record PasswordStatusResponse(bool HasPassword);
+public record UserAdminDto(
+    Guid Id,
+    string Email,
+    bool EmailConfirmed,
+    ICollection<string> Roles);

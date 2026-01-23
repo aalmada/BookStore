@@ -1,10 +1,11 @@
 @page "/admin/tenants"
 @using Microsoft.AspNetCore.Authorization
-@using BookStore.Client
-@using MudBlazor
-@inject ITenantClient TenantClient
+@using BookStore.Shared.Models
+@using BookStore.Shared.Validation
+@inject IAdminTenantClient TenantClient
+@inject TenantService TenantService
 @inject ISnackbar Snackbar
-@attribute [Authorize(Roles = "Admin")]
+@attribute [Authorize(Policy = "SystemAdmin")]
 
 <PageTitle>Tenant Management - BookStore</PageTitle>
 
@@ -20,13 +21,20 @@
     <MudTable Items="@_tenants" Loading="@_isLoading" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="4">
         <HeaderContent>
             <MudTh>ID</MudTh>
-            <MudTh>Name</MudTh>
+            <MudTh>Name / Tagline</MudTh>
+            <MudTh>Theme</MudTh>
             <MudTh>Status</MudTh>
             <MudTh>Actions</MudTh>
         </HeaderContent>
         <RowTemplate>
             <MudTd DataLabel="ID">@context.Id</MudTd>
-            <MudTd DataLabel="Name">@context.Name</MudTd>
+            <MudTd DataLabel="Name / Tagline">
+                <MudText Typo="Typo.body1">@context.Name</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">@context.Tagline</MudText>
+            </MudTd>
+            <MudTd DataLabel="Theme">
+                <div style='@($"width: 24px; height: 24px; border-radius: 50%; background-color: {context.ThemePrimaryColor ?? "#594AE2"}; border: 1px solid #ccc;")'></div>
+            </MudTd>
             <MudTd DataLabel="Status">
                 <MudChip T="string" Color="@(context.IsEnabled ? Color.Success : Color.Error)" Size="Size.Small">
                     @(context.IsEnabled ? "Enabled" : "Disabled")
@@ -47,9 +55,70 @@
     </TitleContent>
     <DialogContent>
         <MudForm @ref="_form">
-            <MudTextField @bind-Value="_model.Id" Label="Tenant ID" Required="true" Disabled="_isEditing" HelperText="Unique identifier for the tenant"/>
-            <MudTextField @bind-Value="_model.Name" Label="Tenant Name" Required="true"/>
-            <MudCheckBox @bind-Value="_model.IsEnabled" Label="Enabled" Color="Color.Primary"/>
+            <MudStack Spacing="4" Class="mt-2">
+                <MudTextField T="string" Value="_model.Id" Label="Tenant ID" Required="true"
+                              Disabled="_isEditing" HelperText="Unique identifier for the tenant (lowercase, numbers, hyphens)"
+                              Immediate="true" ValueChanged="OnIdChanged"
+                              Validation="@(new Func<string, string?>(ValidateTenantId))"/>
+
+                @if (_idErrors.Any() && !_isEditing)
+                {
+                    <MudAlert Severity="Severity.Warning" Dense="true">
+                        <MudText Typo="Typo.body2">
+                            <strong>ID requirements:</strong>
+                        </MudText>
+                        <ul style="margin: 0; padding-left: 20px;">
+                            @foreach (var error in _idErrors)
+                            {
+                                <li>@error</li>
+                            }
+                        </ul>
+                    </MudAlert>
+                }
+
+                <MudTextField @bind-Value="_model.Name" Label="Tenant Name" Required="true" HelperText="The display name for this tenant"/>
+                <MudTextField @bind-Value="_model.Tagline" Label="Tagline" HelperText="A catchy tagline for the tenant's homepage"/>
+
+                <MudColorPicker @bind-Text="_model.ThemePrimaryColor" Label="Primary Color" ColorPickerView="ColorPickerView.Palette" HelperText="Main color used for branding and themes"/>
+                <MudCheckBox @bind-Value="_model.IsEnabled" Label="Enabled" Color="Color.Primary" Dense="true"/>
+
+                @if (!_isEditing)
+                {
+                    <MudDivider Class="my-2"/>
+                    <MudText Typo="Typo.subtitle1">Initial Admin User</MudText>
+                    <MudTextField @bind-Value="_model.AdminEmail" Label="Admin Email"
+                                  InputType="InputType.Email"
+                                  Immediate="true"
+                                  Validation="@(new Func<string, string?>(ValidateEmail))"
+                                  HelperText="The email address for the initial tenant admin"/>
+
+                    <MudTextField Value="_model.AdminPassword" Label="Admin Password"
+                                  T="string"
+                                  InputType="@(_passwordVisibility ? InputType.Text : InputType.Password)"
+                                  Adornment="Adornment.End"
+                                  AdornmentIcon="@(_passwordVisibility ? Icons.Material.Filled.Visibility : Icons.Material.Filled.VisibilityOff)"
+                                  OnAdornmentClick="TogglePasswordVisibility"
+                                  Immediate="true"
+                                  ValueChanged="OnPasswordChanged"
+                                  Validation="@(new Func<string, string?>(ValidatePassword))"
+                                  HelperText="The password for the initial tenant admin"/>
+
+                    @if (_passwordErrors.Any())
+                    {
+                        <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-2">
+                            <MudText Typo="Typo.body2">
+                                <strong>Password requirements:</strong>
+                            </MudText>
+                            <ul style="margin: 0; padding-left: 20px;">
+                                @foreach (var error in _passwordErrors)
+                                {
+                                    <li>@error</li>
+                                }
+                            </ul>
+                        </MudAlert>
+                    }
+                }
+            </MudStack>
         </MudForm>
     </DialogContent>
     <DialogActions>
@@ -64,6 +133,9 @@
     private bool _isDialogVisible;
     private bool _isEditing;
     private TenantModel _model = new();
+    private List<string> _idErrors = new();
+    private List<string> _passwordErrors = new();
+    private bool _passwordVisibility;
     private MudForm? _form;
     private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
 
@@ -89,10 +161,32 @@
         }
     }
 
+    private void OnIdChanged(string id)
+    {
+        _model.Id = id;
+        var (_, errors) = TenantIdValidator.Validate(id);
+        _idErrors = errors.ToList();
+    }
+
+    private void OnPasswordChanged(string password)
+    {
+        _model.AdminPassword = password;
+        var (_, errors) = PasswordValidator.Validate(password);
+        _passwordErrors = errors.ToList();
+    }
+
+    private void TogglePasswordVisibility()
+    {
+        _passwordVisibility = !_passwordVisibility;
+    }
+
     private void OpenCreateDialog()
     {
         _isEditing = false;
-        _model = new TenantModel { IsEnabled = true };
+        _model = new TenantModel { IsEnabled = true, ThemePrimaryColor = "#594AE2" };
+        _idErrors = new();
+        _passwordErrors = new();
+        _passwordVisibility = false;
         _isDialogVisible = true;
     }
 
@@ -103,6 +197,8 @@
         {
             Id = tenant.Id,
             Name = tenant.Name,
+            Tagline = tenant.Tagline,
+            ThemePrimaryColor = tenant.ThemePrimaryColor ?? "#594AE2",
             IsEnabled = tenant.IsEnabled
         };
         _isDialogVisible = true;
@@ -121,25 +217,32 @@
             if (_isEditing)
             {
                 await TenantClient.UpdateTenantAsync(_model.Id, new UpdateTenantCommand
-                {
-                    Name = _model.Name,
-                    IsEnabled = _model.IsEnabled
-                });
+                (
+                    Name: _model.Name,
+                    Tagline: _model.Tagline,
+                    ThemePrimaryColor: _model.ThemePrimaryColor,
+                    IsEnabled: _model.IsEnabled
+                ));
                 Snackbar.Add("Tenant updated successfully", Severity.Success);
             }
             else
             {
                 await TenantClient.CreateTenantAsync(new CreateTenantCommand
-                {
-                    Id = _model.Id,
-                    Name = _model.Name,
-                    IsEnabled = _model.IsEnabled
-                });
+                (
+                    Id: _model.Id,
+                    Name: _model.Name,
+                    Tagline: _model.Tagline,
+                    ThemePrimaryColor: _model.ThemePrimaryColor,
+                    IsEnabled: _model.IsEnabled,
+                    AdminEmail: _model.AdminEmail,
+                    AdminPassword: _model.AdminPassword
+                ));
                 Snackbar.Add("Tenant created successfully", Severity.Success);
             }
 
             _isDialogVisible = false;
             await LoadTenantsAsync();
+            await TenantService.RefreshAvailableTenantsAsync();
         }
         catch (Exception ex)
         {
@@ -147,11 +250,30 @@
         }
     }
 
+    private string? ValidateTenantId(string id)
+    {
+        return TenantIdValidator.GetFirstError(id);
+    }
+
+    private string? ValidateEmail(string? email)
+    {
+        return EmailValidator.GetError(email);
+    }
+
+    private string? ValidatePassword(string password)
+    {
+        return PasswordValidator.GetFirstError(password);
+    }
+
     public class TenantModel
     {
         public string Id { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
+        public string? Tagline { get; set; }
+        public string? ThemePrimaryColor { get; set; }
         public bool IsEnabled { get; set; }
+        public string? AdminEmail { get; set; }
+        public string? AdminPassword { get; set; }
     }
 
 }

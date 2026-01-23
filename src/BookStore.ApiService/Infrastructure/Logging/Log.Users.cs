@@ -118,6 +118,11 @@ public static partial class Log
         public static partial void PasskeyCreatingNewUser(ILogger logger, Guid userId, string source);
 
         [LoggerMessage(
+            Level = LogLevel.Warning,
+            Message = "Registration failed: User ID {UserId} already exists.")]
+        public static partial void PasskeyRegistrationIdConflict(ILogger logger, Guid userId);
+
+        [LoggerMessage(
             Level = LogLevel.Error,
             Message = "Unhandled exception during passkey registration/addition")]
         public static partial void PasskeyRegistrationUnhandledException(ILogger logger, Exception ex);

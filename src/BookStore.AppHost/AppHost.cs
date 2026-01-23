@@ -42,6 +42,12 @@ if (!string.IsNullOrEmpty(seedingEnabled))
     _ = apiService.WithEnvironment("Seeding__Enabled", seedingEnabled);
 }
 
+var emailDeliveryMethod = builder.Configuration["Email:DeliveryMethod"];
+if (!string.IsNullOrEmpty(emailDeliveryMethod))
+{
+    _ = apiService.WithEnvironment("Email__DeliveryMethod", emailDeliveryMethod);
+}
+
 builder.AddProject<Projects.BookStore_Web>(ResourceNames.WebFrontend)
     .WithExternalHttpEndpoints()
     .WithHttpHealthCheck(ResourceNames.HealthCheckEndpoint)

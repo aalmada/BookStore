@@ -5,6 +5,9 @@
     <MudNavLink Href="categories" Icon="@Icons.Material.Filled.Category">Categories</MudNavLink>
     <MudNavLink Href="cart" Icon="@Icons.Material.Filled.ShoppingCart">Cart</MudNavLink>
     <AuthorizeView Roles="Admin">
+        <MudNavLink Href="admin/users" Icon="@Icons.Material.Filled.Group">Users</MudNavLink>
+    </AuthorizeView>
+    <AuthorizeView Policy="SystemAdmin">
         <MudNavLink Href="admin/tenants" Icon="@Icons.Material.Filled.Settings">Tenants</MudNavLink>
     </AuthorizeView>
 </MudNavMenu>

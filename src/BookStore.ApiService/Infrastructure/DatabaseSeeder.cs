@@ -102,23 +102,26 @@ public class DatabaseSeeder(
         Log.Seeding.DatabaseSeedingCompleted(logger);
 
         // Seed tenant-specific admin user using the tenant-scoped session
-        await SeedAdminUserAsync(session, tenantId);
+        _ = await SeedAdminUserAsync(session, tenantId);
 
     }
 
     /// <summary>
     /// Seeds a tenant-specific admin user for development purposes
     /// </summary>
-    public static async Task SeedAdminUserAsync(
+    public static async Task<Models.ApplicationUser?> SeedAdminUserAsync(
         IDocumentSession session,
-        string tenantId)
+        string tenantId,
+        string? email = null,
+        string? password = null,
+        bool confirmEmail = true)
     {
-        // Generate tenant-specific email
-        var adminEmail = StorageConstants.DefaultTenantId.Equals(tenantId, StringComparison.OrdinalIgnoreCase)
+        // Generate tenant-specific email if not provided
+        var adminEmail = email ?? (StorageConstants.DefaultTenantId.Equals(tenantId, StringComparison.OrdinalIgnoreCase)
             ? "admin@bookstore.com"
-            : $"admin@{tenantId}.com";
+            : $"admin@{tenantId}.com");
 
-        const string adminPassword = "Admin123!";
+        var adminPassword = password ?? "Admin123!";
 
         // Check if admin user already exists in THIS tenant
         var existingAdmin = await session.Query<Models.ApplicationUser>()
@@ -135,7 +138,7 @@ public class DatabaseSeeder(
                 await session.SaveChangesAsync();
             }
 
-            return;
+            return existingAdmin;
         }
 
         // Create admin user directly in the tenant-scoped session
@@ -146,7 +149,7 @@ public class DatabaseSeeder(
             NormalizedUserName = adminEmail.ToUpperInvariant(),
             Email = adminEmail,
             NormalizedEmail = adminEmail.ToUpperInvariant(),
-            EmailConfirmed = true,
+            EmailConfirmed = confirmEmail,
             Roles = ["Admin"],
             SecurityStamp = Guid.CreateVersion7().ToString("D"),
             ConcurrencyStamp = Guid.CreateVersion7().ToString("D")
@@ -159,6 +162,8 @@ public class DatabaseSeeder(
         // Store in the tenant-scoped session
         session.Store(adminUser);
         await session.SaveChangesAsync();
+
+        return adminUser;
     }
 
     static Dictionary<string, PublisherAdded> SeedPublishers(IDocumentSession session, ILogger logger)

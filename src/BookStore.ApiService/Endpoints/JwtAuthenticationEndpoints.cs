@@ -74,7 +74,7 @@ public static class JwtAuthenticationEndpoints
         new(JwtRegisteredClaimNames.Email, user.Email!),
         new(JwtRegisteredClaimNames.Jti, Guid.CreateVersion7().ToString()),
         new("tenant_id", tenantId),
-        .. roles.Select(role => new Claim(ClaimTypes.Role, role))
+        .. roles.Select(role => new Claim(ClaimTypes.Role, string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase) ? "Admin" : role))
     ];
 
     static async Task<IResult> LoginAsync(
@@ -170,6 +170,8 @@ public static class JwtAuthenticationEndpoints
         {
             var code = await userManager.GenerateEmailConfirmationTokenAsync(user);
             await bus.PublishAsync(new Messages.Commands.SendUserVerificationEmail(user.Id, user.Email!, code, user.UserName!));
+
+            return Results.Ok(new { message = "Registration successful. Please check your email to verify your account." });
         }
 
         // Build claims and generate tokens

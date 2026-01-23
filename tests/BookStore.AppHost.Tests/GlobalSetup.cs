@@ -32,7 +32,8 @@ public static class GlobalHooks
             var builder = await DistributedApplicationTestingBuilder.CreateAsync<Projects.BookStore_AppHost>([
                 "--Seeding:Enabled=false",
                 "--RateLimit:AuthPermitLimit=2000",
-                "--RateLimit:PermitLimit=2000"
+                "--RateLimit:PermitLimit=2000",
+                "--Email:DeliveryMethod=None"
             ]);
             _ = builder.Services.AddLogging(logging =>
             {

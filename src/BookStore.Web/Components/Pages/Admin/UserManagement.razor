@@ -1,0 +1,126 @@
+@page "/admin/users"
+@using Microsoft.AspNetCore.Authorization
+@using BookStore.Shared.Models
+@inject IAdminUserClient UserClient
+@inject AuthenticationStateProvider AuthStateProvider
+@inject ISnackbar Snackbar
+@attribute [Authorize(Roles = "Admin")]
+
+<PageTitle>User Management - BookStore</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-8">
+    <MudText Typo="Typo.h4" GutterBottom="true">User Management</MudText>
+
+    <MudTable Items="@_users" Loading="@_isLoading" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="4">
+        <HeaderContent>
+            <MudTh>Email</MudTh>
+            <MudTh>Confirmed</MudTh>
+            <MudTh>Roles</MudTh>
+            <MudTh>Actions</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Email">
+                <MudStack Row="true" AlignItems="AlignItems.Center">
+                    @context.Email
+                    @if (context.Email.Equals(_currentUserEmail, StringComparison.OrdinalIgnoreCase))
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Text">Current</MudChip>
+                    }
+                </MudStack>
+            </MudTd>
+            <MudTd DataLabel="Confirmed">
+                <MudIcon Icon="@(context.EmailConfirmed ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Error)"
+                         Color="@(context.EmailConfirmed ? Color.Success : Color.Error)"
+                         Size="Size.Small"/>
+            </MudTd>
+            <MudTd DataLabel="Roles">
+                @foreach (var role in context.Roles)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="@(GetRoleColor(role))">@role</MudChip>
+                }
+            </MudTd>
+            <MudTd DataLabel="Actions">
+                @if (!context.Email.Equals(_currentUserEmail, StringComparison.OrdinalIgnoreCase))
+                {
+                    @if (context.Roles.Contains("Admin"))
+                    {
+                        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" OnClick="@(() => DemoteUser(context))">
+                            Demote from Admin
+                        </MudButton>
+                    }
+                    else
+                    {
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => PromoteUser(context))">
+                            Promote to Admin
+                        </MudButton>
+                    }
+                }
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+</MudContainer>
+
+@code {
+    private List<UserAdminDto> _users = new();
+    private bool _isLoading = true;
+    private string? _currentUserEmail;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        _currentUserEmail = authState.User.Identity?.Name;
+        await LoadUsersAsync();
+    }
+
+    private async Task LoadUsersAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            _users = await UserClient.GetUsersAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load users: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task PromoteUser(UserAdminDto user)
+    {
+        try
+        {
+            await UserClient.PromoteToAdminAsync(user.Id);
+            Snackbar.Add($"User {user.Email} promoted to Admin", Severity.Success);
+            await LoadUsersAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to promote user: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task DemoteUser(UserAdminDto user)
+    {
+        try
+        {
+            await UserClient.DemoteFromAdminAsync(user.Id);
+            Snackbar.Add($"User {user.Email} demoted from Admin", Severity.Success);
+            await LoadUsersAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to demote user: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private Color GetRoleColor(string role) => role.ToLower() switch
+    {
+        "admin" => Color.Secondary,
+        _ => Color.Default
+    };
+
+}

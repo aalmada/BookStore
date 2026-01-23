@@ -13,7 +13,7 @@
         </MudText>
         <MudSpacer/>
         <MudMenu Icon="@Icons.Material.Filled.Business" Color="Color.Inherit" Class="mr-2">
-            @foreach (var tenant in _tenants)
+            @foreach (var tenant in TenantService.AvailableTenants)
             {
                 <MudMenuItem OnClick="@(() => SwitchTenant(tenant.Id))">@tenant.Name</MudMenuItem>
             }
@@ -45,7 +45,6 @@
 
 @code {
     bool _drawerOpen = true;
-    List<TenantInfoDto> _tenants = [];
 
     void ToggleDrawer() => _drawerOpen = !_drawerOpen;
 
@@ -59,7 +58,6 @@
         TenantService.OnChange += StateHasChanged;
         await TenantService.InitializeAsync();
         await CurrencyService.InitializeAsync();
-        _tenants = await TenantService.GetAvailableTenantsAsync();
     }
 
     public void Dispose()
