@@ -1,7 +1,6 @@
 ---
 name: rollback-deployment
 description: Rollback a failed deployment to the previous working version. Use this when a deployment causes issues in Azure or Kubernetes.
-license: MIT
 ---
 
 Use this guide to rollback a failed deployment to restore service quickly.

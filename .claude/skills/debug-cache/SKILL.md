@@ -1,7 +1,6 @@
 ---
 name: debug-cache
 description: Debug HybridCache and Redis caching issues when data isn't being cached or invalidated correctly. Use this when cache hit/miss rates are wrong.
-license: MIT
 ---
 
 Use this guide to troubleshoot **HybridCache** and **Redis** caching issues.

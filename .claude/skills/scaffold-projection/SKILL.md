@@ -1,7 +1,6 @@
 ---
 name: scaffold-projection
 description: Create a new Marten read model projection for CQRS queries. Use this when you need to create an optimized read model from event streams.
-license: MIT
 ---
 
 Follow this guide to create a new **Marten projection** (read model) for efficient queries in the ApiService.

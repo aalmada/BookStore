@@ -1,7 +1,6 @@
 ---
 name: run-unit-tests
 description: Run unit tests for the API Service and Analyzers. Use this to verify business logic, individual components, and code analyzers.
-license: MIT
 ---
 
 To verify the logic, endpoints, and custom analyzers of the API Service:

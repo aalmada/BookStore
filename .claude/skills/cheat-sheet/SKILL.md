@@ -1,7 +1,6 @@
 ---
 name: cheat-sheet
 description: Quick reference for common patterns and code snippets. Use this when you need a fast lookup of project conventions.
-license: MIT
 ---
 
 # BookStore Cheat Sheet

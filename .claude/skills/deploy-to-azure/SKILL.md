@@ -1,7 +1,6 @@
 ---
 name: deploy-to-azure
 description: Deploy the BookStore application to Azure using Aspire and azd. Use this to ship the application to production.
-license: MIT
 ---
 
 Deploy the application stack to Azure Container Apps using the Azure Developer CLI (`azd`).

@@ -1,7 +1,6 @@
 ---
 name: debug-sse
 description: Debug Server-Sent Events (SSE) notification issues when real-time updates aren't working. Use this when mutations don't trigger frontend updates.
-license: MIT
 ---
 
 Use this guide to troubleshoot Server-Sent Events (SSE) issues.

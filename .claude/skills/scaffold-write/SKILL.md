@@ -1,7 +1,6 @@
 ---
 name: scaffold-write
-description: Guide for adding a new write operation (command/mutation) to the Backend. Focuses on Event Sourcing, Wolverine commands, and Projections.
-license: MIT
+description: Adds a new write operation (command/mutation) to the Backend with Event Sourcing, Wolverine commands, and Projections. Use this when implementing POST, PUT, PATCH, or DELETE endpoints.
 ---
 
 Follow this guide to implement a state-changing operation in the **Backend** (ApiService) using strict project standards.
