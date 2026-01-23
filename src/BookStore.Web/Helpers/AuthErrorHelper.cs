@@ -56,6 +56,11 @@ public class AuthErrorHelper
             return _localizer["NoPasskeysRegistered"];
         }
 
+        if (errorLower.Contains("already registered"))
+        {
+            return "This authenticator is already registered for this account.";
+        }
+
         if (errorLower.Contains("400") ||
             errorLower.Contains("bad request") ||
             errorLower.Contains("status code"))

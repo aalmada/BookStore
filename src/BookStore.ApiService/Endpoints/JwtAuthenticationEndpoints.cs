@@ -43,6 +43,21 @@ public static class JwtAuthenticationEndpoints
             .WithSummary("Logout and invalidate refresh token")
             .RequireAuthorization();
 
+        _ = group.MapPost("/change-password", ChangePasswordAsync)
+            .WithName("ChangePassword")
+            .WithSummary("Change user password")
+            .RequireAuthorization();
+
+        _ = group.MapPost("/add-password", AddPasswordAsync)
+            .WithName("AddPassword")
+            .WithSummary("Set a password for a user without one")
+            .RequireAuthorization();
+
+        _ = group.MapGet("/password-status", GetPasswordStatusAsync)
+            .WithName("GetPasswordStatus")
+            .WithSummary("Check if the user has a password set")
+            .RequireAuthorization();
+
         _ = group.WithMetadata(new AllowAnonymousTenantAttribute());
         return group.RequireRateLimiting("AuthPolicy");
     }
@@ -319,5 +334,64 @@ public static class JwtAuthenticationEndpoints
         _ = await userManager.UpdateAsync(appUser);
 
         return Results.Ok();
+    }
+
+    static async Task<IResult> ChangePasswordAsync(
+        [FromBody] ChangePasswordRequest request,
+        UserManager<ApplicationUser> userManager,
+        ClaimsPrincipal user)
+    {
+        var appUser = await userManager.GetUserAsync(user);
+        if (appUser == null)
+        {
+            return Results.Unauthorized();
+        }
+
+        if (request.CurrentPassword == request.NewPassword)
+        {
+            return Results.BadRequest(new { errors = new[] { new { code = "PasswordReuse", description = "New password cannot be the same as the current password." } } });
+        }
+
+        var result = await userManager.ChangePasswordAsync(appUser, request.CurrentPassword, request.NewPassword);
+        if (result.Succeeded)
+        {
+            return Results.Ok(new { message = "Password changed successfully." });
+        }
+
+        return Results.BadRequest(new { errors = result.Errors });
+    }
+
+    static async Task<IResult> AddPasswordAsync(
+        [FromBody] AddPasswordRequest request,
+        UserManager<ApplicationUser> userManager,
+        ClaimsPrincipal user)
+    {
+        var appUser = await userManager.GetUserAsync(user);
+        if (appUser == null)
+        {
+            return Results.Unauthorized();
+        }
+
+        var result = await userManager.AddPasswordAsync(appUser, request.NewPassword);
+        if (result.Succeeded)
+        {
+            return Results.Ok(new { message = "Password set successfully." });
+        }
+
+        return Results.BadRequest(new { errors = result.Errors });
+    }
+
+    static async Task<IResult> GetPasswordStatusAsync(
+        UserManager<ApplicationUser> userManager,
+        ClaimsPrincipal user)
+    {
+        var appUser = await userManager.GetUserAsync(user);
+        if (appUser == null)
+        {
+            return Results.Unauthorized();
+        }
+
+        var hasPassword = await userManager.HasPasswordAsync(appUser);
+        return Results.Ok(new PasswordStatusResponse(hasPassword));
     }
 }

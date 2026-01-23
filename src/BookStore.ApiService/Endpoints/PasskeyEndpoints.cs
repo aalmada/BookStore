@@ -94,134 +94,171 @@ public static class PasskeyEndpoints
             Microsoft.Extensions.Options.IOptions<Infrastructure.Email.EmailOptions> emailOptions,
             CancellationToken cancellationToken) =>
         {
-            var user = await userManager.GetUserAsync(context.User);
-            var verificationRequired = emailOptions.Value.DeliveryMethod != "None";
-
-            // Case A: Add to existing account
-            if (user is not null)
-            {
-                var attestation = await signInManager.PerformPasskeyAttestationAsync(request.CredentialJson);
-                if (!attestation.Succeeded)
-                {
-                    return Results.BadRequest($"Attestation failed: {attestation.Failure?.Message}");
-                }
-
-                if (userStore is IUserPasskeyStore<ApplicationUser> passkeyStore)
-                {
-                    await passkeyStore.AddOrUpdatePasskeyAsync(user, attestation.Passkey, cancellationToken);
-                    // Persist the changes to the database
-                    _ = await userManager.UpdateAsync(user);
-                }
-
-                return Results.Ok(new { Message = "Passkey added." });
-            }
-
-            // Case B: Sign Up new account
-            // We need the email to create the user.
-            if (string.IsNullOrEmpty(request.Email))
-            {
-                return Results.BadRequest("Email is required for registration.");
-            }
-
-            // 1. Verify Attempt & Extract User Handle
-            // We need the User Handle (ID) that was signed by the client.
-            // This is critical because the authenticator is now bound to THAT ID.
-            string? passedUserId = null;
             try
             {
-                using var doc = System.Text.Json.JsonDocument.Parse(request.CredentialJson);
-                if (doc.RootElement.TryGetProperty("response", out var responseElem) &&
-                    responseElem.TryGetProperty("userHandle", out var userHandleElem))
+                var user = await userManager.GetUserAsync(context.User);
+                var verificationRequired = emailOptions.Value.DeliveryMethod != "None";
+
+                // Case A: Add to existing account
+                if (user is not null)
                 {
-                    var userHandleBase64 = userHandleElem.GetString();
-                    if (!string.IsNullOrEmpty(userHandleBase64))
+                    Log.Users.PasskeyAttestationAttempt(logger, user.Email);
+                    var attestation = await signInManager.PerformPasskeyAttestationAsync(request.CredentialJson);
+                    if (!attestation.Succeeded)
                     {
-                        passedUserId = DecodeBase64UrlToString(userHandleBase64);
+                        Log.Users.PasskeyAttestationFailed(logger, user.Email, attestation.Failure?.Message);
+                        return Results.BadRequest($"Attestation failed: {attestation.Failure?.Message}");
+                    }
+
+                    if (userStore is IUserPasskeyStore<ApplicationUser> passkeyStore)
+                    {
+                        await passkeyStore.AddOrUpdatePasskeyAsync(user, attestation.Passkey!, cancellationToken);
+                        // Persist the changes to the database
+                        var updateResult = await userManager.UpdateAsync(user);
+                        if (!updateResult.Succeeded)
+                        {
+                            Log.Users.PasskeyUpdateUserFailed(logger, user.Email, string.Join(", ", updateResult.Errors.Select(e => e.Description)));
+                            return Results.BadRequest(updateResult.Errors);
+                        }
+                    }
+
+                    Log.Users.PasskeyRegistrationSuccessful(logger, user.Email);
+                    return Results.Ok(new { Message = "Passkey added." });
+                }
+
+                // Case B: Sign Up new account
+                // We need the email to create the user.
+                if (string.IsNullOrEmpty(request.Email))
+                {
+                    return Results.BadRequest("Email is required for registration.");
+                }
+
+                // 1. Verify Attempt & Extract User Handle
+                // We need the User Handle (ID) that was signed by the client.
+                // This is critical because the authenticator is now bound to THAT ID.
+                string? passedUserId = null;
+                try
+                {
+                    using var doc = System.Text.Json.JsonDocument.Parse(request.CredentialJson);
+                    if (doc.RootElement.TryGetProperty("response", out var responseElem) &&
+                        responseElem.TryGetProperty("userHandle", out var userHandleElem))
+                    {
+                        var userHandleBase64 = userHandleElem.GetString();
+                        if (!string.IsNullOrEmpty(userHandleBase64))
+                        {
+                            passedUserId = DecodeBase64UrlToString(userHandleBase64);
+                        }
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-                Log.Users.PasskeyExtractUserIdError(logger, ex);
-            }
-
-            var attestationNew = await signInManager.PerformPasskeyAttestationAsync(request.CredentialJson);
-            if (!attestationNew.Succeeded)
-            {
-                return Results.BadRequest($"Attestation failed: {attestationNew.Failure?.Message}");
-            }
-
-            // Use the user ID from the request (sent by client from options response)
-            // This is critical - the user ID must match what was in the passkey creation options
-            var newUserId = request.UserId ?? passedUserId ?? Guid.CreateVersion7().ToString();
-
-            if (string.IsNullOrEmpty(request.UserId))
-            {
-                Log.Users.PasskeyNoUserIdProvided(logger);
-            }
-
-            var newUser = new ApplicationUser
-            {
-                Id = Guid.Parse(newUserId!), // Force usage of the ID
-                UserName = request.Email,
-                Email = request.Email,
-                EmailConfirmed = !verificationRequired
-            };
-
-            // Create the user in DB
-            var createResult = await userManager.CreateAsync(newUser);
-            if (!createResult.Succeeded)
-            {
-                return Results.BadRequest(createResult.Errors);
-            }
-
-            if (userStore is IUserPasskeyStore<ApplicationUser> ps)
-            {
-                if (attestationNew.Passkey != null)
+                catch (Exception ex)
                 {
-                    await ps.AddOrUpdatePasskeyAsync(newUser, attestationNew.Passkey, cancellationToken);
+                    Log.Users.PasskeyExtractUserIdError(logger, ex);
+                }
 
-                    // Persist the changes (the added passkey) to the database
-                    var updateResult = await userManager.UpdateAsync(newUser);
-                    if (!updateResult.Succeeded)
-                    {
-                        return Results.BadRequest(updateResult.Errors);
-                    }
+                var attestationNew = await signInManager.PerformPasskeyAttestationAsync(request.CredentialJson);
+                if (!attestationNew.Succeeded)
+                {
+                    return Results.BadRequest($"Attestation failed: {attestationNew.Failure?.Message}");
+                }
+
+                // Use the user ID from the request (sent by client from options response)
+                // This is critical - the user ID must match what was in the passkey creation options
+                var userIdSource = "none";
+                string? newUserIdString = null;
+
+                if (!string.IsNullOrEmpty(request.UserId))
+                {
+                    newUserIdString = request.UserId;
+                    userIdSource = "request.UserId";
+                }
+                else if (!string.IsNullOrEmpty(passedUserId))
+                {
+                    newUserIdString = passedUserId;
+                    userIdSource = "passedUserId (from userHandle)";
                 }
                 else
                 {
-                    Log.Users.PasskeyIsNull(logger);
-                    return Results.BadRequest("Failed to create passkey");
+                    newUserIdString = Guid.CreateVersion7().ToString();
+                    userIdSource = "newly generated";
+                    Log.Users.PasskeyNoUserIdProvided(logger);
                 }
-            }
 
-            if (verificationRequired)
+                if (!Guid.TryParse(newUserIdString, out var newUserGuid))
+                {
+                    Log.Users.PasskeyInvalidGuidFormat(logger, userIdSource, newUserIdString!);
+                    newUserGuid = Guid.CreateVersion7();
+                }
+
+                Log.Users.PasskeyCreatingNewUser(logger, newUserGuid, userIdSource);
+
+                var newUser = new ApplicationUser
+                {
+                    Id = newUserGuid,
+                    UserName = request.Email,
+                    Email = request.Email,
+                    EmailConfirmed = !verificationRequired
+                };
+
+                // Create the user in DB
+                var createResult = await userManager.CreateAsync(newUser);
+                if (!createResult.Succeeded)
+                {
+                    return Results.BadRequest(createResult.Errors);
+                }
+
+                if (userStore is IUserPasskeyStore<ApplicationUser> ps)
+                {
+                    if (attestationNew.Passkey != null)
+                    {
+                        await ps.AddOrUpdatePasskeyAsync(newUser, attestationNew.Passkey, cancellationToken);
+
+                        // Persist the changes (the added passkey) to the database
+                        var updateResult = await userManager.UpdateAsync(newUser);
+                        if (!updateResult.Succeeded)
+                        {
+                            return Results.BadRequest(updateResult.Errors);
+                        }
+                    }
+                    else
+                    {
+                        Log.Users.PasskeyIsNull(logger);
+                        return Results.BadRequest("Failed to create passkey");
+                    }
+                }
+
+                if (verificationRequired)
+                {
+                    var code = await userManager.GenerateEmailConfirmationTokenAsync(newUser);
+                    await bus.PublishAsync(new Messages.Commands.SendUserVerificationEmail(newUser.Id, newUser.Email!, code, newUser.UserName!));
+
+                    // Don't auto-login when verification is required
+                    return Results.Ok(new { Message = "Registration successful. Please check your email to verify your account." });
+                }
+
+                // Auto Login - Issue Token (only when verification is not required)
+                var roles = await userManager.GetRolesAsync(newUser);
+                var accessToken = tokenService.GenerateAccessToken(newUser, tenantContext.TenantId, roles);
+                var refreshToken = tokenService.GenerateRefreshToken();
+
+                newUser.RefreshTokens.Add(new RefreshTokenInfo(
+                    refreshToken,
+                    DateTimeOffset.UtcNow.AddDays(7),
+                    DateTimeOffset.UtcNow,
+                    tenantContext.TenantId));
+                _ = await userManager.UpdateAsync(newUser);
+
+                return Results.Ok(new LoginResponse(
+                     "Bearer",
+                     accessToken,
+                     3600,
+                     refreshToken
+                 ));
+            }
+            catch (Exception ex)
             {
-                var code = await userManager.GenerateEmailConfirmationTokenAsync(newUser);
-                await bus.PublishAsync(new Messages.Commands.SendUserVerificationEmail(newUser.Id, newUser.Email!, code, newUser.UserName!));
-
-                // Don't auto-login when verification is required
-                return Results.Ok(new { Message = "Registration successful. Please check your email to verify your account." });
+                Log.Users.PasskeyRegistrationUnhandledException(logger, ex);
+                return Results.BadRequest($"Registration failed: {ex.Message}");
             }
-
-            // Auto Login - Issue Token (only when verification is not required)
-            var roles = await userManager.GetRolesAsync(newUser);
-            var accessToken = tokenService.GenerateAccessToken(newUser, tenantContext.TenantId, roles);
-            var refreshToken = tokenService.GenerateRefreshToken();
-
-            newUser.RefreshTokens.Add(new RefreshTokenInfo(
-                refreshToken,
-                DateTimeOffset.UtcNow.AddDays(7),
-                DateTimeOffset.UtcNow,
-                tenantContext.TenantId));
-            _ = await userManager.UpdateAsync(newUser);
-
-            return Results.Ok(new LoginResponse(
-                 "Bearer",
-                 accessToken,
-                 3600,
-                 refreshToken
-             ));
         });
 
         // 3. Get Login Options
@@ -370,7 +407,7 @@ public static class PasskeyEndpoints
             {
                 var passkeys = await passkeyStore.GetPasskeysAsync(user, cancellationToken);
                 var response = passkeys.Select(p => new PasskeyInfo(
-                    Id: Convert.ToBase64String(p.CredentialId),
+                    Id: Base64UrlTextEncoder.Encode(p.CredentialId),
                     Name: p.Name ?? "Passkey",
                     CreatedAt: p.CreatedAt
                 )).ToList();
@@ -396,7 +433,7 @@ public static class PasskeyEndpoints
 
             try
             {
-                var credentialId = Convert.FromBase64String(id);
+                var credentialId = Base64UrlTextEncoder.Decode(id);
                 if (userStore is IUserPasskeyStore<ApplicationUser> passkeyStore)
                 {
                     // Prevent deleting last passkey if user has no password

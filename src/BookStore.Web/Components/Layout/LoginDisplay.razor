@@ -13,6 +13,10 @@
                 <MudText Typo="Typo.body2">@context.User.Identity?.Name</MudText>
             </MudMenuItem>
             <MudDivider/>
+            <MudMenuItem Href="/account/password">
+                <MudIcon Icon="@Icons.Material.Filled.Lock" Class="mr-2"/>
+                Manage Password
+            </MudMenuItem>
             <MudMenuItem Href="/account/passkeys">
                 <MudIcon Icon="@Icons.Material.Filled.Key" Class="mr-2"/>
                 Manage Passkeys

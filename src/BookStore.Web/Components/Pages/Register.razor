@@ -359,7 +359,14 @@
         }
         catch (Exception ex)
         {
-            errorMessage = AuthErrorHelper.GetFriendlyErrorMessage(ex.Message);
+            var message = ex.Message;
+            if (message.Contains("Error:"))
+            {
+                var parts = message.Split("Error:", 2);
+                message = parts[^1].Trim();
+            }
+
+            errorMessage = AuthErrorHelper.GetFriendlyErrorMessage(message);
         }
         finally
         {

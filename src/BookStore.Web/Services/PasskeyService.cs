@@ -67,6 +67,7 @@ public class PasskeyService
         }
         catch (Refit.ApiException ex)
         {
+            Log.RegistrationResultFailed(_logger, ex.StatusCode, ex.Content ?? ex.Message);
             var errorMessage = ParseError(ex.Content);
             return new LoginResult(false, errorMessage, null, null);
         }
@@ -175,17 +176,22 @@ public class PasskeyService
         }
     }
 
-    public async Task<bool> DeletePasskeyAsync(string id)
+    public async Task<(bool Success, string? Error)> DeletePasskeyAsync(string id)
     {
         try
         {
             await _passkeyClient.DeletePasskeyAsync(id);
-            return true;
+            return (true, null);
+        }
+        catch (Refit.ApiException ex)
+        {
+            var errorMessage = ParseError(ex.Content);
+            return (false, errorMessage);
         }
         catch (Exception ex)
         {
             Log.RegistrationCompleteError(_logger, ex);
-            return false;
+            return (false, ex.Message);
         }
     }
 }

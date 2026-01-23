@@ -64,3 +64,35 @@ public interface IIdentityLogoutEndpoint
         CancellationToken cancellationToken = default);
 }
 
+public interface IIdentityChangePasswordEndpoint
+{
+    /// <summary>
+    /// Change user password
+    /// </summary>
+    [Post("/account/change-password")]
+    Task ChangePasswordAsync(
+        [Body] ChangePasswordRequest request,
+        CancellationToken cancellationToken = default);
+}
+
+public interface IIdentityAddPasswordEndpoint
+{
+    /// <summary>
+    /// Set a password for a user without one
+    /// </summary>
+    [Post("/account/add-password")]
+    Task AddPasswordAsync(
+        [Body] AddPasswordRequest request,
+        CancellationToken cancellationToken = default);
+}
+
+public interface IIdentityGetPasswordStatusEndpoint
+{
+    /// <summary>
+    /// Check if the user has a password set
+    /// </summary>
+    [Get("/account/password-status")]
+    Task<PasswordStatusResponse> GetPasswordStatusAsync(
+        CancellationToken cancellationToken = default);
+}
+
