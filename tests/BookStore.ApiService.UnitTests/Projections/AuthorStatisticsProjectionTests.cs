@@ -10,7 +10,6 @@ public class AuthorStatisticsProjectionTests
 {
     readonly AuthorStatisticsProjectionBuilder _projection = new();
 
-
     // Helper to create a projection state
     static AuthorStatistics CreateState(Guid authorId, int count, Guid? includeBookId = null)
     {
@@ -22,12 +21,12 @@ public class AuthorStatisticsProjectionTests
         
         if (includeBookId.HasValue)
         {
-            stats.BookIds.Add(includeBookId.Value);
+            _ = stats.BookIds.Add(includeBookId.Value);
         }
         
         while (stats.BookIds.Count < count)
         {
-            stats.BookIds.Add(Guid.CreateVersion7());
+            _ = stats.BookIds.Add(Guid.CreateVersion7());
         }
         
         return stats;
@@ -201,4 +200,3 @@ public class AuthorStatisticsProjectionTests
         _ = await Assert.That(state.BookCount).IsEqualTo(6);
     }
 }
-

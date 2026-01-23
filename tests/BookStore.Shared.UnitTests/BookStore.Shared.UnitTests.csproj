@@ -4,6 +4,7 @@
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
     <EnableMicrosoftTestingPlatform>true</EnableMicrosoftTestingPlatform>
+    <CollectCoverage>true</CollectCoverage>
   </PropertyGroup>
 
   <ItemGroup>
