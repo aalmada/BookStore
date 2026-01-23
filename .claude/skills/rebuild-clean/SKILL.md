@@ -1,7 +1,6 @@
 ---
 name: rebuild-clean
 description: Clean and rebuild the solution to ensure a fresh state. Use this when the user faces transient build errors or stale artifacts.
-license: MIT
 ---
 
 To ensure a clean build state and resolve transient compilation issues, follow this process:

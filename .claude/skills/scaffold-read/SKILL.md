@@ -1,7 +1,6 @@
 ---
 name: scaffold-read
-description: Guide for adding a new read operation (query) to the Backend. Focuses on Marten queries, Projections, Caching, and Pagination.
-license: MIT
+description: Adds a new read operation (query) to the Backend with Marten queries, Projections, Caching, and Pagination. Use this when implementing GET endpoints or query features.
 ---
 
 Follow this guide to implement a read-only endpoint in the **Backend** (ApiService) using strict project standards.

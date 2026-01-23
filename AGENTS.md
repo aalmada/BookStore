@@ -40,6 +40,7 @@
 | **Debug** | `/debug-sse`, `/debug-cache` |
 | **Deploy** | `/deploy-to-azure`, `/deploy-kubernetes`, `/rollback-deployment` |
 | **Utility** | `/doctor`, `/rebuild-clean`, `/scaffold-skill`, `/cheat-sheet` |
+| **Documentation** | `/write-documentation-guide`, `/write-agents-md` |
 
 **Aliases**: `/sw`→scaffold-write, `/sr`→scaffold-read, `/sa`→scaffold-aggregate, `/sp`→scaffold-projection, `/st`→scaffold-test, `/vf`→verify-feature
 

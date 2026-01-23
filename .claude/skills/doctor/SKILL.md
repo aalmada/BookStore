@@ -1,7 +1,6 @@
 ---
 name: doctor
-description: Check specific tools and SDKs required for the BookStore project. Use this to diagnose environment issues.
-license: MIT
+description: Checks specific tools and SDKs required for the BookStore project. Use this to diagnose environment issues before deployment or development.
 ---
 
 Perform a health check on the development environment to ensure all prerequisites are met:

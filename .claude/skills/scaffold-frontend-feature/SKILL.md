@@ -1,7 +1,6 @@
 ---
 name: scaffold-frontend-feature
-description: Guide for adding a new feature to the Web Frontend (Blazor), focusing on Reactive State, Optimistic Updates, and Cache Invalidation.
-license: MIT
+description: Adds a new feature to the Web Frontend (Blazor) with Reactive State, Optimistic Updates, and Cache Invalidation. Use this when implementing user-facing features that need real-time updates.
 ---
 
 Follow this guide to implement a responsive frontend feature in `src/Web/BookStore.Web`.

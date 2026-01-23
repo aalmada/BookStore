@@ -175,8 +175,8 @@ All 17 skills include "Related Skills" sections that reference each other, creat
 The project includes `/scaffold-skill` to create new workflows. This ensures consistency in skill structure across the project.
 
 All skills follow these standards:
-- ✅ YAML frontmatter with `name`, `description`, and `license: MIT`
-- ✅ Clear step-by-step instructions  
+- ✅ YAML frontmatter with `name` and `description`
+- ✅ Clear step-by-step instructions
 - ✅ Related Skills section (where applicable)
 - ✅ Examples and troubleshooting guidance
 
@@ -203,7 +203,6 @@ When extending the agent configuration:
 3. **Add cross-references** - Link related skills to create workflow paths
 4. **Use templates in skills** - Reduces boilerplate and ensures consistency
 5. **Add turbo annotations carefully** - Only for truly safe, idempotent commands
-6. **Include license field** - All skills must have `license: MIT` in YAML frontmatter
 
 ---
 
@@ -266,7 +265,7 @@ The agent system complements (but doesn't replace) comprehensive documentation:
 | **docs/** guides | Deep dives for humans learning the architecture | ~10,000+ lines |
 | **Analyzer Rules** | Compile-time enforcement of patterns | N/A (code) |
 
-**Example**: 
+**Example**:
 - **Event Sourcing Guide** (docs/) explains *why* and *how* Event Sourcing works (for humans)
 - **ApiService AGENTS.md** reminds agents to use `DateTimeOffset` and past-tense event names
 - **BS1xxx analyzers** enforce events as records with immutable properties (compile-time)
@@ -278,28 +277,28 @@ The agent system complements (but doesn't replace) comprehensive documentation:
 ## Benefits of This Approach
 
 ### For AI Agents
-✅ Context-aware guidance without needing to ask clarifying questions  
-✅ Consistent patterns across all work  
-✅ Automation of repetitive scaffolding tasks  
-✅ Real-time feedback via analyzers  
-✅ Cross-referenced workflows for multi-step processes  
-✅ Debugging guides for common issues  
-✅ Deployment automation with rollback procedures  
+✅ Context-aware guidance without needing to ask clarifying questions
+✅ Consistent patterns across all work
+✅ Automation of repetitive scaffolding tasks
+✅ Real-time feedback via analyzers
+✅ Cross-referenced workflows for multi-step processes
+✅ Debugging guides for common issues
+✅ Deployment automation with rollback procedures
 
 ### For Developers
-✅ Onboarding agents to the project is automatic  
-✅ Skills codify institutional knowledge  
-✅ Reduces back-and-forth with AI assistants  
-✅ Maintains architectural consistency  
-✅ Faster development with skill-assisted workflows  
-✅ Faster debugging with step-by-step guides  
+✅ Onboarding agents to the project is automatic
+✅ Skills codify institutional knowledge
+✅ Reduces back-and-forth with AI assistants
+✅ Maintains architectural consistency
+✅ Faster development with skill-assisted workflows
+✅ Faster debugging with step-by-step guides
 
 ### For the Codebase
-✅ Self-documenting project structure  
-✅ Enforced patterns via analyzers  
-✅ Easy to extend with new skills and guidance  
-✅ Complete lifecycle coverage from development to deployment  
-✅ Reduced maintenance through cross-references  
+✅ Self-documenting project structure
+✅ Enforced patterns via analyzers
+✅ Easy to extend with new skills and guidance
+✅ Complete lifecycle coverage from development to deployment
+✅ Reduced maintenance through cross-references
 
 ---
 
@@ -380,7 +379,7 @@ The BookStore agent system is **100% compliant** with industry standards:
 ### agents.md Open Standard
 - ✅ Root AGENTS.md with project overview
 - ✅ Build and test commands documented
-- ✅ Code style guidelines included  
+- ✅ Code style guidelines included
 - ✅ Scope-specific AGENTS.md files
 - ✅ Security considerations section
 

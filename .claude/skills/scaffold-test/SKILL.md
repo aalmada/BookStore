@@ -1,7 +1,6 @@
 ---
 name: scaffold-test
 description: Create integration tests for API endpoints with SSE event verification and TUnit patterns. Use this when you need to test a new endpoint.
-license: MIT
 ---
 
 Follow this guide to create **integration tests** for API endpoints in `tests/BookStore.AppHost.Tests`.
