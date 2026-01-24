@@ -236,47 +236,14 @@
         {
             var result = await AuthService.RegisterAsync(email, password);
 
-            if (result.Success)
+            if (result.IsSuccess)
             {
                 registrationSuccess = true;
-                requiresVerification = true; // Assume verification is required unless we know otherwise (API could return this info)
-                // For MVP, if success and no token returned -> verification needed.
-                // If token returned -> auto login.
-                // Our API implementation returns tokens immediately if not verified?
-                // Wait, if EmailConfirmed is false, does logic prevent login? 
-                // Currently RegisterAsync returns tokens regardless of EmailConfirmed status (it's set to false but user is created and tokens issued).
-                // If the requirement is "must verify to login", then RegisterAsync shouldn't return tokens or Login should fail.
-                // However, the current code issues tokens. 
-                // So verification is "optional" for instant access? 
-                // The prompt "when email service is disabled, the account should be validated by default" implies logic.
-                // If enabled, email is sent.
-                // If we want to FORCE verification, we should NOT return tokens in RegisterAsync if !EmailConfirmed.
-                // But let's assume for now, we just notify.
-
-                // Correction based on typical flow:
-                // If verification enabled, we want the user to click the link.
-                // If tokens are returned, they are logged in.
-                // We should check the result.AccessToken.
-
-                requiresVerification = false; // Default to old behavior until we know better.
-                // Actually, `RegisterResult` does not have AccessToken. `AuthenticationService.RegisterAsync` returns `RegisterResult`.
-                // `LoginResult` has AccessToken.
-                // `AuthenticationService.RegisterAsync` calls endpoint which returns LoginResponse? No, `IIdentityRegisterEndpoint` returns Task (void).
-                // Ah, `JwtAuthenticationEndpoints.RegisterAsync` returns `LoginResponse`. 
-                // But `IIdentityRegisterEndpoint` is defined as `Task Execute`. It ignores the response body?
-                // Let's check `IIdentityEndpoints.cs`: `Task Execute` -> it effectively ignores the JSON body unless wrapped in Task<LoginResponse>.
-                // `AuthenticationService.RegisterAsync` returns `RegisterResult` (Success/Error).
-
-                // So the client doesn't get the token automatically here.
-                // This means the user is redirected to Login.
-                // If verification is on, Login might fail or succeed depending on policy (ASP.NET Core Identity by default allows login unless configured otherwise).
-
-                // Design decision: We show "Check email".
                 requiresVerification = true; // Safe default for UI message.
             }
             else
             {
-                errorMessage = AuthErrorHelper.GetFriendlyErrorMessage(result.Error);
+                errorMessage = AuthErrorHelper.GetFriendlyErrorMessage(result.Error.Message);
             }
         }
         finally
@@ -299,12 +266,14 @@
         try
         {
             // 1. Get Options
-            var (options, error) = await PasskeyService.GetCreationOptionsAsync(email);
-            if (string.IsNullOrEmpty(options))
+            var optionsResult = await PasskeyService.GetCreationOptionsAsync(email);
+            if (optionsResult.IsFailure)
             {
-                errorMessage = error ?? "Failed to initialize passkey registration. User may already exist.";
+                errorMessage = AuthErrorHelper.GetFriendlyErrorMessage(optionsResult.Error.Message);
                 return;
             }
+
+            var options = optionsResult.Value;
 
             // Extract userId from the options response
             string? userId = null;
@@ -334,27 +303,16 @@
             // 3. Submit to Server with userId
             var result = await PasskeyService.RegisterPasskeyAsync(credentialJson, email, userId);
 
-            if (result != null && result.Success)
+            if (result.IsSuccess)
             {
-                if (!string.IsNullOrEmpty(result.AccessToken))
-                {
-                    // Auto-login success (when email verification is not required)
-                    await AuthStateProvider.NotifyUserAuthentication(result.AccessToken, result.RefreshToken);
-                    registrationSuccess = true;
-                    requiresVerification = false;
-                    await Task.Delay(2000);
-                    Navigation.NavigateTo("/");
-                }
-                else
-                {
-                    // Email verification required
-                    registrationSuccess = true;
-                    requiresVerification = true;
-                }
+                // RegisterPasskeyAsync currently returns Result, so we don't have tokens here.
+                // The user will need to login normally or via passkey.
+                registrationSuccess = true;
+                requiresVerification = true;
             }
             else
             {
-                errorMessage = AuthErrorHelper.GetFriendlyErrorMessage(result?.Error);
+                errorMessage = AuthErrorHelper.GetFriendlyErrorMessage(result.Error.Message);
             }
         }
         catch (Exception ex)

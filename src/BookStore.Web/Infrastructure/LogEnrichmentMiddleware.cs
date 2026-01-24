@@ -29,14 +29,14 @@ public class LogEnrichmentMiddleware
         // Note: SetTenantAsync validates tenant existence via API call and falls back gracefully
         if (context.Request.Query.TryGetValue("tenant", out var tenantId) && !string.IsNullOrWhiteSpace(tenantId))
         {
-            await tenantService.SetTenantAsync(tenantId.ToString());
+            _ = await tenantService.SetTenantAsync(tenantId.ToString());
         }
         else if (context.Request.Cookies.TryGetValue("tenant", out var cookieTenantId) &&
                  !string.IsNullOrWhiteSpace(cookieTenantId))
         {
             // URL-decode the cookie value (set with encodeURIComponent in JS)
             var decodedTenantId = Uri.UnescapeDataString(cookieTenantId);
-            await tenantService.SetTenantAsync(decodedTenantId);
+            _ = await tenantService.SetTenantAsync(decodedTenantId);
         }
 
         var scopeState = new Dictionary<string, object>

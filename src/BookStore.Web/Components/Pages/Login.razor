@@ -158,12 +158,14 @@
             Logger.LogInformation("Attempting passkey login");
 
             // 1. Get Options
-            var optionsJson = await PasskeyService.GetLoginOptionsAsync(email);
-            if (string.IsNullOrEmpty(optionsJson))
+            var optionsResult = await PasskeyService.GetLoginOptionsAsync(email);
+            if (optionsResult.IsFailure)
             {
-                errorMessage = "Passkey login not supported or failed to initialize.";
+                errorMessage = AuthErrorHelper.GetFriendlyErrorMessage(optionsResult.Error.Message);
                 return;
             }
+
+            var optionsJson = optionsResult.Value;
 
             // 2. JS WebAuthn Get
             var credentialJson = await Js.InvokeAsync<string>("passkey.login", optionsJson);
@@ -171,16 +173,16 @@
             // 3. Login on Server
             var result = await PasskeyService.LoginWithPasskeyAsync(credentialJson);
 
-            if (result != null && result.Success && !string.IsNullOrEmpty(result.AccessToken))
+            if (result.IsSuccess)
             {
                 Logger.LogInformation("Passkey login successful");
-                await AuthStateProvider.NotifyUserAuthentication(result.AccessToken, result.RefreshToken);
+                await AuthStateProvider.NotifyUserAuthentication(result.Value.AccessToken!, result.Value.RefreshToken);
                 Navigation.NavigateTo(ReturnUrl ?? "/");
             }
             else
             {
-                errorMessage = AuthErrorHelper.GetFriendlyErrorMessage(result?.Error);
-                showResendVerification = result?.Error?.Contains("Requires verification") == true || result?.Error?.Contains("email not confirmed") == true;
+                errorMessage = AuthErrorHelper.GetFriendlyErrorMessage(result.Error.Message);
+                showResendVerification = result.Error.Message?.Contains("Requires verification") == true || result.Error.Message?.Contains("email not confirmed") == true;
             }
         }
         catch (Exception ex)
@@ -222,13 +224,13 @@
             Logger.LogInformation("Attempting login for {Email}", email);
             var result = await AuthService.LoginAsync(email, password);
 
-            if (result.Success && result.AccessToken != null)
+            if (result.IsSuccess)
             {
                 Logger.LogInformation("Login successful, notifying auth state provider");
 
                 // Notify the authentication state provider with the new token
                 // This triggers UI updates for AuthorizeView and other auth-dependent components
-                await AuthStateProvider.NotifyUserAuthentication(result.AccessToken, result.RefreshToken);
+                await AuthStateProvider.NotifyUserAuthentication(result.Value.AccessToken!, result.Value.RefreshToken);
 
                 // Notify other tabs via BroadcastChannel
                 try
@@ -247,9 +249,9 @@
             }
             else
             {
-                Logger.LogWarning("Login failed: {Error}", result.Error);
-                errorMessage = AuthErrorHelper.GetFriendlyErrorMessage(result.Error);
-                showResendVerification = result.Error?.Contains("Requires verification") == true || result.Error?.Contains("email not confirmed") == true;
+                Logger.LogWarning("Login failed: {Error}", result.Error.Message);
+                errorMessage = AuthErrorHelper.GetFriendlyErrorMessage(result.Error.Message);
+                showResendVerification = result.Error.Message?.Contains("Requires verification") == true || result.Error.Message?.Contains("email not confirmed") == true;
             }
         }
         catch (Exception ex)
@@ -278,14 +280,14 @@
         try
         {
             var result = await AuthService.ResendVerificationEmailAsync(email);
-            if (result)
+            if (result.IsSuccess)
             {
                 resendMessage = "If an account exists for this email, a new verification link has been sent.";
                 showResendVerification = false;
             }
             else
             {
-                errorMessage = "Failed to resend verification email. Please try again later.";
+                errorMessage = AuthErrorHelper.GetFriendlyErrorMessage(result.Error.Message);
             }
         }
         catch (Exception ex)

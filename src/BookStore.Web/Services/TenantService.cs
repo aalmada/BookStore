@@ -1,8 +1,11 @@
 using Blazored.LocalStorage;
 using BookStore.Client;
+using BookStore.Shared.Models;
+using BookStore.Web.Infrastructure;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.JSInterop;
+using Refit;
 
 namespace BookStore.Web.Services;
 
@@ -81,11 +84,11 @@ public class TenantService : IDisposable
         var uri = _navigation.ToAbsoluteUri(_navigation.Uri);
         var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
 
-        await RefreshAvailableTenantsAsync();
+        _ = await RefreshAvailableTenantsAsync();
 
         if (query.TryGetValue("tenant", out var tenantId) && !string.IsNullOrWhiteSpace(tenantId))
         {
-            await SetTenantAsync(tenantId.ToString());
+            _ = await SetTenantAsync(tenantId.ToString());
         }
         else
         {
@@ -93,12 +96,12 @@ public class TenantService : IDisposable
             var savedTenant = await _localStorage.GetItemAsStringAsync("selected-tenant");
             if (!string.IsNullOrEmpty(savedTenant))
             {
-                await SetTenantAsync(savedTenant);
+                _ = await SetTenantAsync(savedTenant);
             }
             else
             {
                 // Priority 3: Default tenant
-                await SetTenantAsync(DefaultTenantId);
+                _ = await SetTenantAsync(DefaultTenantId);
             }
         }
     }
@@ -116,7 +119,7 @@ public class TenantService : IDisposable
 
         if (query.TryGetValue("tenant", out var tenantId))
         {
-            await SetTenantAsync(tenantId.ToString());
+            _ = await SetTenantAsync(tenantId.ToString());
         }
         else
         {
@@ -124,26 +127,26 @@ public class TenantService : IDisposable
             var savedTenant = await _localStorage.GetItemAsStringAsync("selected-tenant");
             if (!string.IsNullOrEmpty(savedTenant))
             {
-                await SetTenantAsync(savedTenant);
+                _ = await SetTenantAsync(savedTenant);
             }
             else
             {
-                await SetTenantAsync(DefaultTenantId);
+                _ = await SetTenantAsync(DefaultTenantId);
             }
         }
     }
 
-    public async Task SetTenantAsync(string tenantId)
+    public async Task<Result> SetTenantAsync(string tenantId)
     {
         if (string.IsNullOrWhiteSpace(tenantId))
         {
-            return;
+            return Result.Failure(Error.Validation("ERR_TENANT_ID_REQUIRED", "Tenant ID is required"));
         }
 
         // If tenant hasn't changed, do nothing
         if (CurrentTenantId == tenantId && CurrentTenantName != "BookStore" && CurrentTenantName != "Unknown Tenant")
         {
-            return;
+            return Result.Success();
         }
 
         IsLoading = true;
@@ -174,14 +177,16 @@ public class TenantService : IDisposable
                 // Ignore JS errors (e.g. during prerendering if not interactive yet)
                 _ = ex;
             }
+
+            return Result.Success();
         }
-        catch (Exception)
+        catch (Refit.ApiException ex)
         {
             // Fallback for invalid/unknown/disabled tenant
             if (tenantId != DefaultTenantId)
             {
                 // If not already on default, redirect to default
-                await SetTenantAsync(DefaultTenantId);
+                _ = await SetTenantAsync(DefaultTenantId);
             }
             else
             {
@@ -190,6 +195,17 @@ public class TenantService : IDisposable
                 CurrentTenantTagline = "Discover your next great read from our curated collection";
                 CurrentTenantPrimaryColor = "#594AE2";
             }
+
+            return ex.ToResult();
+        }
+        catch (Exception ex)
+        {
+            if (tenantId != DefaultTenantId)
+            {
+                _ = await SetTenantAsync(DefaultTenantId);
+            }
+
+            return Result.Failure(Error.Failure("ERR_TENANT_SWITCH_FAILED", ex.Message));
         }
         finally
         {
@@ -198,16 +214,23 @@ public class TenantService : IDisposable
         }
     }
 
-    public async Task RefreshAvailableTenantsAsync()
+    public async Task<Result> RefreshAvailableTenantsAsync()
     {
         try
         {
             AvailableTenants = await _tenantClient.GetTenantsAsync();
             OnChange?.Invoke();
+            return Result.Success();
         }
-        catch (Exception)
+        catch (Refit.ApiException ex)
         {
             AvailableTenants = [];
+            return ex.ToResult();
+        }
+        catch (Exception ex)
+        {
+            AvailableTenants = [];
+            return Result.Failure(Error.Failure("ERR_TENANT_REFRESH_FAILED", ex.Message));
         }
     }
 
@@ -215,7 +238,7 @@ public class TenantService : IDisposable
     {
         if (AvailableTenants.Count == 0)
         {
-            await RefreshAvailableTenantsAsync();
+            _ = await RefreshAvailableTenantsAsync();
         }
 
         return AvailableTenants;

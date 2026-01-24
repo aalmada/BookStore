@@ -120,19 +120,21 @@
         try
         {
             // 1. Get Options
-            var (optionsJson, error) = await PasskeyService.GetCreationOptionsAsync();
-            if (string.IsNullOrEmpty(optionsJson))
+            var optionsResult = await PasskeyService.GetCreationOptionsAsync();
+            if (optionsResult.IsFailure)
             {
-                ShowError(error ?? "Failed to get passkey options from server.");
+                ShowError(optionsResult.Error.Message ?? "Failed to get passkey options from server.");
                 return;
             }
+
+            var optionsJson = optionsResult.Value;
 
             // 2. Create Credential via JS
             var credentialJson = await JS.InvokeAsync<string>("passkey.register", optionsJson);
 
             // 3. Register on Server
             var result = await PasskeyService.RegisterPasskeyAsync(credentialJson);
-            if (result?.Success == true)
+            if (result.IsSuccess)
             {
                 _statusMessage = "Passkey registered successfully!";
                 Snackbar.Add("Passkey registered!", Severity.Success);
@@ -141,7 +143,7 @@
             }
             else
             {
-                ShowError(result?.Error ?? "Failed to register passkey on server.");
+                ShowError(result.Error.Message ?? "Failed to register passkey on server.");
             }
         }
         catch (Exception ex)
@@ -167,15 +169,15 @@
         _isDeleting = true;
         try
         {
-            var (success, error) = await PasskeyService.DeletePasskeyAsync(id);
-            if (success)
+            var result = await PasskeyService.DeletePasskeyAsync(id);
+            if (result.IsSuccess)
             {
                 Snackbar.Add("Passkey deleted.", Severity.Success);
                 _passkeys = await PasskeyService.ListPasskeysAsync();
             }
             else
             {
-                Snackbar.Add(error ?? "Failed to delete passkey.", Severity.Error);
+                Snackbar.Add(result.Error.Message ?? "Failed to delete passkey.", Severity.Error);
             }
         }
         finally
