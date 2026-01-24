@@ -68,6 +68,7 @@ public static class GlobalHooks
         }
 
         var httpClient = App.CreateHttpClient("apiservice");
+        httpClient.DefaultRequestHeaders.Add("X-Tenant-ID", StorageConstants.DefaultTenantId);
 
         try
         {
@@ -118,10 +119,7 @@ public static class GlobalHooks
                 {
                     tenantSession.Store(new BookStore.ApiService.Models.Tenant
                     {
-                        Id = tenantId,
-                        Name = tenantName,
-                        IsEnabled = true,
-                        CreatedAt = DateTimeOffset.UtcNow
+                        Id = tenantId, Name = tenantName, IsEnabled = true, CreatedAt = DateTimeOffset.UtcNow
                     });
                 }
                 else
@@ -168,7 +166,9 @@ public static class GlobalHooks
 
         if (loginResponse == null || !loginResponse.IsSuccessStatusCode)
         {
-            throw new InvalidOperationException("Failed to authenticate admin user after 15 attempts");
+            var content = loginResponse != null ? await loginResponse.Content.ReadAsStringAsync() : "null";
+            throw new InvalidOperationException(
+                $"Failed to authenticate admin user after 15 attempts. Status: {loginResponse?.StatusCode}, Content: {content}");
         }
 
         var loginResult = await loginResponse.Content.ReadFromJsonAsync<LoginResponse>();
