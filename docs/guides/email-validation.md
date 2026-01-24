@@ -104,6 +104,26 @@ For production, configure your SMTP provider details.
 }
 ```
 
+## Unverified Account Cleanup
+
+To prevent the accumulation of unverified accounts, the system includes an automatic cleanup job. This job runs periodically and deletes accounts that have not verified their email within a specified timeframe.
+
+### Configuration
+
+The cleanup job is configured under the `Account:Cleanup` section in `appsettings.json`.
+
+| Setting | Type | Description | Default |
+| :--- | :--- | :--- | :--- |
+| `Enabled` | bool | Whether the cleanup job is active. | `true` |
+| `UnverifiedAccountExpirationHours` | int | Hours after which an unverified account expires. | `24` |
+| `CleanupIntervalHours` | int | Frequency (in hours) of the cleanup job. | `1` |
+
+### Implementation details
+
+- **Wolverine Recurring Job**: The cleanup is registered as a recurring job in Wolverine, ensuring it runs reliably in the background.
+- **Marten Query**: The job performs a bulk deletion of accounts matching the criteria `EmailConfirmed == false` and `CreatedAt < SnapshotTime - Expiration`.
+- **Structured Logging**: All cleanup activities are logged under the `Log.Maintenance` category.
+
 ## Implementation Details
 
 ### Services

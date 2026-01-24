@@ -14,6 +14,12 @@ public sealed class ApplicationUser
     public Guid Id { get; set; } = Guid.CreateVersion7();
 
     /// <summary>
+    /// Date and time when the user account was created.
+    /// Used for unverified account cleanup.
+    /// </summary>
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+
+    /// <summary>
     /// User's username
     /// </summary>
     public string? UserName { get; set; }

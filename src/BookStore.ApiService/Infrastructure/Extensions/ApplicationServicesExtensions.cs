@@ -49,7 +49,15 @@ public static class ApplicationServicesExtensions
         });
 
         // Add Blob Storage service
-        _ = services.AddSingleton<Services.BlobStorageService>();
+        _ = services.AddSingleton<BookStore.ApiService.Services.BlobStorageService>();
+
+        _ = services.AddOptions<Identity.AccountCleanupOptions>()
+            .BindConfiguration(Identity.AccountCleanupOptions.SectionName)
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        // Register Unverified Account Cleanup background service
+        _ = services.AddHostedService<Infrastructure.Services.UnverifiedAccountCleanupService>();
 
         // Add HybridCache for L1 (in-memory) + L2 (Redis) caching
         _ = services.AddHybridCache();
@@ -191,7 +199,7 @@ public static class ApplicationServicesExtensions
             .AddCookie(Microsoft.AspNetCore.Identity.IdentityConstants.TwoFactorUserIdScheme);
 
         // Add JWT token service
-        _ = services.AddSingleton<Services.JwtTokenService>();
+        _ = services.AddSingleton<BookStore.ApiService.Services.JwtTokenService>();
 
         // Configure Email Services
         _ = services.AddOptions<Infrastructure.Email.EmailOptions>()

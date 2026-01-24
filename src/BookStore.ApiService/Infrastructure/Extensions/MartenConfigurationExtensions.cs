@@ -208,7 +208,13 @@ public static class MartenConfigurationExtensions
             .Index(x => x.NormalizedEmail)
             .Index(x => x.NormalizedUserName)
             .GinIndexJsonData()
-            .NgramIndex(x => x.Email!);
+            .NgramIndex(x => x.Email!)
+            .Index(x => x.CreatedAt)
+            .Index(x => x.CreatedAt, idx =>
+            {
+                idx.Predicate = "data ->> 'EmailConfirmed' = 'false'";
+                idx.Name = "idx_application_user_unverified_created_at";
+            });
     }
 
     static void RegisterChangeListeners(StoreOptions options, IServiceProvider sp)
