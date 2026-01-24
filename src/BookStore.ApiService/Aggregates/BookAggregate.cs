@@ -78,7 +78,7 @@ public class BookAggregate : ISoftDeleted
     void Apply(BookSaleCancelled @event) => _ = Sales.RemoveAll(s => s.Start == @event.SaleStart);
 
     // Command methods
-    public static BookAdded CreateEvent(
+    public static Result<BookAdded> CreateEvent(
         Guid id,
         string title,
         string? isbn,
@@ -90,12 +90,36 @@ public class BookAggregate : ISoftDeleted
         List<Guid> categoryIds,
         Dictionary<string, decimal> prices)
     {
-        // Validate all inputs before creating event
-        ValidateTitle(title);
-        ValidateIsbn(isbn);
-        ValidateLanguage(language);
-        ValidateTranslations(translations);
-        ValidatePrices(prices);
+        // Validation with Result pattern
+        var titleResult = ValidateTitle(title);
+        if (titleResult.IsFailure)
+        {
+            return Result.Failure<BookAdded>(titleResult.Error);
+        }
+
+        var isbnResult = ValidateIsbn(isbn);
+        if (isbnResult.IsFailure)
+        {
+            return Result.Failure<BookAdded>(isbnResult.Error);
+        }
+
+        var languageResult = ValidateLanguage(language);
+        if (languageResult.IsFailure)
+        {
+            return Result.Failure<BookAdded>(languageResult.Error);
+        }
+
+        var translationsResult = ValidateTranslations(translations);
+        if (translationsResult.IsFailure)
+        {
+            return Result.Failure<BookAdded>(translationsResult.Error);
+        }
+
+        var pricesResult = ValidatePrices(prices);
+        if (pricesResult.IsFailure)
+        {
+            return Result.Failure<BookAdded>(pricesResult.Error);
+        }
 
         return new BookAdded(
             id,
@@ -110,7 +134,7 @@ public class BookAggregate : ISoftDeleted
             prices);
     }
 
-    public BookUpdated UpdateEvent(
+    public Result<BookUpdated> UpdateEvent(
         string title,
         string? isbn,
         string language,
@@ -124,15 +148,39 @@ public class BookAggregate : ISoftDeleted
         // Business rule: cannot update deleted book
         if (Deleted)
         {
-            throw new InvalidOperationException("Cannot update a deleted book");
+            return Result.Failure<BookUpdated>(Error.Conflict(ErrorCodes.Books.AlreadyDeleted, "Cannot update a deleted book"));
         }
 
-        // Validate all inputs before creating event
-        ValidateTitle(title);
-        ValidateIsbn(isbn);
-        ValidateLanguage(language);
-        ValidateTranslations(translations);
-        ValidatePrices(prices);
+        // Validation with Result pattern
+        var titleResult = ValidateTitle(title);
+        if (titleResult.IsFailure)
+        {
+            return Result.Failure<BookUpdated>(titleResult.Error);
+        }
+
+        var isbnResult = ValidateIsbn(isbn);
+        if (isbnResult.IsFailure)
+        {
+            return Result.Failure<BookUpdated>(isbnResult.Error);
+        }
+
+        var languageResult = ValidateLanguage(language);
+        if (languageResult.IsFailure)
+        {
+            return Result.Failure<BookUpdated>(languageResult.Error);
+        }
+
+        var translationsResult = ValidateTranslations(translations);
+        if (translationsResult.IsFailure)
+        {
+            return Result.Failure<BookUpdated>(translationsResult.Error);
+        }
+
+        var pricesResult = ValidatePrices(prices);
+        if (pricesResult.IsFailure)
+        {
+            return Result.Failure<BookUpdated>(pricesResult.Error);
+        }
 
         return new BookUpdated(
             Id,
@@ -148,29 +196,31 @@ public class BookAggregate : ISoftDeleted
     }
 
     // Validation helper methods
-    static void ValidateTitle(string title)
+    static Result ValidateTitle(string title)
     {
         if (string.IsNullOrWhiteSpace(title))
         {
-            throw new ArgumentException("Book title cannot be null or empty", nameof(title));
+            return Result.Failure(Error.Validation(ErrorCodes.Books.TitleRequired, "Book title cannot be null or empty"));
         }
 
         if (title.Length > 500)
         {
-            throw new ArgumentException("Title cannot exceed 500 characters", nameof(title));
+            return Result.Failure(Error.Validation(ErrorCodes.Books.TitleTooLong, "Title cannot exceed 500 characters"));
         }
+
+        return Result.Success();
     }
 
-    static void ValidateIsbn(string? isbn)
+    static Result ValidateIsbn(string? isbn)
     {
         if (isbn is not null && string.IsNullOrWhiteSpace(isbn))
         {
-            throw new ArgumentException("ISBN cannot be empty if provided", nameof(isbn));
+            return Result.Failure(Error.Validation(ErrorCodes.Books.IsbnEmpty, "ISBN cannot be empty if provided"));
         }
 
         if (string.IsNullOrWhiteSpace(isbn))
         {
-            return; // ISBN is optional
+            return Result.Success(); // ISBN is optional
         }
 
         // Remove hyphens and spaces for validation
@@ -179,48 +229,46 @@ public class BookAggregate : ISoftDeleted
         // ISBN-10 or ISBN-13
         if (cleanIsbn.Length is not 10 and not 13)
         {
-            throw new ArgumentException("ISBN must be 10 or 13 digits", nameof(isbn));
+            return Result.Failure(Error.Validation(ErrorCodes.Books.IsbnInvalidFormat, "ISBN must be 10 or 13 digits"));
         }
+
+        return Result.Success();
     }
 
-    static void ValidateLanguage(string language)
+    static Result ValidateLanguage(string language)
     {
         if (string.IsNullOrWhiteSpace(language))
         {
-            throw new ArgumentException("Language cannot be null or empty", nameof(language));
+            return Result.Failure(Error.Validation(ErrorCodes.Books.LanguageRequired, "Language cannot be null or empty"));
         }
 
         if (!CultureValidator.IsValidCultureCode(language))
         {
-            throw new ArgumentException(
-                $"Invalid language code: {language}",
-                nameof(language));
+            return Result.Failure(Error.Validation(ErrorCodes.Books.LanguageInvalid, $"Invalid language code: {language}"));
         }
+
+        return Result.Success();
     }
 
     // Validation constants
     public const int MaxDescriptionLength = 5000;
 
-    static void ValidateTranslations(Dictionary<string, BookTranslation> translations)
+    static Result ValidateTranslations(Dictionary<string, BookTranslation> translations)
     {
-        ArgumentNullException.ThrowIfNull(translations);
+        if (translations is null)
+        {
+            return Result.Failure(Error.Validation(ErrorCodes.Books.TranslationsRequired, "Translations cannot be null"));
+        }
 
         if (translations.Count == 0)
         {
-            throw new ArgumentException("At least one description translation is required", nameof(translations));
+            return Result.Failure(Error.Validation(ErrorCodes.Books.TranslationsRequired, "At least one description translation is required"));
         }
-
-        // NOTE: We do NOT validate for a specific default language here because:
-        // 1. Configuration can change over time (e.g., default language changes from "en" to "pt")
-        // 2. During projection rebuilds, old events must remain valid
-        // 3. The handler layer validates default language presence before creating events
 
         // Validate language codes
         if (!CultureValidator.ValidateTranslations(translations, out var invalidCodes))
         {
-            throw new ArgumentException(
-                $"Invalid language codes in descriptions: {string.Join(", ", invalidCodes)}",
-                nameof(translations));
+            return Result.Failure(Error.Validation(ErrorCodes.Books.TranslationLanguageInvalid, $"Invalid language codes in descriptions: {string.Join(", ", invalidCodes)}"));
         }
 
         // Validate translation values and description content
@@ -228,111 +276,124 @@ public class BookAggregate : ISoftDeleted
         {
             if (translation is null)
             {
-                throw new ArgumentException($"Translation value for language '{languageCode}' cannot be null", nameof(translations));
+                return Result.Failure(Error.Validation(ErrorCodes.Books.TranslationValueRequired, $"Translation value for language '{languageCode}' cannot be null"));
             }
 
             if (string.IsNullOrWhiteSpace(translation.Description))
             {
-                throw new ArgumentException($"Description for language '{languageCode}' cannot be null or empty", nameof(translations));
+                return Result.Failure(Error.Validation(ErrorCodes.Books.DescriptionRequired, $"Description for language '{languageCode}' cannot be null or empty"));
             }
 
             if (translation.Description.Length > MaxDescriptionLength)
             {
-                throw new ArgumentException(
-                    $"Description for language '{languageCode}' cannot exceed {MaxDescriptionLength} characters",
-                    nameof(translations));
+                return Result.Failure(Error.Validation(ErrorCodes.Books.DescriptionTooLong, $"Description for language '{languageCode}' cannot exceed {MaxDescriptionLength} characters"));
             }
         }
+
+        return Result.Success();
     }
 
-    static void ValidatePrices(Dictionary<string, decimal> prices)
+    static Result ValidatePrices(Dictionary<string, decimal> prices)
     {
-        ArgumentNullException.ThrowIfNull(prices);
+        if (prices is null)
+        {
+            return Result.Failure(Error.Validation(ErrorCodes.Books.PricesRequired, "Prices cannot be null"));
+        }
 
         if (prices.Count == 0)
         {
-            throw new ArgumentException("At least one price is required", nameof(prices));
+            return Result.Failure(Error.Validation(ErrorCodes.Books.PricesRequired, "At least one price is required"));
         }
 
         foreach (var (currencyCode, price) in prices)
         {
             if (string.IsNullOrWhiteSpace(currencyCode) || currencyCode.Length != 3)
             {
-                throw new ArgumentException($"Invalid currency code: '{currencyCode}'", nameof(prices));
+                return Result.Failure(Error.Validation(ErrorCodes.Books.PriceCurrencyInvalid, $"Invalid currency code: '{currencyCode}'"));
             }
 
             if (price < 0)
             {
-                throw new ArgumentException($"Price for currency '{currencyCode}' cannot be negative", nameof(prices));
+                return Result.Failure(Error.Validation(ErrorCodes.Books.PriceNegative, $"Price for currency '{currencyCode}' cannot be negative"));
             }
         }
+
+        return Result.Success();
     }
 
-    public BookSoftDeleted SoftDeleteEvent()
+    public Result<BookSoftDeleted> SoftDeleteEvent()
     {
         if (Deleted)
         {
-            throw new InvalidOperationException("Book is already deleted");
+            return Result.Failure<BookSoftDeleted>(Error.Conflict(ErrorCodes.Books.AlreadyDeleted, "Book is already deleted"));
         }
 
         return new BookSoftDeleted(Id, DateTimeOffset.UtcNow);
     }
 
-    public BookRestored RestoreEvent()
+    public Result<BookRestored> RestoreEvent()
     {
         if (!Deleted)
         {
-            throw new InvalidOperationException("Book is not deleted");
+            return Result.Failure<BookRestored>(Error.Conflict(ErrorCodes.Books.NotDeleted, "Book is not deleted"));
         }
 
         return new BookRestored(Id, DateTimeOffset.UtcNow);
     }
 
-    public BookCoverUpdated UpdateCoverImage(CoverImageFormat format)
+    public Result<BookCoverUpdated> UpdateCoverImage(CoverImageFormat format)
     {
         if (Deleted)
         {
-            throw new InvalidOperationException("Cannot update cover for a deleted book");
+            return Result.Failure<BookCoverUpdated>(Error.Conflict(ErrorCodes.Books.AlreadyDeleted, "Cannot update cover for a deleted book"));
         }
 
         if (format == CoverImageFormat.None)
         {
-            throw new ArgumentException("Cover format cannot be None", nameof(format));
+            return Result.Failure<BookCoverUpdated>(Error.Validation(ErrorCodes.Books.CoverFormatNone, "Cover format cannot be None"));
         }
 
         return new BookCoverUpdated(Id, format);
     }
 
-    public BookSaleScheduled ScheduleSale(decimal percentage, DateTimeOffset start, DateTimeOffset end)
+    public Result<BookSaleScheduled> ScheduleSale(decimal percentage, DateTimeOffset start, DateTimeOffset end)
     {
         if (Deleted)
         {
-            throw new InvalidOperationException("Cannot schedule sale for a deleted book");
+            return Result.Failure<BookSaleScheduled>(Error.Conflict(ErrorCodes.Books.AlreadyDeleted, "Cannot schedule sale for a deleted book"));
         }
 
-        // Validate sale parameters (BookSale constructor will throw if invalid)
-        var sale = new BookSale(percentage, start, end);
+        if (percentage is <= 0 or >= 100)
+        {
+            return Result.Failure<BookSaleScheduled>(Error.Validation(ErrorCodes.Books.PriceNegative, "Sale percentage must be greater than 0 and less than 100"));
+        }
+
+        if (start >= end)
+        {
+            return Result.Failure<BookSaleScheduled>(Error.Validation(ErrorCodes.Books.SaleOverlap, "Sale start time must be before end time"));
+        }
 
         // Check for overlapping sales
         if (Sales.Any(s => (start < s.End && end > s.Start)))
         {
-            throw new InvalidOperationException("Sale period overlaps with an existing sale");
+            return Result.Failure<BookSaleScheduled>(Error.Conflict(ErrorCodes.Books.SaleOverlap, "Sale period overlaps with an existing sale"));
         }
 
+        var sale = new BookSale(percentage, start, end);
         return new BookSaleScheduled(Id, sale);
     }
 
-    public BookSaleCancelled CancelSale(DateTimeOffset saleStart)
+    public Result<BookSaleCancelled> CancelSale(DateTimeOffset saleStart)
     {
         if (Deleted)
         {
-            throw new InvalidOperationException("Cannot cancel sale for a deleted book");
+            return Result.Failure<BookSaleCancelled>(Error.Conflict(ErrorCodes.Books.AlreadyDeleted, "Cannot cancel sale for a deleted book"));
         }
 
         var sale = Sales.FirstOrDefault(s => s.Start == saleStart);
         if (sale.Equals(default(BookSale)))
         {
-            throw new InvalidOperationException("No sale found with the specified start time");
+            return Result.Failure<BookSaleCancelled>(Error.NotFound(ErrorCodes.Books.SaleNotFound, "No sale found with the specified start time"));
         }
 
         return new BookSaleCancelled(Id, saleStart);

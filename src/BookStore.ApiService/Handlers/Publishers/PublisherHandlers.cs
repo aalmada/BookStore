@@ -1,4 +1,5 @@
 using BookStore.ApiService.Aggregates;
+using BookStore.ApiService.Infrastructure.Extensions;
 using BookStore.ApiService.Commands;
 using BookStore.ApiService.Infrastructure;
 using BookStore.ApiService.Infrastructure.Logging;
@@ -12,9 +13,13 @@ public static class PublisherHandlers
     {
         Log.Publishers.PublisherCreating(logger, command.Id, command.Name, session.CorrelationId ?? "none");
 
-        var @event = PublisherAggregate.CreateEvent(command.Id, command.Name);
+        var eventResult = PublisherAggregate.CreateEvent(command.Id, command.Name);
+        if (eventResult.IsFailure)
+        {
+            return eventResult.ToProblemDetails();
+        }
 
-        _ = session.Events.StartStream<PublisherAggregate>(command.Id, @event);
+        _ = session.Events.StartStream<PublisherAggregate>(command.Id, eventResult.Value);
 
         Log.Publishers.PublisherCreated(logger, command.Id, command.Name);
 
@@ -33,7 +38,7 @@ public static class PublisherHandlers
         if (streamState is null)
         {
             Log.Publishers.PublisherNotFound(logger, command.Id);
-            return Results.NotFound();
+            return Result.Failure(Error.NotFound(ErrorCodes.Publishers.NotDeleted, "Publisher not found")).ToProblemDetails();
         }
 
         var context = httpContextAccessor.HttpContext!;
@@ -49,13 +54,18 @@ public static class PublisherHandlers
         if (aggregate is null)
         {
             Log.Publishers.PublisherNotFound(logger, command.Id);
-            return Results.NotFound();
+            return Result.Failure(Error.NotFound(ErrorCodes.Publishers.NotDeleted, "Publisher not found")).ToProblemDetails();
         }
 
         Log.Publishers.PublisherUpdating(logger, command.Id, command.Name, streamState.Version);
 
-        var @event = aggregate.UpdateEvent(command.Name);
-        _ = session.Events.Append(command.Id, @event);
+        var eventResult = aggregate.UpdateEvent(command.Name);
+        if (eventResult.IsFailure)
+        {
+            return eventResult.ToProblemDetails();
+        }
+
+        _ = session.Events.Append(command.Id, eventResult.Value);
 
         Log.Publishers.PublisherUpdated(logger, command.Id);
 
@@ -78,7 +88,7 @@ public static class PublisherHandlers
         if (streamState is null)
         {
             Log.Publishers.PublisherNotFound(logger, command.Id);
-            return Results.NotFound();
+            return Result.Failure(Error.NotFound(ErrorCodes.Publishers.NotDeleted, "Publisher not found")).ToProblemDetails();
         }
 
         var context = httpContextAccessor.HttpContext!;
@@ -93,11 +103,16 @@ public static class PublisherHandlers
         if (aggregate is null)
         {
             Log.Publishers.PublisherNotFound(logger, command.Id);
-            return Results.NotFound();
+            return Result.Failure(Error.NotFound(ErrorCodes.Publishers.NotDeleted, "Publisher not found")).ToProblemDetails();
         }
 
-        var @event = aggregate.SoftDeleteEvent();
-        _ = session.Events.Append(command.Id, @event);
+        var eventResult = aggregate.SoftDeleteEvent();
+        if (eventResult.IsFailure)
+        {
+            return eventResult.ToProblemDetails();
+        }
+
+        _ = session.Events.Append(command.Id, eventResult.Value);
 
         Log.Publishers.PublisherSoftDeleted(logger, command.Id);
 
@@ -120,7 +135,7 @@ public static class PublisherHandlers
         if (streamState is null)
         {
             Log.Publishers.PublisherNotFound(logger, command.Id);
-            return Results.NotFound();
+            return Result.Failure(Error.NotFound(ErrorCodes.Publishers.NotDeleted, "Publisher not found")).ToProblemDetails();
         }
 
         var context = httpContextAccessor.HttpContext!;
@@ -135,11 +150,16 @@ public static class PublisherHandlers
         if (aggregate is null)
         {
             Log.Publishers.PublisherNotFound(logger, command.Id);
-            return Results.NotFound();
+            return Result.Failure(Error.NotFound(ErrorCodes.Publishers.NotDeleted, "Publisher not found")).ToProblemDetails();
         }
 
-        var @event = aggregate.RestoreEvent();
-        _ = session.Events.Append(command.Id, @event);
+        var eventResult = aggregate.RestoreEvent();
+        if (eventResult.IsFailure)
+        {
+            return eventResult.ToProblemDetails();
+        }
+
+        _ = session.Events.Append(command.Id, eventResult.Value);
 
         Log.Publishers.PublisherRestored(logger, command.Id);
 

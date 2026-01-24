@@ -37,55 +37,65 @@ public class PublisherAggregate : ISoftDeleted
     }
 
     // Command methods
-    public static PublisherAdded CreateEvent(Guid id, string name)
+    public static Result<PublisherAdded> CreateEvent(Guid id, string name)
     {
-        ValidateName(name);
+        var nameResult = ValidateName(name);
+        if (nameResult.IsFailure)
+        {
+            return Result.Failure<PublisherAdded>(nameResult.Error);
+        }
 
         return new PublisherAdded(id, name, DateTimeOffset.UtcNow);
     }
 
-    public PublisherUpdated UpdateEvent(string name)
+    public Result<PublisherUpdated> UpdateEvent(string name)
     {
         // Business rule: cannot update deleted publisher
         if (Deleted)
         {
-            throw new InvalidOperationException("Cannot update a deleted publisher");
+            return Result.Failure<PublisherUpdated>(Error.Conflict(ErrorCodes.Publishers.AlreadyDeleted, "Cannot update a deleted publisher"));
         }
 
-        ValidateName(name);
+        var nameResult = ValidateName(name);
+        if (nameResult.IsFailure)
+        {
+            return Result.Failure<PublisherUpdated>(nameResult.Error);
+        }
 
         return new PublisherUpdated(Id, name, DateTimeOffset.UtcNow);
     }
 
     // Validation helper method
-    static void ValidateName(string name)
+    static Result ValidateName(string name)
     {
         if (string.IsNullOrWhiteSpace(name))
         {
-            throw new ArgumentException("Name is required", nameof(name));
+            return Result.Failure(Error.Validation(ErrorCodes.Publishers.NameRequired, "Name is required"));
         }
 
         if (name.Length > 200)
         {
-            throw new ArgumentException("Name cannot exceed 200 characters", nameof(name));
+            return Result.Failure(Error.Validation(ErrorCodes.Publishers.NameTooLong, "Name cannot exceed 200 characters"));
         }
+
+        return Result.Success();
     }
 
-    public PublisherSoftDeleted SoftDeleteEvent()
+    public Result<PublisherSoftDeleted> SoftDeleteEvent()
     {
         if (Deleted)
         {
-            throw new InvalidOperationException("Publisher is already deleted");
+            return Result.Failure<PublisherSoftDeleted>(Error.Conflict(ErrorCodes.Publishers.AlreadyDeleted, "Publisher is already deleted"));
         }
 
         return new PublisherSoftDeleted(Id, DateTimeOffset.UtcNow);
     }
 
-    public PublisherRestored RestoreEvent()
+    public Result<PublisherRestored> RestoreEvent()
     {
         if (!Deleted)
         {
-            throw new InvalidOperationException("Publisher is not deleted");
+            return Result.Failure<PublisherRestored>(Error.Conflict(ErrorCodes.Publishers.NotDeleted, "Publisher is not deleted"));
         }
 
         return new PublisherRestored(Id, DateTimeOffset.UtcNow);

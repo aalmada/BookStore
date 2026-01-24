@@ -1,4 +1,5 @@
 using BookStore.ApiService.Aggregates;
+using BookStore.ApiService.Infrastructure.Extensions;
 using BookStore.ApiService.Commands;
 using BookStore.ApiService.Events;
 using BookStore.ApiService.Infrastructure;
@@ -21,12 +22,7 @@ public static class AuthorHandlers
             if (!CultureValidator.ValidateTranslations(command.Translations, out var invalidCodes))
             {
                 Log.Authors.InvalidTranslationCodes(logger, command.Id, string.Join(", ", invalidCodes));
-                return Results.BadRequest(new
-                {
-                    error = "Invalid language codes in biographies",
-                    invalidCodes,
-                    message = $"The following language codes are not valid: {string.Join(", ", invalidCodes)}"
-                });
+                return Result.Failure(Error.Validation(ErrorCodes.Authors.TranslationLanguageInvalid, $"The following language codes are not valid: {string.Join(", ", invalidCodes)}")).ToProblemDetails();
             }
         }
 
@@ -35,11 +31,7 @@ public static class AuthorHandlers
         if (command.Translations is null || !command.Translations.ContainsKey(defaultLanguage))
         {
             Log.Authors.MissingDefaultTranslation(logger, command.Id, defaultLanguage);
-            return Results.BadRequest(new
-            {
-                error = "Default language translation required",
-                message = $"A biography translation for the default language '{defaultLanguage}' must be provided"
-            });
+            return Result.Failure(Error.Validation(ErrorCodes.Authors.DefaultTranslationRequired, $"A biography translation for the default language '{defaultLanguage}' must be provided")).ToProblemDetails();
         }
 
         // Validate biography lengths
@@ -48,14 +40,7 @@ public static class AuthorHandlers
             if (translation.Biography.Length > AuthorAggregate.MaxBiographyLength)
             {
                 Log.Authors.BiographyTooLong(logger, command.Id, languageCode, AuthorAggregate.MaxBiographyLength, translation.Biography.Length);
-                return Results.BadRequest(new
-                {
-                    error = "Biography too long",
-                    languageCode,
-                    maxLength = AuthorAggregate.MaxBiographyLength,
-                    actualLength = translation.Biography.Length,
-                    message = $"Biography for language '{languageCode}' cannot exceed {AuthorAggregate.MaxBiographyLength} characters"
-                });
+                return Result.Failure(Error.Validation(ErrorCodes.Authors.BiographyTooLong, $"Biography for language '{languageCode}' cannot exceed {AuthorAggregate.MaxBiographyLength} characters")).ToProblemDetails();
             }
         }
 
@@ -64,12 +49,17 @@ public static class AuthorHandlers
             kvp => kvp.Key,
             kvp => new AuthorTranslation(kvp.Value.Biography));
 
-        var @event = AuthorAggregate.CreateEvent(
+        var eventResult = AuthorAggregate.CreateEvent(
             command.Id,
             command.Name,
             biographies);
 
-        _ = session.Events.StartStream<AuthorAggregate>(command.Id, @event);
+        if (eventResult.IsFailure)
+        {
+            return eventResult.ToProblemDetails();
+        }
+
+        _ = session.Events.StartStream<AuthorAggregate>(command.Id, eventResult.Value);
 
         Log.Authors.AuthorCreated(logger, command.Id, command.Name);
 
@@ -90,12 +80,7 @@ public static class AuthorHandlers
         {
             if (!CultureValidator.ValidateTranslations(command.Translations, out var invalidCodes))
             {
-                return Results.BadRequest(new
-                {
-                    error = "Invalid language codes in biographies",
-                    invalidCodes,
-                    message = $"The following language codes are not valid: {string.Join(", ", invalidCodes)}"
-                });
+                return Result.Failure(Error.Validation(ErrorCodes.Authors.TranslationLanguageInvalid, $"The following language codes are not valid: {string.Join(", ", invalidCodes)}")).ToProblemDetails();
             }
         }
 
@@ -103,11 +88,7 @@ public static class AuthorHandlers
         var defaultLanguage = localizationOptions.Value.DefaultCulture;
         if (command.Translations is null || !command.Translations.ContainsKey(defaultLanguage))
         {
-            return Results.BadRequest(new
-            {
-                error = "Default language translation required",
-                message = $"A biography translation for the default language '{defaultLanguage}' must be provided"
-            });
+            return Result.Failure(Error.Validation(ErrorCodes.Authors.DefaultTranslationRequired, $"A biography translation for the default language '{defaultLanguage}' must be provided")).ToProblemDetails();
         }
 
         // Validate biography lengths
@@ -115,21 +96,14 @@ public static class AuthorHandlers
         {
             if (translation.Biography.Length > AuthorAggregate.MaxBiographyLength)
             {
-                return Results.BadRequest(new
-                {
-                    error = "Biography too long",
-                    languageCode,
-                    maxLength = AuthorAggregate.MaxBiographyLength,
-                    actualLength = translation.Biography.Length,
-                    message = $"Biography for language '{languageCode}' cannot exceed {AuthorAggregate.MaxBiographyLength} characters"
-                });
+                return Result.Failure(Error.Validation(ErrorCodes.Authors.BiographyTooLong, $"Biography for language '{languageCode}' cannot exceed {AuthorAggregate.MaxBiographyLength} characters")).ToProblemDetails();
             }
         }
 
         var streamState = await session.Events.FetchStreamStateAsync(command.Id);
         if (streamState is null)
         {
-            return Results.NotFound();
+            return Result.Failure(Error.NotFound(ErrorCodes.Authors.NotDeleted, "Author not found")).ToProblemDetails(); // Using NotDeleted as a fallback if specific NotFound code missing, but better to use aggregate rules
         }
 
         var context = httpContextAccessor.HttpContext!;
@@ -143,7 +117,7 @@ public static class AuthorHandlers
         var aggregate = await session.Events.AggregateStreamAsync<AuthorAggregate>(command.Id);
         if (aggregate is null)
         {
-            return Results.NotFound();
+            return Result.Failure(Error.NotFound(ErrorCodes.Authors.NotDeleted, "Author not found")).ToProblemDetails();
         }
 
         // Convert DTOs to domain objects
@@ -151,8 +125,13 @@ public static class AuthorHandlers
             kvp => kvp.Key,
             kvp => new AuthorTranslation(kvp.Value.Biography));
 
-        var @event = aggregate.UpdateEvent(command.Name, biographies);
-        _ = session.Events.Append(command.Id, @event);
+        var eventResult = aggregate.UpdateEvent(command.Name, biographies);
+        if (eventResult.IsFailure)
+        {
+            return eventResult.ToProblemDetails();
+        }
+
+        _ = session.Events.Append(command.Id, eventResult.Value);
 
         Log.Authors.AuthorUpdated(logger, command.Id);
 
@@ -175,7 +154,7 @@ public static class AuthorHandlers
         if (streamState is null)
         {
             Log.Authors.AuthorNotFound(logger, command.Id);
-            return Results.NotFound();
+            return Result.Failure(Error.NotFound(ErrorCodes.Authors.NotDeleted, "Author not found")).ToProblemDetails();
         }
 
         var context = httpContextAccessor.HttpContext!;
@@ -190,11 +169,16 @@ public static class AuthorHandlers
         if (aggregate is null)
         {
             Log.Authors.AuthorNotFound(logger, command.Id);
-            return Results.NotFound();
+            return Result.Failure(Error.NotFound(ErrorCodes.Authors.NotDeleted, "Author not found")).ToProblemDetails();
         }
 
-        var @event = aggregate.SoftDeleteEvent();
-        _ = session.Events.Append(command.Id, @event);
+        var eventResult = aggregate.SoftDeleteEvent();
+        if (eventResult.IsFailure)
+        {
+            return eventResult.ToProblemDetails();
+        }
+
+        _ = session.Events.Append(command.Id, eventResult.Value);
 
         Log.Authors.AuthorSoftDeleted(logger, command.Id);
 
@@ -217,7 +201,7 @@ public static class AuthorHandlers
         if (streamState is null)
         {
             Log.Authors.AuthorNotFound(logger, command.Id);
-            return Results.NotFound();
+            return Result.Failure(Error.NotFound(ErrorCodes.Authors.NotDeleted, "Author not found")).ToProblemDetails();
         }
 
         var context = httpContextAccessor.HttpContext!;
@@ -232,11 +216,16 @@ public static class AuthorHandlers
         if (aggregate is null)
         {
             Log.Authors.AuthorNotFound(logger, command.Id);
-            return Results.NotFound();
+            return Result.Failure(Error.NotFound(ErrorCodes.Authors.NotDeleted, "Author not found")).ToProblemDetails();
         }
 
-        var @event = aggregate.RestoreEvent();
-        _ = session.Events.Append(command.Id, @event);
+        var eventResult = aggregate.RestoreEvent();
+        if (eventResult.IsFailure)
+        {
+            return eventResult.ToProblemDetails();
+        }
+
+        _ = session.Events.Append(command.Id, eventResult.Value);
 
         Log.Authors.AuthorRestored(logger, command.Id);
 

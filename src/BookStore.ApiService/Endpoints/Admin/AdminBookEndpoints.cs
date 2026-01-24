@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using BookStore.ApiService.Infrastructure.Extensions;
 using BookStore.ApiService.Infrastructure.Tenant;
 using BookStore.Shared.Models;
 using Marten;
@@ -175,18 +176,18 @@ namespace BookStore.ApiService.Endpoints.Admin
             // Validate file
             if (file.Length == 0)
             {
-                return Results.BadRequest("No file uploaded");
+                return Result.Failure(Error.Validation(ErrorCodes.Admin.FileEmpty, "No file uploaded")).ToProblemDetails();
             }
 
             if (file.Length > 5 * 1024 * 1024) // 5MB limit
             {
-                return Results.BadRequest("File too large (max 5MB)");
+                return Result.Failure(Error.Validation(ErrorCodes.Admin.FileTooLarge, "File too large (max 5MB)")).ToProblemDetails();
             }
 
             var allowedTypes = new[] { "image/jpeg", "image/png", "image/webp" };
             if (!allowedTypes.Contains(file.ContentType))
             {
-                return Results.BadRequest("Invalid file type (only JPEG, PNG, WebP allowed)");
+                return Result.Failure(Error.Validation(ErrorCodes.Admin.InvalidFileType, "Invalid file type (only JPEG, PNG, WebP allowed)")).ToProblemDetails();
             }
 
             var etag = context.Request.Headers["If-Match"].FirstOrDefault();

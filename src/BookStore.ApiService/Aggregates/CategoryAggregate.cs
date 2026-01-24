@@ -41,49 +41,43 @@ public class CategoryAggregate : ISoftDeleted
     }
 
     // Command methods
-    public static CategoryAdded CreateEvent(Guid id, Dictionary<string, CategoryTranslation> translations)
+    public static Result<CategoryAdded> CreateEvent(Guid id, Dictionary<string, CategoryTranslation> translations)
     {
-        ArgumentNullException.ThrowIfNull(translations);
-
-        if (translations.Count == 0)
+        var translationsResult = ValidateTranslations(translations);
+        if (translationsResult.IsFailure)
         {
-            throw new ArgumentException("At least one localized name is required", nameof(translations));
-        }
-
-        // Validate translation values and name content
-        foreach (var (key, value) in translations)
-        {
-            if (value is null)
-            {
-                throw new ArgumentException($"Translation value for language '{key}' cannot be null", nameof(translations));
-            }
-
-            if (string.IsNullOrWhiteSpace(value.Name))
-            {
-                throw new ArgumentException($"Translation name for language '{key}' cannot be null or empty", nameof(translations));
-            }
-
-            if (value.Name.Length > MaxNameLength)
-            {
-                throw new ArgumentException($"Translation name for language '{key}' cannot exceed {MaxNameLength} characters", nameof(translations));
-            }
+            return Result.Failure<CategoryAdded>(translationsResult.Error);
         }
 
         return new CategoryAdded(id, translations, DateTimeOffset.UtcNow);
     }
 
-    public CategoryUpdated UpdateEvent(Dictionary<string, CategoryTranslation> translations)
+    public Result<CategoryUpdated> UpdateEvent(Dictionary<string, CategoryTranslation> translations)
     {
         if (Deleted)
         {
-            throw new InvalidOperationException("Cannot update a deleted category");
+            return Result.Failure<CategoryUpdated>(Error.Conflict(ErrorCodes.Categories.AlreadyDeleted, "Cannot update a deleted category"));
         }
 
-        ArgumentNullException.ThrowIfNull(translations);
+        var translationsResult = ValidateTranslations(translations);
+        if (translationsResult.IsFailure)
+        {
+            return Result.Failure<CategoryUpdated>(translationsResult.Error);
+        }
+
+        return new CategoryUpdated(Id, translations, DateTimeOffset.UtcNow);
+    }
+
+    static Result ValidateTranslations(Dictionary<string, CategoryTranslation> translations)
+    {
+        if (translations is null)
+        {
+            return Result.Failure(Error.Validation(ErrorCodes.Categories.TranslationsRequired, "Translations cannot be null"));
+        }
 
         if (translations.Count == 0)
         {
-            throw new ArgumentException("At least one localized name is required", nameof(translations));
+            return Result.Failure(Error.Validation(ErrorCodes.Categories.TranslationsRequired, "At least one localized name is required"));
         }
 
         // Validate translation values and name content
@@ -91,38 +85,38 @@ public class CategoryAggregate : ISoftDeleted
         {
             if (value is null)
             {
-                throw new ArgumentException($"Translation value for language '{key}' cannot be null", nameof(translations));
+                return Result.Failure(Error.Validation(ErrorCodes.Categories.TranslationValueRequired, $"Translation value for language '{key}' cannot be null"));
             }
 
             if (string.IsNullOrWhiteSpace(value.Name))
             {
-                throw new ArgumentException($"Translation name for language '{key}' cannot be null or empty", nameof(translations));
+                return Result.Failure(Error.Validation(ErrorCodes.Categories.NameRequired, $"Translation name for language '{key}' cannot be null or empty"));
             }
 
             if (value.Name.Length > MaxNameLength)
             {
-                throw new ArgumentException($"Translation name for language '{key}' cannot exceed {MaxNameLength} characters", nameof(translations));
+                return Result.Failure(Error.Validation(ErrorCodes.Categories.NameTooLong, $"Translation name for language '{key}' cannot exceed {MaxNameLength} characters"));
             }
         }
 
-        return new CategoryUpdated(Id, translations, DateTimeOffset.UtcNow);
+        return Result.Success();
     }
 
-    public CategorySoftDeleted SoftDeleteEvent()
+    public Result<CategorySoftDeleted> SoftDeleteEvent()
     {
         if (Deleted)
         {
-            throw new InvalidOperationException("Category is already deleted");
+            return Result.Failure<CategorySoftDeleted>(Error.Conflict(ErrorCodes.Categories.AlreadyDeleted, "Category is already deleted"));
         }
 
         return new CategorySoftDeleted(Id, DateTimeOffset.UtcNow);
     }
 
-    public CategoryRestored RestoreEvent()
+    public Result<CategoryRestored> RestoreEvent()
     {
         if (!Deleted)
         {
-            throw new InvalidOperationException("Category is not deleted");
+            return Result.Failure<CategoryRestored>(Error.Conflict(ErrorCodes.Categories.NotDeleted, "Category is not deleted"));
         }
 
         return new CategoryRestored(Id, DateTimeOffset.UtcNow);

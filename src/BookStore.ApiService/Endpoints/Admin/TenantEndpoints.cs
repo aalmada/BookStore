@@ -1,4 +1,5 @@
 using BookStore.ApiService.Infrastructure;
+using BookStore.ApiService.Infrastructure.Extensions;
 using BookStore.ApiService.Infrastructure.Tenant;
 using BookStore.ApiService.Models;
 using BookStore.Shared.Models;
@@ -26,9 +27,7 @@ public static class TenantEndpoints
         // Security: Only the Default (System) Tenant can see all tenants
         if (!string.Equals(tenantContext.TenantId, JasperFx.StorageConstants.DefaultTenantId, StringComparison.OrdinalIgnoreCase))
         {
-            // If strictly tenant-locked, return Forbidden or just their own tenant
-            // For now, let's return Forbidden to indicate this is a System Admin feature
-            return Results.Forbid();
+            return Result.Failure(Error.Forbidden(ErrorCodes.Tenancy.AccessDenied, "Access denied.")).ToProblemDetails();
         }
 
         // Use a lightweight session on the native default tenant (global scope for tenants)
@@ -55,18 +54,18 @@ public static class TenantEndpoints
         // Security check
         if (!string.Equals(tenantContext.TenantId, JasperFx.StorageConstants.DefaultTenantId, StringComparison.OrdinalIgnoreCase))
         {
-            return Results.Forbid();
+            return Result.Failure(Error.Forbidden(ErrorCodes.Tenancy.AccessDenied, "Access denied.")).ToProblemDetails();
         }
 
         if (string.IsNullOrWhiteSpace(request.Id))
         {
-            return Results.BadRequest("Tenant ID is required.");
+            return Result.Failure(Error.Validation(ErrorCodes.Tenancy.TenantIdRequired, "Tenant ID is required.")).ToProblemDetails();
         }
 
         var (isValid, errors) = BookStore.Shared.Validation.TenantIdValidator.Validate(request.Id);
         if (!isValid)
         {
-            return Results.BadRequest(errors.FirstOrDefault() ?? "Invalid Tenant ID.");
+            return Result.Failure(Error.Validation(ErrorCodes.Tenancy.InvalidTenantId, errors.FirstOrDefault() ?? "Invalid Tenant ID.")).ToProblemDetails();
         }
 
         if (!string.IsNullOrWhiteSpace(request.AdminPassword))
@@ -74,7 +73,7 @@ public static class TenantEndpoints
             var (isPasswordValid, passwordErrors) = BookStore.Shared.Validation.PasswordValidator.Validate(request.AdminPassword);
             if (!isPasswordValid)
             {
-                return Results.BadRequest(passwordErrors.FirstOrDefault() ?? "Invalid Password.");
+                return Result.Failure(Error.Validation(ErrorCodes.Tenancy.InvalidAdminPassword, passwordErrors.FirstOrDefault() ?? "Invalid Password.")).ToProblemDetails();
             }
         }
 
@@ -82,7 +81,7 @@ public static class TenantEndpoints
         {
             if (!BookStore.Shared.Validation.EmailValidator.IsValid(request.AdminEmail))
             {
-                return Results.BadRequest("Invalid Admin Email.");
+                return Result.Failure(Error.Validation(ErrorCodes.Tenancy.InvalidAdminEmail, "Invalid Admin Email.")).ToProblemDetails();
             }
         }
 
@@ -92,7 +91,7 @@ public static class TenantEndpoints
         var existing = await session.LoadAsync<Tenant>(request.Id, ct);
         if (existing != null)
         {
-            return Results.Conflict($"Tenant '{request.Id}' already exists.");
+            return Result.Failure(Error.Conflict(ErrorCodes.Tenancy.TenantAlreadyExists, $"Tenant '{request.Id}' already exists.")).ToProblemDetails();
         }
 
         var tenant = new Tenant
@@ -141,7 +140,7 @@ public static class TenantEndpoints
         // Security check: Only System Admin can update tenant definitions
         if (!string.Equals(tenantContext.TenantId, JasperFx.StorageConstants.DefaultTenantId, StringComparison.OrdinalIgnoreCase))
         {
-            return Results.Forbid();
+            return Result.Failure(Error.Forbidden(ErrorCodes.Tenancy.AccessDenied, "Access denied.")).ToProblemDetails();
         }
 
         await using var session = store.LightweightSession();
@@ -149,7 +148,7 @@ public static class TenantEndpoints
         var tenant = await session.LoadAsync<Tenant>(id, ct);
         if (tenant == null)
         {
-            return Results.NotFound();
+            return Result.Failure(Error.NotFound(ErrorCodes.Tenancy.TenantNotFound, "Tenant not found.")).ToProblemDetails();
         }
 
         tenant.Name = request.Name;

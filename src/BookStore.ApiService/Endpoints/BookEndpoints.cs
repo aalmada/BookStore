@@ -324,7 +324,7 @@ public static class BookEndpoints
         return TypedResults.Ok(response);
     }
 
-    static async Task<Results<Ok<PagedListDto<BookDto>>, UnauthorizedHttpResult>> GetFavoriteBooks(
+    static async Task<IResult> GetFavoriteBooks(
         [FromServices] IQuerySession session,
         [FromServices] IOptions<PaginationOptions> paginationOptions,
         [FromServices] IOptions<LocalizationOptions> localizationOptions,
@@ -336,7 +336,7 @@ public static class BookEndpoints
         var userId = context.User.GetUserId();
         if (userId == Guid.Empty)
         {
-            return TypedResults.Unauthorized();
+            return Result.Failure(Error.Unauthorized(ErrorCodes.Auth.InvalidToken, "User not authenticated.")).ToProblemDetails();
         }
 
         var paging = request.Normalize(paginationOptions.Value);
@@ -479,7 +479,7 @@ public static class BookEndpoints
         return TypedResults.Ok(response);
     }
 
-    static async Task<Results<Ok<BookDto>, NotFound, StatusCodeHttpResult>> GetBook(
+    static async Task<IResult> GetBook(
         Guid id,
         [FromServices] IQuerySession session,
         [FromServices] IOptions<LocalizationOptions> localizationOptions,
@@ -609,7 +609,7 @@ public static class BookEndpoints
 
         if (response is null)
         {
-            return TypedResults.NotFound();
+            return Result.Failure(Error.NotFound(ErrorCodes.Books.BookNotFound, "Book not found.")).ToProblemDetails();
         }
 
         // Overlay user favorites if authenticated
@@ -646,7 +646,7 @@ public static class BookEndpoints
         return TypedResults.Ok(response);
     }
 
-    static async Task<Results<NoContent, NotFound>> AddFavorite(
+    static async Task<IResult> AddFavorite(
         Guid id,
         [FromServices] IMessageBus bus,
         [FromServices] ITenantContext tenantContext,
@@ -656,7 +656,7 @@ public static class BookEndpoints
         var userId = context.User.GetUserId();
         if (userId == Guid.Empty)
         {
-            return TypedResults.NotFound();
+            return Result.Failure(Error.Unauthorized(ErrorCodes.Auth.InvalidToken, "User not authenticated.")).ToProblemDetails();
         }
 
         await bus.InvokeAsync(new AddBookToFavorites(userId, id), new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
@@ -664,7 +664,7 @@ public static class BookEndpoints
         return TypedResults.NoContent();
     }
 
-    static async Task<Results<NoContent, NotFound>> RemoveFavorite(
+    static async Task<IResult> RemoveFavorite(
         Guid id,
         [FromServices] IMessageBus bus,
         [FromServices] ITenantContext tenantContext,
@@ -674,7 +674,7 @@ public static class BookEndpoints
         var userId = context.User.GetUserId();
         if (userId == Guid.Empty)
         {
-            return TypedResults.NotFound();
+            return Result.Failure(Error.Unauthorized(ErrorCodes.Auth.InvalidToken, "User not authenticated.")).ToProblemDetails();
         }
 
         await bus.InvokeAsync(new RemoveBookFromFavorites(userId, id), new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
@@ -682,7 +682,7 @@ public static class BookEndpoints
         return TypedResults.NoContent();
     }
 
-    static async Task<Results<NoContent, NotFound, BadRequest<string>>> RateBook(
+    static async Task<IResult> RateBook(
         Guid id,
         [FromBody] RateBookRequest request,
         [FromServices] IMessageBus bus,
@@ -692,13 +692,13 @@ public static class BookEndpoints
     {
         if (request.Rating is < 1 or > 5)
         {
-            return TypedResults.BadRequest("Rating must be between 1 and 5");
+            return Result.Failure(Error.Validation(ErrorCodes.Books.RatingInvalid, "Rating must be between 1 and 5")).ToProblemDetails();
         }
 
         var userId = context.User.GetUserId();
         if (userId == Guid.Empty)
         {
-            return TypedResults.NotFound();
+            return Result.Failure(Error.Unauthorized(ErrorCodes.Auth.InvalidToken, "User not authenticated.")).ToProblemDetails();
         }
 
         await bus.InvokeAsync(new RateBook(userId, id, request.Rating), new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
@@ -706,7 +706,7 @@ public static class BookEndpoints
         return TypedResults.NoContent();
     }
 
-    static async Task<Results<NoContent, NotFound>> RemoveRating(
+    static async Task<IResult> RemoveRating(
         Guid id,
         [FromServices] IMessageBus bus,
         [FromServices] ITenantContext tenantContext,
@@ -716,7 +716,7 @@ public static class BookEndpoints
         var userId = context.User.GetUserId();
         if (userId == Guid.Empty)
         {
-            return TypedResults.NotFound();
+            return Result.Failure(Error.Unauthorized(ErrorCodes.Auth.InvalidToken, "User not authenticated.")).ToProblemDetails();
         }
 
         await bus.InvokeAsync(new RemoveBookRating(userId, id), new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
