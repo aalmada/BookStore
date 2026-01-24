@@ -127,5 +127,15 @@ public static partial class Log
             Level = LogLevel.Error,
             Message = "Failed to generate cover for {BookTitle}")]
         public static partial void FailedToGenerateCover(ILogger logger, Exception exception, string bookTitle);
+
+        [LoggerMessage(
+            Level = LogLevel.Information,
+            Message = "Updated existing admin user {Email} in tenant {TenantId}")]
+        public static partial void UpdatedExistingAdminUser(ILogger logger, string email, string tenantId);
+
+        [LoggerMessage(
+            Level = LogLevel.Information,
+            Message = "Created new admin user {Email} in tenant {TenantId}")]
+        public static partial void CreatedNewAdminUser(ILogger logger, string email, string tenantId);
     }
 }

@@ -25,6 +25,16 @@ public readonly record struct BookSale
 
     public BookSale(decimal percentage, DateTimeOffset start, DateTimeOffset end)
     {
+        if (percentage is <= 0 or >= 100)
+        {
+            throw new ArgumentException("Percentage must be between 0 and 100 (exclusive).", nameof(percentage));
+        }
+
+        if (start >= end)
+        {
+            throw new ArgumentException("Start time must be before end time.", nameof(start));
+        }
+
         Percentage = percentage;
         Start = start;
         End = end;

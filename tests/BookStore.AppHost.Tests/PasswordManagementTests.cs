@@ -166,5 +166,7 @@ public class PasswordManagementTests
 
         // Assert
         _ = await Assert.That(changeResponse.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+        var error = await changeResponse.Content.ReadFromJsonAsync<TestHelpers.ErrorResponse>();
+        _ = await Assert.That(error?.Error).IsEqualTo(ErrorCodes.Auth.PasswordReuse);
     }
 }

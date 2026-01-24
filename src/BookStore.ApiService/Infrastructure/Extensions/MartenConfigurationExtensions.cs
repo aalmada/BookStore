@@ -11,6 +11,7 @@ using JasperFx.Events.Projections;
 using Marten;
 using Marten.Events.Daemon;
 using Marten.Events.Projections;
+using Marten.Schema;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -204,7 +205,7 @@ public static class MartenConfigurationExtensions
 
         // ApplicationUser indexes (Identity)
         _ = options.Schema.For<ApplicationUser>()
-            .UniqueIndex(x => x.Email!)
+            .UniqueIndex(UniqueIndexType.DuplicatedField, x => x.Email!) // DuplicatedField includes tenant_id in conjoined tenancy
             .Index(x => x.NormalizedEmail)
             .Index(x => x.NormalizedUserName)
             .GinIndexJsonData()

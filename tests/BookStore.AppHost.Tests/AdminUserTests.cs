@@ -1,4 +1,3 @@
-using System.Net;
 using System.Net.Http.Json;
 using BookStore.Shared.Models;
 using JasperFx;
@@ -92,8 +91,8 @@ public class AdminUserTests : IDisposable
 
         // Assert
         _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
-        var error = await response.Content.ReadAsStringAsync();
-        _ = await Assert.That(error).Contains("You cannot promote yourself");
+        var error = await response.Content.ReadFromJsonAsync<TestHelpers.ErrorResponse>();
+        _ = await Assert.That(error?.Error).IsEqualTo(ErrorCodes.Admin.CannotPromoteSelf);
     }
 
     [Test]
@@ -113,8 +112,8 @@ public class AdminUserTests : IDisposable
 
         // Assert
         _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
-        var error = await response.Content.ReadAsStringAsync();
-        _ = await Assert.That(error).Contains("You cannot demote yourself");
+        var error = await response.Content.ReadFromJsonAsync<TestHelpers.ErrorResponse>();
+        _ = await Assert.That(error?.Error).IsEqualTo(ErrorCodes.Admin.CannotDemoteSelf);
     }
 
     [Test]

@@ -58,28 +58,64 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="ConnectionError" xml:space="preserve">
-    <value>Unable to connect to the server. Please check your internet connection.</value>
-  </data>
-  <data name="InvalidCredentials" xml:space="preserve">
-    <value>Invalid email or password.</value>
-  </data>
-  <data name="AccountLocked" xml:space="preserve">
-    <value>Your account has been locked. Please try again later.</value>
-  </data>
-  <data name="VerificationRequired" xml:space="preserve">
-    <value>Please verify your email address to log in.</value>
-  </data>
-  <data name="PasskeyLoginFailed" xml:space="preserve">
-    <value>Passkey login failed. Please try again or use a different method.</value>
-  </data>
-  <data name="InvalidRequest" xml:space="preserve">
-    <value>The request was invalid. Please check your details and try again.</value>
-  </data>
+
+  <!-- Generic and Type Defaults -->
   <data name="DefaultError" xml:space="preserve">
     <value>An unexpected error occurred. Please try again.</value>
   </data>
-  <data name="NoPasskeysRegistered" xml:space="preserve">
-    <value>No passkeys found for this account. Please register with email/password first, then add a passkey.</value>
+  <data name="ConnectionError" xml:space="preserve">
+    <value>Unable to connect to the server. Please check your internet connection.</value>
   </data>
+  <data name="ErrorType_Validation" xml:space="preserve">
+    <value>Please check the provided information and try again.</value>
+  </data>
+  <data name="ErrorType_NotFound" xml:space="preserve">
+    <value>The requested item was not found.</value>
+  </data>
+  <data name="ErrorType_Unauthorized" xml:space="preserve">
+    <value>You are not authorized to perform this action.</value>
+  </data>
+
+  <!-- Auth Codes -->
+  <data name="ERR_AUTH_INVALID_CREDENTIALS" xml:space="preserve">
+    <value>Invalid email or password.</value>
+  </data>
+  <data name="ERR_AUTH_LOCKED_OUT" xml:space="preserve">
+    <value>Your account has been locked due to too many failed attempts. Please try again later.</value>
+  </data>
+  <data name="ERR_AUTH_EMAIL_UNCONFIRMED" xml:space="preserve">
+    <value>Please verify your email address before logging in.</value>
+  </data>
+  <data name="ERR_AUTH_DUPLICATE_EMAIL" xml:space="preserve">
+    <value>An account with this email address already exists.</value>
+  </data>
+  <data name="ERR_AUTH_PASSWORD_MISMATCH" xml:space="preserve">
+    <value>The current password provided is incorrect.</value>
+  </data>
+  <data name="ERR_AUTH_PASSWORD_REUSE" xml:space="preserve">
+    <value>The new password cannot be the same as the current password.</value>
+  </data>
+
+  <!-- Tenancy Codes -->
+  <data name="ERR_TENANT_NOT_FOUND" xml:space="preserve">
+    <value>The specified tenant was not found.</value>
+  </data>
+  <data name="ERR_TENANT_ID_REQUIRED" xml:space="preserve">
+    <value>Tenant ID is required to identify the store.</value>
+  </data>
+
+  <!-- Passkey Codes -->
+  <data name="ERR_PASSKEY_USER_NOT_FOUND" xml:space="preserve">
+    <value>No account found for this email address.</value>
+  </data>
+  <data name="ERR_PASSKEY_ATTESTATION_FAILED" xml:space="preserve">
+    <value>Failed to register the passkey on your device.</value>
+  </data>
+  <data name="ERR_PASSKEY_ASSERTION_FAILED" xml:space="preserve">
+    <value>Failed to authenticate with the passkey.</value>
+  </data>
+  <data name="ERR_PASSKEY_LAST_ONE" xml:space="preserve">
+    <value>You cannot delete your last passkey if you don't have a password set.</value>
+  </data>
+
 </root>

@@ -718,4 +718,11 @@ public static class TestHelpers
     }
 
     public record LoginResponse(string AccessToken, string RefreshToken);
+
+    public record ErrorResponse(
+        [property: System.Text.Json.Serialization.JsonPropertyName("code")]
+        string Error,
+        string Message);
+
+    public record MessageResponse(string Message);
 }

@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using Bogus;
 using BookStore.AppHost.Tests;
+using BookStore.Shared.Models;
 using TUnit.Core.Interfaces;
 
 namespace BookStore.AppHost.Tests;
@@ -37,6 +38,8 @@ public class PasskeyTests
 
         // Assert - Should return BadRequest because user has no passkeys registered
         _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+        var error = await response.Content.ReadFromJsonAsync<TestHelpers.ErrorResponse>();
+        _ = await Assert.That(error?.Error).IsEqualTo(ErrorCodes.Passkey.UserNotFound);
     }
 
     [Test]

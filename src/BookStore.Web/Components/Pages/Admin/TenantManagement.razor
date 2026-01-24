@@ -2,9 +2,11 @@
 @using Microsoft.AspNetCore.Authorization
 @using BookStore.Shared.Models
 @using BookStore.Shared.Validation
+@using BookStore.Web.Infrastructure
 @inject IAdminTenantClient TenantClient
 @inject TenantService TenantService
 @inject ISnackbar Snackbar
+@inject BookStore.Web.Services.ErrorLocalizationService ErrorLocalizer
 @attribute [Authorize(Policy = "SystemAdmin")]
 
 <PageTitle>Tenant Management - BookStore</PageTitle>
@@ -153,7 +155,7 @@
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Failed to load tenants: {ex.Message}", Severity.Error);
+            Snackbar.Add($"Failed to load tenants: {ErrorLocalizer.GetLocalizedMessage(ex.Message)}", Severity.Error);
         }
         finally
         {
@@ -244,9 +246,14 @@
             await LoadTenantsAsync();
             await TenantService.RefreshAvailableTenantsAsync();
         }
+        catch (Refit.ApiException ex)
+        {
+            var result = ex.ToResult();
+            Snackbar.Add($"Operation failed: {ErrorLocalizer.GetLocalizedMessage(result.Error)}", Severity.Error);
+        }
         catch (Exception ex)
         {
-            Snackbar.Add($"Operation failed: {ex.Message}", Severity.Error);
+            Snackbar.Add($"Operation failed: {ErrorLocalizer.GetLocalizedMessage(ex.Message)}", Severity.Error);
         }
     }
 

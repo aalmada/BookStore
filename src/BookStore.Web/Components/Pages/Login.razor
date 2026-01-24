@@ -3,13 +3,15 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.JSInterop
 @using BookStore.Shared.Validation
+@using BookStore.Shared.Models
 @inject AuthenticationService AuthService
+@inject TenantService TenantService
 @inject PasskeyService PasskeyService
 @inject JwtAuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Navigation
 @inject IJSRuntime Js
 @inject ILogger<Login> Logger
-@inject BookStore.Web.Helpers.AuthErrorHelper AuthErrorHelper
+@inject ErrorLocalizationService ErrorLocalizer
 
 
 <PageTitle>Login - BookStore</PageTitle>
@@ -21,14 +23,18 @@
             Login
         </MudText>
 
+        <MudText Typo="Typo.h6" Align="Align.Center" Color="Color.Primary" Class="mb-6">
+            @TenantService.CurrentTenantName
+        </MudText>
+
         @if (!string.IsNullOrEmpty(errorMessage))
         {
-            <MudAlert Severity="Severity.Error" Class="mb-4">
+            <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
                 @errorMessage
                 @if (showResendVerification)
                 {
                     <br/>
-                    <MudLink OnClick="HandleResendVerification" Color="Color.Info" Underline="Underline.Always" Class="mt-2" style="cursor: pointer">Resend verification email</MudLink>
+                    <MudLink OnClick="HandleResendVerification" Color="Color.Inherit" Underline="Underline.Always" Class="mt-2" style="cursor: pointer; font-weight: bold;">Resend verification email</MudLink>
                 }
             </MudAlert>
         }
@@ -123,6 +129,7 @@
     string email = string.Empty;
     string password = string.Empty;
     string? errorMessage;
+    BookStore.Shared.Models.Error? lastError;
     string? resendMessage;
     bool isShow;
     InputType PasswordInput = InputType.Password;
@@ -152,6 +159,7 @@
     {
         isLoading = true;
         errorMessage = null;
+        lastError = null;
 
         try
         {
@@ -161,7 +169,8 @@
             var optionsResult = await PasskeyService.GetLoginOptionsAsync(email);
             if (optionsResult.IsFailure)
             {
-                errorMessage = AuthErrorHelper.GetFriendlyErrorMessage(optionsResult.Error.Message);
+                lastError = optionsResult.Error;
+                errorMessage = ErrorLocalizer.GetLocalizedMessage(optionsResult.Error);
                 return;
             }
 
@@ -181,8 +190,10 @@
             }
             else
             {
-                errorMessage = AuthErrorHelper.GetFriendlyErrorMessage(result.Error.Message);
-                showResendVerification = result.Error.Message?.Contains("Requires verification") == true || result.Error.Message?.Contains("email not confirmed") == true;
+                lastError = result.Error;
+                errorMessage = ErrorLocalizer.GetLocalizedMessage(result.Error);
+                showResendVerification = result.Error.Code == BookStore.Shared.Models.ErrorCodes.Auth.EmailUnconfirmed ||
+                                         result.Error.Message?.Contains("Requires verification") == true;
             }
         }
         catch (Exception ex)
@@ -195,7 +206,7 @@
                 message = parts[^1].Trim();
             }
 
-            errorMessage = AuthErrorHelper.GetFriendlyErrorMessage(message);
+            errorMessage = ErrorLocalizer.GetLocalizedMessage(message);
         }
         finally
         {
@@ -218,6 +229,7 @@
 
         isLoading = true;
         errorMessage = null;
+        lastError = null;
 
         try
         {
@@ -249,15 +261,17 @@
             }
             else
             {
+                lastError = result.Error;
                 Logger.LogWarning("Login failed: {Error}", result.Error.Message);
-                errorMessage = AuthErrorHelper.GetFriendlyErrorMessage(result.Error.Message);
-                showResendVerification = result.Error.Message?.Contains("Requires verification") == true || result.Error.Message?.Contains("email not confirmed") == true;
+                errorMessage = ErrorLocalizer.GetLocalizedMessage(result.Error);
+                showResendVerification = result.Error.Code == BookStore.Shared.Models.ErrorCodes.Auth.EmailUnconfirmed ||
+                                         result.Error.Message?.Contains("Requires verification") == true;
             }
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Login exception: {Message}", ex.Message);
-            errorMessage = AuthErrorHelper.GetFriendlyErrorMessage(ex.Message);
+            errorMessage = ErrorLocalizer.GetLocalizedMessage(ex.Message);
         }
         finally
         {
@@ -276,6 +290,7 @@
         isLoading = true;
         resendMessage = null;
         errorMessage = null;
+        lastError = null;
 
         try
         {
@@ -287,7 +302,8 @@
             }
             else
             {
-                errorMessage = AuthErrorHelper.GetFriendlyErrorMessage(result.Error.Message);
+                lastError = result.Error;
+                errorMessage = ErrorLocalizer.GetLocalizedMessage(result.Error);
             }
         }
         catch (Exception ex)

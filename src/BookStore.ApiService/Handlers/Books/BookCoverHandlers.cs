@@ -60,7 +60,7 @@ public static class BookCoverHandlers
 
         // Update aggregate with format enum (URL will be generated dynamically by API endpoints)
         var @event = aggregate.UpdateCoverImage(format);
-        _ = session.Events.Append(command.BookId, @event);
+        _ = session.Events.Append(command.BookId, @event.Value);
         await session.SaveChangesAsync();
 
         // Get new stream state and return new ETag
