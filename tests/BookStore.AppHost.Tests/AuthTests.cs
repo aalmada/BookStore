@@ -33,6 +33,30 @@ public class AuthTests
     }
 
     [Test]
+    public async Task Register_WithExistingUser_ShouldReturnOk()
+    {
+        // Arrange
+        var email = _faker.Internet.Email();
+        var password = _faker.Internet.Password(8, false, "\\w", "Aa1!");
+
+        // Register once
+        var initialResponse =
+            await _client.PostAsJsonAsync("/account/register", new { Email = email, Password = password });
+        _ = await Assert.That(initialResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+
+        // Act - Register again with same email
+        var duplicateResponse =
+            await _client.PostAsJsonAsync("/account/register", new { Email = email, Password = password });
+
+        // Assert - Should return OK to prevent enumeration
+        _ = await Assert.That(duplicateResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+
+        // Optional: Check message is generic
+        // var result = await duplicateResponse.Content.ReadFromJsonAsync<dynamic>();
+        // Assert.That(result.message).Contains("Registration successful");
+    }
+
+    [Test]
     public async Task Login_WithValidCredentials_ShouldReturnToken()
     {
         // Arrange

@@ -40,6 +40,28 @@ public class PasskeyTests
     }
 
     [Test]
+    public async Task GetAttestationOptions_WithExistingUser_ShouldReturnOk()
+    {
+        // Arrange
+        var email = _faker.Internet.Email();
+        var password = _faker.Internet.Password(8, false, "\\w", "Aa1!");
+
+        // Register a user
+        _ = await _client.PostAsJsonAsync("/account/register", new { Email = email, Password = password });
+
+        // Act - Try to start passkey registration for same email (unauthenticated flow)
+        var response = await _client.PostAsJsonAsync("/account/attestation/options", new { Email = email });
+
+        // Assert - Should return OK to prevent enumeration (currently fails with BadRequest)
+        _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+
+        // Verify it returns options structure
+        var wrappedOptions = await response.Content.ReadFromJsonAsync<AttestationOptionsResponse>();
+        _ = await Assert.That(wrappedOptions).IsNotNull();
+        _ = await Assert.That(wrappedOptions!.Options).IsNotNull();
+    }
+
+    [Test]
     public async Task GetAttestationOptions_WhenAuthenticated_ShouldReturnOptions()
     {
         // Arrange - Need to be logged in to register a passkey

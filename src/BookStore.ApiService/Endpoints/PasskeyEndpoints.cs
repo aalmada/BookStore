@@ -55,7 +55,10 @@ public static class PasskeyEndpoints
             var conflictingUser = await userManager.FindByEmailAsync(request.Email);
             if (conflictingUser is not null)
             {
-                return Results.BadRequest("User already exists.");
+                // Security: Don't return BadRequest to prevent user enumeration.
+                // Instead, proceed to generate options for a dummy user.
+                // The registration will fail at the "attestation/result" step (masked),
+                // effectively hiding the user's existence.
             }
 
             // Create a temporary user entity for the purpose of generating options
@@ -211,6 +214,17 @@ public static class PasskeyEndpoints
                 var createResult = await userManager.CreateAsync(newUser);
                 if (!createResult.Succeeded)
                 {
+                    // Security: Mask "User already exists" errors
+                    if (createResult.Errors.Any(e => e.Code is "DuplicateUserName" or "DuplicateEmail"))
+                    {
+                        Log.Users.RegistrationFailed(logger, request.Email, "Passkey Registration: User already exists (masked)");
+
+                        // Return success message. 
+                        // Note: If email verification is required, we might trigger a "Password Reset" or "Account Exists" email here in a real app.
+                        // For now, we mimic the success response.
+                        return Results.Ok(new { Message = "Registration successful. Please check your email to verify your account." });
+                    }
+
                     return Results.BadRequest(createResult.Errors);
                 }
 

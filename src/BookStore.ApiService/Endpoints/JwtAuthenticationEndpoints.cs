@@ -113,8 +113,14 @@ public static class JwtAuthenticationEndpoints
 
         if (result.IsNotAllowed)
         {
-            Log.Users.LoginFailedUnconfirmedEmail(logger, request.Email);
-            return Results.Json(new { error = "Requires verification", message = "Please confirm your email address." }, statusCode: 401);
+            if (userManager.Options.SignIn.RequireConfirmedEmail && !await userManager.IsEmailConfirmedAsync(user))
+            {
+                Log.Users.LoginFailedUnconfirmedEmail(logger, request.Email);
+                return Results.Json(new { error = "Requires verification", message = "Please confirm your email address." }, statusCode: 401);
+            }
+
+            Log.Users.LoginFailedUserNotFound(logger, request.Email); // Or a generic "Not allowed" log
+            return Results.Unauthorized();
         }
 
         if (!result.Succeeded)
@@ -180,6 +186,15 @@ public static class JwtAuthenticationEndpoints
 
         if (!result.Succeeded)
         {
+            // Security: Mask "User already exists" errors to prevent enumeration
+            if (result.Errors.Any(e => e.Code is "DuplicateUserName" or "DuplicateEmail"))
+            {
+                Log.Users.RegistrationFailed(logger, request.Email, "User already exists (masked)");
+
+                // Return same success message as normal registration
+                return Results.Ok(new { message = "Registration successful. Please check your email to verify your account." });
+            }
+
             Log.Users.RegistrationFailed(logger, request.Email, string.Join(", ", result.Errors.Select(e => e.Description)));
             return Results.BadRequest(new { errors = result.Errors });
         }

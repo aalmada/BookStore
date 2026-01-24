@@ -10,7 +10,19 @@ The email verification system ensures that users provide valid email addresses d
 - **Reactive Experience:** Real-time updates via Server-Sent Events (SSE) when verification completes.
 - **Resend Verification:** Users can request a new verification link if needed.
 - **Passkey Integration:** Compatible with both password-based and passkey-based registration.
-- **Enhanced Login Feedback:** Distinguishes between invalid credentials and unconfirmed accounts.
+- **Enhanced Login Feedback:** Distinguishes between invalid credentials and unconfirmed accounts (when secure to do so).
+- **Security:** Protects against User Enumeration attacks.
+
+## Security & Privacy
+
+### User Enumeration Protection
+To prevent attackers from discovering valid email addresses, the system employs **response masking**:
+- **Registration:** Attempting to register with an existing email returns a generic success message ("Registration successful. Please check your email..."), mimicking a successful registration.
+- **Passkey Registration:** Similarly, duplicate account errors are masked during passkey enrollment.
+- **Resend Verification:** Always returns success even if the email does not exist.
+
+### Rate Limiting
+- **Resend Verification:** Limits requests to one per 60 seconds per account to prevent abuse.
 
 ## Architecture
 
