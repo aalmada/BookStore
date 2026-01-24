@@ -46,6 +46,7 @@ public record LogoutRequest(string? RefreshToken);
 
 public record ChangePasswordRequest(string CurrentPassword, string NewPassword);
 public record AddPasswordRequest(string NewPassword);
+public record RemovePasswordRequest();
 public record PasswordStatusResponse(bool HasPassword);
 public record UserAdminDto(
     Guid Id,

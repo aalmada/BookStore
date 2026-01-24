@@ -10,6 +10,7 @@ public interface IIdentityClient :
     IIdentityLogoutEndpoint,
     IIdentityChangePasswordEndpoint,
     IIdentityAddPasswordEndpoint,
+    IIdentityRemovePasswordEndpoint,
     IIdentityGetPasswordStatusEndpoint,
     IIdentityResendVerificationEndpoint
 {

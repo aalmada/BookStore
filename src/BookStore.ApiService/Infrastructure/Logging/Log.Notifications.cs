@@ -90,5 +90,11 @@ public static partial class Log
             Level = LogLevel.Information,
             Message = "Unsubscribed from Redis channel: {Channel}")]
         public static partial void UnsubscribedFromRedis(ILogger logger, string channel);
+
+        [LoggerMessage(
+            EventId = 6015,
+            Level = LogLevel.Warning,
+            Message = "Error unsubscribing from Redis during disposal")]
+        public static partial void FailedToUnsubscribeFromRedis(ILogger logger, Exception ex);
     }
 }

@@ -130,10 +130,22 @@ public class RedisNotificationService : INotificationService, IDisposable
 
     public void Dispose()
     {
-        if (_redis?.IsConnected == true)
+        try
         {
-            _redis.GetSubscriber().Unsubscribe(RedisChannel.Literal(ChannelName));
-            Log.Notifications.UnsubscribedFromRedis(_logger, ChannelName);
+            if (_redis is { IsConnected: true })
+            {
+                _redis.GetSubscriber().Unsubscribe(RedisChannel.Literal(ChannelName));
+                Log.Notifications.UnsubscribedFromRedis(_logger, ChannelName);
+            }
+        }
+        catch (ObjectDisposedException)
+        {
+            // Redis connection already disposed, ignore
+        }
+        catch (Exception ex)
+        {
+            // Log warning but don't throw during dispose
+            Log.Notifications.FailedToUnsubscribeFromRedis(_logger, ex);
         }
     }
 }

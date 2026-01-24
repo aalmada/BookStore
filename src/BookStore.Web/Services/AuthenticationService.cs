@@ -1,4 +1,5 @@
 using BookStore.Client;
+using BookStore.Shared.Models;
 using BookStore.Shared.Validation;
 using BookStore.Web.Infrastructure;
 
@@ -168,6 +169,23 @@ public class AuthenticationService(
         catch (Exception ex)
         {
             return Result.Failure(Error.Failure("ERR_ADD_PASSWORD_FAILED", ex.Message));
+        }
+    }
+
+    public async Task<Result> RemovePasswordAsync()
+    {
+        try
+        {
+            await identityClient.RemovePasswordAsync(new RemovePasswordRequest());
+            return Result.Success();
+        }
+        catch (Refit.ApiException ex)
+        {
+            return ex.ToResult();
+        }
+        catch (Exception ex)
+        {
+            return Result.Failure(Error.Failure("ERR_REMOVE_PASSWORD_FAILED", ex.Message));
         }
     }
 

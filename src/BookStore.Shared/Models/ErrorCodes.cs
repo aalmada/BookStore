@@ -84,6 +84,8 @@ public static class ErrorCodes
         public const string RegistrationDisabled = "ERR_AUTH_REGISTRATION_DISABLED";
         public const string VerificationDisabled = "ERR_AUTH_VERIFICATION_DISABLED";
         public const string RateLimitExceeded = "ERR_AUTH_RATE_LIMIT_EXCEEDED";
+        public const string InvalidRequest = "ERR_AUTH_INVALID_REQUEST";
+        public const string RequestFailed = "ERR_AUTH_REQUEST_FAILED";
     }
 
     // Shopping Cart Codes
