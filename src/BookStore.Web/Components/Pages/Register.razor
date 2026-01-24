@@ -9,7 +9,7 @@
 @inject IJSRuntime JS
 @using Microsoft.JSInterop
 @using BookStore.Shared.Validation
-@inject BookStore.Web.Helpers.AuthErrorHelper AuthErrorHelper
+@inject BookStore.Web.Services.ErrorLocalizationService ErrorLocalizer
 
 
 <PageTitle>Register - BookStore</PageTitle>
@@ -243,7 +243,7 @@
             }
             else
             {
-                errorMessage = AuthErrorHelper.GetFriendlyErrorMessage(result.Error.Message);
+                errorMessage = ErrorLocalizer.GetLocalizedMessage(result.Error);
             }
         }
         finally
@@ -269,7 +269,7 @@
             var optionsResult = await PasskeyService.GetCreationOptionsAsync(email);
             if (optionsResult.IsFailure)
             {
-                errorMessage = AuthErrorHelper.GetFriendlyErrorMessage(optionsResult.Error.Message);
+                errorMessage = ErrorLocalizer.GetLocalizedMessage(optionsResult.Error);
                 return;
             }
 
@@ -312,7 +312,7 @@
             }
             else
             {
-                errorMessage = AuthErrorHelper.GetFriendlyErrorMessage(result.Error.Message);
+                errorMessage = ErrorLocalizer.GetLocalizedMessage(result.Error);
             }
         }
         catch (Exception ex)
@@ -324,7 +324,7 @@
                 message = parts[^1].Trim();
             }
 
-            errorMessage = AuthErrorHelper.GetFriendlyErrorMessage(message);
+            errorMessage = ErrorLocalizer.GetLocalizedMessage(message);
         }
         finally
         {

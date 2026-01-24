@@ -42,8 +42,8 @@ public class AdminTenantTests
 
         // Assert
         _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
-        var content = await response.Content.ReadAsStringAsync();
-        _ = await Assert.That(content).Contains("At least 8 characters");
+        var error = await response.Content.ReadFromJsonAsync<TestHelpers.ErrorResponse>();
+        _ = await Assert.That(error?.Error).IsEqualTo(ErrorCodes.Tenancy.InvalidAdminPassword);
     }
 
     [Test]
@@ -78,8 +78,8 @@ public class AdminTenantTests
 
         // Assert
         _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
-        var content = await response.Content.ReadAsStringAsync();
-        _ = await Assert.That(content).Contains("Invalid Admin Email");
+        var error = await response.Content.ReadFromJsonAsync<TestHelpers.ErrorResponse>();
+        _ = await Assert.That(error?.Error).IsEqualTo(ErrorCodes.Tenancy.InvalidAdminEmail);
     }
 
     [Test]

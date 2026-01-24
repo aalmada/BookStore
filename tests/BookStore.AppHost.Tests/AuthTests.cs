@@ -96,6 +96,54 @@ public class AuthTests
     }
 
     [Test]
+    public async Task RawLoginError_ShouldContainStandardizedCode()
+    {
+        // Arrange
+        var loginRequest = new { Email = "nonexistent@example.com", Password = "password" };
+
+        // Act
+        var response = await _client.PostAsJsonAsync("/account/login", loginRequest);
+
+        // Assert - Verify raw JSON structure for standardized 'code' extension
+        var json = await response.Content.ReadAsStringAsync();
+        using var doc = System.Text.Json.JsonDocument.Parse(json);
+
+        string? code = null;
+        if (doc.RootElement.TryGetProperty("extensions", out var extensions))
+        {
+            code = extensions.GetProperty("code").GetString();
+        }
+        else
+        {
+            code = doc.RootElement.GetProperty("code").GetString();
+        }
+
+        _ = await Assert.That(code).IsEqualTo("ERR_AUTH_INVALID_CREDENTIALS");
+    }
+
+    [Test]
+    public async Task Login_AsTenantAdmin_ShouldSucceed()
+    {
+        // Arrange
+        var tenantId = "contoso";
+        var email = $"admin@{tenantId}.com";
+        var password = "Admin123!";
+
+        var client = GlobalHooks.App!.CreateHttpClient("apiservice");
+        client.DefaultRequestHeaders.Add("X-Tenant-ID", tenantId);
+
+        // Act
+        var response = await client.PostAsJsonAsync("/account/login", new { Email = email, Password = password });
+
+        // Assert
+        _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+
+        var loginResult = await response.Content.ReadFromJsonAsync<LoginResponse>();
+        _ = await Assert.That(loginResult).IsNotNull();
+        _ = await Assert.That(loginResult!.AccessToken).IsNotNull().And.IsNotEmpty();
+    }
+
+    [Test]
     public async Task Refresh_WithValidToken_ShouldReturnNewToken()
     {
         // Arrange

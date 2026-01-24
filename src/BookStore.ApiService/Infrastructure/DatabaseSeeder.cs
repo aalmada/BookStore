@@ -76,12 +76,17 @@ public class DatabaseSeeder(
         // Since we use "*DEFAULT*" as the default tenant ID, we can pass it directly
         await using var session = store.LightweightSession(tenantId);
 
-        // Check if already seeded
+        // Seed tenant-specific admin user using the tenant-scoped session
+        // This is outside the 'existingBooks' guard to ensure admins are always present
+        // even if data was previously partially seeded. The method itself handles idempotency.
+        _ = await SeedAdminUserAsync(session, tenantId, logger: logger);
+
+        // Check if already seeded with books
         var existingBooks = await session.Query<BookSearchProjection>().AnyAsync();
         if (existingBooks)
         {
             Log.Seeding.DatabaseAlreadySeeded(logger);
-            return; // Already seeded
+            return; // Already seeded with content
         }
 
         Log.Seeding.StartingTenantSeeding(logger, tenantId);
@@ -100,10 +105,6 @@ public class DatabaseSeeder(
         await SeedSalesAsync(tenantId);
 
         Log.Seeding.DatabaseSeedingCompleted(logger);
-
-        // Seed tenant-specific admin user using the tenant-scoped session
-        _ = await SeedAdminUserAsync(session, tenantId);
-
     }
 
     /// <summary>
@@ -114,7 +115,8 @@ public class DatabaseSeeder(
         string tenantId,
         string? email = null,
         string? password = null,
-        bool confirmEmail = true)
+        bool confirmEmail = true,
+        ILogger? logger = null)
     {
         // Generate tenant-specific email if not provided
         var adminEmail = email ?? (StorageConstants.DefaultTenantId.Equals(tenantId, StringComparison.OrdinalIgnoreCase)
@@ -130,12 +132,37 @@ public class DatabaseSeeder(
 
         if (existingAdmin is not null)
         {
-            // User already exists in this tenant, ensure they have Admin role
+            // User already exists in this tenant, ensure they have Admin role and are confirmed
+            var changed = false;
             if (!existingAdmin.Roles.Contains("Admin"))
             {
                 existingAdmin.Roles.Add("Admin");
+                changed = true;
+            }
+
+            if (!existingAdmin.EmailConfirmed)
+            {
+                existingAdmin.EmailConfirmed = true;
+                changed = true;
+            }
+
+            // In development, ensure the password is what we expect
+            var passwordHasher = new Microsoft.AspNetCore.Identity.PasswordHasher<Models.ApplicationUser>();
+            var verifyResult = passwordHasher.VerifyHashedPassword(existingAdmin, existingAdmin.PasswordHash!, adminPassword);
+            if (verifyResult == Microsoft.AspNetCore.Identity.PasswordVerificationResult.Failed)
+            {
+                existingAdmin.PasswordHash = passwordHasher.HashPassword(existingAdmin, adminPassword);
+                changed = true;
+            }
+
+            if (changed)
+            {
                 session.Store(existingAdmin);
                 await session.SaveChangesAsync();
+                if (logger != null)
+                {
+                    Log.Seeding.UpdatedExistingAdminUser(logger, adminEmail, tenantId);
+                }
             }
 
             return existingAdmin;
@@ -156,12 +183,17 @@ public class DatabaseSeeder(
         };
 
         // Hash the password
-        var hasher = new Microsoft.AspNetCore.Identity.PasswordHasher<Models.ApplicationUser>();
-        adminUser.PasswordHash = hasher.HashPassword(adminUser, adminPassword);
+        var passwordHasherForNew = new Microsoft.AspNetCore.Identity.PasswordHasher<Models.ApplicationUser>();
+        adminUser.PasswordHash = passwordHasherForNew.HashPassword(adminUser, adminPassword);
 
         // Store in the tenant-scoped session
         session.Store(adminUser);
         await session.SaveChangesAsync();
+
+        if (logger != null)
+        {
+            Log.Seeding.CreatedNewAdminUser(logger, adminEmail, tenantId);
+        }
 
         return adminUser;
     }
@@ -560,7 +592,7 @@ public class DatabaseSeeder(
                 if (aggregate != null)
                 {
                     var saleEvent = aggregate.ScheduleSale(25m, now.AddDays(-1), now.AddDays(7));
-                    _ = session.Events.Append(books[0].Id, saleEvent);
+                    _ = session.Events.Append(books[0].Id, saleEvent.Value);
                     Log.Seeding.ScheduledSale(logger, 25m, books[0].Id, books[0].Title);
                 }
             }
@@ -572,7 +604,7 @@ public class DatabaseSeeder(
                 if (aggregate != null)
                 {
                     var saleEvent = aggregate.ScheduleSale(15m, now.AddHours(-12), now.AddDays(5));
-                    _ = session.Events.Append(books[1].Id, saleEvent);
+                    _ = session.Events.Append(books[1].Id, saleEvent.Value);
                     Log.Seeding.ScheduledSale(logger, 15m, books[1].Id, books[1].Title);
                 }
             }
@@ -584,7 +616,7 @@ public class DatabaseSeeder(
                 if (aggregate != null)
                 {
                     var saleEvent = aggregate.ScheduleSale(30m, now.AddHours(-1), now.AddDays(3));
-                    _ = session.Events.Append(books[2].Id, saleEvent);
+                    _ = session.Events.Append(books[2].Id, saleEvent.Value);
                     Log.Seeding.ScheduledSale(logger, 30m, books[2].Id, books[2].Title);
                 }
             }
@@ -596,7 +628,7 @@ public class DatabaseSeeder(
                 if (aggregate != null)
                 {
                     var saleEvent = aggregate.ScheduleSale(20m, now.AddHours(1), now.AddDays(2));
-                    _ = session.Events.Append(books[3].Id, saleEvent);
+                    _ = session.Events.Append(books[3].Id, saleEvent.Value);
                     Log.Seeding.ScheduledSale(logger, 20m, books[3].Id, books[3].Title);
                 }
             }
@@ -608,7 +640,7 @@ public class DatabaseSeeder(
                 if (aggregate != null)
                 {
                     var saleEvent = aggregate.ScheduleSale(10m, now.AddHours(6), now.AddDays(4));
-                    _ = session.Events.Append(books[4].Id, saleEvent);
+                    _ = session.Events.Append(books[4].Id, saleEvent.Value);
                     Log.Seeding.ScheduledSale(logger, 10m, books[4].Id, books[4].Title);
                 }
             }

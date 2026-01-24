@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using Bogus;
 using BookStore.ApiService.Models;
+using BookStore.Shared.Models;
 using JasperFx;
 using Marten;
 using Weasel.Core;
@@ -36,14 +37,14 @@ public class EmailVerificationTests
         var loginResponse = await _client.PostAsJsonAsync("/account/login", new { Email = email, Password = password });
         _ = await Assert.That(loginResponse.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
 
-        var loginError = await loginResponse.Content.ReadFromJsonAsync<ErrorResponse>();
-        _ = await Assert.That(loginError?.Error).IsEqualTo("Requires verification");
+        var loginError = await loginResponse.Content.ReadFromJsonAsync<TestHelpers.ErrorResponse>();
+        _ = await Assert.That(loginError?.Error).IsEqualTo(ErrorCodes.Auth.EmailUnconfirmed);
 
         // 3. Resend verification
         var resendResponse = await _client.PostAsJsonAsync("/account/resend-verification", new { Email = email });
         _ = await Assert.That(resendResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
-        var resendResult = await resendResponse.Content.ReadFromJsonAsync<MessageResponse>();
+        var resendResult = await resendResponse.Content.ReadFromJsonAsync<TestHelpers.MessageResponse>();
         _ = await Assert.That(resendResult?.Message).Contains("a new verification link has been sent");
 
         // 4. Manually confirm email via DB (simulating clicking the link)
@@ -54,7 +55,7 @@ public class EmailVerificationTests
             await _client.PostAsJsonAsync("/account/login", new { Email = email, Password = password });
         _ = await Assert.That(loginResponse2.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
-        var loginResult = await loginResponse2.Content.ReadFromJsonAsync<LoginResponse>();
+        var loginResult = await loginResponse2.Content.ReadFromJsonAsync<TestHelpers.LoginResponse>();
         _ = await Assert.That(loginResult?.AccessToken).IsNotNull().And.IsNotEmpty();
     }
 
@@ -67,7 +68,7 @@ public class EmailVerificationTests
 
         // Assert
         _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-        var result = await response.Content.ReadFromJsonAsync<MessageResponse>();
+        var result = await response.Content.ReadFromJsonAsync<TestHelpers.MessageResponse>();
         _ = await Assert.That(result?.Message).Contains("If an account exists");
     }
 
@@ -89,7 +90,7 @@ public class EmailVerificationTests
 
         // Assert
         _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-        var result = await response.Content.ReadFromJsonAsync<MessageResponse>();
+        var result = await response.Content.ReadFromJsonAsync<TestHelpers.MessageResponse>();
         _ = await Assert.That(result?.Message).Contains("If an account exists");
     }
 
@@ -168,10 +169,4 @@ public class EmailVerificationTests
             await session.SaveChangesAsync();
         }
     }
-
-    record ErrorResponse(string Error, string Message);
-
-    record MessageResponse(string Message);
-
-    record LoginResponse(string AccessToken, string RefreshToken);
 }

@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using BookStore.Client;
+using BookStore.Shared.Models;
 
 namespace BookStore.AppHost.Tests;
 
@@ -166,11 +167,15 @@ public class ShoppingCartTests
         var request1 = new AddToCartClientRequest(Guid.NewGuid(), 0);
         var response1 = await httpClient.PostAsJsonAsync("/api/cart/items", request1);
         _ = await Assert.That(response1.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+        var error1 = await response1.Content.ReadFromJsonAsync<TestHelpers.ErrorResponse>();
+        _ = await Assert.That(error1?.Error).IsEqualTo(ErrorCodes.Cart.InvalidQuantity);
 
         // Act & Assert - Negative quantity
         var request2 = new AddToCartClientRequest(Guid.NewGuid(), -1);
         var response2 = await httpClient.PostAsJsonAsync("/api/cart/items", request2);
         _ = await Assert.That(response2.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+        var error2 = await response2.Content.ReadFromJsonAsync<TestHelpers.ErrorResponse>();
+        _ = await Assert.That(error2?.Error).IsEqualTo(ErrorCodes.Cart.InvalidQuantity);
     }
 
     [Test]

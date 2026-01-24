@@ -1,6 +1,5 @@
 using System.Net;
 using System.Text.Json;
-using BookStore.Shared.Models;
 using Refit;
 
 namespace BookStore.Web.Infrastructure;
@@ -20,10 +19,16 @@ public static class ProblemDetailsExtensions
 
             // Try to get "code" from extensions first (standard for our new pattern)
             string? code = null;
-            if (doc.RootElement.TryGetProperty("extensions", out var extensions) &&
-                extensions.TryGetProperty("code", out var codeProp))
+            if (doc.RootElement.TryGetProperty("extensions", out var extensions))
             {
-                code = codeProp.GetString();
+                if (extensions.TryGetProperty("code", out var codeProp))
+                {
+                    code = codeProp.GetString();
+                }
+                else if (extensions.TryGetProperty("error", out var errorProp))
+                {
+                    code = errorProp.GetString();
+                }
             }
 
             // Fallback: check if "code" is at the root (unlikely but possible)

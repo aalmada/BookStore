@@ -1,7 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using BookStore.Client;
-using BookStore.Shared.Models;
 using Microsoft.AspNetCore.Components.Authorization;
 
 namespace BookStore.Web.Services;
@@ -14,7 +13,7 @@ namespace BookStore.Web.Services;
 public class JwtAuthenticationStateProvider : AuthenticationStateProvider, IDisposable
 {
     readonly TokenService _tokenService;
-    readonly Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage.ProtectedLocalStorage _localStorage;
+    readonly Blazored.LocalStorage.ILocalStorageService _localStorage;
     readonly TenantService _tenantService;
     readonly IIdentityClient _identityClient;
 
@@ -25,7 +24,7 @@ public class JwtAuthenticationStateProvider : AuthenticationStateProvider, IDisp
 
     public JwtAuthenticationStateProvider(
         TokenService tokenService,
-        Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage.ProtectedLocalStorage localStorage,
+        Blazored.LocalStorage.ILocalStorageService localStorage,
         TenantService tenantService,
         IIdentityClient identityClient)
     {
@@ -50,10 +49,10 @@ public class JwtAuthenticationStateProvider : AuthenticationStateProvider, IDisp
             // Try to hydrate from LocalStorage with tenant-specific key
             try
             {
-                var result = await _localStorage.GetAsync<string>(GetStorageKey(currentTenant));
-                if (result.Success && !string.IsNullOrEmpty(result.Value))
+                var storedToken = await _localStorage.GetItemAsync<string>(GetStorageKey(currentTenant));
+                if (!string.IsNullOrEmpty(storedToken))
                 {
-                    token = result.Value;
+                    token = storedToken;
                     _tokenService.SetTokens(currentTenant, token);
                 }
             }
@@ -144,7 +143,7 @@ public class JwtAuthenticationStateProvider : AuthenticationStateProvider, IDisp
 
                 try
                 {
-                    await _localStorage.SetAsync(GetStorageKey(tenantId), response.AccessToken);
+                    await _localStorage.SetItemAsync(GetStorageKey(tenantId), response.AccessToken);
                 }
                 catch
                 {
@@ -181,7 +180,7 @@ public class JwtAuthenticationStateProvider : AuthenticationStateProvider, IDisp
 
         try
         {
-            await _localStorage.SetAsync(GetStorageKey(currentTenant), accessToken);
+            await _localStorage.SetItemAsync(GetStorageKey(currentTenant), accessToken);
         }
         catch
         {
@@ -204,7 +203,7 @@ public class JwtAuthenticationStateProvider : AuthenticationStateProvider, IDisp
 
         try
         {
-            await _localStorage.DeleteAsync(GetStorageKey(currentTenant));
+            await _localStorage.RemoveItemAsync(GetStorageKey(currentTenant));
         }
         catch
         {

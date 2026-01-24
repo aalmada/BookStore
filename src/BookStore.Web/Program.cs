@@ -47,7 +47,6 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 });
 
 builder.Services.AddCascadingAuthenticationState();
-// builder.Services.AddProtectedBrowserStorage();
 
 // Add MudBlazor services
 builder.Services.AddMudServices();
@@ -172,8 +171,8 @@ builder.Services.AddScoped<CurrencyService>();
 // Register SSE events service
 builder.Services.AddBookStoreEvents(new Uri(apiServiceUrl));
 
-// Register Auth Error Helper
-builder.Services.AddScoped<BookStore.Web.Helpers.AuthErrorHelper>();
+// Register Error Localization Service
+builder.Services.AddScoped<ErrorLocalizationService>();
 
 builder.Services.AddOutputCache();
 
