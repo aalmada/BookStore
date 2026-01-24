@@ -196,7 +196,7 @@ public class PasswordManagementTests
 
         // Assert
         _ = await Assert.That(removeResponse.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
-        var error = await removeResponse.Content.ReadFromJsonAsync<TestHelpers.ErrorResponse>();
+        var error = await removeResponse.Content.ReadFromJsonAsync<BookStore.AppHost.Tests.TestHelpers.ErrorResponse>();
         _ = await Assert.That(error?.Error).IsEqualTo(ErrorCodes.Auth.InvalidRequest);
     }
 
@@ -237,20 +237,6 @@ public class PasswordManagementTests
                 .FirstOrDefaultAsync();
 
             _ = await Assert.That(user).IsNotNull();
-
-            /*
-            user!.Passkeys.Add(new UserPasskeyInfo
-            {
-                CredentialId = Guid.NewGuid().ToByteArray(),
-                PublicKey = [],
-                UserHandle = [],
-                SignatureCount = 0,
-                AttestationFormatId = "none",
-                AaGuid = Guid.Empty,
-                Name = "Test Key",
-                CreatedAt = DateTimeOffset.UtcNow
-            });
-            */
 
             user!.Passkeys.Add(new UserPasskeyInfo(
                 Guid.NewGuid().ToByteArray(), // credentialId
