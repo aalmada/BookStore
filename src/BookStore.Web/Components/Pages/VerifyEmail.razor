@@ -8,19 +8,19 @@
         <MudStack AlignItems="AlignItems.Center" Spacing="4">
             @if (_isLoading)
             {
-                <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                <MudProgressCircular Color="Color.Primary" Indeterminate="true"/>
                 <MudText>Verifying your email...</MudText>
             }
             else if (_isSuccess)
             {
-                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Large" />
+                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Large"/>
                 <MudText Typo="Typo.h5" Color="Color.Success">Email Verified!</MudText>
                 <MudText>Your email has been successfully verified.</MudText>
                 <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/login"))">Go to Login</MudButton>
             }
             else
             {
-                <MudIcon Icon="@Icons.Material.Filled.Error" Color="Color.Error" Size="Size.Large" />
+                <MudIcon Icon="@Icons.Material.Filled.Error" Color="Color.Error" Size="Size.Large"/>
                 <MudText Typo="Typo.h5" Color="Color.Error">Verification Failed</MudText>
                 <MudText>Invalid verification link or the link has expired.</MudText>
                 <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="@(() => Navigation.NavigateTo("/"))">Go Home</MudButton>
@@ -30,11 +30,9 @@
 </MudContainer>
 
 @code {
-    [SupplyParameterFromQuery]
-    public string? UserId { get; set; }
+    [SupplyParameterFromQuery] public string? UserId { get; set; }
 
-    [SupplyParameterFromQuery]
-    public string? Code { get; set; }
+    [SupplyParameterFromQuery] public string? Code { get; set; }
 
     private bool _isLoading = true;
     private bool _isSuccess = false;
@@ -51,7 +49,9 @@
         // Delay slightly for UX/visual feedback
         await Task.Delay(500);
 
-        _isSuccess = await AuthService.ConfirmEmailAsync(UserId, Code);
+        var result = await AuthService.ConfirmEmailAsync(UserId, Code);
+        _isSuccess = result.IsSuccess;
         _isLoading = false;
     }
+
 }

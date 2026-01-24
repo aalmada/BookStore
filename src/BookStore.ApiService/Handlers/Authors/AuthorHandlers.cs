@@ -1,8 +1,8 @@
 using BookStore.ApiService.Aggregates;
-using BookStore.ApiService.Infrastructure.Extensions;
 using BookStore.ApiService.Commands;
 using BookStore.ApiService.Events;
 using BookStore.ApiService.Infrastructure;
+using BookStore.ApiService.Infrastructure.Extensions;
 using BookStore.ApiService.Infrastructure.Logging;
 using BookStore.Shared.Models;
 using Marten;

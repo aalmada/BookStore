@@ -1,6 +1,6 @@
 using BookStore.Client;
-using BookStore.Shared.Models;
 using BookStore.Shared.Validation;
+using BookStore.Web.Infrastructure;
 
 namespace BookStore.Web.Services;
 
@@ -12,36 +12,44 @@ public class AuthenticationService(
     TokenService tokenService,
     TenantService tenantService)
 {
-    public async Task<bool> ConfirmEmailAsync(string userId, string code)
+    public async Task<Result> ConfirmEmailAsync(string userId, string code)
     {
         try
         {
             await identityClient.ConfirmEmailAsync(userId, code);
-            return true;
+            return Result.Success();
         }
-        catch
+        catch (Refit.ApiException ex)
         {
-            return false;
+            return ex.ToResult();
+        }
+        catch (Exception ex)
+        {
+            return Result.Failure(Error.Failure("ERR_CONFIRM_EMAIL_FAILED", ex.Message));
         }
     }
 
-    public async Task<bool> ResendVerificationEmailAsync(string email)
+    public async Task<Result> ResendVerificationEmailAsync(string email)
     {
         try
         {
             await identityClient.ResendVerificationAsync(new ResendVerificationRequest(email));
-            return true;
+            return Result.Success();
         }
-        catch
+        catch (Refit.ApiException ex)
         {
-            return false;
+            return ex.ToResult();
+        }
+        catch (Exception ex)
+        {
+            return Result.Failure(Error.Failure("ERR_RESEND_VERIFICATION_FAILED", ex.Message));
         }
     }
 
     /// <summary>
     /// Login with email and password (JWT token-based)
     /// </summary>
-    public async Task<LoginResult> LoginAsync(string email, string password)
+    public async Task<Result<LoginResponse>> LoginAsync(string email, string password)
     {
         try
         {
@@ -49,96 +57,44 @@ public class AuthenticationService(
             // useCookies=false - we want JWT tokens, not cookies
             var response = await identityClient.LoginAsync(request, useCookies: false);
 
-            // Return the access token so caller can store it
-            return new LoginResult(true, null, response.AccessToken, response.RefreshToken);
+            return Result.Success(response);
         }
         catch (Refit.ApiException ex)
         {
-            var errorMessage = ParseError(ex.Content);
-            return new LoginResult(false, errorMessage, null, null);
+            return ex.ToResult<LoginResponse>();
+        }
+        catch (Exception ex)
+        {
+            return Result.Failure<LoginResponse>(Error.Failure("ERR_LOGIN_FAILED", ex.Message));
         }
     }
 
     /// <summary>
     /// Register a new user
     /// </summary>
-    public async Task<RegisterResult> RegisterAsync(string email, string password)
+    public async Task<Result> RegisterAsync(string email, string password)
     {
         // Validate password strength
         var validationError = ValidatePassword(password);
         if (validationError != null)
         {
-            return new RegisterResult(false, validationError);
+            return Result.Failure(Error.Validation(ErrorCodes.Auth.PasswordMismatch, validationError));
         }
 
         try
         {
             var request = new RegisterRequest(email, password);
             _ = await identityClient.RegisterAsync(request);
-            return new RegisterResult(true, null);
+            return Result.Success();
         }
         catch (Refit.ApiException ex)
         {
-            var errorMessage = ParseError(ex.Content);
-            return new RegisterResult(false, errorMessage);
+            return ex.ToResult();
         }
-    }
-
-    static string ParseError(string? content)
-    {
-        if (string.IsNullOrEmpty(content))
+        catch (Exception ex)
         {
-            return "Operation failed";
+            return Result.Failure(Error.Failure("ERR_REGISTRATION_FAILED", ex.Message));
         }
-
-        try
-        {
-            // Try to parse standard { "errors": [ { "description": "..." } ] }
-            using var doc = System.Text.Json.JsonDocument.Parse(content);
-            if (doc.RootElement.ValueKind == System.Text.Json.JsonValueKind.Object)
-            {
-                if (doc.RootElement.TryGetProperty("errors", out var errors) &&
-                    errors.ValueKind == System.Text.Json.JsonValueKind.Array)
-                {
-                    foreach (var error in errors.EnumerateArray())
-                    {
-                        if (error.TryGetProperty("description", out var desc))
-                        {
-                            return desc.GetString() ?? "Unknown error";
-                        }
-                    }
-                }
-
-                // Try to parse standard ProblemDetails "detail"
-                if (doc.RootElement.TryGetProperty("detail", out var detail))
-                {
-                    return detail.GetString() ?? "Operation failed";
-                }
-            }
-            // If it's a direct array [ { "description": "..." } ] (used in some endpoints)
-            else if (doc.RootElement.ValueKind == System.Text.Json.JsonValueKind.Array)
-            {
-                foreach (var error in doc.RootElement.EnumerateArray())
-                {
-                    if (error.TryGetProperty("description", out var desc))
-                    {
-                        return desc.GetString() ?? "Unknown error";
-                    }
-                }
-            }
-        }
-        catch
-        {
-            // Fallback to raw content if not JSON
-        }
-
-        // Clean up quotes if it's a simple string
-        if (content.StartsWith("\"") && content.EndsWith("\""))
-        {
-            return content.Trim('"');
-        }
-
-        return content;
     }
 
     /// <summary>
@@ -163,46 +119,55 @@ public class AuthenticationService(
     /// </summary>
     static string? ValidatePassword(string password) => PasswordValidator.GetFirstError(password);
 
-    public async Task<PasswordOperationResult> ChangePasswordAsync(string currentPassword, string newPassword)
+    public async Task<Result> ChangePasswordAsync(string currentPassword, string newPassword)
     {
         var validationError = ValidatePassword(newPassword);
         if (validationError != null)
         {
-            return new PasswordOperationResult(false, validationError);
+            return Result.Failure(Error.Validation(ErrorCodes.Auth.PasswordMismatch, validationError));
         }
 
         if (currentPassword == newPassword)
         {
-            return new PasswordOperationResult(false, "New password cannot be the same as the current password.");
+            return Result.Failure(Error.Validation(ErrorCodes.Auth.PasswordReuse,
+                "New password cannot be the same as the current password."));
         }
 
         try
         {
             await identityClient.ChangePasswordAsync(new ChangePasswordRequest(currentPassword, newPassword));
-            return new PasswordOperationResult(true, null);
+            return Result.Success();
         }
         catch (Refit.ApiException ex)
         {
-            return new PasswordOperationResult(false, ParseError(ex.Content));
+            return ex.ToResult();
+        }
+        catch (Exception ex)
+        {
+            return Result.Failure(Error.Failure("ERR_CHANGE_PASSWORD_FAILED", ex.Message));
         }
     }
 
-    public async Task<PasswordOperationResult> AddPasswordAsync(string newPassword)
+    public async Task<Result> AddPasswordAsync(string newPassword)
     {
         var validationError = ValidatePassword(newPassword);
         if (validationError != null)
         {
-            return new PasswordOperationResult(false, validationError);
+            return Result.Failure(Error.Validation(ErrorCodes.Auth.PasswordMismatch, validationError));
         }
 
         try
         {
             await identityClient.AddPasswordAsync(new AddPasswordRequest(newPassword));
-            return new PasswordOperationResult(true, null);
+            return Result.Success();
         }
         catch (Refit.ApiException ex)
         {
-            return new PasswordOperationResult(false, ParseError(ex.Content));
+            return ex.ToResult();
+        }
+        catch (Exception ex)
+        {
+            return Result.Failure(Error.Failure("ERR_ADD_PASSWORD_FAILED", ex.Message));
         }
     }
 
@@ -220,14 +185,3 @@ public class AuthenticationService(
     }
 }
 
-/// <summary>
-/// Result of a login attempt
-/// </summary>
-public record LoginResult(bool Success, string? Error, string? AccessToken = null, string? RefreshToken = null);
-
-/// <summary>
-/// Result of a registration attempt
-/// </summary>
-public record RegisterResult(bool Success, string? Error);
-
-public record PasswordOperationResult(bool Success, string? Error);

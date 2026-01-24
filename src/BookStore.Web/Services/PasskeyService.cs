@@ -1,7 +1,9 @@
 using BookStore.Client;
 using BookStore.Shared.Models;
+using BookStore.Web.Infrastructure;
 using BookStore.Web.Logging;
 using Microsoft.Extensions.Logging;
+using Refit;
 
 namespace BookStore.Web.Services;
 
@@ -16,7 +18,7 @@ public class PasskeyService
         _logger = logger;
     }
 
-    public async Task<(string? Options, string? Error)> GetCreationOptionsAsync(string? email = null)
+    public async Task<Result<string>> GetCreationOptionsAsync(string? email = null)
     {
         try
         {
@@ -25,32 +27,41 @@ public class PasskeyService
             // Return the entire response (with both 'options' and 'userId')
             // The frontend needs the userId to pass back during registration
             var responseJson = System.Text.Json.JsonSerializer.Serialize(response);
-            return (responseJson, null);
+            return Result.Success(responseJson);
+        }
+        catch (ApiException ex)
+        {
+            Log.RegistrationOptionsError(_logger, ex);
+            return ex.ToResult<string>();
         }
         catch (Exception ex)
         {
             Log.RegistrationOptionsError(_logger, ex);
-            return (null, $"Error: {ex.Message}");
+            return Result.Failure<string>(Error.Failure("ERR_PASSKEY_OPTIONS_FAILED", ex.Message));
         }
     }
 
-    public async Task<string?> GetLoginOptionsAsync(string? email = null)
+    public async Task<Result<string>> GetLoginOptionsAsync(string? email = null)
     {
         try
         {
             var response =
                 await _passkeyClient.GetPasskeyLoginOptionsAsync(new PasskeyLoginOptionsRequest { Email = email });
-            return System.Text.Json.JsonSerializer.Serialize(response);
+            return Result.Success(System.Text.Json.JsonSerializer.Serialize(response));
+        }
+        catch (ApiException ex)
+        {
+            Log.LoginOptionsError(_logger, ex);
+            return ex.ToResult<string>();
         }
         catch (Exception ex)
         {
             Log.LoginOptionsError(_logger, ex);
+            return Result.Failure<string>(Error.Failure("ERR_PASSKEY_LOGIN_OPTIONS_FAILED", ex.Message));
         }
-
-        return null;
     }
 
-    public async Task<LoginResult?> RegisterPasskeyAsync(string credentialJson, string? email = null,
+    public async Task<Result> RegisterPasskeyAsync(string credentialJson, string? email = null,
         string? userId = null)
     {
         try
@@ -62,24 +73,21 @@ public class PasskeyService
                 UserId = userId
             });
 
-            // If no exception, it succeeded.
-            return new LoginResult(true, null, null, null);
+            return Result.Success();
         }
-        catch (Refit.ApiException ex)
+        catch (ApiException ex)
         {
             Log.RegistrationResultFailed(_logger, ex.StatusCode, ex.Content ?? ex.Message);
-            var errorMessage = ParseError(ex.Content);
-            return new LoginResult(false, errorMessage, null, null);
+            return ex.ToResult();
         }
         catch (Exception ex)
         {
             Log.RegistrationCompleteError(_logger, ex);
-
-            return new LoginResult(false, ex.Message, null, null);
+            return Result.Failure(Error.Failure("ERR_PASSKEY_REGISTRATION_FAILED", ex.Message));
         }
     }
 
-    public async Task<LoginResult?> LoginWithPasskeyAsync(string credentialJson)
+    public async Task<Result<LoginResponse>> LoginWithPasskeyAsync(string credentialJson)
     {
         try
         {
@@ -90,79 +98,20 @@ public class PasskeyService
 
             if (loginResponse != null && !string.IsNullOrEmpty(loginResponse.AccessToken))
             {
-                return new LoginResult(true, null, loginResponse.AccessToken, loginResponse.RefreshToken);
+                return Result.Success(loginResponse);
             }
 
-            return new LoginResult(false, "Passkey login failed.", null, null);
+            return Result.Failure<LoginResponse>(Error.Failure("ERR_PASSKEY_LOGIN_FAILED", "Passkey login failed."));
         }
-        catch (Refit.ApiException ex)
+        catch (ApiException ex)
         {
-            var errorMessage = ParseError(ex.Content);
-            return new LoginResult(false, errorMessage, null, null);
+            return ex.ToResult<LoginResponse>();
         }
         catch (Exception ex)
         {
             Log.LoginCompleteError(_logger, ex);
-
-            return new LoginResult(false, ex.Message, null, null);
+            return Result.Failure<LoginResponse>(Error.Failure("ERR_PASSKEY_LOGIN_FAILED", ex.Message));
         }
-    }
-
-    static string ParseError(string? content)
-    {
-        if (string.IsNullOrEmpty(content))
-        {
-            return "Operation failed";
-        }
-
-        try
-        {
-            // Try to parse standard { "errors": [ { "description": "..." } ] }
-            using var doc = System.Text.Json.JsonDocument.Parse(content);
-            if (doc.RootElement.ValueKind == System.Text.Json.JsonValueKind.Object)
-            {
-                if (doc.RootElement.TryGetProperty("errors", out var errors) &&
-                    errors.ValueKind == System.Text.Json.JsonValueKind.Array)
-                {
-                    foreach (var error in errors.EnumerateArray())
-                    {
-                        if (error.TryGetProperty("description", out var desc))
-                        {
-                            return desc.GetString() ?? "Unknown error";
-                        }
-                    }
-                }
-
-                // Try to parse standard ProblemDetails "detail"
-                if (doc.RootElement.TryGetProperty("detail", out var detail))
-                {
-                    return detail.GetString() ?? "Operation failed";
-                }
-            }
-            // If it's a direct array [ { "description": "..." } ]
-            else if (doc.RootElement.ValueKind == System.Text.Json.JsonValueKind.Array)
-            {
-                foreach (var error in doc.RootElement.EnumerateArray())
-                {
-                    if (error.TryGetProperty("description", out var desc))
-                    {
-                        return desc.GetString() ?? "Unknown error";
-                    }
-                }
-            }
-        }
-        catch
-        {
-            // Fallback to raw content if not JSON
-        }
-
-        // Clean up quotes if it's a simple string
-        if (content.StartsWith("\"") && content.EndsWith("\""))
-        {
-            return content.Trim('"');
-        }
-
-        return content;
     }
 
     public async Task<IReadOnlyList<PasskeyInfo>> ListPasskeysAsync()
@@ -178,22 +127,21 @@ public class PasskeyService
         }
     }
 
-    public async Task<(bool Success, string? Error)> DeletePasskeyAsync(string id)
+    public async Task<Result> DeletePasskeyAsync(string id)
     {
         try
         {
             await _passkeyClient.DeletePasskeyAsync(id);
-            return (true, null);
+            return Result.Success();
         }
-        catch (Refit.ApiException ex)
+        catch (ApiException ex)
         {
-            var errorMessage = ParseError(ex.Content);
-            return (false, errorMessage);
+            return ex.ToResult();
         }
         catch (Exception ex)
         {
             Log.RegistrationCompleteError(_logger, ex);
-            return (false, ex.Message);
+            return Result.Failure(Error.Failure("ERR_PASSKEY_DELETE_FAILED", ex.Message));
         }
     }
 }
