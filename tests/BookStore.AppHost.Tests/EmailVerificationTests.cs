@@ -5,6 +5,7 @@ using BookStore.Shared.Models;
 using JasperFx;
 using Marten;
 using Weasel.Core;
+using BookStore.Shared.Models;
 
 namespace BookStore.AppHost.Tests;
 
@@ -37,7 +38,8 @@ public class EmailVerificationTests
         var loginResponse = await _client.PostAsJsonAsync("/account/login", new { Email = email, Password = password });
         _ = await Assert.That(loginResponse.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
 
-        var loginError = await loginResponse.Content.ReadFromJsonAsync<TestHelpers.ErrorResponse>();
+        var loginError =
+            await loginResponse.Content.ReadFromJsonAsync<BookStore.AppHost.Tests.TestHelpers.ErrorResponse>();
         _ = await Assert.That(loginError?.Error).IsEqualTo(ErrorCodes.Auth.EmailUnconfirmed);
 
         // 3. Resend verification

@@ -113,7 +113,7 @@ public static class PasskeyEndpoints
                         Log.Users.PasskeyAttestationFailed(logger, user.Email, attestation.Failure?.Message);
                         return Result.Failure(Error.Validation(ErrorCodes.Passkey.AttestationFailed, $"Attestation failed: {attestation.Failure?.Message}")).ToProblemDetails();
                     }
-
+ 
                     // Capture Device Name from User-Agent
                     var clientUserAgent = context.Request.Headers.UserAgent.ToString();
                     if (attestation.Passkey != null)
