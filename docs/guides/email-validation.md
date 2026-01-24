@@ -8,7 +8,9 @@ The email verification system ensures that users provide valid email addresses d
 - **Conditional Validation:** Enabled/Disabled via configuration.
 - **Delivery Methods:** SMTP (Production) or Logging (Development).
 - **Reactive Experience:** Real-time updates via Server-Sent Events (SSE) when verification completes.
+- **Resend Verification:** Users can request a new verification link if needed.
 - **Passkey Integration:** Compatible with both password-based and passkey-based registration.
+- **Enhanced Login Feedback:** Distinguishes between invalid credentials and unconfirmed accounts.
 
 ## Architecture
 
@@ -27,6 +29,7 @@ The verification process follows an asynchronous, event-driven flow:
 6.  **Confirmation:** Frontend calls `POST /identity/confirmEmail` with the token.
 7.  **Notification:** Backend verifies the token and publishes a `UserVerifiedNotification` domain event.
 8.  **Real-time Update:** SSE stream broadcasts the notification to the client, redirecting the user to login automatically.
+9.  **Resend Verification:** If the user loses the email, they can request a new one via the Login page (`POST /account/resend-verification`).
 
 ### Component Diagram
 
@@ -58,6 +61,38 @@ sequenceDiagram
     Note over Frontend,SSE: Frontend already connected to /api/notifications/stream
     SSE-->>Frontend: OnUserVerified
     Frontend-->>User: Auto-redirect to Login
+```
+
+## Resend Verification Flow
+
+The system provides a mechanism for users to request a new verification email if the original is lost or expired:
+
+1.  **Detection**: When a user attempts to log in with an unconfirmed email, the API returns a `401 Unauthorized` with a specific error: `Requires verification`.
+2.  **UI Feedback**: The Login page detects this error and displays a "Resend verification email" link.
+3.  **Request**: Clicking the link calls `POST /account/resend-verification`.
+4.  **Security**: The endpoint enforces a **60-second cooldown** and always returns `200 OK` with a generic message to prevent email enumeration and timing attacks.
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Login as Login Page
+    participant API
+    participant Wolverine
+    participant Email as Email Service
+
+    User->>Login: Attempt Login
+    Login->>API: POST /login
+    API-->>Login: 401 Unauthorized (Requires verification)
+    Login-->>User: Show "Resend verification" link
+    
+    User->>Login: Click Resend link
+    Login->>API: POST /resend-verification
+    API->>Wolverine: Publish SendUserVerificationEmail
+    API-->>Login: 200 OK
+    Login-->>User: "Verification link sent!"
+    
+    Wolverine->>Email: Handle Command
+    Email-->>User: Send New Verification Email
 ```
 
 ## Configuration

@@ -4,10 +4,13 @@ using System.Net.ServerSentEvents;
 using System.Text.Json;
 using Aspire.Hosting;
 using Bogus;
+using BookStore.ApiService.Infrastructure.Tenant;
 using BookStore.Client;
 using BookStore.Shared.Models;
 using JasperFx;
 using Marten;
+using Weasel.Core;
+using Weasel.Postgresql;
 
 namespace BookStore.AppHost.Tests;
 
@@ -675,7 +678,8 @@ public static class TestHelpers
     {
         var app = GlobalHooks.App!;
         var publicClient = app.CreateHttpClient("apiservice");
-        publicClient.DefaultRequestHeaders.Add("X-Tenant-ID", tenantId);
+        var actualTenantId = tenantId ?? StorageConstants.DefaultTenantId;
+        publicClient.DefaultRequestHeaders.Add("X-Tenant-ID", actualTenantId);
 
         var email = $"user_{Guid.NewGuid()}@example.com";
         var password = "Password123!";
@@ -702,13 +706,13 @@ public static class TestHelpers
 
         // Decode JWT to verify claims
         var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
-        var jwtToken = handler.ReadJwtToken(tokenResponse!.AccessToken);
+        _ = handler.ReadJwtToken(tokenResponse!.AccessToken);
 
         // Create authenticated client
         var authenticatedClient = app.CreateHttpClient("apiservice");
         authenticatedClient.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", tokenResponse.AccessToken);
-        authenticatedClient.DefaultRequestHeaders.Add("X-Tenant-ID", tenantId);
+        authenticatedClient.DefaultRequestHeaders.Add("X-Tenant-ID", actualTenantId);
 
         return authenticatedClient;
     }

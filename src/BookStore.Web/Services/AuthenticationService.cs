@@ -25,6 +25,19 @@ public class AuthenticationService(
         }
     }
 
+    public async Task<bool> ResendVerificationEmailAsync(string email)
+    {
+        try
+        {
+            await identityClient.ResendVerificationAsync(new ResendVerificationRequest(email));
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     /// <summary>
     /// Login with email and password (JWT token-based)
     /// </summary>

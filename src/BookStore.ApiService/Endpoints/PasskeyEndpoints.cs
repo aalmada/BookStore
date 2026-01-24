@@ -354,7 +354,7 @@ public static class PasskeyEndpoints
                             if (user != null)
                             {
                                 // Issue tokens
-                                return await IssueTokens(user, tokenService, userManager, signInManager, tenantContext.TenantId);
+                                return await IssueTokens(user, tokenService, userManager, signInManager, tenantContext.TenantId, logger);
                             }
                         }
 
@@ -372,7 +372,7 @@ public static class PasskeyEndpoints
                                     var user = await passkeyStore.FindByPasskeyIdAsync(credentialId, cancellationToken);
                                     if (user is not null)
                                     {
-                                        return await IssueTokens(user, tokenService, userManager, signInManager, tenantContext.TenantId);
+                                        return await IssueTokens(user, tokenService, userManager, signInManager, tenantContext.TenantId, logger);
                                     }
                                 }
                             }
@@ -476,12 +476,20 @@ public static class PasskeyEndpoints
         BookStore.ApiService.Services.JwtTokenService tokenService,
         UserManager<ApplicationUser> userManager,
         SignInManager<ApplicationUser> signInManager,
-        string tenantId)
+        string tenantId,
+        ILogger logger)
     {
         // Check if user is allowed to sign in (checks RequireConfirmedEmail, Lockout, etc.)
         if (!await signInManager.CanSignInAsync(user))
         {
-            return Results.BadRequest("User is not allowed to sign in (e.g. unconfirmed email).");
+            if (userManager.Options.SignIn.RequireConfirmedEmail && !await userManager.IsEmailConfirmedAsync(user))
+            {
+                Log.Users.LoginFailedUnconfirmedEmail(logger, user.Email!);
+                return Results.Json(new { error = "Requires verification", message = "Please confirm your email address." }, statusCode: 401);
+            }
+
+            Log.Users.LoginFailedUserNotFound(logger, user.Email!); // Generic fallback
+            return Results.BadRequest("User is not allowed to sign in.");
         }
 
         var roles = await userManager.GetRolesAsync(user);

@@ -52,3 +52,5 @@ public record UserAdminDto(
     string Email,
     bool EmailConfirmed,
     ICollection<string> Roles);
+
+public record ResendVerificationRequest(string Email);

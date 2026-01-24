@@ -18,8 +18,18 @@ public static partial class Log
 
         [LoggerMessage(
             Level = LogLevel.Warning,
+            Message = "Account locked for {Email}")]
+        public static partial void AccountLocked(ILogger logger, string email);
+
+        [LoggerMessage(
+            Level = LogLevel.Warning,
             Message = "Login failed: Invalid password for {Email}")]
         public static partial void LoginFailedInvalidPassword(ILogger logger, string email);
+
+        [LoggerMessage(
+            Level = LogLevel.Warning,
+            Message = "Login failed: Email not confirmed for {Email}")]
+        public static partial void LoginFailedUnconfirmedEmail(ILogger logger, string email);
 
         [LoggerMessage(
             Level = LogLevel.Information,
@@ -136,6 +146,21 @@ public static partial class Log
              Level = LogLevel.Warning,
              Message = "Email confirmation failed: Invalid code for user {UserId}. Errors: {Errors}")]
         public static partial void ConfirmationFailedInvalidCode(ILogger logger, string userId, string errors);
+
+        [LoggerMessage(
+            Level = LogLevel.Information,
+            Message = "Resend verification attempt for {Email}")]
+        public static partial void ResendVerificationAttempt(ILogger logger, string email);
+
+        [LoggerMessage(
+            Level = LogLevel.Warning,
+            Message = "Resend verification failed for {Email}: {Reason}")]
+        public static partial void ResendVerificationFailed(ILogger logger, string email, string reason);
+
+        [LoggerMessage(
+            Level = LogLevel.Information,
+            Message = "Resend verification successful for {Email}")]
+        public static partial void ResendVerificationSuccessful(ILogger logger, string email);
 
     }
 }

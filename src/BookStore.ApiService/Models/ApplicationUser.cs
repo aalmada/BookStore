@@ -73,6 +73,12 @@ public sealed class ApplicationUser
     /// Refresh tokens for maintaining sessions
     /// </summary>
     public IList<RefreshTokenInfo> RefreshTokens { get; set; } = [];
+
+    /// <summary>
+    /// Timestamp of when the last verification email was sent.
+    /// Used for rate limiting to prevent spam.
+    /// </summary>
+    public DateTimeOffset? LastVerificationEmailSent { get; set; }
 }
 
 /// <summary>

@@ -43,6 +43,12 @@ public static class JwtAuthenticationEndpoints
             .WithSummary("Logout and invalidate refresh token")
             .RequireAuthorization();
 
+        _ = group.MapPost("/resend-verification", ResendVerificationAsync)
+            .WithName("ResendVerification")
+            .WithSummary("Resend the email verification link")
+            .WithDescription("Resends the email verification link. Enforces a 60-second cooldown period. Returns 200 OK even if the email is already verified or does not exist to prevent enumeration.")
+            .AllowAnonymous();
+
         _ = group.MapPost("/change-password", ChangePasswordAsync)
             .WithName("ChangePassword")
             .WithSummary("Change user password")
@@ -98,6 +104,18 @@ public static class JwtAuthenticationEndpoints
 
         var result = await signInManager.CheckPasswordSignInAsync(
             user, request.Password, lockoutOnFailure: true);
+
+        if (result.IsLockedOut)
+        {
+            Log.Users.AccountLocked(logger, request.Email);
+            return Results.BadRequest(new { error = "Account is locked out." });
+        }
+
+        if (result.IsNotAllowed)
+        {
+            Log.Users.LoginFailedUnconfirmedEmail(logger, request.Email);
+            return Results.Json(new { error = "Requires verification", message = "Please confirm your email address." }, statusCode: 401);
+        }
 
         if (!result.Succeeded)
         {
@@ -232,6 +250,65 @@ public static class JwtAuthenticationEndpoints
 
         Log.Users.ConfirmationFailedInvalidCode(logger, user.Id.ToString(), string.Join(", ", result.Errors.Select(e => e.Description)));
         return Results.BadRequest("Error confirming email.");
+    }
+
+    static async Task<IResult> ResendVerificationAsync(
+        [FromBody] ResendVerificationRequest request,
+        UserManager<ApplicationUser> userManager,
+        Wolverine.IMessageBus bus,
+        IOptions<Infrastructure.Email.EmailOptions> emailOptions,
+        IWebHostEnvironment env,
+        ILogger<Program> logger)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email))
+        {
+            return Results.BadRequest("Email is required.");
+        }
+
+        Log.Users.ResendVerificationAttempt(logger, request.Email);
+
+        if (emailOptions.Value.DeliveryMethod == "None" && !env.IsDevelopment())
+        {
+            return Results.BadRequest("Email verification is currently disabled.");
+        }
+
+        // Generic message to prevent email enumeration
+        var genericMessage = new { message = "If an account exists for this email, a new verification link has been sent." };
+
+        var user = await userManager.FindByEmailAsync(request.Email);
+        if (user == null)
+        {
+            // For security, don't reveal if user exists
+            Log.Users.ResendVerificationFailed(logger, request.Email, "User not found");
+            return Results.Ok(genericMessage);
+        }
+
+        if (user.EmailConfirmed)
+        {
+            Log.Users.ResendVerificationFailed(logger, request.Email, "Email already confirmed");
+            // Return success to prevent enumeration
+            return Results.Ok(genericMessage);
+        }
+
+        // Rate limiting: Check if we sent an email recently (e.g., last 60 seconds)
+        if (user.LastVerificationEmailSent.HasValue &&
+            DateTimeOffset.UtcNow - user.LastVerificationEmailSent.Value < TimeSpan.FromSeconds(60))
+        {
+            Log.Users.ResendVerificationFailed(logger, request.Email, "Rate limit exceeded (cooldown)");
+            // Return success to prevent timing attacks or revealing state
+            return Results.Ok(genericMessage);
+        }
+
+        var code = await userManager.GenerateEmailConfirmationTokenAsync(user);
+        await bus.PublishAsync(new Messages.Commands.SendUserVerificationEmail(user.Id, user.Email!, code, user.UserName!));
+
+        // Update the timestamp
+        user.LastVerificationEmailSent = DateTimeOffset.UtcNow;
+        _ = await userManager.UpdateAsync(user);
+
+        Log.Users.ResendVerificationSuccessful(logger, request.Email);
+
+        return Results.Ok(genericMessage);
     }
 
     static async Task<IResult> RefreshTokenAsync(

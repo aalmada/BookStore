@@ -7,7 +7,7 @@
 @inject PasskeyService PasskeyService
 @inject JwtAuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Navigation
-@inject IJSRuntime JS
+@inject IJSRuntime Js
 @inject ILogger<Login> Logger
 @inject BookStore.Web.Helpers.AuthErrorHelper AuthErrorHelper
 
@@ -23,7 +23,19 @@
 
         @if (!string.IsNullOrEmpty(errorMessage))
         {
-            <MudAlert Severity="Severity.Error" Class="mb-4">@errorMessage</MudAlert>
+            <MudAlert Severity="Severity.Error" Class="mb-4">
+                @errorMessage
+                @if (showResendVerification)
+                {
+                    <br/>
+                    <MudLink OnClick="HandleResendVerification" Color="Color.Info" Underline="Underline.Always" Class="mt-2" style="cursor: pointer">Resend verification email</MudLink>
+                }
+            </MudAlert>
+        }
+
+        @if (!string.IsNullOrEmpty(resendMessage))
+        {
+            <MudAlert Severity="Severity.Success" Class="mb-4" ContentAlignment="HorizontalAlignment.Center">@resendMessage</MudAlert>
         }
 
         <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="px-4 py-6">
@@ -111,10 +123,12 @@
     string email = string.Empty;
     string password = string.Empty;
     string? errorMessage;
+    string? resendMessage;
     bool isShow;
     InputType PasswordInput = InputType.Password;
     string PasswordInputIcon = Icons.Material.Filled.VisibilityOff;
     bool isLoading;
+    bool showResendVerification;
 
     void ButtonTestclick()
     {
@@ -152,7 +166,7 @@
             }
 
             // 2. JS WebAuthn Get
-            var credentialJson = await JS.InvokeAsync<string>("passkey.login", optionsJson);
+            var credentialJson = await Js.InvokeAsync<string>("passkey.login", optionsJson);
 
             // 3. Login on Server
             var result = await PasskeyService.LoginWithPasskeyAsync(credentialJson);
@@ -166,6 +180,7 @@
             else
             {
                 errorMessage = AuthErrorHelper.GetFriendlyErrorMessage(result?.Error);
+                showResendVerification = result?.Error?.Contains("Requires verification") == true || result?.Error?.Contains("email not confirmed") == true;
             }
         }
         catch (Exception ex)
@@ -218,7 +233,7 @@
                 // Notify other tabs via BroadcastChannel
                 try
                 {
-                    await JS.InvokeVoidAsync("authBroadcast.notifyLogin");
+                    await Js.InvokeVoidAsync("authBroadcast.notifyLogin");
                 }
                 catch (Exception ex)
                 {
@@ -234,12 +249,49 @@
             {
                 Logger.LogWarning("Login failed: {Error}", result.Error);
                 errorMessage = AuthErrorHelper.GetFriendlyErrorMessage(result.Error);
+                showResendVerification = result.Error?.Contains("Requires verification") == true || result.Error?.Contains("email not confirmed") == true;
             }
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Login exception: {Message}", ex.Message);
             errorMessage = AuthErrorHelper.GetFriendlyErrorMessage(ex.Message);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    async Task HandleResendVerification()
+    {
+        if (string.IsNullOrEmpty(email))
+        {
+            errorMessage = "Please enter your email address first.";
+            return;
+        }
+
+        isLoading = true;
+        resendMessage = null;
+        errorMessage = null;
+
+        try
+        {
+            var result = await AuthService.ResendVerificationEmailAsync(email);
+            if (result)
+            {
+                resendMessage = "If an account exists for this email, a new verification link has been sent.";
+                showResendVerification = false;
+            }
+            else
+            {
+                errorMessage = "Failed to resend verification email. Please try again later.";
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Resend verification error");
+            errorMessage = "An error occurred while resending the verification email.";
         }
         finally
         {

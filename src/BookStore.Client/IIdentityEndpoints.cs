@@ -30,6 +30,17 @@ public interface IIdentityRegisterEndpoint
         CancellationToken cancellationToken = default);
 }
 
+public interface IIdentityResendVerificationEndpoint
+{
+    /// <summary>
+    /// Resend email verification link
+    /// </summary>
+    [Post("/account/resend-verification")]
+    Task ResendVerificationAsync(
+        [Body] ResendVerificationRequest request,
+        CancellationToken cancellationToken = default);
+}
+
 public interface IIdentityConfirmEmailEndpoint
 {
     /// <summary>
