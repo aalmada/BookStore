@@ -166,7 +166,7 @@ public class AdminUserTests : IDisposable
         var response = await _client.PostAsync($"/api/admin/users/{user.Id}/promote", null);
 
         // Assert
-        _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+        _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Conflict);
     }
 
     [Test]
@@ -189,7 +189,7 @@ public class AdminUserTests : IDisposable
         var response = await _client.PostAsync($"/api/admin/users/{user.Id}/demote", null);
 
         // Assert
-        _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+        _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Conflict);
     }
 
     [Test]

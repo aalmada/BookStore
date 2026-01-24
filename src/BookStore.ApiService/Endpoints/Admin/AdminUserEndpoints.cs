@@ -65,7 +65,7 @@ public static class AdminUserEndpoints
 
         if (user.Roles.Any(r => r.Equals("Admin", StringComparison.OrdinalIgnoreCase)))
         {
-            return Result.Failure(Error.Validation(ErrorCodes.Admin.AlreadyAdmin, "User is already an Admin.")).ToProblemDetails();
+            return Result.Failure(Error.Conflict(ErrorCodes.Admin.AlreadyAdmin, "User is already an Admin.")).ToProblemDetails();
         }
 
         var result = await userManager.AddToRoleAsync(user, "Admin");
@@ -97,7 +97,7 @@ public static class AdminUserEndpoints
 
         if (!user.Roles.Any(r => r.Equals("Admin", StringComparison.OrdinalIgnoreCase)))
         {
-            return Result.Failure(Error.Validation(ErrorCodes.Admin.NotAdmin, "User is not an Admin.")).ToProblemDetails();
+            return Result.Failure(Error.Conflict(ErrorCodes.Admin.NotAdmin, "User is not an Admin.")).ToProblemDetails();
         }
 
         var result = await userManager.RemoveFromRoleAsync(user, "Admin");

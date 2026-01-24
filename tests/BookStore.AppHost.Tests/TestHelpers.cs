@@ -21,28 +21,26 @@ public static class TestHelpers
     public static object
         GenerateFakeBookRequest(Guid? publisherId = null, IEnumerable<Guid>? authorIds = null,
             IEnumerable<Guid>? categoryIds = null) => new
-            {
-                Title = _faker.Commerce.ProductName(),
-                Isbn = _faker.Commerce.Ean13(),
-                Language = "en",
-                Translations = new Dictionary<string, object>
-                {
-                    ["en"] = new { Description = _faker.Lorem.Paragraph() },
-                    ["es"] = new { Description = _faker.Lorem.Paragraph() }
-                },
+    {
+        Title = _faker.Commerce.ProductName(),
+        Isbn = _faker.Commerce.Ean13(),
+        Language = "en",
+        Translations = new Dictionary<string, object>
+        {
+            ["en"] = new { Description = _faker.Lorem.Paragraph() },
+            ["es"] = new { Description = _faker.Lorem.Paragraph() }
+        },
 #pragma warning disable IDE0037 // Use target-typed 'new'
-                PublicationDate = new
-                {
-                    Year = _faker.Date.Past(10).Year,
-                    Month = _faker.Random.Int(1, 12),
-                    Day = _faker.Random.Int(1, 28)
-                },
+        PublicationDate = new
+        {
+            Year = _faker.Date.Past(10).Year, Month = _faker.Random.Int(1, 12), Day = _faker.Random.Int(1, 28)
+        },
 #pragma warning restore IDE0037
-                PublisherId = publisherId,
-                AuthorIds = authorIds ?? [],
-                CategoryIds = categoryIds ?? [],
-                Prices = new Dictionary<string, decimal> { ["USD"] = decimal.Parse(_faker.Commerce.Price(10, 100)) }
-            };
+        PublisherId = publisherId,
+        AuthorIds = authorIds ?? [],
+        CategoryIds = categoryIds ?? [],
+        Prices = new Dictionary<string, decimal> { ["USD"] = decimal.Parse(_faker.Commerce.Price(10, 100)) }
+    };
 
     public static object GenerateFakeAuthorRequest() => new
     {
@@ -720,7 +718,7 @@ public static class TestHelpers
     public record LoginResponse(string AccessToken, string RefreshToken);
 
     public record ErrorResponse(
-        [property: System.Text.Json.Serialization.JsonPropertyName("code")]
+        [property: System.Text.Json.Serialization.JsonPropertyName("error")]
         string Error,
         string Message);
 
