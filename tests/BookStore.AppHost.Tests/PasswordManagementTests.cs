@@ -6,6 +6,7 @@ using BookStore.Shared.Models;
 using JasperFx;
 using JasperFx.Core;
 using Marten;
+using Microsoft.AspNetCore.Identity;
 using Weasel.Core;
 
 namespace BookStore.AppHost.Tests;
@@ -168,5 +169,115 @@ public class PasswordManagementTests
         _ = await Assert.That(changeResponse.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
         var error = await changeResponse.Content.ReadFromJsonAsync<TestHelpers.ErrorResponse>();
         _ = await Assert.That(error?.Error).IsEqualTo(ErrorCodes.Auth.PasswordReuse);
+    }
+
+    [Test]
+    public async Task RemovePassword_Fails_WhenUserHasNoPasskey()
+    {
+        // Arrange
+        var email = _faker.Internet.Email();
+        var password = "Password123!";
+
+        // Register
+        _ = await _client.PostAsJsonAsync("/account/register", new { Email = email, Password = password });
+
+        // Login
+        var loginResponse =
+            await _client.PostAsJsonAsync("/account/login", new { Email = email, Password = password });
+        var loginResult = await loginResponse.Content.ReadFromJsonAsync<TestHelpers.LoginResponse>();
+
+        var authClient = GlobalHooks.App!.CreateHttpClient("apiservice");
+        authClient.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", loginResult!.AccessToken);
+        authClient.DefaultRequestHeaders.Add("X-Tenant-ID", StorageConstants.DefaultTenantId);
+
+        // Act
+        var removeResponse = await authClient.PostAsJsonAsync("/account/remove-password", new RemovePasswordRequest());
+
+        // Assert
+        _ = await Assert.That(removeResponse.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+        var error = await removeResponse.Content.ReadFromJsonAsync<TestHelpers.ErrorResponse>();
+        _ = await Assert.That(error?.Error).IsEqualTo(ErrorCodes.Auth.InvalidRequest);
+    }
+
+    [Test]
+    public async Task RemovePassword_Succeeds_WhenUserHasPasskey()
+    {
+        // Arrange
+        var email = _faker.Internet.Email();
+        var password = "Password123!";
+
+        // Register
+        _ = await _client.PostAsJsonAsync("/account/register", new { Email = email, Password = password });
+
+        // Login
+        var loginResponse =
+            await _client.PostAsJsonAsync("/account/login", new { Email = email, Password = password });
+        var loginResult = await loginResponse.Content.ReadFromJsonAsync<TestHelpers.LoginResponse>();
+
+        var authClient = GlobalHooks.App!.CreateHttpClient("apiservice");
+        authClient.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", loginResult!.AccessToken);
+        authClient.DefaultRequestHeaders.Add("X-Tenant-ID", StorageConstants.DefaultTenantId);
+
+        // Manually add a passkey
+        var connectionString = await GlobalHooks.App!.GetConnectionStringAsync("bookstore");
+        using var store = DocumentStore.For(opts =>
+        {
+            opts.UseSystemTextJsonForSerialization(EnumStorage.AsString, Casing.CamelCase);
+            opts.Connection(connectionString!);
+            _ = opts.Policies.AllDocumentsAreMultiTenanted();
+            opts.Events.TenancyStyle = Marten.Storage.TenancyStyle.Conjoined;
+        });
+
+        await using (var session = store.LightweightSession(StorageConstants.DefaultTenantId))
+        {
+            var user = await session.Query<ApplicationUser>()
+                .Where(u => u.NormalizedEmail == email.ToUpperInvariant())
+                .FirstOrDefaultAsync();
+
+            _ = await Assert.That(user).IsNotNull();
+
+            /*
+            user!.Passkeys.Add(new UserPasskeyInfo
+            {
+                CredentialId = Guid.NewGuid().ToByteArray(),
+                PublicKey = [],
+                UserHandle = [],
+                SignatureCount = 0,
+                AttestationFormatId = "none",
+                AaGuid = Guid.Empty,
+                Name = "Test Key",
+                CreatedAt = DateTimeOffset.UtcNow
+            });
+            */
+
+            user!.Passkeys.Add(new UserPasskeyInfo(
+                Guid.NewGuid().ToByteArray(), // credentialId
+                [], // publicKey
+                DateTimeOffset.UtcNow, // createdAt
+                0, // signCount
+                [], // transports
+                true, // isUserVerified
+                true, // isBackupEligible
+                true, // isBackedUp
+                [], // attestationObject
+                [] // clientDataJson
+            ));
+
+            session.Update(user);
+            await session.SaveChangesAsync();
+        }
+
+        // Act
+        var removeResponse = await authClient.PostAsJsonAsync("/account/remove-password", new RemovePasswordRequest());
+
+        // Assert
+        _ = await Assert.That(removeResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+
+        // Verify password hash is null using API
+        var statusResponse = await authClient.GetAsync("/account/password-status");
+        var status = await statusResponse.Content.ReadFromJsonAsync<PasswordStatusResponse>();
+        _ = await Assert.That(status!.HasPassword).IsFalse();
     }
 }

@@ -61,6 +61,11 @@ public static class JwtAuthenticationEndpoints
             .WithSummary("Set a password for a user without one")
             .RequireAuthorization();
 
+        _ = group.MapPost("/remove-password", RemovePasswordAsync)
+            .WithName("RemovePassword")
+            .WithSummary("Remove password from a user account (must have passkeys)")
+            .RequireAuthorization();
+
         _ = group.MapGet("/password-status", GetPasswordStatusAsync)
             .WithName("GetPasswordStatus")
             .WithSummary("Check if the user has a password set")
@@ -462,6 +467,44 @@ public static class JwtAuthenticationEndpoints
         }
 
         return Result.Failure(Error.Validation(ErrorCodes.Auth.PasswordMismatch, string.Join(", ", result.Errors.Select(e => e.Description)))).ToProblemDetails();
+    }
+
+    static async Task<IResult> RemovePasswordAsync(
+        [FromBody] RemovePasswordRequest request,
+        UserManager<ApplicationUser> userManager,
+        IUserStore<ApplicationUser> userStore,
+        ClaimsPrincipal user,
+        CancellationToken cancellationToken)
+    {
+        var appUser = await userManager.GetUserAsync(user);
+        if (appUser == null)
+        {
+            return Result.Failure(Error.Unauthorized(ErrorCodes.Auth.InvalidToken, "User not found.")).ToProblemDetails();
+        }
+
+        if (!await userManager.HasPasswordAsync(appUser))
+        {
+            return Result.Failure(Error.Validation(ErrorCodes.Auth.InvalidRequest, "User does not have a password.")).ToProblemDetails();
+        }
+
+        if (userStore is not IUserPasskeyStore<ApplicationUser> passkeyStore)
+        {
+            return Result.Failure(Error.InternalServerError(ErrorCodes.Passkey.StoreNotAvailable, "Passkey store not available.")).ToProblemDetails();
+        }
+
+        var passkeys = await passkeyStore.GetPasskeysAsync(appUser, cancellationToken);
+        if (passkeys.Count == 0)
+        {
+            return Result.Failure(Error.Validation(ErrorCodes.Auth.InvalidRequest, "You must have at least one passkey registered to remove your password.")).ToProblemDetails();
+        }
+
+        var result = await userManager.RemovePasswordAsync(appUser);
+        if (result.Succeeded)
+        {
+            return Results.Ok(new { message = "Password removed successfully." });
+        }
+
+        return Result.Failure(Error.Failure(ErrorCodes.Auth.RequestFailed, string.Join(", ", result.Errors.Select(e => e.Description)))).ToProblemDetails();
     }
 
     static async Task<IResult> AddPasswordAsync(

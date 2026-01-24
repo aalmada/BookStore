@@ -97,6 +97,17 @@ public interface IIdentityAddPasswordEndpoint
         CancellationToken cancellationToken = default);
 }
 
+public interface IIdentityRemovePasswordEndpoint
+{
+    /// <summary>
+    /// Remove password from a user account (must have passkeys)
+    /// </summary>
+    [Post("/account/remove-password")]
+    Task RemovePasswordAsync(
+        [Body] RemovePasswordRequest request,
+        CancellationToken cancellationToken = default);
+}
+
 public interface IIdentityGetPasswordStatusEndpoint
 {
     /// <summary>
