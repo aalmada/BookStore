@@ -62,32 +62,7 @@ await app.EnsureDatabaseSchemaAsync();
 app.RunDatabaseSeedingAsync();
 
 // Configure the HTTP request pipeline
-if (app.Environment.IsDevelopment())
-{
-    _ = app.UseExceptionHandler(exceptionHandlerApp => exceptionHandlerApp.Run(async context =>
-    {
-        var exceptionHandlerFeature = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>();
-        if (exceptionHandlerFeature is not null)
-        {
-            var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
-            var exception = exceptionHandlerFeature.Error;
-
-            Log.Infrastructure.UnhandledException(logger, exception, exception.Message);
-
-            context.Response.StatusCode = StatusCodes.Status500InternalServerError;
-            context.Response.ContentType = "application/problem+json";
-
-            await context.Response.WriteAsJsonAsync(new
-            {
-                type = "https://tools.ietf.org/html/rfc9110#section-15.6.1",
-                title = "An error occurred while processing your request.",
-                status = StatusCodes.Status500InternalServerError,
-                detail = exception.Message,
-                stackTrace = exception.StackTrace
-            });
-        }
-    }));
-}
+app.UseExceptionHandler();
 
 // Add Forwarded Headers middleware early in the pipeline
 app.UseForwardedHeaders();

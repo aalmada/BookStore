@@ -502,13 +502,48 @@ See the [Localization Guide](localization-guide.md) for complete details.
 
 ---
 
-## Error Response Standards
+## Error Handling Standards
+
+### Result Pattern
+
+**Rule**: Use the `Result` pattern for domain logic and validation. Avoid exceptions for control flow.
+
+The `Result` and `Result<T>` types (in `BookStore.Shared`) encapsulate success/failure state and error details.
+
+✅ **Correct**:
+```csharp
+public Result<BookAdded> CreateEvent(...)
+{
+    if (invalid)
+    {
+        return Result.Failure<BookAdded>(Error.Validation("ERR_CODE", "Message"));
+    }
+    return new BookAdded(...);
+}
+```
+
+❌ **Incorrect**:
+```csharp
+public BookAdded CreateEvent(...)
+{
+    if (invalid)
+    {
+        throw new DomainException("Message"); // Avoid exceptions
+    }
+    return new BookAdded(...);
+}
+```
 
 ### Problem Details (RFC 7807)
 
-**Rule**: All error responses use the Problem Details format (RFC 7807).
+**Rule**: All error responses use the Problem Details format (RFC 7807), mapped from `Result` errors.
 
-The API is configured with `AddProblemDetails()` which automatically converts error responses to the standard format.
+Use `result.ToProblemDetails()` extension method in endpoints/handlers to automatically map errors:
+
+- `ErrorType.Validation` → `400 Bad Request`
+- `ErrorType.NotFound` → `404 Not Found`
+- `ErrorType.Conflict` → `409 Conflict`
+- `ErrorType.Failure` → `500 Internal Server Error`
 
 #### Standard Error Response Format
 
@@ -517,141 +552,55 @@ The API is configured with `AddProblemDetails()` which automatically converts er
   "type": "https://tools.ietf.org/html/rfc7231#section-6.5.1",
   "title": "Bad Request",
   "status": 400,
-  "traceId": "00-1234567890abcdef-1234567890abcdef-00"
+  "detail": "The language code 'xx' is not valid.",
+  "extensions": {
+    "error": "ERR_BOOK_LANGUAGE_INVALID"
+  }
 }
 ```
 
-#### Validation Error Response
+### Global Exception Handler
 
-For validation errors, the API returns detailed error information:
-
-```json
-{
-  "error": "Invalid language code",
-  "languageCode": "xx",
-  "message": "The language code 'xx' is not valid. Must be a valid ISO 639-1 (e.g., 'en'), ISO 639-3 (e.g., 'fil'), or culture code (e.g., 'en-US')"
-}
-```
-
-#### Common Error Responses
-
-| Status Code | Description | Example |
-|-------------|-------------|---------|
-| `400 Bad Request` | Invalid input or validation failure | Invalid language code, description too long |
-| `404 Not Found` | Resource not found | Book ID doesn't exist |
-| `412 Precondition Failed` | ETag mismatch (optimistic concurrency) | Concurrent update detected |
-| `422 Unprocessable Entity` | Business rule violation | Cannot delete book with active orders |
-
-#### Error Response Examples
-
-**Validation Error**:
-```http
-POST /api/admin/books
-Content-Type: application/json
-
-{
-  "title": "Clean Code",
-  "language": "invalid",
-  ...
-}
-```
-
-Response:
-```http
-HTTP/1.1 400 Bad Request
-Content-Type: application/json
-
-{
-  "error": "Invalid language code",
-  "languageCode": "invalid",
-  "message": "The language code 'invalid' is not valid. Must be a valid ISO 639-1 (e.g., 'en'), ISO 639-3 (e.g., 'fil'), or culture code (e.g., 'en-US')"
-}
-```
-
-**Length Validation Error**:
-```http
-POST /api/admin/books
-Content-Type: application/json
-
-{
-  "title": "Clean Code",
-  "translations": {
-    "en": {
-      "description": "A very long description that exceeds the maximum allowed length..."
-    }
-  },
-  ...
-}
-```
-
-Response:
-```http
-HTTP/1.1 400 Bad Request
-Content-Type: application/json
-
-{
-  "error": "Description too long",
-  "languageCode": "en",
-  "maxLength": 5000,
-  "actualLength": 6543,
-  "message": "Description for language 'en' cannot exceed 5000 characters"
-}
-```
-
-**Not Found Error**:
-```http
-GET /api/books/00000000-0000-0000-0000-000000000000
-```
-
-Response:
-```http
-HTTP/1.1 404 Not Found
-Content-Type: application/json
-
-{
-  "type": "https://tools.ietf.org/html/rfc7231#section-6.5.4",
-  "title": "Not Found",
-  "status": 404,
-  "traceId": "00-1234567890abcdef-1234567890abcdef-00"
-}
-```
-
-**Optimistic Concurrency Error**:
-```http
-PUT /api/admin/books/018d5e4a-7b2c-7000-8000-123456789abc
-If-Match: "5"
-Content-Type: application/json
-
-{
-  "title": "Updated Title",
-  ...
-}
-```
-
-Response (if ETag doesn't match):
-```http
-HTTP/1.1 412 Precondition Failed
-Content-Type: application/json
-
-{
-  "type": "https://tools.ietf.org/html/rfc7232#section-4.2",
-  "title": "Precondition Failed",
-  "status": 412,
-  "traceId": "00-1234567890abcdef-1234567890abcdef-00"
-}
-```
-
-### Error Response Best Practices
-
-1. **Always include descriptive messages** - Help clients understand what went wrong
-2. **Include relevant context** - Add fields like `languageCode`, `maxLength`, etc.
-3. **Use appropriate status codes** - Follow HTTP semantics
-4. **Include trace IDs** - For debugging and correlation
-5. **Be consistent** - Use the same error format across all endpoints
+**Rule**: Unhandled exceptions are caught by a global handler and returned as `500 Internal Server Error` Problem Details with code `ERR_INTERNAL_ERROR`.
 
 ---
 
-## Common Patterns
+## Tenant Information
+
+### Multi-Tenancy Strategy
+
+The application uses a **fixed-per-tenant** strategy for database schemas (Marten) and logical isolation for other resources.
+
+### Tenant Identification
+
+**Rule**: Tenants are identified via the `X-Tenant-ID` header.
+
+```http
+GET /api/books
+X-Tenant-ID: default
+```
+
+- **Development**: Defaults to `default` if missing.
+- **Production**: Required for all tenant-specific endpoints.
+
+### Tenant Context
+
+In code, inject `ITenantContext` to access the current tenant:
+
+```csharp
+public static async Task<IResult> GetBooks(
+    [FromServices] ITenantContext tenant,
+    ...)
+{
+    var tenantId = tenant.TenantId;
+    // ...
+}
+```
+
+---
+
+## Validation
+
 
 ### Creating Events
 

@@ -1,5 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using BookStore.ApiService.Infrastructure;
+using BookStore.ApiService.Infrastructure.Extensions;
 using BookStore.ApiService.Infrastructure.Logging;
 using BookStore.ApiService.Infrastructure.Tenant;
 using BookStore.ApiService.Models;
@@ -97,9 +99,8 @@ public static class JwtAuthenticationEndpoints
         var user = await userManager.FindByEmailAsync(request.Email);
         if (user == null)
         {
-
             Log.Users.LoginFailedUserNotFound(logger, request.Email);
-            return Results.Unauthorized();
+            return Result.Failure(Error.Unauthorized(ErrorCodes.Auth.InvalidCredentials, "Invalid email or password.")).ToProblemDetails();
         }
 
         var result = await signInManager.CheckPasswordSignInAsync(
@@ -108,7 +109,7 @@ public static class JwtAuthenticationEndpoints
         if (result.IsLockedOut)
         {
             Log.Users.AccountLocked(logger, request.Email);
-            return Results.BadRequest(new { error = "Account is locked out." });
+            return Result.Failure(Error.Unauthorized(ErrorCodes.Auth.LockedOut, "Account is locked out.")).ToProblemDetails();
         }
 
         if (result.IsNotAllowed)
@@ -116,17 +117,17 @@ public static class JwtAuthenticationEndpoints
             if (userManager.Options.SignIn.RequireConfirmedEmail && !await userManager.IsEmailConfirmedAsync(user))
             {
                 Log.Users.LoginFailedUnconfirmedEmail(logger, request.Email);
-                return Results.Json(new { error = "Requires verification", message = "Please confirm your email address." }, statusCode: 401);
+                return Result.Failure(Error.Unauthorized(ErrorCodes.Auth.EmailUnconfirmed, "Please confirm your email address.")).ToProblemDetails();
             }
 
-            Log.Users.LoginFailedUserNotFound(logger, request.Email); // Or a generic "Not allowed" log
-            return Results.Unauthorized();
+            Log.Users.LoginFailedUserNotFound(logger, request.Email);
+            return Result.Failure(Error.Unauthorized(ErrorCodes.Auth.NotAllowed, "Login not allowed.")).ToProblemDetails();
         }
 
         if (!result.Succeeded)
         {
             Log.Users.LoginFailedInvalidPassword(logger, request.Email);
-            return Results.Unauthorized();
+            return Result.Failure(Error.Unauthorized(ErrorCodes.Auth.InvalidCredentials, "Invalid email or password.")).ToProblemDetails();
         }
 
         // Build claims and generate tokens
@@ -196,7 +197,7 @@ public static class JwtAuthenticationEndpoints
             }
 
             Log.Users.RegistrationFailed(logger, request.Email, string.Join(", ", result.Errors.Select(e => e.Description)));
-            return Results.BadRequest(new { errors = result.Errors });
+            return Result.Failure(Error.Validation(ErrorCodes.Auth.InvalidCredentials, string.Join(", ", result.Errors.Select(e => e.Description)))).ToProblemDetails();
         }
 
         if (verificationRequired)
@@ -245,7 +246,7 @@ public static class JwtAuthenticationEndpoints
     {
         if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(code))
         {
-            return Results.BadRequest("Error confirming email.");
+            return Result.Failure(Error.Validation(ErrorCodes.Auth.InvalidToken, "Error confirming email.")).ToProblemDetails();
         }
 
         var user = await userManager.FindByIdAsync(userId);
@@ -253,7 +254,7 @@ public static class JwtAuthenticationEndpoints
         {
             Log.Users.ConfirmationFailedUserNotFound(logger, userId);
             // Don't reveal that the user does not exist
-            return Results.BadRequest("Error confirming email.");
+            return Result.Failure(Error.Validation(ErrorCodes.Auth.InvalidToken, "Error confirming email.")).ToProblemDetails();
         }
 
         var result = await userManager.ConfirmEmailAsync(user, code);
@@ -264,7 +265,7 @@ public static class JwtAuthenticationEndpoints
         }
 
         Log.Users.ConfirmationFailedInvalidCode(logger, user.Id.ToString(), string.Join(", ", result.Errors.Select(e => e.Description)));
-        return Results.BadRequest("Error confirming email.");
+        return Result.Failure(Error.Validation(ErrorCodes.Auth.InvalidToken, "Error confirming email.")).ToProblemDetails();
     }
 
     static async Task<IResult> ResendVerificationAsync(
@@ -284,7 +285,7 @@ public static class JwtAuthenticationEndpoints
 
         if (emailOptions.Value.DeliveryMethod == "None" && !env.IsDevelopment())
         {
-            return Results.BadRequest("Email verification is currently disabled.");
+            return Result.Failure(Error.Validation(ErrorCodes.Auth.VerificationDisabled, "Email verification is currently disabled.")).ToProblemDetails();
         }
 
         // Generic message to prevent email enumeration
@@ -343,7 +344,7 @@ public static class JwtAuthenticationEndpoints
         if (user == null)
         {
             Log.Users.RefreshFailedTokenNotFound(logger);
-            return Results.Unauthorized();
+            return Result.Failure(Error.Unauthorized(ErrorCodes.Auth.InvalidToken, "Invalid refresh token.")).ToProblemDetails();
         }
 
         // 2. Validate token exists and is not expired
@@ -357,14 +358,14 @@ public static class JwtAuthenticationEndpoints
                 _ = await userManager.UpdateAsync(user);
             }
 
-            return Results.Unauthorized();
+            return Result.Failure(Error.Unauthorized(ErrorCodes.Auth.TokenExpired, "Refresh token expired or invalid.")).ToProblemDetails();
         }
 
         // 3. Validate tenant matches the token's original tenant (security: prevent cross-tenant token theft)
         if (!string.Equals(existingToken.TenantId, tenantContext.TenantId, StringComparison.OrdinalIgnoreCase))
         {
             Log.Users.RefreshFailedTokenExpiredOrInvalid(logger, user.UserName);
-            return Results.Unauthorized();
+            return Result.Failure(Error.Unauthorized(ErrorCodes.Auth.CrossTenantIdentity, "Refresh token expired or invalid.")).ToProblemDetails();
         }
 
         // 4. Generate new tokens using the original tenant from the refresh token
@@ -407,13 +408,13 @@ public static class JwtAuthenticationEndpoints
         var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out var userGuid))
         {
-            return Results.Unauthorized();
+            return Result.Failure(Error.Unauthorized(ErrorCodes.Auth.InvalidToken, "User not authenticated.")).ToProblemDetails();
         }
 
         var appUser = await userManager.FindByIdAsync(userId);
         if (appUser == null)
         {
-            return Results.Unauthorized();
+            return Result.Failure(Error.Unauthorized(ErrorCodes.Auth.InvalidToken, "User not found.")).ToProblemDetails();
         }
 
         if (!string.IsNullOrEmpty(request.RefreshToken))
@@ -446,12 +447,12 @@ public static class JwtAuthenticationEndpoints
         var appUser = await userManager.GetUserAsync(user);
         if (appUser == null)
         {
-            return Results.Unauthorized();
+            return Result.Failure(Error.Unauthorized(ErrorCodes.Auth.InvalidToken, "User not found.")).ToProblemDetails();
         }
 
         if (request.CurrentPassword == request.NewPassword)
         {
-            return Results.BadRequest(new { errors = new[] { new { code = "PasswordReuse", description = "New password cannot be the same as the current password." } } });
+            return Result.Failure(Error.Validation(ErrorCodes.Auth.PasswordReuse, "New password cannot be the same as the current password.")).ToProblemDetails();
         }
 
         var result = await userManager.ChangePasswordAsync(appUser, request.CurrentPassword, request.NewPassword);
@@ -460,7 +461,7 @@ public static class JwtAuthenticationEndpoints
             return Results.Ok(new { message = "Password changed successfully." });
         }
 
-        return Results.BadRequest(new { errors = result.Errors });
+        return Result.Failure(Error.Validation(ErrorCodes.Auth.PasswordMismatch, string.Join(", ", result.Errors.Select(e => e.Description)))).ToProblemDetails();
     }
 
     static async Task<IResult> AddPasswordAsync(
@@ -471,7 +472,7 @@ public static class JwtAuthenticationEndpoints
         var appUser = await userManager.GetUserAsync(user);
         if (appUser == null)
         {
-            return Results.Unauthorized();
+            return Result.Failure(Error.Unauthorized(ErrorCodes.Auth.InvalidToken, "User not found.")).ToProblemDetails();
         }
 
         var result = await userManager.AddPasswordAsync(appUser, request.NewPassword);
@@ -480,7 +481,7 @@ public static class JwtAuthenticationEndpoints
             return Results.Ok(new { message = "Password set successfully." });
         }
 
-        return Results.BadRequest(new { errors = result.Errors });
+        return Result.Failure(Error.Validation(ErrorCodes.Auth.PasswordMismatch, string.Join(", ", result.Errors.Select(e => e.Description)))).ToProblemDetails();
     }
 
     static async Task<IResult> GetPasswordStatusAsync(

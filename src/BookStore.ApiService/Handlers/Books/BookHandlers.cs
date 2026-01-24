@@ -2,6 +2,7 @@ using BookStore.ApiService.Aggregates;
 using BookStore.ApiService.Commands;
 using BookStore.ApiService.Events;
 using BookStore.ApiService.Infrastructure;
+using BookStore.ApiService.Infrastructure.Extensions;
 using BookStore.ApiService.Infrastructure.Logging;
 using BookStore.Shared.Models;
 using Marten;
@@ -34,12 +35,7 @@ public static class BookHandlers
         if (!CultureValidator.IsValidCultureCode(command.Language))
         {
             Log.Books.InvalidLanguageCode(logger, command.Id, command.Language);
-            return Results.BadRequest(new
-            {
-                error = "Invalid language code",
-                languageCode = command.Language,
-                message = $"The language code '{command.Language}' is not valid. Must be a valid ISO 639-1 (e.g., 'en'), ISO 639-3 (e.g., 'fil'), or culture code (e.g., 'en-US')"
-            });
+            return Result.Failure(Error.Validation(ErrorCodes.Books.LanguageInvalid, "Invalid language code")).ToProblemDetails();
         }
 
         // Validate language codes in descriptions if provided
@@ -48,12 +44,7 @@ public static class BookHandlers
             if (!CultureValidator.ValidateTranslations(command.Translations, out var invalidCodes))
             {
                 Log.Books.InvalidTranslationCodes(logger, command.Id, string.Join(", ", invalidCodes));
-                return Results.BadRequest(new
-                {
-                    error = "Invalid language codes in descriptions",
-                    invalidCodes,
-                    message = $"The following language codes are not valid: {string.Join(", ", invalidCodes)}"
-                });
+                return Result.Failure(Error.Validation(ErrorCodes.Books.TranslationLanguageInvalid, "Invalid language codes in descriptions")).ToProblemDetails();
             }
         }
 
@@ -62,11 +53,7 @@ public static class BookHandlers
         if (command.Translations is null || !command.Translations.ContainsKey(defaultLanguage))
         {
             Log.Books.MissingDefaultTranslation(logger, command.Id, defaultLanguage);
-            return Results.BadRequest(new
-            {
-                error = "Default language translation required",
-                message = $"A description translation for the default language '{defaultLanguage}' must be provided"
-            });
+            return Result.Failure(Error.Validation(ErrorCodes.Books.DefaultTranslationRequired, "Default language translation required")).ToProblemDetails();
         }
 
         // Validate description lengths
@@ -75,14 +62,7 @@ public static class BookHandlers
             if (translation.Description.Length > BookAggregate.MaxDescriptionLength)
             {
                 Log.Books.DescriptionTooLong(logger, command.Id, languageCode, BookAggregate.MaxDescriptionLength, translation.Description.Length);
-                return Results.BadRequest(new
-                {
-                    error = "Description too long",
-                    languageCode,
-                    maxLength = BookAggregate.MaxDescriptionLength,
-                    actualLength = translation.Description.Length,
-                    message = $"Description for language '{languageCode}' cannot exceed {BookAggregate.MaxDescriptionLength} characters"
-                });
+                return Result.Failure(Error.Validation(ErrorCodes.Books.DescriptionTooLong, "Description too long")).ToProblemDetails();
             }
         }
 
@@ -90,23 +70,14 @@ public static class BookHandlers
         var defaultCurrency = currencyOptions.Value.DefaultCurrency;
         if (command.Prices is null || !command.Prices.ContainsKey(defaultCurrency))
         {
-            return Results.BadRequest(new
-            {
-                error = "Default currency price required",
-                message = $"A price for the default currency '{defaultCurrency}' must be provided"
-            });
+            return Result.Failure(Error.Validation(ErrorCodes.Books.DefaultPriceRequired, "Default currency price required")).ToProblemDetails();
         }
 
         // Validate supported currencies
         var invalidCurrencies = command.Prices.Keys.Where(c => !currencyOptions.Value.SupportedCurrencies.Contains(c, StringComparer.OrdinalIgnoreCase)).ToList();
         if (invalidCurrencies.Count > 0)
         {
-            return Results.BadRequest(new
-            {
-                error = "Invalid currencies provided",
-                invalidCurrencies,
-                message = $"The following currencies are not supported: {string.Join(", ", invalidCurrencies)}"
-            });
+            return Result.Failure(Error.Validation(ErrorCodes.Books.PriceCurrencyInvalid, "Invalid currencies provided")).ToProblemDetails();
         }
 
         // Convert DTOs to domain objects
@@ -114,32 +85,25 @@ public static class BookHandlers
             kvp => kvp.Key,
             kvp => new BookTranslation(kvp.Value.Description));
 
-        try
-        {
-            var @event = BookAggregate.CreateEvent(
-                command.Id,
-                command.Title,
-                command.Isbn,
-                command.Language,
-                descriptions,
-                command.PublicationDate,
-                command.PublisherId,
-                [.. command.AuthorIds ?? []],
-                [.. command.CategoryIds ?? []],
-                command.Prices?.ToDictionary(kvp => kvp.Key, kvp => kvp.Value) ?? []);
+        var eventResult = BookAggregate.CreateEvent(
+            command.Id,
+            command.Title,
+            command.Isbn,
+            command.Language,
+            descriptions,
+            command.PublicationDate,
+            command.PublisherId,
+            [.. command.AuthorIds ?? []],
+            [.. command.CategoryIds ?? []],
+            command.Prices?.ToDictionary(kvp => kvp.Key, kvp => kvp.Value) ?? []);
 
-            _ = session.Events.StartStream<BookAggregate>(command.Id, @event);
-        }
-        catch (ArgumentException ex)
+        if (eventResult.IsFailure)
         {
-            Log.Books.InvalidBookData(logger, command.Id, ex.Message);
-            return Results.BadRequest(new { error = ex.Message });
+            Log.Books.InvalidBookData(logger, command.Id, eventResult.Error.Message);
+            return eventResult.ToProblemDetails();
         }
-        catch (InvalidOperationException ex)
-        {
-            Log.Books.InvalidBookOperation(logger, command.Id, ex.Message);
-            return Results.BadRequest(new { error = ex.Message });
-        }
+
+        _ = session.Events.StartStream<BookAggregate>(command.Id, eventResult.Value);
 
         Log.Books.BookCreated(logger, command.Id, command.Title);
 
@@ -164,12 +128,7 @@ public static class BookHandlers
         // Validate language code
         if (!CultureValidator.IsValidCultureCode(command.Language))
         {
-            return Results.BadRequest(new
-            {
-                error = "Invalid language code",
-                languageCode = command.Language,
-                message = $"The language code '{command.Language}' is not valid. Must be a valid ISO 639-1 (e.g., 'en'), ISO 639-3 (e.g., 'fil'), or culture code (e.g., 'en-US')"
-            });
+            return Result.Failure(Error.Validation(ErrorCodes.Books.LanguageInvalid, "Invalid language code")).ToProblemDetails();
         }
 
         // Validate language codes in descriptions if provided
@@ -177,12 +136,7 @@ public static class BookHandlers
         {
             if (!CultureValidator.ValidateTranslations(command.Translations, out var invalidCodes))
             {
-                return Results.BadRequest(new
-                {
-                    error = "Invalid language codes in descriptions",
-                    invalidCodes,
-                    message = $"The following language codes are not valid: {string.Join(", ", invalidCodes)}"
-                });
+                return Result.Failure(Error.Validation(ErrorCodes.Books.TranslationLanguageInvalid, "Invalid language codes in descriptions")).ToProblemDetails();
             }
         }
 
@@ -190,11 +144,7 @@ public static class BookHandlers
         var defaultLanguage = localizationOptions.Value.DefaultCulture;
         if (command.Translations is null || !command.Translations.ContainsKey(defaultLanguage))
         {
-            return Results.BadRequest(new
-            {
-                error = "Default language translation required",
-                message = $"A description translation for the default language '{defaultLanguage}' must be provided"
-            });
+            return Result.Failure(Error.Validation(ErrorCodes.Books.DefaultTranslationRequired, "Default language translation required")).ToProblemDetails();
         }
 
         // Validate description lengths
@@ -202,14 +152,7 @@ public static class BookHandlers
         {
             if (translation.Description.Length > BookAggregate.MaxDescriptionLength)
             {
-                return Results.BadRequest(new
-                {
-                    error = "Description too long",
-                    languageCode,
-                    maxLength = BookAggregate.MaxDescriptionLength,
-                    actualLength = translation.Description.Length,
-                    message = $"Description for language '{languageCode}' cannot exceed {BookAggregate.MaxDescriptionLength} characters"
-                });
+                return Result.Failure(Error.Validation(ErrorCodes.Books.DescriptionTooLong, "Description too long")).ToProblemDetails();
             }
         }
 
@@ -217,23 +160,14 @@ public static class BookHandlers
         var defaultCurrency = currencyOptions.Value.DefaultCurrency;
         if (command.Prices is null || !command.Prices.ContainsKey(defaultCurrency))
         {
-            return Results.BadRequest(new
-            {
-                error = "Default currency price required",
-                message = $"A price for the default currency '{defaultCurrency}' must be provided"
-            });
+            return Result.Failure(Error.Validation(ErrorCodes.Books.DefaultPriceRequired, "Default currency price required")).ToProblemDetails();
         }
 
         // Validate supported currencies
         var invalidCurrencies = command.Prices.Keys.Where(c => !currencyOptions.Value.SupportedCurrencies.Contains(c, StringComparer.OrdinalIgnoreCase)).ToList();
         if (invalidCurrencies.Count > 0)
         {
-            return Results.BadRequest(new
-            {
-                error = "Invalid currencies provided",
-                invalidCurrencies,
-                message = $"The following currencies are not supported: {string.Join(", ", invalidCurrencies)}"
-            });
+            return Result.Failure(Error.Validation(ErrorCodes.Books.PriceCurrencyInvalid, "Invalid currencies provided")).ToProblemDetails();
         }
 
         // Get current stream state for ETag validation
@@ -268,31 +202,24 @@ public static class BookHandlers
             kvp => kvp.Key,
             kvp => new BookTranslation(kvp.Value.Description));
 
-        try
-        {
-            var @event = aggregate.UpdateEvent(
-                command.Title,
-                command.Isbn,
-                command.Language,
-                descriptions,
-                command.PublicationDate,
-                command.PublisherId,
-                [.. command.AuthorIds],
-                [.. command.CategoryIds],
-                command.Prices?.ToDictionary(kvp => kvp.Key, kvp => kvp.Value) ?? []);
+        var eventResult = aggregate.UpdateEvent(
+            command.Title,
+            command.Isbn,
+            command.Language,
+            descriptions,
+            command.PublicationDate,
+            command.PublisherId,
+            [.. command.AuthorIds],
+            [.. command.CategoryIds],
+            command.Prices?.ToDictionary(kvp => kvp.Key, kvp => kvp.Value) ?? []);
 
-            _ = session.Events.Append(command.Id, @event);
-        }
-        catch (ArgumentException ex)
+        if (eventResult.IsFailure)
         {
-            Log.Books.InvalidBookData(logger, command.Id, ex.Message);
-            return Results.BadRequest(new { error = ex.Message });
+            Log.Books.InvalidBookData(logger, command.Id, eventResult.Error.Message);
+            return eventResult.ToProblemDetails();
         }
-        catch (InvalidOperationException ex)
-        {
-            Log.Books.InvalidBookOperation(logger, command.Id, ex.Message);
-            return Results.BadRequest(new { error = ex.Message });
-        }
+
+        _ = session.Events.Append(command.Id, eventResult.Value);
 
         Log.Books.BookUpdated(logger, command.Id);
 
@@ -340,16 +267,14 @@ public static class BookHandlers
             return Results.NotFound();
         }
 
-        try
+        var eventResult = aggregate.SoftDeleteEvent();
+        if (eventResult.IsFailure)
         {
-            var @event = aggregate.SoftDeleteEvent();
-            _ = session.Events.Append(command.Id, @event);
+            Log.Books.InvalidBookOperation(logger, command.Id, eventResult.Error.Message);
+            return eventResult.ToProblemDetails();
         }
-        catch (InvalidOperationException ex)
-        {
-            Log.Books.InvalidBookOperation(logger, command.Id, ex.Message);
-            return Results.BadRequest(new { error = ex.Message });
-        }
+
+        _ = session.Events.Append(command.Id, eventResult.Value);
 
         Log.Books.BookSoftDeleted(logger, command.Id);
 
@@ -397,16 +322,14 @@ public static class BookHandlers
             return Results.NotFound();
         }
 
-        try
+        var eventResult = aggregate.RestoreEvent();
+        if (eventResult.IsFailure)
         {
-            var @event = aggregate.RestoreEvent();
-            _ = session.Events.Append(command.Id, @event);
+            Log.Books.InvalidBookOperation(logger, command.Id, eventResult.Error.Message);
+            return eventResult.ToProblemDetails();
         }
-        catch (InvalidOperationException ex)
-        {
-            Log.Books.InvalidBookOperation(logger, command.Id, ex.Message);
-            return Results.BadRequest(new { error = ex.Message });
-        }
+
+        _ = session.Events.Append(command.Id, eventResult.Value);
 
         Log.Books.BookRestored(logger, command.Id);
 
@@ -453,21 +376,14 @@ public static class BookHandlers
             return Results.NotFound();
         }
 
-        try
+        var eventResult = aggregate.ScheduleSale(command.Percentage, command.Start, command.End);
+        if (eventResult.IsFailure)
         {
-            var @event = aggregate.ScheduleSale(command.Percentage, command.Start, command.End);
-            _ = session.Events.Append(command.BookId, @event);
+            Log.Books.InvalidBookData(logger, command.BookId, eventResult.Error.Message);
+            return eventResult.ToProblemDetails();
         }
-        catch (ArgumentException ex)
-        {
-            Log.Books.InvalidBookData(logger, command.BookId, ex.Message);
-            return Results.BadRequest(new { error = ex.Message });
-        }
-        catch (InvalidOperationException ex)
-        {
-            Log.Books.InvalidBookOperation(logger, command.BookId, ex.Message);
-            return Results.BadRequest(new { error = ex.Message });
-        }
+
+        _ = session.Events.Append(command.BookId, eventResult.Value);
 
         // Get new stream state and return new ETag (only if we have an HTTP context)
         if (context != null)
@@ -515,16 +431,14 @@ public static class BookHandlers
             return Results.NotFound();
         }
 
-        try
+        var eventResult = aggregate.CancelSale(command.SaleStart);
+        if (eventResult.IsFailure)
         {
-            var @event = aggregate.CancelSale(command.SaleStart);
-            _ = session.Events.Append(command.BookId, @event);
+            Log.Books.InvalidBookOperation(logger, command.BookId, eventResult.Error.Message);
+            return eventResult.ToProblemDetails();
         }
-        catch (InvalidOperationException ex)
-        {
-            Log.Books.InvalidBookOperation(logger, command.BookId, ex.Message);
-            return Results.BadRequest(new { error = ex.Message });
-        }
+
+        _ = session.Events.Append(command.BookId, eventResult.Value);
 
         // Get new stream state and return new ETag (only if we have an HTTP context)
         if (context != null)

@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using BookStore.ApiService.Infrastructure.Extensions;
 using BookStore.ApiService.Models;
 using BookStore.Shared.Models;
 using Marten;
@@ -53,18 +54,18 @@ public static class AdminUserEndpoints
         var currentUserId = currentUser.FindFirstValue(ClaimTypes.NameIdentifier);
         if (currentUserId == userId.ToString())
         {
-            return Results.BadRequest("You cannot promote yourself.");
+            return Result.Failure(Error.Validation(ErrorCodes.Admin.CannotPromoteSelf, "You cannot promote yourself.")).ToProblemDetails();
         }
 
         var user = await userManager.FindByIdAsync(userId.ToString());
         if (user == null)
         {
-            return Results.NotFound();
+            return Result.Failure(Error.NotFound(ErrorCodes.Admin.UserNotFound, "User not found.")).ToProblemDetails();
         }
 
         if (user.Roles.Any(r => r.Equals("Admin", StringComparison.OrdinalIgnoreCase)))
         {
-            return Results.BadRequest("User is already an Admin.");
+            return Result.Failure(Error.Conflict(ErrorCodes.Admin.AlreadyAdmin, "User is already an Admin.")).ToProblemDetails();
         }
 
         var result = await userManager.AddToRoleAsync(user, "Admin");
@@ -73,7 +74,7 @@ public static class AdminUserEndpoints
             return Results.Ok();
         }
 
-        return Results.BadRequest(result.Errors);
+        return Result.Failure(Error.Validation(ErrorCodes.Admin.AlreadyAdmin, string.Join(", ", result.Errors.Select(e => e.Description)))).ToProblemDetails();
     }
 
     static async Task<IResult> DemoteFromAdmin(
@@ -85,18 +86,18 @@ public static class AdminUserEndpoints
         var currentUserId = currentUser.FindFirstValue(ClaimTypes.NameIdentifier);
         if (currentUserId == userId.ToString())
         {
-            return Results.BadRequest("You cannot demote yourself.");
+            return Result.Failure(Error.Validation(ErrorCodes.Admin.CannotDemoteSelf, "You cannot demote yourself.")).ToProblemDetails();
         }
 
         var user = await userManager.FindByIdAsync(userId.ToString());
         if (user == null)
         {
-            return Results.NotFound();
+            return Result.Failure(Error.NotFound(ErrorCodes.Admin.UserNotFound, "User not found.")).ToProblemDetails();
         }
 
         if (!user.Roles.Any(r => r.Equals("Admin", StringComparison.OrdinalIgnoreCase)))
         {
-            return Results.BadRequest("User is not an Admin.");
+            return Result.Failure(Error.Conflict(ErrorCodes.Admin.NotAdmin, "User is not an Admin.")).ToProblemDetails();
         }
 
         var result = await userManager.RemoveFromRoleAsync(user, "Admin");
@@ -105,6 +106,6 @@ public static class AdminUserEndpoints
             return Results.Ok();
         }
 
-        return Results.BadRequest(result.Errors);
+        return Result.Failure(Error.Validation(ErrorCodes.Admin.NotAdmin, string.Join(", ", result.Errors.Select(e => e.Description)))).ToProblemDetails();
     }
 }

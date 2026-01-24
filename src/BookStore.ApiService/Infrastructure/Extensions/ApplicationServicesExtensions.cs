@@ -18,6 +18,7 @@ public static class ApplicationServicesExtensions
     {
         // Problem details for error handling
         _ = services.AddProblemDetails();
+        _ = services.AddExceptionHandler<BookStore.ApiService.Infrastructure.ExceptionHandlers.GlobalExceptionHandler>();
 
         // Configure pagination options with validation
         _ = services.AddOptions<Infrastructure.PaginationOptions>()

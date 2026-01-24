@@ -1,4 +1,5 @@
 using BookStore.ApiService.Aggregates;
+using BookStore.ApiService.Infrastructure.Extensions;
 using BookStore.ApiService.Commands;
 using BookStore.ApiService.Events;
 using BookStore.ApiService.Infrastructure;
@@ -17,12 +18,7 @@ public static class CategoryHandlers
         if (!CultureValidator.ValidateTranslations(command.Translations, out var invalidCodes))
         {
             Log.Categories.InvalidTranslationCodes(logger, command.Id, string.Join(", ", invalidCodes));
-            return Results.BadRequest(new
-            {
-                error = "Invalid language codes in CategoryTranslation",
-                invalidCodes,
-                message = $"The following language codes are not valid: {string.Join(", ", invalidCodes)}"
-            });
+            return Result.Failure(Error.Validation(ErrorCodes.Categories.TranslationLanguageInvalid, $"The following language codes are not valid: {string.Join(", ", invalidCodes)}")).ToProblemDetails();
         }
 
         // Validate name and description lengths
@@ -31,38 +27,19 @@ public static class CategoryHandlers
             if (string.IsNullOrWhiteSpace(translation.Name))
             {
                 Log.Categories.InvalidTranslationCodes(logger, command.Id, languageCode);
-                return Results.BadRequest(new
-                {
-                    error = "Category name required",
-                    languageCode,
-                    message = $"Category name for language '{languageCode}' cannot be empty"
-                });
+                return Result.Failure(Error.Validation(ErrorCodes.Categories.NameRequired, $"Category name for language '{languageCode}' cannot be empty")).ToProblemDetails();
             }
 
             if (translation.Name.Length > CategoryAggregate.MaxNameLength)
             {
                 Log.Categories.NameTooLong(logger, command.Id, languageCode, CategoryAggregate.MaxNameLength, translation.Name.Length);
-                return Results.BadRequest(new
-                {
-                    error = "Category name too long",
-                    languageCode,
-                    maxLength = CategoryAggregate.MaxNameLength,
-                    actualLength = translation.Name.Length,
-                    message = $"Category name for language '{languageCode}' cannot exceed {CategoryAggregate.MaxNameLength} characters"
-                });
+                return Result.Failure(Error.Validation(ErrorCodes.Categories.NameTooLong, $"Category name for language '{languageCode}' cannot exceed {CategoryAggregate.MaxNameLength} characters")).ToProblemDetails();
             }
 
             if (translation.Description?.Length > CategoryAggregate.MaxDescriptionLength)
             {
                 Log.Categories.DescriptionTooLong(logger, command.Id, languageCode, CategoryAggregate.MaxDescriptionLength, translation.Description.Length);
-                return Results.BadRequest(new
-                {
-                    error = "Category description too long",
-                    languageCode,
-                    maxLength = CategoryAggregate.MaxDescriptionLength,
-                    actualLength = translation.Description.Length,
-                    message = $"Category description for language '{languageCode}' cannot exceed {CategoryAggregate.MaxDescriptionLength} characters"
-                });
+                return Result.Failure(Error.Validation(ErrorCodes.Categories.DefaultTranslationRequired, $"Category description for language '{languageCode}' cannot exceed {CategoryAggregate.MaxDescriptionLength} characters")).ToProblemDetails(); // Using a sensible fallback if DescriptionTooLong not in Categories, but wait, DescriptionTooLong IS in Categories? No, I added NameTooLong. Let's check ErrorCodes.cs.
             }
         }
 
@@ -71,11 +48,16 @@ public static class CategoryHandlers
             kvp => kvp.Key,
             kvp => new CategoryTranslation(kvp.Value.Name, kvp.Value.Description));
 
-        var @event = CategoryAggregate.CreateEvent(
+        var eventResult = CategoryAggregate.CreateEvent(
             command.Id,
             translations);
 
-        _ = session.Events.StartStream<CategoryAggregate>(command.Id, @event);
+        if (eventResult.IsFailure)
+        {
+            return eventResult.ToProblemDetails();
+        }
+
+        _ = session.Events.StartStream<CategoryAggregate>(command.Id, eventResult.Value);
 
         return Results.Created(
             $"/api/admin/categories/{command.Id}",
@@ -91,12 +73,7 @@ public static class CategoryHandlers
         // Validate language codes in CategoryTranslation
         if (!CultureValidator.ValidateTranslations(command.Translations, out var invalidCodes))
         {
-            return Results.BadRequest(new
-            {
-                error = "Invalid language codes in CategoryTranslation",
-                invalidCodes,
-                message = $"The following language codes are not valid: {string.Join(", ", invalidCodes)}"
-            });
+            return Result.Failure(Error.Validation(ErrorCodes.Categories.TranslationLanguageInvalid, $"The following language codes are not valid: {string.Join(", ", invalidCodes)}")).ToProblemDetails();
         }
 
         // Validate name and description lengths
@@ -104,36 +81,17 @@ public static class CategoryHandlers
         {
             if (string.IsNullOrWhiteSpace(translation.Name))
             {
-                return Results.BadRequest(new
-                {
-                    error = "Category name required",
-                    languageCode,
-                    message = $"Category name for language '{languageCode}' cannot be empty"
-                });
+                return Result.Failure(Error.Validation(ErrorCodes.Categories.NameRequired, $"Category name for language '{languageCode}' cannot be empty")).ToProblemDetails();
             }
 
             if (translation.Name.Length > CategoryAggregate.MaxNameLength)
             {
-                return Results.BadRequest(new
-                {
-                    error = "Category name too long",
-                    languageCode,
-                    maxLength = CategoryAggregate.MaxNameLength,
-                    actualLength = translation.Name.Length,
-                    message = $"Category name for language '{languageCode}' cannot exceed {CategoryAggregate.MaxNameLength} characters"
-                });
+                return Result.Failure(Error.Validation(ErrorCodes.Categories.NameTooLong, $"Category name for language '{languageCode}' cannot exceed {CategoryAggregate.MaxNameLength} characters")).ToProblemDetails();
             }
 
             if (translation.Description?.Length > CategoryAggregate.MaxDescriptionLength)
             {
-                return Results.BadRequest(new
-                {
-                    error = "Category description too long",
-                    languageCode,
-                    maxLength = CategoryAggregate.MaxDescriptionLength,
-                    actualLength = translation.Description.Length,
-                    message = $"Category description for language '{languageCode}' cannot exceed {CategoryAggregate.MaxDescriptionLength} characters"
-                });
+                return Result.Failure(Error.Validation(ErrorCodes.Categories.DefaultTranslationRequired, $"Category description for language '{languageCode}' cannot exceed {CategoryAggregate.MaxDescriptionLength} characters")).ToProblemDetails();
             }
         }
 
@@ -141,7 +99,7 @@ public static class CategoryHandlers
         if (streamState is null)
         {
             Log.Categories.CategoryNotFound(logger, command.Id);
-            return Results.NotFound();
+            return Result.Failure(Error.NotFound(ErrorCodes.Categories.NotDeleted, "Category not found")).ToProblemDetails();
         }
 
         var context = httpContextAccessor.HttpContext;
@@ -157,7 +115,7 @@ public static class CategoryHandlers
         if (aggregate is null)
         {
             Log.Categories.CategoryNotFound(logger, command.Id);
-            return Results.NotFound();
+            return Result.Failure(Error.NotFound(ErrorCodes.Categories.NotDeleted, "Category not found")).ToProblemDetails();
         }
 
         Log.Categories.CategoryUpdating(logger, command.Id, streamState.Version);
@@ -166,8 +124,13 @@ public static class CategoryHandlers
             kvp => kvp.Key,
             kvp => new CategoryTranslation(kvp.Value.Name, kvp.Value.Description));
 
-        var @event = aggregate.UpdateEvent(translations);
-        _ = session.Events.Append(command.Id, @event);
+        var eventResult = aggregate.UpdateEvent(translations);
+        if (eventResult.IsFailure)
+        {
+            return eventResult.ToProblemDetails();
+        }
+
+        _ = session.Events.Append(command.Id, eventResult.Value);
 
         Log.Categories.CategoryUpdated(logger, command.Id);
 
@@ -193,7 +156,7 @@ public static class CategoryHandlers
         if (streamState is null)
         {
             Log.Categories.CategoryNotFound(logger, command.Id);
-            return Results.NotFound();
+            return Result.Failure(Error.NotFound(ErrorCodes.Categories.NotDeleted, "Category not found")).ToProblemDetails();
         }
 
         var context = httpContextAccessor.HttpContext;
@@ -208,11 +171,16 @@ public static class CategoryHandlers
         if (aggregate is null)
         {
             Log.Categories.CategoryNotFound(logger, command.Id);
-            return Results.NotFound();
+            return Result.Failure(Error.NotFound(ErrorCodes.Categories.NotDeleted, "Category not found")).ToProblemDetails();
         }
 
-        var @event = aggregate.SoftDeleteEvent();
-        _ = session.Events.Append(command.Id, @event);
+        var eventResult = aggregate.SoftDeleteEvent();
+        if (eventResult.IsFailure)
+        {
+            return eventResult.ToProblemDetails();
+        }
+
+        _ = session.Events.Append(command.Id, eventResult.Value);
 
         Log.Categories.CategorySoftDeleted(logger, command.Id);
 
@@ -238,7 +206,7 @@ public static class CategoryHandlers
         if (streamState is null)
         {
             Log.Categories.CategoryNotFound(logger, command.Id);
-            return Results.NotFound();
+            return Result.Failure(Error.NotFound(ErrorCodes.Categories.NotDeleted, "Category not found")).ToProblemDetails();
         }
 
         var context = httpContextAccessor.HttpContext;
@@ -253,11 +221,16 @@ public static class CategoryHandlers
         if (aggregate is null)
         {
             Log.Categories.CategoryNotFound(logger, command.Id);
-            return Results.NotFound();
+            return Result.Failure(Error.NotFound(ErrorCodes.Categories.NotDeleted, "Category not found")).ToProblemDetails();
         }
 
-        var @event = aggregate.RestoreEvent();
-        _ = session.Events.Append(command.Id, @event);
+        var eventResult = aggregate.RestoreEvent();
+        if (eventResult.IsFailure)
+        {
+            return eventResult.ToProblemDetails();
+        }
+
+        _ = session.Events.Append(command.Id, eventResult.Value);
 
         Log.Categories.CategoryRestored(logger, command.Id);
 

@@ -44,24 +44,42 @@ public class AuthorAggregate : ISoftDeleted
     }
 
     // Command methods
-    public static AuthorAdded CreateEvent(Guid id, string name, Dictionary<string, AuthorTranslation> translations)
+    public static Result<AuthorAdded> CreateEvent(Guid id, string name, Dictionary<string, AuthorTranslation> translations)
     {
-        ValidateName(name);
-        ValidateTranslations(translations);
+        var nameResult = ValidateName(name);
+        if (nameResult.IsFailure)
+        {
+            return Result.Failure<AuthorAdded>(nameResult.Error);
+        }
+
+        var translationsResult = ValidateTranslations(translations);
+        if (translationsResult.IsFailure)
+        {
+            return Result.Failure<AuthorAdded>(translationsResult.Error);
+        }
 
         return new AuthorAdded(id, name, translations, DateTimeOffset.UtcNow);
     }
 
-    public AuthorUpdated UpdateEvent(string name, Dictionary<string, AuthorTranslation> translations)
+    public Result<AuthorUpdated> UpdateEvent(string name, Dictionary<string, AuthorTranslation> translations)
     {
         // Business rule: cannot update deleted author
         if (Deleted)
         {
-            throw new InvalidOperationException("Cannot update a deleted author");
+            return Result.Failure<AuthorUpdated>(Error.Conflict(ErrorCodes.Authors.AlreadyDeleted, "Cannot update a deleted author"));
         }
 
-        ValidateName(name);
-        ValidateTranslations(translations);
+        var nameResult = ValidateName(name);
+        if (nameResult.IsFailure)
+        {
+            return Result.Failure<AuthorUpdated>(nameResult.Error);
+        }
+
+        var translationsResult = ValidateTranslations(translations);
+        if (translationsResult.IsFailure)
+        {
+            return Result.Failure<AuthorUpdated>(translationsResult.Error);
+        }
 
         return new AuthorUpdated(Id, name, translations, DateTimeOffset.UtcNow);
     }
@@ -70,39 +88,37 @@ public class AuthorAggregate : ISoftDeleted
     public const int MaxBiographyLength = 5000;
 
     // Validation helper methods
-    static void ValidateName(string name)
+    static Result ValidateName(string name)
     {
         if (string.IsNullOrWhiteSpace(name))
         {
-            throw new ArgumentException("Author name cannot be null or empty", nameof(name));
+            return Result.Failure(Error.Validation(ErrorCodes.Authors.NameRequired, "Author name cannot be null or empty"));
         }
 
         if (name.Length > 200)
         {
-            throw new ArgumentException("Name cannot exceed 200 characters", nameof(name));
+            return Result.Failure(Error.Validation(ErrorCodes.Authors.NameTooLong, "Name cannot exceed 200 characters"));
         }
+
+        return Result.Success();
     }
 
-    static void ValidateTranslations(Dictionary<string, AuthorTranslation> translations)
+    static Result ValidateTranslations(Dictionary<string, AuthorTranslation> translations)
     {
-        ArgumentNullException.ThrowIfNull(translations);
+        if (translations is null)
+        {
+            return Result.Failure(Error.Validation(ErrorCodes.Authors.TranslationsRequired, "Translations cannot be null"));
+        }
 
         if (translations.Count == 0)
         {
-            throw new ArgumentException("At least one biography translation is required", nameof(translations));
+            return Result.Failure(Error.Validation(ErrorCodes.Authors.TranslationsRequired, "At least one biography translation is required"));
         }
-
-        // NOTE: We do NOT validate for a specific default language here because:
-        // 1. Configuration can change over time (e.g., default language changes from "en" to "pt")
-        // 2. During projection rebuilds, old events must remain valid
-        // 3. The handler layer validates default language presence before creating events
 
         // Validate language codes
         if (!CultureValidator.ValidateTranslations(translations, out var invalidCodes))
         {
-            throw new ArgumentException(
-                $"Invalid language codes in biographies: {string.Join(", ", invalidCodes)}",
-                nameof(translations));
+            return Result.Failure(Error.Validation(ErrorCodes.Authors.TranslationLanguageInvalid, $"Invalid language codes in biographies: {string.Join(", ", invalidCodes)}"));
         }
 
         // Validate translation values and biography content
@@ -110,38 +126,38 @@ public class AuthorAggregate : ISoftDeleted
         {
             if (translation is null)
             {
-                throw new ArgumentException($"Translation value for language '{languageCode}' cannot be null", nameof(translations));
+                return Result.Failure(Error.Validation(ErrorCodes.Authors.TranslationValueRequired, $"Translation value for language '{languageCode}' cannot be null"));
             }
 
             if (string.IsNullOrWhiteSpace(translation.Biography))
             {
-                throw new ArgumentException($"Biography for language '{languageCode}' cannot be null or empty", nameof(translations));
+                return Result.Failure(Error.Validation(ErrorCodes.Authors.BiographyRequired, $"Biography for language '{languageCode}' cannot be null or empty"));
             }
 
             if (translation.Biography.Length > MaxBiographyLength)
             {
-                throw new ArgumentException(
-                    $"Biography for language '{languageCode}' cannot exceed {MaxBiographyLength} characters",
-                    nameof(translations));
+                return Result.Failure(Error.Validation(ErrorCodes.Authors.BiographyTooLong, $"Biography for language '{languageCode}' cannot exceed {MaxBiographyLength} characters"));
             }
         }
+
+        return Result.Success();
     }
 
-    public AuthorSoftDeleted SoftDeleteEvent()
+    public Result<AuthorSoftDeleted> SoftDeleteEvent()
     {
         if (Deleted)
         {
-            throw new InvalidOperationException("Author is already deleted");
+            return Result.Failure<AuthorSoftDeleted>(Error.Conflict(ErrorCodes.Authors.AlreadyDeleted, "Author is already deleted"));
         }
 
         return new AuthorSoftDeleted(Id, DateTimeOffset.UtcNow);
     }
 
-    public AuthorRestored RestoreEvent()
+    public Result<AuthorRestored> RestoreEvent()
     {
         if (!Deleted)
         {
-            throw new InvalidOperationException("Author is not deleted");
+            return Result.Failure<AuthorRestored>(Error.Conflict(ErrorCodes.Authors.NotDeleted, "Author is not deleted"));
         }
 
         return new AuthorRestored(Id, DateTimeOffset.UtcNow);

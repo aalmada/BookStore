@@ -1,3 +1,4 @@
+using BookStore.ApiService.Infrastructure.Extensions;
 using BookStore.ApiService.Infrastructure.Tenant;
 using BookStore.ApiService.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -40,12 +41,12 @@ public static class BookCoverEndpoints
         }
         catch (FileNotFoundException)
         {
-            return Results.NotFound();
+            return Result.Failure(Error.NotFound(ErrorCodes.Books.BookNotFound, "Book cover not found.")).ToProblemDetails();
         }
         catch (Exception ex)
         {
             // Log?
-            return Results.Problem(detail: ex.Message, statusCode: 500);
+            return Result.Failure(Error.InternalServerError("ERR_BOOK_COVER_FAILED", ex.Message)).ToProblemDetails();
         }
     }
 }

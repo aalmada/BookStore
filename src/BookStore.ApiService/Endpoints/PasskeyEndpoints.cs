@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using BookStore.ApiService.Infrastructure.Extensions;
 using BookStore.ApiService.Infrastructure.Logging;
 using BookStore.ApiService.Infrastructure.Tenant;
 using BookStore.ApiService.Models;
@@ -18,7 +19,7 @@ public static class PasskeyEndpoints
         _ = paramsGroup.WithMetadata(new AllowAnonymousTenantAttribute());
 
         // 1. Get Creation Options (Authenticated & Unauthenticated)
-        _ = paramsGroup.MapPost("/attestation/options", async (
+        _ = paramsGroup.MapPost("/attestation/options", async Task<IResult> (
             HttpContext context,
             [FromBody] PasskeyCreationRequest request,
             UserManager<ApplicationUser> userManager,
@@ -49,7 +50,7 @@ public static class PasskeyEndpoints
             // If anonymous, we are in "Register new Account" flow
             if (string.IsNullOrEmpty(request.Email))
             {
-                return Results.BadRequest("Email is required for new registration.");
+                return Result.Failure(Error.Validation(ErrorCodes.Passkey.EmailRequired, "Email is required for new registration.")).ToProblemDetails();
             }
 
             var conflictingUser = await userManager.FindByEmailAsync(request.Email);
@@ -84,7 +85,7 @@ public static class PasskeyEndpoints
         });
 
         // 2. Register Passkey (Finish Registration)
-        _ = paramsGroup.MapPost("/attestation/result", async (
+        _ = paramsGroup.MapPost("/attestation/result", async Task<IResult> (
             HttpContext context,
             [FromBody] RegisterPasskeyRequest request,
             UserManager<ApplicationUser> userManager,
@@ -110,7 +111,7 @@ public static class PasskeyEndpoints
                     if (!attestation.Succeeded)
                     {
                         Log.Users.PasskeyAttestationFailed(logger, user.Email, attestation.Failure?.Message);
-                        return Results.BadRequest($"Attestation failed: {attestation.Failure?.Message}");
+                        return Result.Failure(Error.Validation(ErrorCodes.Passkey.AttestationFailed, $"Attestation failed: {attestation.Failure?.Message}")).ToProblemDetails();
                     }
 
                     if (userStore is IUserPasskeyStore<ApplicationUser> passkeyStore)
@@ -121,7 +122,7 @@ public static class PasskeyEndpoints
                         if (!updateResult.Succeeded)
                         {
                             Log.Users.PasskeyUpdateUserFailed(logger, user.Email, string.Join(", ", updateResult.Errors.Select(e => e.Description)));
-                            return Results.BadRequest(updateResult.Errors);
+                            return Result.Failure(Error.Validation(ErrorCodes.Passkey.InvalidCredential, string.Join(", ", updateResult.Errors.Select(e => e.Description)))).ToProblemDetails();
                         }
                     }
 
@@ -133,7 +134,7 @@ public static class PasskeyEndpoints
                 // We need the email to create the user.
                 if (string.IsNullOrEmpty(request.Email))
                 {
-                    return Results.BadRequest("Email is required for registration.");
+                    return Result.Failure(Error.Validation(ErrorCodes.Passkey.EmailRequired, "Email is required for registration.")).ToProblemDetails();
                 }
 
                 // 1. Verify Attempt & Extract User Handle
@@ -161,7 +162,7 @@ public static class PasskeyEndpoints
                 var attestationNew = await signInManager.PerformPasskeyAttestationAsync(request.CredentialJson);
                 if (!attestationNew.Succeeded)
                 {
-                    return Results.BadRequest($"Attestation failed: {attestationNew.Failure?.Message}");
+                    return Result.Failure(Error.Validation(ErrorCodes.Passkey.AttestationFailed, $"Attestation failed: {attestationNew.Failure?.Message}")).ToProblemDetails();
                 }
 
                 // Use the user ID from the request (sent by client from options response)
@@ -197,7 +198,7 @@ public static class PasskeyEndpoints
                 if (conflictingUserById != null)
                 {
                     Log.Users.PasskeyRegistrationIdConflict(logger, newUserGuid);
-                    return Results.BadRequest("User ID already exists.");
+                    return Result.Failure(Error.Conflict(ErrorCodes.Passkey.IdAlreadyExists, "User ID already exists.")).ToProblemDetails();
                 }
 
                 Log.Users.PasskeyCreatingNewUser(logger, newUserGuid, userIdSource);
@@ -225,7 +226,7 @@ public static class PasskeyEndpoints
                         return Results.Ok(new { Message = "Registration successful. Please check your email to verify your account." });
                     }
 
-                    return Results.BadRequest(createResult.Errors);
+                    return Result.Failure(Error.Validation(ErrorCodes.Auth.InvalidCredentials, string.Join(", ", createResult.Errors.Select(e => e.Description)))).ToProblemDetails();
                 }
 
                 if (userStore is IUserPasskeyStore<ApplicationUser> ps)
@@ -238,13 +239,13 @@ public static class PasskeyEndpoints
                         var updateResult = await userManager.UpdateAsync(newUser);
                         if (!updateResult.Succeeded)
                         {
-                            return Results.BadRequest(updateResult.Errors);
+                            return Result.Failure(Error.Validation(ErrorCodes.Passkey.InvalidCredential, string.Join(", ", updateResult.Errors.Select(e => e.Description)))).ToProblemDetails();
                         }
                     }
                     else
                     {
                         Log.Users.PasskeyIsNull(logger);
-                        return Results.BadRequest("Failed to create passkey");
+                        return Result.Failure(Error.Validation(ErrorCodes.Passkey.AttestationFailed, "Failed to create passkey")).ToProblemDetails();
                     }
                 }
 
@@ -258,33 +259,17 @@ public static class PasskeyEndpoints
                 }
 
                 // Auto Login - Issue Token (only when verification is not required)
-                var roles = await userManager.GetRolesAsync(newUser);
-                var accessToken = tokenService.GenerateAccessToken(newUser, tenantContext.TenantId, roles);
-                var refreshToken = tokenService.GenerateRefreshToken();
-
-                newUser.RefreshTokens.Add(new RefreshTokenInfo(
-                    refreshToken,
-                    DateTimeOffset.UtcNow.AddDays(7),
-                    DateTimeOffset.UtcNow,
-                    tenantContext.TenantId));
-                _ = await userManager.UpdateAsync(newUser);
-
-                return Results.Ok(new LoginResponse(
-                     "Bearer",
-                     accessToken,
-                     3600,
-                     refreshToken
-                 ));
+                return await IssueTokens(newUser, tokenService, userManager, signInManager, tenantContext.TenantId, logger);
             }
             catch (Exception ex)
             {
                 Log.Users.PasskeyRegistrationUnhandledException(logger, ex);
-                return Results.BadRequest($"Registration failed: {ex.Message}");
+                return Result.Failure(Error.InternalServerError("ERR_INTERNAL_SERVER_ERROR", $"Registration failed: {ex.Message}")).ToProblemDetails();
             }
         });
 
         // 3. Get Login Options
-        _ = paramsGroup.MapPost("/assertion/options", async (
+        _ = paramsGroup.MapPost("/assertion/options", async Task<IResult> (
             [FromBody] PasskeyLoginOptionsRequest request,
             SignInManager<ApplicationUser> signInManager,
             UserManager<ApplicationUser> userManager,
@@ -303,7 +288,7 @@ public static class PasskeyEndpoints
             // If user doesn't exist, return generic error
             if (user == null)
             {
-                return Results.BadRequest(genericError);
+                return Result.Failure(Error.Validation(ErrorCodes.Passkey.UserNotFound, genericError)).ToProblemDetails();
             }
 
             // Check if user has any passkeys registered
@@ -312,7 +297,7 @@ public static class PasskeyEndpoints
                 var passkeys = await passkeyStore.GetPasskeysAsync(user, cancellationToken);
                 if (passkeys.Count == 0)
                 {
-                    return Results.BadRequest(genericError);
+                    return Result.Failure(Error.Validation(ErrorCodes.Passkey.UserNotFound, genericError)).ToProblemDetails();
                 }
             }
 
@@ -323,7 +308,7 @@ public static class PasskeyEndpoints
         });
 
         // 4. Login Passkey
-        _ = paramsGroup.MapPost("/assertion/result", async (
+        _ = paramsGroup.MapPost("/assertion/result", async Task<IResult> (
             [FromBody] RegisterPasskeyRequest request,
             SignInManager<ApplicationUser> signInManager,
             UserManager<ApplicationUser> userManager,
@@ -337,7 +322,7 @@ public static class PasskeyEndpoints
             {
                 if (string.IsNullOrEmpty(request.CredentialJson))
                 {
-                    return Results.BadRequest("Invalid credential data");
+                    return Result.Failure(Error.Validation(ErrorCodes.Passkey.InvalidCredential, "Invalid credential data")).ToProblemDetails();
                 }
 
                 var result = await signInManager.PasskeySignInAsync(request.CredentialJson);
@@ -397,23 +382,23 @@ public static class PasskeyEndpoints
                         Log.Users.PasskeyParseError(logger, ex);
                     }
 
-                    return Results.BadRequest("User not found for passkey.");
+                    return Result.Failure(Error.NotFound(ErrorCodes.Passkey.UserNotFound, "User not found for passkey.")).ToProblemDetails();
                 }
                 else
                 {
                     Log.Users.PasskeyAssertionFailed(logger, result.IsLockedOut, result.IsNotAllowed, result.RequiresTwoFactor);
-                    return Results.BadRequest("Invalid passkey assertion.");
+                    return Result.Failure(Error.Unauthorized(ErrorCodes.Passkey.AssertionFailed, "Invalid passkey assertion.")).ToProblemDetails();
                 }
             }
             catch (Exception ex)
             {
                 Log.Users.PasskeyLoginUnhandledException(logger, ex);
-                return Results.BadRequest($"Login failed: {ex.Message}");
+                return Result.Failure(Error.InternalServerError("ERR_INTERNAL_SERVER_ERROR", $"Login failed: {ex.Message}")).ToProblemDetails();
             }
         });
 
         // 5. List Passkeys (Authenticated)
-        _ = paramsGroup.MapGet("/passkeys", async (
+        _ = paramsGroup.MapGet("/passkeys", async Task<IResult> (
             HttpContext context,
             UserManager<ApplicationUser> userManager,
             IUserStore<ApplicationUser> userStore,
@@ -440,7 +425,7 @@ public static class PasskeyEndpoints
         }).RequireAuthorization();
 
         // 6. Delete Passkey (Authenticated)
-        _ = paramsGroup.MapDelete("/passkeys/{id}", async (
+        _ = paramsGroup.MapDelete("/passkeys/{id}", async Task<IResult> (
             string id,
             HttpContext context,
             UserManager<ApplicationUser> userManager,
@@ -450,7 +435,7 @@ public static class PasskeyEndpoints
             var user = await userManager.GetUserAsync(context.User);
             if (user is null)
             {
-                return Results.Unauthorized();
+                return Result.Failure(Error.Unauthorized(ErrorCodes.Auth.InvalidToken, "User not found.")).ToProblemDetails();
             }
 
             try
@@ -465,7 +450,7 @@ public static class PasskeyEndpoints
                         var hasPassword = await userManager.HasPasswordAsync(user);
                         if (!hasPassword)
                         {
-                            return Results.BadRequest("Cannot delete your only passkey. You would be locked out of your account. Set a password first.");
+                            return Result.Failure(Error.Validation(ErrorCodes.Passkey.LastPasskey, "Cannot delete your only passkey. You would be locked out of your account. Set a password first.")).ToProblemDetails();
                         }
                     }
 
@@ -474,11 +459,11 @@ public static class PasskeyEndpoints
                     return Results.Ok(new { Message = "Passkey deleted." });
                 }
 
-                return Results.BadRequest("Passkey store not available.");
+                return Result.Failure(Error.Validation(ErrorCodes.Passkey.StoreNotAvailable, "Passkey store not available.")).ToProblemDetails();
             }
             catch (FormatException)
             {
-                return Results.BadRequest("Invalid passkey ID format.");
+                return Result.Failure(Error.Validation(ErrorCodes.Passkey.InvalidFormat, "Invalid passkey ID format.")).ToProblemDetails();
             }
         }).RequireAuthorization();
 
@@ -499,11 +484,11 @@ public static class PasskeyEndpoints
             if (userManager.Options.SignIn.RequireConfirmedEmail && !await userManager.IsEmailConfirmedAsync(user))
             {
                 Log.Users.LoginFailedUnconfirmedEmail(logger, user.Email!);
-                return Results.Json(new { error = "Requires verification", message = "Please confirm your email address." }, statusCode: 401);
+                return Result.Failure(Error.Unauthorized(ErrorCodes.Auth.EmailUnconfirmed, "Please confirm your email address.")).ToProblemDetails();
             }
 
             Log.Users.LoginFailedUserNotFound(logger, user.Email!); // Generic fallback
-            return Results.BadRequest("User is not allowed to sign in.");
+            return Result.Failure(Error.Unauthorized(ErrorCodes.Auth.NotAllowed, "User is not allowed to sign in.")).ToProblemDetails();
         }
 
         var roles = await userManager.GetRolesAsync(user);

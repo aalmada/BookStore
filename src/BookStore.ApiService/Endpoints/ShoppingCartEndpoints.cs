@@ -3,6 +3,7 @@ using BookStore.ApiService.Infrastructure.Tenant;
 using BookStore.ApiService.Messages.Commands;
 using BookStore.ApiService.Models;
 using BookStore.ApiService.Projections;
+using BookStore.Shared.Models;
 using Marten;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
@@ -36,7 +37,7 @@ public static class ShoppingCartEndpoints
 
     const int MaxQuantityPerItem = 10;
 
-    static async Task<Results<Ok<ShoppingCartDto>, NotFound>> GetCart(
+    static async Task<IResult> GetCart(
         [FromServices] IQuerySession session,
         HttpContext context,
         CancellationToken cancellationToken)
@@ -45,7 +46,7 @@ public static class ShoppingCartEndpoints
 
         if (userId == Guid.Empty)
         {
-            return TypedResults.NotFound();
+            return Result.Failure(Error.NotFound(ErrorCodes.Cart.UserNotFound, "User not found")).ToProblemDetails();
         }
 
         // Read from the UserProfile projection document (same pattern as Books/Categories)
@@ -55,12 +56,12 @@ public static class ShoppingCartEndpoints
         if (profile == null)
         {
             // UserProfile doesn't exist - return empty cart
-            return TypedResults.Ok(new ShoppingCartDto([], 0));
+            return Results.Ok(new ShoppingCartDto([], 0));
         }
 
         if (profile.ShoppingCartItems?.Count == 0)
         {
-            return TypedResults.Ok(new ShoppingCartDto([], 0));
+            return Results.Ok(new ShoppingCartDto([], 0));
         }
 
         var bookIds = profile.ShoppingCartItems!.Keys.ToList();
@@ -79,10 +80,10 @@ public static class ShoppingCartEndpoints
             items,
             items.Sum(i => i.Quantity));
 
-        return TypedResults.Ok(cart);
+        return Results.Ok(cart);
     }
 
-    static async Task<Results<NoContent, NotFound, BadRequest<string>>> AddToCart(
+    static async Task<IResult> AddToCart(
         [FromBody] AddToCartRequest request,
         [FromServices] IMessageBus bus,
         [FromServices] IQuerySession session,
@@ -92,33 +93,33 @@ public static class ShoppingCartEndpoints
     {
         if (request.Quantity <= 0)
         {
-            return TypedResults.BadRequest("Quantity must be greater than 0");
+            return Result.Failure(Error.Validation(ErrorCodes.Cart.InvalidQuantity, "Quantity must be greater than 0")).ToProblemDetails();
         }
 
         if (request.Quantity > MaxQuantityPerItem)
         {
-            return TypedResults.BadRequest($"Quantity cannot exceed {MaxQuantityPerItem}");
+            return Result.Failure(Error.Validation(ErrorCodes.Cart.QuantityExceeded, $"Quantity cannot exceed {MaxQuantityPerItem}")).ToProblemDetails();
         }
 
         var userId = context.User.GetUserId();
         if (userId == Guid.Empty)
         {
-            return TypedResults.NotFound();
+            return Result.Failure(Error.NotFound(ErrorCodes.Cart.UserNotFound, "User not found")).ToProblemDetails();
         }
 
         // Validate book exists and is not deleted
         var book = await session.LoadAsync<BookSearchProjection>(request.BookId, cancellationToken);
         if (book == null || book.Deleted)
         {
-            return TypedResults.NotFound();
+            return Result.Failure(Error.NotFound(ErrorCodes.Cart.BookNotFound, "Book not found")).ToProblemDetails();
         }
 
         await bus.InvokeAsync(new AddBookToCart(userId, request.BookId, request.Quantity), new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
 
-        return TypedResults.NoContent();
+        return Results.NoContent();
     }
 
-    static async Task<Results<NoContent, NotFound, BadRequest<string>>> UpdateCartItem(
+    static async Task<IResult> UpdateCartItem(
         Guid bookId,
         [FromBody] UpdateCartItemRequest request,
         [FromServices] IMessageBus bus,
@@ -128,21 +129,21 @@ public static class ShoppingCartEndpoints
     {
         if (request.Quantity <= 0)
         {
-            return TypedResults.BadRequest("Quantity must be greater than 0");
+            return Result.Failure(Error.Validation(ErrorCodes.Cart.InvalidQuantity, "Quantity must be greater than 0")).ToProblemDetails();
         }
 
         var userId = context.User.GetUserId();
         if (userId == Guid.Empty)
         {
-            return TypedResults.NotFound();
+            return Result.Failure(Error.NotFound(ErrorCodes.Cart.UserNotFound, "User not found")).ToProblemDetails();
         }
 
         await bus.InvokeAsync(new UpdateCartItemQuantity(userId, bookId, request.Quantity), new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
 
-        return TypedResults.NoContent();
+        return Results.NoContent();
     }
 
-    static async Task<Results<NoContent, NotFound>> RemoveFromCart(
+    static async Task<IResult> RemoveFromCart(
         Guid bookId,
         [FromServices] IMessageBus bus,
         [FromServices] ITenantContext tenantContext,
@@ -152,15 +153,15 @@ public static class ShoppingCartEndpoints
         var userId = context.User.GetUserId();
         if (userId == Guid.Empty)
         {
-            return TypedResults.NotFound();
+            return Result.Failure(Error.NotFound(ErrorCodes.Cart.UserNotFound, "User not found")).ToProblemDetails();
         }
 
         await bus.InvokeAsync(new RemoveBookFromCart(userId, bookId), new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
 
-        return TypedResults.NoContent();
+        return Results.NoContent();
     }
 
-    static async Task<Results<NoContent, NotFound>> ClearCart(
+    static async Task<IResult> ClearCart(
         [FromServices] IMessageBus bus,
         [FromServices] ITenantContext tenantContext,
         HttpContext context,
@@ -169,11 +170,11 @@ public static class ShoppingCartEndpoints
         var userId = context.User.GetUserId();
         if (userId == Guid.Empty)
         {
-            return TypedResults.NotFound();
+            return Result.Failure(Error.NotFound(ErrorCodes.Cart.UserNotFound, "User not found")).ToProblemDetails();
         }
 
         await bus.InvokeAsync(new ClearShoppingCart(userId), new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
 
-        return TypedResults.NoContent();
+        return Results.NoContent();
     }
 }
