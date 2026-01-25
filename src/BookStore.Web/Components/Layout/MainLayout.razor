@@ -3,7 +3,9 @@
 <MudLayout>
     <BookStore.Web.Components.Shared.LogEnricher/>
     <MudAppBar Elevation="1">
-        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer"/>
+        <MudTooltip Text="Toggle Navigation" Arrow="true" Placement="Placement.Bottom">
+            <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer"/>
+        </MudTooltip>
         <MudText Typo="Typo.h5" Class="ml-3">
             @if (TenantService.IsLoading)
             {
@@ -12,18 +14,15 @@
             @TenantService.CurrentTenantName
         </MudText>
         <MudSpacer/>
-        <MudMenu Icon="@Icons.Material.Filled.Business" Color="Color.Inherit" Class="mr-2">
-            @foreach (var tenant in TenantService.AvailableTenants)
-            {
-                <MudMenuItem OnClick="@(() => SwitchTenant(tenant.Id))">@tenant.Name</MudMenuItem>
-            }
-        </MudMenu>
-        <MudSelect T="string" Value="@CurrencyService.CurrentCurrency" ValueChanged="CurrencyService.SetCurrencyAsync"
-                   Style="width: 100px;" Class="mr-4" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
-            <MudSelectItem Value="@("USD")">USD</MudSelectItem>
-            <MudSelectItem Value="@("EUR")">EUR</MudSelectItem>
-            <MudSelectItem Value="@("GBP")">GBP</MudSelectItem>
-        </MudSelect>
+        <MudTooltip Text="Switch Tenant" Arrow="true" Placement="Placement.Bottom" Disabled="@_isTenantMenuOpen">
+            <MudMenu @bind-Open="@_isTenantMenuOpen" Icon="@Icons.Material.Filled.Business" Color="Color.Inherit" Class="mr-2">
+                @foreach (var tenant in TenantService.AvailableTenants)
+                {
+                    <MudMenuItem OnClick="@(() => SwitchTenant(tenant.Id))">@tenant.Name</MudMenuItem>
+                }
+            </MudMenu>
+        </MudTooltip>
+        <BookStore.Web.Components.Shared.CurrencySelector/>
         <LoginDisplay/>
     </MudAppBar>
 
@@ -45,6 +44,7 @@
 
 @code {
     bool _drawerOpen = true;
+    bool _isTenantMenuOpen;
 
     void ToggleDrawer() => _drawerOpen = !_drawerOpen;
 

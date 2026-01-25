@@ -8,36 +8,43 @@
 
 <AuthorizeView>
     <Authorized>
-        <MudMenu Icon="@Icons.Material.Filled.AccountCircle" Color="Color.Inherit" AnchorOrigin="Origin.BottomRight">
-            <MudMenuItem>
-                <MudText Typo="Typo.body2">@context.User.Identity?.Name</MudText>
-            </MudMenuItem>
-            <MudDivider/>
-            <MudMenuItem Href="/account/password">
-                <MudIcon Icon="@Icons.Material.Filled.Lock" Class="mr-2"/>
-                Manage Password
-            </MudMenuItem>
-            <MudMenuItem Href="/account/passkeys">
-                <MudIcon Icon="@Icons.Material.Filled.Key" Class="mr-2"/>
-                Manage Passkeys
-            </MudMenuItem>
-            <MudMenuItem OnClick="HandleLogout">
-                <MudIcon Icon="@Icons.Material.Filled.Logout" Class="mr-2"/>
-                Logout
-            </MudMenuItem>
-        </MudMenu>
+        <MudTooltip Text="Account Settings" Arrow="true" Placement="Placement.Bottom" Disabled="@_isUserMenuOpen">
+            <MudMenu @bind-Open="@_isUserMenuOpen" Icon="@Icons.Material.Filled.AccountCircle" Color="Color.Inherit" AnchorOrigin="Origin.BottomRight">
+                <MudMenuItem>
+                    <MudText Typo="Typo.body2">@context.User.Identity?.Name</MudText>
+                </MudMenuItem>
+                <MudDivider/>
+                <MudMenuItem Href="/account/password">
+                    <MudIcon Icon="@Icons.Material.Filled.Lock" Class="mr-2"/>
+                    Manage Password
+                </MudMenuItem>
+                <MudMenuItem Href="/account/passkeys">
+                    <MudIcon Icon="@Icons.Material.Filled.Key" Class="mr-2"/>
+                    Manage Passkeys
+                </MudMenuItem>
+                <MudMenuItem OnClick="HandleLogout">
+                    <MudIcon Icon="@Icons.Material.Filled.Logout" Class="mr-2"/>
+                    Logout
+                </MudMenuItem>
+            </MudMenu>
+        </MudTooltip>
     </Authorized>
     <NotAuthorized>
-        <MudButton Href="/login" Variant="Variant.Text" Color="Color.Inherit" StartIcon="@Icons.Material.Filled.Login">
-            Login
-        </MudButton>
-        <MudButton Href="/register" Variant="Variant.Outlined" Color="Color.Inherit" StartIcon="@Icons.Material.Filled.PersonAdd">
-            Register
-        </MudButton>
+        <MudTooltip Text="Login" Arrow="true" Placement="Placement.Bottom">
+            <MudButton Href="/login" Variant="Variant.Text" Color="Color.Inherit" StartIcon="@Icons.Material.Filled.Login">
+                Login
+            </MudButton>
+        </MudTooltip>
+        <MudTooltip Text="Create Account" Arrow="true" Placement="Placement.Bottom">
+            <MudButton Href="/register" Variant="Variant.Outlined" Color="Color.Inherit" StartIcon="@Icons.Material.Filled.PersonAdd">
+                Register
+            </MudButton>
+        </MudTooltip>
     </NotAuthorized>
 </AuthorizeView>
 
 @code {
+    bool _isUserMenuOpen;
 
     async Task HandleLogout()
     {

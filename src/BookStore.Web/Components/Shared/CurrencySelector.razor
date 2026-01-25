@@ -1,0 +1,54 @@
+@inject CurrencyService CurrencyService
+@implements IDisposable
+
+<MudMenu @bind-Open="_isOpen" Dense="true" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" LockScroll="true">
+    <ActivatorContent>
+        <MudTooltip Text="Change Currency" Arrow="true" Placement="Placement.Bottom" Disabled="@_isOpen">
+            <MudButton Variant="Variant.Text" Color="Color.Inherit" Class="typography-button" EndIcon="@Icons.Material.Filled.KeyboardArrowDown">
+                <span class="mr-2" style="font-size: 1.2em;">@GetCurrencyFlag(CurrencyService.CurrentCurrency)</span>
+                @CurrencyService.CurrentCurrency
+            </MudButton>
+        </MudTooltip>
+    </ActivatorContent>
+    <ChildContent>
+        @foreach (var currency in _currencies)
+        {
+            <MudMenuItem OnClick="@(() => SetCurrencyAsync(currency))">
+                <div class="d-flex align-center gap-2">
+                    <span style="font-size: 1.5em;">@GetCurrencyFlag(currency)</span>
+                    <MudText Typo="Typo.body2">@currency</MudText>
+                </div>
+            </MudMenuItem>
+        }
+    </ChildContent>
+</MudMenu>
+
+@code {
+    private bool _isOpen;
+    private readonly string[] _currencies = { "USD", "EUR", "GBP" };
+
+    protected override async Task OnInitializedAsync()
+    {
+        CurrencyService.OnCurrencyChanged += StateHasChanged;
+        await CurrencyService.InitializeAsync();
+    }
+
+    private async Task SetCurrencyAsync(string currency)
+    {
+        await CurrencyService.SetCurrencyAsync(currency);
+    }
+
+    private string GetCurrencyFlag(string currency) => currency switch
+    {
+        "USD" => "🇺🇸",
+        "EUR" => "🇪🇺",
+        "GBP" => "🇬🇧",
+        _ => "🏳️"
+    };
+
+    public void Dispose()
+    {
+        CurrencyService.OnCurrencyChanged -= StateHasChanged;
+    }
+
+}
