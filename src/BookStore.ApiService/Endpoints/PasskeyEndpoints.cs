@@ -114,6 +114,13 @@ public static class PasskeyEndpoints
                         return Result.Failure(Error.Validation(ErrorCodes.Passkey.AttestationFailed, $"Attestation failed: {attestation.Failure?.Message}")).ToProblemDetails();
                     }
 
+                    // Capture Device Name from User-Agent
+                    var clientUserAgent = context.Request.Headers.UserAgent.ToString();
+                    if (attestation.Passkey != null)
+                    {
+                        attestation.Passkey.Name = BookStore.ApiService.Infrastructure.DeviceNameParser.Parse(clientUserAgent);
+                    }
+
                     if (userStore is IUserPasskeyStore<ApplicationUser> passkeyStore)
                     {
                         await passkeyStore.AddOrUpdatePasskeyAsync(user, attestation.Passkey!, cancellationToken);
@@ -163,6 +170,13 @@ public static class PasskeyEndpoints
                 if (!attestationNew.Succeeded)
                 {
                     return Result.Failure(Error.Validation(ErrorCodes.Passkey.AttestationFailed, $"Attestation failed: {attestationNew.Failure?.Message}")).ToProblemDetails();
+                }
+
+                // Capture Device Name from User-Agent
+                var registrationUserAgent = context.Request.Headers.UserAgent.ToString();
+                if (attestationNew.Passkey != null)
+                {
+                    attestationNew.Passkey.Name = BookStore.ApiService.Infrastructure.DeviceNameParser.Parse(registrationUserAgent);
                 }
 
                 // Use the user ID from the request (sent by client from options response)
