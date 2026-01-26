@@ -1,6 +1,5 @@
 @page "/admin/users"
 @using Microsoft.AspNetCore.Authorization
-@using BookStore.Shared.Models
 @inject IAdminUserClient UserClient
 @inject AuthenticationStateProvider AuthStateProvider
 @inject ISnackbar Snackbar
@@ -8,80 +7,190 @@
 
 <PageTitle>User Management - BookStore</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="mt-8">
-    <MudText Typo="Typo.h4" GutterBottom="true">User Management</MudText>
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-8 mb-12">
+    <MudCollapse Expanded="_isFilterOpen" Class="mb-4">
+        <MudPaper Class="pa-4 glass-filter rounded-xl" Elevation="0">
+            <MudGrid Spacing="3">
+                <MudItem xs="12" sm="6" md="3">
+                    <MudSelect T="bool?" Label="Role Type" @bind-Value="_adminFilter" @bind-Value:after="@(() => _table.ReloadServerData())" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true" Variant="Variant.Outlined">
+                        <MudSelectItem T="bool?" Value="true">Administrators</MudSelectItem>
+                        <MudSelectItem T="bool?" Value="false">Regular Users</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="3">
+                    <MudSelect T="bool?" Label="Identity Status" @bind-Value="_confirmedFilter" @bind-Value:after="@(() => _table.ReloadServerData())" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true" Variant="Variant.Outlined">
+                        <MudSelectItem T="bool?" Value="true">Email Verified</MudSelectItem>
+                        <MudSelectItem T="bool?" Value="false">Verification Pending</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="3" md="3">
+                    <MudSelect T="bool?" Label="Password Auth" @bind-Value="_passwordFilter" @bind-Value:after="@(() => _table.ReloadServerData())" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true" Variant="Variant.Outlined">
+                        <MudSelectItem T="bool?" Value="true">Legacy Password Set</MudSelectItem>
+                        <MudSelectItem T="bool?" Value="false">No Password</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="3" md="3">
+                    <MudSelect T="bool?" Label="Passkey Security" @bind-Value="_passkeyFilter" @bind-Value:after="@(() => _table.ReloadServerData())" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true" Variant="Variant.Outlined">
+                        <MudSelectItem T="bool?" Value="true">Secure Passkey Setup</MudSelectItem>
+                        <MudSelectItem T="bool?" Value="false">No Passkey</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+    </MudCollapse>
 
-    <MudTable Items="@_users" Loading="@_isLoading" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="4">
+    <MudTable @ref="_table" ServerData="ServerReload" Loading="@_isLoading" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="0"
+              Class="glass-table rounded-xl overflow-hidden">
+        <ToolBarContent>
+            <MudText Typo="Typo.h5" Class="fw-bold me-4">User Management</MudText>
+            <MudSpacer/>
+            <MudTextField @bind-Value="_searchString" Placeholder="Search users..." Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="search-field"
+                          Clearable="true" Immediate="true" Variant="Variant.Outlined" Margin="Margin.Dense"/>
+            <MudIconButton Icon="@Icons.Material.Filled.FilterList" Color="@(_isFilterOpen ? Color.Primary : Color.Default)"
+                           OnClick="@(() => _isFilterOpen = !_isFilterOpen)" Class="ms-2"/>
+        </ToolBarContent>
         <HeaderContent>
-            <MudTh>Email</MudTh>
-            <MudTh>Confirmed</MudTh>
-            <MudTh>Roles</MudTh>
-            <MudTh>Actions</MudTh>
+            <MudTh Class="fw-bold">
+                <MudTableSortLabel SortLabel="email" T="UserAdminDto">User</MudTableSortLabel>
+            </MudTh>
+            <MudTh Class="fw-bold text-center">Status</MudTh>
+            <MudTh Class="fw-bold text-center">Authentication</MudTh>
+            <MudTh Class="fw-bold">Roles</MudTh>
+            <MudTh Class="fw-bold text-end">Actions</MudTh>
         </HeaderContent>
         <RowTemplate>
-            <MudTd DataLabel="Email">
-                <MudStack Row="true" AlignItems="AlignItems.Center">
-                    @context.Email
-                    @if (context.Email.Equals(_currentUserEmail, StringComparison.OrdinalIgnoreCase))
+            <MudTd DataLabel="User">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                    <MudAvatar Color="@(context.Email.Equals(_currentUserEmail, StringComparison.OrdinalIgnoreCase) ? Color.Info : Color.Default)" Size="Size.Small">
+                        @context.Email[0].ToString().ToUpper()
+                    </MudAvatar>
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.body2" Class="fw-semibold">@context.Email</MudText>
+                        @if (context.Email.Equals(_currentUserEmail, StringComparison.OrdinalIgnoreCase))
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Info">You</MudText>
+                        }
+                    </MudStack>
+                </MudStack>
+            </MudTd>
+            <MudTd DataLabel="Confirmed" Class="text-center">
+                <MudTooltip Text="@(context.EmailConfirmed ? "Email Confirmed" : "Email Pending")">
+                    <MudIcon Icon="@(context.EmailConfirmed ? Icons.Material.Filled.VerifiedUser : Icons.Material.Filled.Pending)"
+                             Color="@(context.EmailConfirmed ? Color.Success : Color.Warning)"
+                             Size="Size.Medium"/>
+                </MudTooltip>
+            </MudTd>
+            <MudTd DataLabel="Authentication" Class="text-center">
+                <MudStack Row="true" Justify="Justify.Center" Spacing="2">
+                    <MudTooltip Text="@(context.HasPassword ? "Password Enabled" : "No Password")">
+                        <MudIcon Icon="@Icons.Material.Filled.VpnKey"
+                                 Color="@(context.HasPassword ? Color.Primary : Color.Default)"
+                                 Size="Size.Small"
+                                 Style="@(context.HasPassword ? "" : "opacity: 0.2")"/>
+                    </MudTooltip>
+                    <MudTooltip Text="@(context.HasPasskey ? "Passkey Registered" : "No Passkey")">
+                        <MudIcon Icon="@Icons.Material.Filled.Fingerprint"
+                                 Color="@(context.HasPasskey ? Color.Secondary : Color.Default)"
+                                 Size="Size.Small"
+                                 Style="@(context.HasPasskey ? "" : "opacity: 0.2")"/>
+                    </MudTooltip>
+                </MudStack>
+            </MudTd>
+            <MudTd DataLabel="Roles">
+                <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1">
+                    @foreach (var role in context.Roles)
                     {
-                        <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Text">Current</MudChip>
+                        <MudChip T="string" Size="Size.Small" Color="@(GetRoleColor(role))" Variant="Variant.Text" Class="fw-medium">@role</MudChip>
                     }
                 </MudStack>
             </MudTd>
-            <MudTd DataLabel="Confirmed">
-                <MudIcon Icon="@(context.EmailConfirmed ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Error)"
-                         Color="@(context.EmailConfirmed ? Color.Success : Color.Error)"
-                         Size="Size.Small"/>
-            </MudTd>
-            <MudTd DataLabel="Roles">
-                @foreach (var role in context.Roles)
-                {
-                    <MudChip T="string" Size="Size.Small" Color="@(GetRoleColor(role))">@role</MudChip>
-                }
-            </MudTd>
-            <MudTd DataLabel="Actions">
+            <MudTd DataLabel="Actions" Class="text-end">
                 @if (!context.Email.Equals(_currentUserEmail, StringComparison.OrdinalIgnoreCase))
                 {
-                    @if (context.Roles.Contains("Admin"))
-                    {
-                        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" OnClick="@(() => DemoteUser(context))">
-                            Demote from Admin
-                        </MudButton>
-                    }
-                    else
-                    {
-                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => PromoteUser(context))">
-                            Promote to Admin
-                        </MudButton>
-                    }
+                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" Dense="true">
+                        @if (context.Roles.Contains("Admin"))
+                        {
+                            <MudMenuItem Icon="@Icons.Material.Filled.PersonRemove" OnClick="@(() => DemoteUser(context))">Demote from Admin</MudMenuItem>
+                        }
+                        else
+                        {
+                            <MudMenuItem Icon="@Icons.Material.Filled.AdminPanelSettings" OnClick="@(() => PromoteUser(context))">Promote to Admin</MudMenuItem>
+                        }
+                    </MudMenu>
                 }
             </MudTd>
         </RowTemplate>
     </MudTable>
+
 </MudContainer>
 
+<style>
+    .glass-table {
+        background: rgba(255, 255, 255, 0.7) !important;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07) !important;
+    }
+
+    .glass-filter {
+        background: rgba(255, 255, 255, 0.5) !important;
+        backdrop-filter: blur(8px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .search-field {
+        max-width: 300px;
+    }
+
+    .fw-bold { font-weight: 700 !important; }
+    .fw-semibold { font-weight: 600 !important; }
+    .fw-medium { font-weight: 500 !important; }
+
+    .mud-table-toolbar {
+        padding-top: 24px;
+        padding-bottom: 16px;
+    }
+</style>
+
 @code {
-    private List<UserAdminDto> _users = new();
     private bool _isLoading = true;
     private string? _currentUserEmail;
 
-    protected override async Task OnInitializedAsync()
-    {
-        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        _currentUserEmail = authState.User.Identity?.Name;
-        await LoadUsersAsync();
-    }
+    private MudTable<UserAdminDto> _table = null!;
+    private string _searchString = "";
+    private bool? _adminFilter;
+    private bool? _confirmedFilter;
+    private bool? _passwordFilter;
+    private bool? _passkeyFilter;
+    private bool _isFilterOpen;
 
-    private async Task LoadUsersAsync()
+    private async Task<TableData<UserAdminDto>> ServerReload(TableState state, CancellationToken ct)
     {
         _isLoading = true;
         try
         {
-            _users = await UserClient.GetUsersAsync();
+            var pagedList = await UserClient.GetUsersAsync(
+                search: _searchString,
+                isAdmin: _adminFilter,
+                emailConfirmed: _confirmedFilter,
+                hasPassword: _passwordFilter,
+                hasPasskey: _passkeyFilter,
+                page: state.Page + 1,
+                pageSize: state.PageSize,
+                sortBy: state.SortLabel,
+                sortOrder: state.SortDirection == SortDirection.Descending ? "desc" : "asc");
+
+            return new TableData<UserAdminDto>
+            {
+                TotalItems = (int)pagedList.TotalItemCount,
+                Items = pagedList.Items
+            };
         }
         catch (Exception ex)
         {
             Snackbar.Add($"Failed to load users: {ex.Message}", Severity.Error);
+            return new TableData<UserAdminDto> { TotalItems = 0, Items = [] };
         }
         finally
         {
@@ -89,13 +198,20 @@
         }
     }
 
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        _currentUserEmail = authState.User.Identity?.Name;
+    }
+
+
     private async Task PromoteUser(UserAdminDto user)
     {
         try
         {
             await UserClient.PromoteToAdminAsync(user.Id);
             Snackbar.Add($"User {user.Email} promoted to Admin", Severity.Success);
-            await LoadUsersAsync();
+            await _table.ReloadServerData();
         }
         catch (Exception ex)
         {
@@ -109,7 +225,7 @@
         {
             await UserClient.DemoteFromAdminAsync(user.Id);
             Snackbar.Add($"User {user.Email} demoted from Admin", Severity.Success);
-            await LoadUsersAsync();
+            await _table.ReloadServerData();
         }
         catch (Exception ex)
         {

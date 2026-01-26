@@ -173,6 +173,15 @@ With proper indexing:
 
 ---
 
+### Cross-Tenant Maintenance
+
+To ensure system-wide hygiene, background maintenance tasks are configured to be tenant-aware or global as needed:
+
+- **Unverified Account Cleanup**: The background cleanup job for unverified accounts uses `.AnyTenant()` to ensure stale accounts are removed across all tenants in a single pass.
+- **Index Management**: Indexes are monitored and rebuilt system-wide to maintain performance for all tenants.
+
+---
+
 ## Security Features
 
 ### Audit Logging

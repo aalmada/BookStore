@@ -17,7 +17,7 @@ public static class ResultExtensions
             detail: result.Error.Message,
             extensions: new Dictionary<string, object?>
             {
-                { "code", result.Error.Code }
+                { "error", result.Error.Code }
             });
     }
 

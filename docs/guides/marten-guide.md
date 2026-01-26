@@ -305,9 +305,14 @@ public static IServiceCollection AddMartenEventStore(this IServiceCollection ser
         options.Events.TenancyStyle = TenancyStyle.Conjoined;
         options.Policies.AllDocumentsAreMultiTenanted();
 
-        // Register event types and projections
-        // ...
-        
+        // ApplicationUser indexes (Identity)
+        _ = options.Schema.For<ApplicationUser>()
+            .UniqueIndex(UniqueIndexType.Computed, x => x.NormalizedEmail!)
+            .UniqueIndex(UniqueIndexType.Computed, x => x.NormalizedUserName!)
+            .Index(x => x.NormalizedEmail)
+            .Index(x => x.NormalizedUserName)
+            .GinIndexJsonData();
+
         return options;
     })
     .AddAsyncDaemon(DaemonMode.Solo)

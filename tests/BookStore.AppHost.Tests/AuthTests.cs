@@ -111,11 +111,11 @@ public class AuthTests
         string? code = null;
         if (doc.RootElement.TryGetProperty("extensions", out var extensions))
         {
-            code = extensions.GetProperty("code").GetString();
+            code = extensions.GetProperty("error").GetString();
         }
         else
         {
-            code = doc.RootElement.GetProperty("code").GetString();
+            code = doc.RootElement.GetProperty("error").GetString();
         }
 
         _ = await Assert.That(code).IsEqualTo("ERR_AUTH_INVALID_CREDENTIALS");

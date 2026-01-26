@@ -6,7 +6,6 @@ using JasperFx;
 using Marten;
 using Weasel.Core;
 
-
 namespace BookStore.AppHost.Tests;
 
 public class EmailVerificationTests

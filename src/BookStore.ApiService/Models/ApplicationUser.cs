@@ -79,6 +79,26 @@ public sealed class ApplicationUser
     /// Used for rate limiting to prevent spam.
     /// </summary>
     public DateTimeOffset? LastVerificationEmailSent { get; set; }
+
+    /// <summary>
+    /// Indicates whether two-factor authentication is enabled for this user
+    /// </summary>
+    public bool TwoFactorEnabled { get; set; }
+
+    /// <summary>
+    /// Date and time when the user lockout ends
+    /// </summary>
+    public DateTimeOffset? LockoutEnd { get; set; }
+
+    /// <summary>
+    /// Indicates whether the user can be locked out
+    /// </summary>
+    public bool LockoutEnabled { get; set; }
+
+    /// <summary>
+    /// Number of failed access attempts
+    /// </summary>
+    public int AccessFailedCount { get; set; }
 }
 
 /// <summary>

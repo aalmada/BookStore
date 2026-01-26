@@ -119,7 +119,10 @@ public static class GlobalHooks
                 {
                     tenantSession.Store(new BookStore.ApiService.Models.Tenant
                     {
-                        Id = tenantId, Name = tenantName, IsEnabled = true, CreatedAt = DateTimeOffset.UtcNow
+                        Id = tenantId,
+                        Name = tenantName,
+                        IsEnabled = true,
+                        CreatedAt = DateTimeOffset.UtcNow
                     });
                 }
                 else
