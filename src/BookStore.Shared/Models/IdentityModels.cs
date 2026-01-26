@@ -52,6 +52,8 @@ public record UserAdminDto(
     Guid Id,
     string Email,
     bool EmailConfirmed,
-    ICollection<string> Roles);
+    ICollection<string> Roles,
+    bool HasPassword,
+    bool HasPasskey);
 
 public record ResendVerificationRequest(string Email);

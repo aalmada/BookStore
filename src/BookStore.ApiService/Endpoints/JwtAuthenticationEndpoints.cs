@@ -75,21 +75,6 @@ public static class JwtAuthenticationEndpoints
         return group.RequireRateLimiting("AuthPolicy");
     }
 
-    /// <summary>
-    /// Builds the standard set of claims for a user token
-    /// </summary>
-    static List<Claim> BuildUserClaims(ApplicationUser user, string tenantId, IEnumerable<string> roles)
-    => [
-        new(ClaimTypes.NameIdentifier, user.Id.ToString()),
-        new(ClaimTypes.Name, user.UserName!),
-        new(ClaimTypes.Email, user.Email!),
-        new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-        new(JwtRegisteredClaimNames.Email, user.Email!),
-        new(JwtRegisteredClaimNames.Jti, Guid.CreateVersion7().ToString()),
-        new("tenant_id", tenantId),
-        .. roles.Select(role => new Claim(ClaimTypes.Role, string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase) ? "Admin" : role))
-    ];
-
     static async Task<IResult> LoginAsync(
         LoginRequest request,
         UserManager<ApplicationUser> userManager,
@@ -137,22 +122,8 @@ public static class JwtAuthenticationEndpoints
 
         // Build claims and generate tokens
         var roles = await userManager.GetRolesAsync(user);
-        var claims = BuildUserClaims(user, tenantContext.TenantId, roles);
-        var accessToken = jwtTokenService.GenerateAccessToken(claims);
-        var refreshToken = jwtTokenService.GenerateRefreshToken();
-
-        // Store refresh token with tenant context for security validation
-        user.RefreshTokens.Add(new RefreshTokenInfo(
-            refreshToken,
-            DateTimeOffset.UtcNow.AddDays(7),
-            DateTimeOffset.UtcNow,
-            tenantContext.TenantId));
-
-        // Prune old tokens (keep latest 5)
-        if (user.RefreshTokens.Count > 5)
-        {
-            user.RefreshTokens = [.. user.RefreshTokens.OrderByDescending(r => r.Created).Take(5)];
-        }
+        var accessToken = jwtTokenService.GenerateAccessToken(user, tenantContext.TenantId, roles);
+        var refreshToken = jwtTokenService.RotateRefreshToken(user, tenantContext.TenantId);
 
         _ = await userManager.UpdateAsync(user);
 
@@ -214,16 +185,8 @@ public static class JwtAuthenticationEndpoints
         }
 
         // Build claims and generate tokens
-        var claims = BuildUserClaims(user, tenantContext.TenantId, []);
-        var accessToken = jwtTokenService.GenerateAccessToken(claims);
-        var refreshToken = jwtTokenService.GenerateRefreshToken();
-
-        // Store refresh token with tenant context
-        user.RefreshTokens.Add(new RefreshTokenInfo(
-            refreshToken,
-            DateTimeOffset.UtcNow.AddDays(7),
-            DateTimeOffset.UtcNow,
-            tenantContext.TenantId));
+        var accessToken = jwtTokenService.GenerateAccessToken(user, tenantContext.TenantId, []);
+        var refreshToken = jwtTokenService.RotateRefreshToken(user, tenantContext.TenantId);
 
         _ = await userManager.UpdateAsync(user);
 
@@ -245,6 +208,7 @@ public static class JwtAuthenticationEndpoints
         string userId,
         string code,
         UserManager<ApplicationUser> userManager,
+        [FromServices] IDocumentSession session,
         Wolverine.IMessageBus bus,
         ILogger<Program> logger,
         CancellationToken cancellationToken)
@@ -265,6 +229,14 @@ public static class JwtAuthenticationEndpoints
         var result = await userManager.ConfirmEmailAsync(user, code);
         if (result.Succeeded)
         {
+            // Initialize UserProfile stream if it doesn't exist (e.g. for users who were required to verify before first login)
+            var profile = await session.LoadAsync<UserProfile>(user.Id, cancellationToken);
+            if (profile == null)
+            {
+                _ = session.Events.StartStream<UserProfile>(user.Id, new UserProfileCreated(user.Id));
+                await session.SaveChangesAsync(cancellationToken);
+            }
+
             await bus.PublishAsync(new BookStore.Shared.Notifications.UserVerifiedNotification(Guid.Empty, user.Id, user.Email!, DateTimeOffset.UtcNow));
             return Results.Ok("Email confirmed successfully.");
         }
@@ -375,23 +347,8 @@ public static class JwtAuthenticationEndpoints
 
         // 4. Generate new tokens using the original tenant from the refresh token
         var roles = await userManager.GetRolesAsync(user);
-        var claims = BuildUserClaims(user, existingToken.TenantId, roles);
-        var newAccessToken = jwtTokenService.GenerateAccessToken(claims);
-        var newRefreshToken = jwtTokenService.GenerateRefreshToken();
-
-        // 5. Rotate refresh token (remove old, add new)
-        _ = user.RefreshTokens.Remove(existingToken);
-        user.RefreshTokens.Add(new RefreshTokenInfo(
-            newRefreshToken,
-            DateTimeOffset.UtcNow.AddDays(7),
-            DateTimeOffset.UtcNow,
-            existingToken.TenantId));
-
-        // Prune old tokens (keep latest 5)
-        if (user.RefreshTokens.Count > 5)
-        {
-            user.RefreshTokens = [.. user.RefreshTokens.OrderByDescending(r => r.Created).Take(5)];
-        }
+        var newAccessToken = jwtTokenService.GenerateAccessToken(user, existingToken.TenantId, roles);
+        var newRefreshToken = jwtTokenService.RotateRefreshToken(user, existingToken.TenantId, existingToken.Token);
 
         _ = await userManager.UpdateAsync(user);
 

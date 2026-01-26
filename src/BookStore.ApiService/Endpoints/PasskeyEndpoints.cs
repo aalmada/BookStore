@@ -113,7 +113,7 @@ public static class PasskeyEndpoints
                         Log.Users.PasskeyAttestationFailed(logger, user.Email, attestation.Failure?.Message);
                         return Result.Failure(Error.Validation(ErrorCodes.Passkey.AttestationFailed, $"Attestation failed: {attestation.Failure?.Message}")).ToProblemDetails();
                     }
- 
+
                     // Capture Device Name from User-Agent
                     var clientUserAgent = context.Request.Headers.UserAgent.ToString();
                     if (attestation.Passkey != null)
@@ -273,7 +273,18 @@ public static class PasskeyEndpoints
                 }
 
                 // Auto Login - Issue Token (only when verification is not required)
-                return await IssueTokens(newUser, tokenService, userManager, signInManager, tenantContext.TenantId, logger);
+                // Build claims and generate tokens
+                var accessToken = tokenService.GenerateAccessToken(newUser, tenantContext.TenantId, []);
+                var refreshToken = tokenService.RotateRefreshToken(newUser, tenantContext.TenantId);
+
+                _ = await userManager.UpdateAsync(newUser);
+
+                return Results.Ok(new LoginResponse(
+                    "Bearer",
+                    accessToken,
+                    3600,
+                    refreshToken
+                ));
             }
             catch (Exception ex)
             {
@@ -367,7 +378,31 @@ public static class PasskeyEndpoints
                             if (user != null)
                             {
                                 // Issue tokens
-                                return await IssueTokens(user, tokenService, userManager, signInManager, tenantContext.TenantId, logger);
+                                // Check if user is allowed to sign in
+                                if (!await signInManager.CanSignInAsync(user))
+                                {
+                                    if (userManager.Options.SignIn.RequireConfirmedEmail && !await userManager.IsEmailConfirmedAsync(user))
+                                    {
+                                        Log.Users.LoginFailedUnconfirmedEmail(logger, user.Email!);
+                                        return Result.Failure(Error.Unauthorized(ErrorCodes.Auth.EmailUnconfirmed, "Please confirm your email address.")).ToProblemDetails();
+                                    }
+
+                                    Log.Users.LoginFailedUserNotFound(logger, user.Email!);
+                                    return Result.Failure(Error.Unauthorized(ErrorCodes.Auth.NotAllowed, "User is not allowed to sign in.")).ToProblemDetails();
+                                }
+
+                                var roles = await userManager.GetRolesAsync(user);
+                                var accessToken = tokenService.GenerateAccessToken(user, tenantContext.TenantId, roles);
+                                var refreshToken = tokenService.RotateRefreshToken(user, tenantContext.TenantId);
+
+                                _ = await userManager.UpdateAsync(user);
+
+                                return Results.Ok(new LoginResponse(
+                                    "Bearer",
+                                    accessToken,
+                                    3600,
+                                    refreshToken
+                                ));
                             }
                         }
 
@@ -385,7 +420,31 @@ public static class PasskeyEndpoints
                                     var user = await passkeyStore.FindByPasskeyIdAsync(credentialId, cancellationToken);
                                     if (user is not null)
                                     {
-                                        return await IssueTokens(user, tokenService, userManager, signInManager, tenantContext.TenantId, logger);
+                                        // Issue tokens
+                                        if (!await signInManager.CanSignInAsync(user))
+                                        {
+                                            if (userManager.Options.SignIn.RequireConfirmedEmail && !await userManager.IsEmailConfirmedAsync(user))
+                                            {
+                                                Log.Users.LoginFailedUnconfirmedEmail(logger, user.Email!);
+                                                return Result.Failure(Error.Unauthorized(ErrorCodes.Auth.EmailUnconfirmed, "Please confirm your email address.")).ToProblemDetails();
+                                            }
+
+                                            Log.Users.LoginFailedUserNotFound(logger, user.Email!);
+                                            return Result.Failure(Error.Unauthorized(ErrorCodes.Auth.NotAllowed, "User is not allowed to sign in.")).ToProblemDetails();
+                                        }
+
+                                        var roles = await userManager.GetRolesAsync(user);
+                                        var accessToken = tokenService.GenerateAccessToken(user, tenantContext.TenantId, roles);
+                                        var refreshToken = tokenService.RotateRefreshToken(user, tenantContext.TenantId);
+
+                                        _ = await userManager.UpdateAsync(user);
+
+                                        return Results.Ok(new LoginResponse(
+                                            "Bearer",
+                                            accessToken,
+                                            3600,
+                                            refreshToken
+                                        ));
                                     }
                                 }
                             }
@@ -482,46 +541,6 @@ public static class PasskeyEndpoints
         }).RequireAuthorization();
 
         return endpoints;
-    }
-
-    static async Task<IResult> IssueTokens(
-        ApplicationUser user,
-        BookStore.ApiService.Services.JwtTokenService tokenService,
-        UserManager<ApplicationUser> userManager,
-        SignInManager<ApplicationUser> signInManager,
-        string tenantId,
-        ILogger logger)
-    {
-        // Check if user is allowed to sign in (checks RequireConfirmedEmail, Lockout, etc.)
-        if (!await signInManager.CanSignInAsync(user))
-        {
-            if (userManager.Options.SignIn.RequireConfirmedEmail && !await userManager.IsEmailConfirmedAsync(user))
-            {
-                Log.Users.LoginFailedUnconfirmedEmail(logger, user.Email!);
-                return Result.Failure(Error.Unauthorized(ErrorCodes.Auth.EmailUnconfirmed, "Please confirm your email address.")).ToProblemDetails();
-            }
-
-            Log.Users.LoginFailedUserNotFound(logger, user.Email!); // Generic fallback
-            return Result.Failure(Error.Unauthorized(ErrorCodes.Auth.NotAllowed, "User is not allowed to sign in.")).ToProblemDetails();
-        }
-
-        var roles = await userManager.GetRolesAsync(user);
-        var accessToken = tokenService.GenerateAccessToken(user, tenantId, roles);
-        var refreshToken = tokenService.GenerateRefreshToken();
-
-        user.RefreshTokens.Add(new RefreshTokenInfo(
-            refreshToken,
-            DateTimeOffset.UtcNow.AddDays(7),
-            DateTimeOffset.UtcNow,
-            tenantId));
-        _ = await userManager.UpdateAsync(user);
-
-        return Results.Ok(new LoginResponse(
-            "Bearer",
-            accessToken,
-            3600,
-            refreshToken
-        ));
     }
 
     /// <summary>

@@ -38,12 +38,17 @@ public class AdminUserTests : IDisposable
         _client.DefaultRequestHeaders.Add("X-Tenant-ID", StorageConstants.DefaultTenantId);
 
         // Act
-        var users = await _client.GetFromJsonAsync<List<UserAdminDto>>("/api/admin/users");
+        var result = await _client.GetFromJsonAsync<PagedListDto<UserAdminDto>>("/api/admin/users");
+        var users = result?.Items;
 
         // Assert
         _ = await Assert.That(users).IsNotNull();
         _ = await Assert.That(users!).IsNotEmpty();
-        _ = await Assert.That(users!.Any(u => u.Email == "admin@bookstore.com")).IsTrue();
+
+        var admin = users!.First(u => u.Email == "admin@bookstore.com");
+        _ = await Assert.That(admin).IsNotNull();
+        _ = await Assert.That(admin.HasPassword).IsTrue();
+        _ = await Assert.That(admin.HasPasskey).IsFalse();
     }
 
     [Test]
@@ -59,7 +64,8 @@ public class AdminUserTests : IDisposable
         var userEmail = $"test_{Guid.NewGuid()}@example.com";
         _ = await _client.PostAsJsonAsync("/account/register", new { email = userEmail, password = "Password123!" });
 
-        var users = await _client.GetFromJsonAsync<List<UserAdminDto>>("/api/admin/users");
+        var result = await _client.GetFromJsonAsync<PagedListDto<UserAdminDto>>($"/api/admin/users?search={userEmail}");
+        var users = result?.Items;
         var userToPromote = users!.First(u => u.Email == userEmail);
 
         // Act
@@ -69,7 +75,9 @@ public class AdminUserTests : IDisposable
         _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
         // Verify promotion
-        var updatedUsers = await _client.GetFromJsonAsync<List<UserAdminDto>>("/api/admin/users");
+        var updatedResult =
+            await _client.GetFromJsonAsync<PagedListDto<UserAdminDto>>($"/api/admin/users?search={userEmail}");
+        var updatedUsers = updatedResult?.Items;
         var promotedUser = updatedUsers!.First(u => u.Id == userToPromote.Id);
         _ = await Assert.That(promotedUser.Roles).Contains("Admin");
     }
@@ -83,7 +91,8 @@ public class AdminUserTests : IDisposable
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", adminLogin!.AccessToken);
         _client.DefaultRequestHeaders.Add("X-Tenant-ID", StorageConstants.DefaultTenantId);
 
-        var users = await _client.GetFromJsonAsync<List<UserAdminDto>>("/api/admin/users");
+        var result = await _client.GetFromJsonAsync<PagedListDto<UserAdminDto>>("/api/admin/users");
+        var users = result?.Items;
         var self = users!.First(u => u.Email == "admin@bookstore.com");
 
         // Act
@@ -104,7 +113,8 @@ public class AdminUserTests : IDisposable
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", adminLogin!.AccessToken);
         _client.DefaultRequestHeaders.Add("X-Tenant-ID", StorageConstants.DefaultTenantId);
 
-        var users = await _client.GetFromJsonAsync<List<UserAdminDto>>("/api/admin/users");
+        var result = await _client.GetFromJsonAsync<PagedListDto<UserAdminDto>>("/api/admin/users");
+        var users = result?.Items;
         var self = users!.First(u => u.Email == "admin@bookstore.com");
 
         // Act
@@ -129,7 +139,8 @@ public class AdminUserTests : IDisposable
         var userEmail = $"test_{Guid.NewGuid()}@example.com";
         _ = await _client.PostAsJsonAsync("/account/register", new { email = userEmail, password = "Password123!" });
 
-        var users = await _client.GetFromJsonAsync<List<UserAdminDto>>("/api/admin/users");
+        var result = await _client.GetFromJsonAsync<PagedListDto<UserAdminDto>>($"/api/admin/users?search={userEmail}");
+        var users = result?.Items;
         var user = users!.First(u => u.Email == userEmail);
         _ = await _client.PostAsync($"/api/admin/users/{user.Id}/promote", null);
 
@@ -140,7 +151,9 @@ public class AdminUserTests : IDisposable
         _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
         // Verify demotion
-        var updatedUsers = await _client.GetFromJsonAsync<List<UserAdminDto>>("/api/admin/users");
+        var updatedResult =
+            await _client.GetFromJsonAsync<PagedListDto<UserAdminDto>>($"/api/admin/users?search={userEmail}");
+        var updatedUsers = updatedResult?.Items;
         var demotedUser = updatedUsers!.First(u => u.Id == user.Id);
         _ = await Assert.That(demotedUser.Roles).DoesNotContain("Admin");
     }
@@ -158,7 +171,8 @@ public class AdminUserTests : IDisposable
         var userEmail = $"test_{Guid.NewGuid()}@example.com";
         _ = await _client.PostAsJsonAsync("/account/register", new { email = userEmail, password = "Password123!" });
 
-        var users = await _client.GetFromJsonAsync<List<UserAdminDto>>("/api/admin/users");
+        var result = await _client.GetFromJsonAsync<PagedListDto<UserAdminDto>>($"/api/admin/users?search={userEmail}");
+        var users = result?.Items;
         var user = users!.First(u => u.Email == userEmail);
         _ = await _client.PostAsync($"/api/admin/users/{user.Id}/promote", null);
 
@@ -182,7 +196,8 @@ public class AdminUserTests : IDisposable
         var userEmail = $"test_{Guid.NewGuid()}@example.com";
         _ = await _client.PostAsJsonAsync("/account/register", new { email = userEmail, password = "Password123!" });
 
-        var users = await _client.GetFromJsonAsync<List<UserAdminDto>>("/api/admin/users");
+        var result = await _client.GetFromJsonAsync<PagedListDto<UserAdminDto>>($"/api/admin/users?search={userEmail}");
+        var users = result?.Items;
         var user = users!.First(u => u.Email == userEmail);
 
         // Act
@@ -228,7 +243,8 @@ public class AdminUserTests : IDisposable
         var userEmail = $"test_{Guid.NewGuid()}@example.com";
         _ = await _client.PostAsJsonAsync("/account/register", new { email = userEmail, password = "Password123!" });
 
-        var users = await _client.GetFromJsonAsync<List<UserAdminDto>>("/api/admin/users");
+        var result = await _client.GetFromJsonAsync<PagedListDto<UserAdminDto>>($"/api/admin/users?search={userEmail}");
+        var users = result?.Items;
         var user = users!.First(u => u.Email == userEmail);
 
         // Act: Manually promote using lowercase "admin" (if we had an endpoint that allowed it, 
@@ -237,9 +253,31 @@ public class AdminUserTests : IDisposable
         _ = await _client.PostAsync($"/api/admin/users/{user.Id}/promote", null);
 
         // Assert: Verify it's returned as "Admin" in the user list
-        var updatedUsers = await _client.GetFromJsonAsync<List<UserAdminDto>>("/api/admin/users");
+        var updatedResult =
+            await _client.GetFromJsonAsync<PagedListDto<UserAdminDto>>($"/api/admin/users?search={userEmail}");
+        var updatedUsers = updatedResult?.Items;
         var promotedUser = updatedUsers!.First(u => u.Id == user.Id);
         _ = await Assert.That(promotedUser.Roles).Contains("Admin");
         _ = await Assert.That(promotedUser.Roles).DoesNotContain("admin");
+    }
+
+    [Test]
+    public async Task GetUsers_WithPagination_ReturnsCorrectPage()
+    {
+        // Arrange
+        var adminLogin = await TestHelpers.LoginAsAdminAsync(_client!, StorageConstants.DefaultTenantId);
+        _client!.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", adminLogin!.AccessToken);
+        _client.DefaultRequestHeaders.Add("X-Tenant-ID", StorageConstants.DefaultTenantId);
+
+        // Act
+        var result = await _client.GetFromJsonAsync<PagedListDto<UserAdminDto>>("/api/admin/users?page=1&pageSize=1");
+
+        // Assert
+        _ = await Assert.That(result).IsNotNull();
+        _ = await Assert.That(result!.Items.Count).IsEqualTo(1);
+        _ = await Assert.That(result.PageNumber).IsEqualTo(1);
+        _ = await Assert.That(result.PageSize).IsEqualTo(1);
+        _ = await Assert.That(result.TotalItemCount).IsGreaterThanOrEqualTo(1);
     }
 }

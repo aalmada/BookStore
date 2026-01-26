@@ -131,7 +131,11 @@ The application exposes the following endpoints for Passkey operations:
 2.  **POST `/account/assertion/result`**
     *   **Purpose**: Verifies the assertion and logs the user in.
     *   **Request**: `{ CredentialJson: string }`
-    *   **Logic**: Verifies signature, finds user by credential ID from the `userHandle` in the credential, and issues JWT access tokens.
+    *   **Logic**: 
+        *   Verifies the WebAuthn signature.
+        *   Retrieves the user via `IUserPasskeyStore.FindByPasskeyIdAsync`.
+        *   Uses centralized `JwtTokenService` to generate access tokens and rotate refresh tokens.
+        *   Returns a standard `LoginResponse`.
 
 ## Client-Side Integration
 

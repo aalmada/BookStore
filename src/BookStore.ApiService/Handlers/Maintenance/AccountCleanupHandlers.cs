@@ -2,6 +2,8 @@ using BookStore.ApiService.Infrastructure.Identity;
 using BookStore.ApiService.Infrastructure.Logging;
 using BookStore.ApiService.Models;
 using Marten;
+using Marten.Linq;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Wolverine;
 

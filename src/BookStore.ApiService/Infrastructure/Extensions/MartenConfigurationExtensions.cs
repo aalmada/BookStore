@@ -205,7 +205,8 @@ public static class MartenConfigurationExtensions
 
         // ApplicationUser indexes (Identity)
         _ = options.Schema.For<ApplicationUser>()
-            .UniqueIndex(UniqueIndexType.DuplicatedField, x => x.Email!) // DuplicatedField includes tenant_id in conjoined tenancy
+            .UniqueIndex(UniqueIndexType.Computed, x => x.NormalizedEmail!)
+            .UniqueIndex(UniqueIndexType.Computed, x => x.NormalizedUserName!)
             .Index(x => x.NormalizedEmail)
             .Index(x => x.NormalizedUserName)
             .GinIndexJsonData()

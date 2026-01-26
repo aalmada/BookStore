@@ -1,10 +1,15 @@
 using System.Security.Claims;
+using BookStore.ApiService.Infrastructure;
 using BookStore.ApiService.Infrastructure.Extensions;
 using BookStore.ApiService.Models;
+using BookStore.Shared.Infrastructure;
 using BookStore.Shared.Models;
 using Marten;
+using Marten.Linq;
+using Marten.Pagination;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace BookStore.ApiService.Endpoints.Admin;
 
@@ -28,21 +33,86 @@ public static class AdminUserEndpoints
     }
 
     static async Task<IResult> GetUsers(
+        [AsParameters] UserSearchRequest request,
         IDocumentSession session,
+        IOptions<PaginationOptions> paginationOptions,
         CancellationToken ct)
     {
-        var users = await session.Query<ApplicationUser>()
-            .OrderBy(u => u.Email)
-            .ToListAsync(ct);
+        var paging = request.Normalize(paginationOptions.Value);
 
-        var dtos = users.Select(u => new UserAdminDto(
+        IQueryable<ApplicationUser> query = session.Query<ApplicationUser>();
+
+        if (!string.IsNullOrWhiteSpace(request.Search))
+        {
+            query = query.Where(u => u.Email!.Contains(request.Search, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (request.IsAdmin.HasValue)
+        {
+            if (request.IsAdmin.Value)
+            {
+                query = query.Where(u => u.Roles.Any(r => r == "Admin"));
+            }
+            else
+            {
+                query = query.Where(u => !u.Roles.Any(r => r == "Admin"));
+            }
+        }
+
+        if (request.EmailConfirmed.HasValue)
+        {
+            query = query.Where(u => u.EmailConfirmed == request.EmailConfirmed.Value);
+        }
+
+        if (request.HasPassword.HasValue)
+        {
+            if (request.HasPassword.Value)
+            {
+                query = query.Where(u => u.PasswordHash != null && u.PasswordHash != "");
+            }
+            else
+            {
+                query = query.Where(u => u.PasswordHash == null || u.PasswordHash == "");
+            }
+        }
+
+        if (request.HasPasskey.HasValue)
+        {
+            if (request.HasPasskey.Value)
+            {
+                query = query.Where(u => u.Passkeys.Count > 0);
+            }
+            else
+            {
+                query = query.Where(u => u.Passkeys.Count == 0);
+            }
+        }
+
+        var normalizedSortOrder = request.SortOrder?.ToLowerInvariant() == "desc" ? "desc" : "asc";
+        var normalizedSortBy = request.SortBy?.ToLowerInvariant();
+
+        query = (normalizedSortBy, normalizedSortOrder) switch
+        {
+            ("email", "desc") => query.OrderByDescending(u => u.Email),
+            _ => query.OrderBy(u => u.Email)
+        };
+
+        var pagedList = await ((IMartenQueryable<ApplicationUser>)query).ToPagedListAsync(paging.Page!.Value, paging.PageSize!.Value, ct);
+
+        var dtos = pagedList.Select(u => new UserAdminDto(
             u.Id,
             u.Email ?? "",
             u.EmailConfirmed,
-            [.. u.Roles.Select(r => r.Equals("admin", StringComparison.OrdinalIgnoreCase) ? "Admin" : r)]
+            [.. u.Roles.Select(r => r.Equals("admin", StringComparison.OrdinalIgnoreCase) ? "Admin" : r)],
+            !string.IsNullOrEmpty(u.PasswordHash),
+            u.Passkeys.Count > 0
         )).ToList();
 
-        return Results.Ok(dtos);
+        return Results.Ok(new PagedListDto<UserAdminDto>(
+            dtos,
+            pagedList.PageNumber,
+            pagedList.PageSize,
+            pagedList.TotalItemCount));
     }
 
     static async Task<IResult> PromoteToAdmin(

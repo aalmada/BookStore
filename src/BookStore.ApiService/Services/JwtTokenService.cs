@@ -16,58 +16,35 @@ public class JwtTokenService
     public JwtTokenService(IConfiguration configuration) => _configuration = configuration;
 
     /// <summary>
-    /// Generate a JWT access token for the given user with tenant context.
-    /// This is the preferred method for generating tokens as it includes the tenant_id claim.
+    /// Builds the standard set of claims for a user token
     /// </summary>
-    /// <param name="user">The user to generate a token for</param>
-    /// <param name="tenantId">The tenant identifier to include in the token</param>
-    /// <param name="roles">Optional roles to include. If null, uses user.Roles</param>
-    public string GenerateAccessToken(BookStore.ApiService.Models.ApplicationUser user, string tenantId, IEnumerable<string>? roles = null)
+    public List<Claim> BuildUserClaims(BookStore.ApiService.Models.ApplicationUser user, string tenantId, IEnumerable<string> roles)
     {
         var claims = new List<Claim>
         {
             new(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new(ClaimTypes.Name, user.UserName ?? ""),
-            new(ClaimTypes.Email, user.Email ?? ""),
+            new(ClaimTypes.Name, user.UserName!),
+            new(ClaimTypes.Email, user.Email!),
             new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-            new(JwtRegisteredClaimNames.Email, user.Email ?? ""),
+            new(JwtRegisteredClaimNames.Email, user.Email!),
             new(JwtRegisteredClaimNames.Jti, Guid.CreateVersion7().ToString()),
-            new("tenant_id", tenantId),
+            new("tenant_id", tenantId)
         };
 
-        foreach (var role in roles ?? user.Roles)
+        foreach (var role in roles)
         {
-            claims.Add(new Claim(ClaimTypes.Role, role));
+            claims.Add(new Claim(ClaimTypes.Role, string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase) ? "Admin" : role));
         }
 
-        return GenerateAccessToken(claims);
+        return claims;
     }
 
     /// <summary>
-    /// Generate a JWT access token for the given user.
+    /// Generate a JWT access token for the given user with tenant context.
     /// </summary>
-    /// <remarks>
-    /// This method is deprecated. Use <see cref="GenerateAccessToken(BookStore.ApiService.Models.ApplicationUser, string, IEnumerable{string}?)"/> 
-    /// which includes tenant_id for proper multi-tenancy support.
-    /// </remarks>
-    [Obsolete("Use GenerateAccessToken(user, tenantId, roles) overload for multi-tenancy support")]
-    public string GenerateAccessToken(BookStore.ApiService.Models.ApplicationUser user)
+    public string GenerateAccessToken(BookStore.ApiService.Models.ApplicationUser user, string tenantId, IEnumerable<string> roles)
     {
-        var claims = new List<Claim>
-        {
-            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new(ClaimTypes.Name, user.UserName ?? ""),
-            new(ClaimTypes.Email, user.Email ?? ""),
-            new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-            new(JwtRegisteredClaimNames.Email, user.Email ?? ""),
-            new(JwtRegisteredClaimNames.Jti, Guid.CreateVersion7().ToString()),
-        };
-
-        foreach (var role in user.Roles)
-        {
-            claims.Add(new Claim(ClaimTypes.Role, role));
-        }
-
+        var claims = BuildUserClaims(user, tenantId, roles);
         return GenerateAccessToken(claims);
     }
 
@@ -105,5 +82,39 @@ public class JwtTokenService
         using var rng = RandomNumberGenerator.Create();
         rng.GetBytes(randomBytes);
         return Convert.ToBase64String(randomBytes);
+    }
+
+    /// <summary>
+    /// Rotates refresh tokens for a user, maintaining the latest 5 tokens.
+    /// </summary>
+    public string RotateRefreshToken(BookStore.ApiService.Models.ApplicationUser user, string tenantId, string? oldToken = null)
+    {
+        // 1. Remove old token if provided
+        if (!string.IsNullOrEmpty(oldToken))
+        {
+            var existing = user.RefreshTokens.FirstOrDefault(rt => rt.Token == oldToken);
+            if (existing != null)
+            {
+                _ = user.RefreshTokens.Remove(existing);
+            }
+        }
+
+        // 2. Generate new token
+        var newToken = GenerateRefreshToken();
+
+        // 3. Add to collection
+        user.RefreshTokens.Add(new BookStore.ApiService.Models.RefreshTokenInfo(
+            newToken,
+            DateTimeOffset.UtcNow.AddDays(7),
+            DateTimeOffset.UtcNow,
+            tenantId));
+
+        // 4. Prune old tokens (keep latest 5)
+        if (user.RefreshTokens.Count > 5)
+        {
+            user.RefreshTokens = [.. user.RefreshTokens.OrderByDescending(r => r.Created).Take(5)];
+        }
+
+        return newToken;
     }
 }

@@ -14,7 +14,10 @@ public sealed class MartenUserStore :
     IUserPasswordStore<ApplicationUser>,
     IUserEmailStore<ApplicationUser>,
     IUserRoleStore<ApplicationUser>,
-    IUserPasskeyStore<ApplicationUser>
+    IUserPasskeyStore<ApplicationUser>,
+    IUserSecurityStampStore<ApplicationUser>,
+    IUserLockoutStore<ApplicationUser>,
+    IUserTwoFactorStore<ApplicationUser>
 {
     readonly IDocumentSession _session;
 
@@ -206,6 +209,69 @@ public sealed class MartenUserStore :
 
     public Task<UserPasskeyInfo?> FindPasskeyAsync(ApplicationUser user, byte[] credentialId, CancellationToken cancellationToken)
         => Task.FromResult(user.Passkeys.FirstOrDefault(p => p.CredentialId.SequenceEqual(credentialId)));
+
+    #endregion
+
+    #region IUserSecurityStampStore
+
+    public Task SetSecurityStampAsync(ApplicationUser user, string stamp, CancellationToken cancellationToken)
+    {
+        user.SecurityStamp = stamp;
+        return Task.CompletedTask;
+    }
+
+    public Task<string?> GetSecurityStampAsync(ApplicationUser user, CancellationToken cancellationToken)
+        => Task.FromResult<string?>(user.SecurityStamp);
+
+    #endregion
+
+    #region IUserLockoutStore
+
+    public Task<DateTimeOffset?> GetLockoutEndDateAsync(ApplicationUser user, CancellationToken cancellationToken)
+        => Task.FromResult(user.LockoutEnd);
+
+    public Task SetLockoutEndDateAsync(ApplicationUser user, DateTimeOffset? lockoutEnd, CancellationToken cancellationToken)
+    {
+        user.LockoutEnd = lockoutEnd;
+        return Task.CompletedTask;
+    }
+
+    public Task<int> IncrementAccessFailedCountAsync(ApplicationUser user, CancellationToken cancellationToken)
+    {
+        user.AccessFailedCount++;
+        return Task.FromResult(user.AccessFailedCount);
+    }
+
+    public Task ResetAccessFailedCountAsync(ApplicationUser user, CancellationToken cancellationToken)
+    {
+        user.AccessFailedCount = 0;
+        return Task.CompletedTask;
+    }
+
+    public Task<int> GetAccessFailedCountAsync(ApplicationUser user, CancellationToken cancellationToken)
+        => Task.FromResult(user.AccessFailedCount);
+
+    public Task<bool> GetLockoutEnabledAsync(ApplicationUser user, CancellationToken cancellationToken)
+        => Task.FromResult(user.LockoutEnabled);
+
+    public Task SetLockoutEnabledAsync(ApplicationUser user, bool enabled, CancellationToken cancellationToken)
+    {
+        user.LockoutEnabled = enabled;
+        return Task.CompletedTask;
+    }
+
+    #endregion
+
+    #region IUserTwoFactorStore
+
+    public Task SetTwoFactorEnabledAsync(ApplicationUser user, bool enabled, CancellationToken cancellationToken)
+    {
+        user.TwoFactorEnabled = enabled;
+        return Task.CompletedTask;
+    }
+
+    public Task<bool> GetTwoFactorEnabledAsync(ApplicationUser user, CancellationToken cancellationToken)
+        => Task.FromResult(user.TwoFactorEnabled);
 
     #endregion
 

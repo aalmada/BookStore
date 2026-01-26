@@ -168,7 +168,7 @@ The cleanup job is configured under the `Account:Cleanup` section in `appsetting
 ### Implementation details
 
 - **Wolverine Recurring Job**: The cleanup is registered as a recurring job in Wolverine, ensuring it runs reliably in the background.
-- **Marten Query**: The job performs a bulk deletion of accounts matching the criteria `EmailConfirmed == false` and `CreatedAt < SnapshotTime - Expiration`.
+- **Marten Query**: The job performs a bulk deletion of accounts across **all tenants** using the `.AnyTenant()` Marten extension. Matching criteria: `EmailConfirmed == false` and `CreatedAt < SnapshotTime - Expiration`.
 - **Structured Logging**: All cleanup activities are logged under the `Log.Maintenance` category.
 
 ## Implementation Details

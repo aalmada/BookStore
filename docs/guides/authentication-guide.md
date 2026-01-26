@@ -40,10 +40,11 @@ graph TB
     - Automatically handles **Silent Refresh** when the access token is close to expiry.
 
 #### Backend (API)
-- **`JwtTokenService`**: Responsible for generating signed JWTs (Access Tokens) and secure Refresh Tokens.
+- **`JwtTokenService`**: Central service for generating access tokens, rotating refresh tokens, and building standardized user claims.
 - **`JwtAuthenticationEndpoints`**:
     - `POST /account/login`: Exchange credentials for tokens.
-    - `POST /account/refresh-token`: Exchange refresh token for new access token.
+    - `POST /account/refresh-token`: Exchange refresh token for new access token (with automatic rotation).
+- **`MartenUserStore`**: Custom Identity store implementing `IUserSecurityStampStore`, `IUserLockoutStore`, and `IUserTwoFactorStore` for full Identity compatibility.
 - **Passkey Integration**: Passkey login flow (`/account/assertion/result`) also results in the issuance of standard JWTs, making the frontend agnostic to *how* the user logged in.
 
 ## Multi-Tenancy Security
@@ -62,16 +63,20 @@ Every JWT access token includes a `tenant_id` claim:
 }
 ```
 
-### Tenant-Aware Refresh Tokens
+### Token Rotation & Security
 
-Refresh tokens store their originating tenant for defense-in-depth:
+Refresh tokens follow a strict rotation policy:
+- **Rotation**: A new refresh token is issued every time an access token is refreshed. The old token is invalidated.
+- **History**: Only the latest 5 refresh tokens are kept per user for security/concurrency balance.
+- **Tenant Context**: Refresh tokens store their originating tenant for defense-in-depth:
 ```csharp
 public record RefreshTokenInfo(
     string Token,
     DateTimeOffset Expires,
     DateTimeOffset Created,
-    string TenantId);  // Prevents cross-tenant token theft
+    string TenantId);  // Prevents cross-tenant token usage
 ```
+- **Security Stamp**: `MartenUserStore` implements `IUserSecurityStampStore`, allowing global token invalidation (e.g., on password change).
 
 ### Cross-Tenant Protection
 
@@ -158,11 +163,16 @@ app.MapPost("/api/admin/books", ...)
 Users are stored in **Marten** (PostgreSQL) as JSON documents, scoped per tenant.
 
 ```csharp
+```csharp
 public class ApplicationUser
 {
     public Guid Id { get; set; }
     public string Email { get; set; }
     public string PasswordHash { get; set; }
+    public string SecurityStamp { get; set; }
+    public bool LockoutEnabled { get; set; }
+    public DateTimeOffset? LockoutEnd { get; set; }
+    public int AccessFailedCount { get; set; }
     public ICollection<string> Roles { get; set; }
     public IList<RefreshTokenInfo> RefreshTokens { get; set; }
     public IList<UserPasskeyInfo> Passkeys { get; set; }
