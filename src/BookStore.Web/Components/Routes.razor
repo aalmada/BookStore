@@ -1,26 +1,69 @@
 ﻿@using BookStore.Web.Services
 @inject TenantService TenantService
+@inject ThemeService ThemeInfo
 @implements IDisposable
 
-<MudThemeProvider Theme="@_currentTheme" />
-<MudPopoverProvider />
-<MudDialogProvider />
-<MudSnackbarProvider />
+<MudThemeProvider @ref="_mudThemeProvider" @bind-IsDarkMode="_isDarkMode" Theme="@_currentTheme"/>
+<MudPopoverProvider/>
+<MudDialogProvider/>
+<MudSnackbarProvider/>
 
 <Router AppAssembly="typeof(Program).Assembly">
     <Found Context="routeData">
-        <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
-        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+        <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)"/>
+        <FocusOnNavigate RouteData="routeData" Selector="h1"/>
     </Found>
 </Router>
 
 @code {
     private MudTheme _currentTheme = new();
+    private bool _isDarkMode;
+    private MudThemeProvider _mudThemeProvider = null!;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         TenantService.OnChange += UpdateTheme;
+        ThemeInfo.OnChange += OnThemeChanged;
         UpdateTheme();
+        await ThemeInfo.InitializeAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await ApplyThemeAsync();
+        }
+    }
+
+    private async void OnThemeChanged()
+    {
+        await ApplyThemeAsync();
+        StateHasChanged();
+    }
+
+    private async Task ApplyThemeAsync()
+    {
+        if (ThemeInfo.CurrentTheme == ThemeMode.System)
+        {
+            _isDarkMode = await _mudThemeProvider.GetSystemDarkModeAsync();
+            await _mudThemeProvider.WatchSystemDarkModeAsync(OnSystemPreferenceChanged);
+        }
+        else
+        {
+            _isDarkMode = ThemeInfo.CurrentTheme == ThemeMode.Dark;
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task OnSystemPreferenceChanged(bool isSystemDarkMode)
+    {
+        if (ThemeInfo.CurrentTheme == ThemeMode.System)
+        {
+            _isDarkMode = isSystemDarkMode;
+            StateHasChanged();
+        }
     }
 
     private void UpdateTheme()
@@ -35,7 +78,18 @@
             PaletteDark = new PaletteDark
             {
                 Primary = TenantService.CurrentTenantPrimaryColor,
-                AppbarBackground = TenantService.CurrentTenantPrimaryColor
+                AppbarBackground = "#1e1e2d",
+                Background = "#121212",
+                Surface = "#1e1e2d",
+                DrawerBackground = "#121212",
+                TextPrimary = "rgba(255,255,255, 0.90)",
+                TextSecondary = "rgba(255,255,255, 0.70)",
+                ActionDefault = "#adadb1",
+                ActionDisabled = "rgba(255,255,255, 0.26)",
+                ActionDisabledBackground = "rgba(255,255,255, 0.12)",
+                Divider = "rgba(255,255,255, 0.12)",
+                LinesDefault = "rgba(255,255,255, 0.12)",
+                TableLines = "rgba(255,255,255, 0.12)"
             }
         };
         StateHasChanged();
@@ -44,5 +98,7 @@
     public void Dispose()
     {
         TenantService.OnChange -= UpdateTheme;
+        ThemeInfo.OnChange -= OnThemeChanged;
     }
+
 }

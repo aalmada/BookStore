@@ -1,0 +1,54 @@
+@using BookStore.Web.Services
+@inject ThemeService ThemeInfo
+
+<MudTooltip Text="Switch Theme" Arrow="true" Placement="Placement.Bottom">
+    <MudMenu Icon="@GetThemeIcon()" Color="Color.Inherit" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" Dense="true">
+        <MudMenuItem OnClick="@(() => SetTheme(ThemeMode.Light))">
+            <div class="d-flex align-center gap-2">
+                <MudIcon Icon="@Icons.Material.Filled.LightMode" Size="Size.Small"/>
+                <MudText>Light</MudText>
+            </div>
+        </MudMenuItem>
+        <MudMenuItem OnClick="@(() => SetTheme(ThemeMode.Dark))">
+            <div class="d-flex align-center gap-2">
+                <MudIcon Icon="@Icons.Material.Filled.DarkMode" Size="Size.Small"/>
+                <MudText>Dark</MudText>
+            </div>
+        </MudMenuItem>
+        <MudMenuItem OnClick="@(() => SetTheme(ThemeMode.System))">
+            <div class="d-flex align-center gap-2">
+                <MudIcon Icon="@Icons.Material.Filled.SettingsBrightness" Size="Size.Small"/>
+                <MudText>System</MudText>
+            </div>
+        </MudMenuItem>
+    </MudMenu>
+</MudTooltip>
+
+@code {
+
+    private string GetThemeIcon()
+    {
+        return ThemeInfo.CurrentTheme switch
+        {
+            ThemeMode.Light => Icons.Material.Filled.LightMode,
+            ThemeMode.Dark => Icons.Material.Filled.DarkMode,
+            _ => Icons.Material.Filled.SettingsBrightness
+        };
+    }
+
+    private async Task SetTheme(ThemeMode mode)
+    {
+        await ThemeInfo.SetThemeModeAsync(mode);
+    }
+
+    protected override void OnInitialized()
+    {
+        ThemeInfo.OnChange += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        ThemeInfo.OnChange -= StateHasChanged;
+    }
+
+}
