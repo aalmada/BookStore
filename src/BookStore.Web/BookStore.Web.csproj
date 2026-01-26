@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\BookStore.ServiceDefaults\BookStore.ServiceDefaults.csproj" />
     <ProjectReference Include="..\BookStore.Client\BookStore.Client.csproj" />
+    <ProjectReference Include="..\BookStore.Shared\BookStore.Shared.csproj" />
     
     <!-- Ensure API project builds before Web project but don't reference assemblies to avoid type conflicts -->
     <ProjectReference Include="..\BookStore.ApiService\BookStore.ApiService.csproj" ReferenceOutputAssembly="false" />

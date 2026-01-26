@@ -21,6 +21,11 @@ public static class TenantIdValidator
             return (false, errors);
         }
 
+        if (id == MultiTenancyConstants.DefaultTenantId)
+        {
+            return (true, errors);
+        }
+
         if (id.Length < MinLength)
         {
             errors.Add($"At least {MinLength} characters");
