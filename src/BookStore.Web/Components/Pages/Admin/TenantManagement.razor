@@ -59,7 +59,7 @@
         <MudForm @ref="_form">
             <MudStack Spacing="4" Class="mt-2">
                 <MudTextField T="string" Value="_model.Id" Label="Tenant ID" Required="true"
-                              Disabled="_isEditing" HelperText="Unique identifier for the tenant (lowercase, numbers, hyphens)"
+                              Disabled="_isEditing" HelperText="A unique identifier for the tenant"
                               Immediate="true" ValueChanged="OnIdChanged"
                               Validation="@(new Func<string, string?>(ValidateTenantId))"/>
 

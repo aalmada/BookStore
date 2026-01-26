@@ -1,11 +1,11 @@
 using Blazored.LocalStorage;
 using BookStore.Client;
+using BookStore.Shared;
 using BookStore.Shared.Models;
 using BookStore.Web.Infrastructure;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.JSInterop;
-using Refit;
 
 namespace BookStore.Web.Services;
 
@@ -14,8 +14,6 @@ namespace BookStore.Web.Services;
 /// </summary>
 public class TenantService : IDisposable
 {
-    const string DefaultTenantId = "*DEFAULT*";
-
     readonly ITenantClient _tenantClient;
     readonly NavigationManager _navigation;
     readonly ILocalStorageService _localStorage;
@@ -63,7 +61,7 @@ public class TenantService : IDisposable
         }
     }
 
-    public string CurrentTenantId { get; private set; } = DefaultTenantId;
+    public string CurrentTenantId { get; private set; } = MultiTenancyConstants.DefaultTenantId;
 
     public string CurrentTenantName
     {
@@ -101,7 +99,7 @@ public class TenantService : IDisposable
             else
             {
                 // Priority 3: Default tenant
-                _ = await SetTenantAsync(DefaultTenantId);
+                _ = await SetTenantAsync(MultiTenancyConstants.DefaultTenantId);
             }
         }
     }
@@ -131,7 +129,7 @@ public class TenantService : IDisposable
             }
             else
             {
-                _ = await SetTenantAsync(DefaultTenantId);
+                _ = await SetTenantAsync(MultiTenancyConstants.DefaultTenantId);
             }
         }
     }
@@ -183,10 +181,10 @@ public class TenantService : IDisposable
         catch (Refit.ApiException ex)
         {
             // Fallback for invalid/unknown/disabled tenant
-            if (tenantId != DefaultTenantId)
+            if (tenantId != MultiTenancyConstants.DefaultTenantId)
             {
                 // If not already on default, redirect to default
-                _ = await SetTenantAsync(DefaultTenantId);
+                _ = await SetTenantAsync(MultiTenancyConstants.DefaultTenantId);
             }
             else
             {
@@ -200,9 +198,9 @@ public class TenantService : IDisposable
         }
         catch (Exception ex)
         {
-            if (tenantId != DefaultTenantId)
+            if (tenantId != MultiTenancyConstants.DefaultTenantId)
             {
-                _ = await SetTenantAsync(DefaultTenantId);
+                _ = await SetTenantAsync(MultiTenancyConstants.DefaultTenantId);
             }
 
             return Result.Failure(Error.Failure("ERR_TENANT_SWITCH_FAILED", ex.Message));
