@@ -35,14 +35,14 @@
 | Category | Skills |
 |----------|--------|
 | **Run** | `/start-solution`, `/setup-aspire-mcp` |
-| **Scaffold** | `/scaffold-write`, `/scaffold-read`, `/scaffold-aggregate`, `/scaffold-projection`, `/scaffold-frontend-feature`, `/scaffold-test` |
+| **Scaffold** | `/scaffold-create-operation`, `/scaffold-update-operation`, `/scaffold-delete-operation`, `/scaffold-get-by-id`, `/scaffold-list-query`, `/scaffold-aggregate`, `/scaffold-single-stream-projection`, `/scaffold-multi-stream-projection`, `/scaffold-composite-projection`, `/scaffold-event-projection`, `/scaffold-frontend-feature`, `/scaffold-test` |
 | **Verify** | `/verify-feature`, `/run-unit-tests`, `/run-integration-tests` |
 | **Debug** | `/debug-sse`, `/debug-cache` |
 | **Deploy** | `/deploy-to-azure`, `/deploy-kubernetes`, `/rollback-deployment` |
 | **Utility** | `/doctor`, `/rebuild-clean`, `/scaffold-skill`, `/cheat-sheet` |
 | **Documentation** | `/write-documentation-guide`, `/write-agents-md` |
 
-**Aliases**: `/sw`→scaffold-write, `/sr`→scaffold-read, `/sa`→scaffold-aggregate, `/sp`→scaffold-projection, `/st`→scaffold-test, `/vf`→verify-feature
+**Aliases**: `/sco`→scaffold-create-operation, `/suo`→scaffold-update-operation, `/sdo`→scaffold-delete-operation, `/sgbi`→scaffold-get-by-id, `/slq`→scaffold-list-query, `/sa`→scaffold-aggregate, `/ssp`→scaffold-single-stream-projection, `/msp`→scaffold-multi-stream-projection, `/scp`→scaffold-composite-projection, `/sep`→scaffold-event-projection, `/st`→scaffold-test, `/vf`→verify-feature
 
 ## Quick Troubleshooting
 - **Build fails**: Check BS1xxx-BS4xxx analyzer errors first
