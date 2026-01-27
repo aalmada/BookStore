@@ -2,6 +2,8 @@ using Marten;
 using Marten.Linq.SoftDeletes;
 using Microsoft.AspNetCore.Mvc;
 using Wolverine;
+using BookStore.ApiService.Infrastructure.Tenant;
+using BookStore.Shared.Models; // Also usually needed for DTOs in other files, but ensuring tenant infra is there.
 
 namespace BookStore.ApiService.Commands
 {
@@ -53,44 +55,47 @@ namespace BookStore.ApiService.Endpoints.Admin
         static Task<IResult> CreateAuthor(
             [FromBody] Commands.CreateAuthorRequest request,
             [FromServices] IMessageBus bus,
+            [FromServices] ITenantContext tenantContext,
             CancellationToken cancellationToken)
         {
             var command = new Commands.CreateAuthor(request.Name, request.Translations);
-            return bus.InvokeAsync<IResult>(command, cancellationToken);
+            return bus.InvokeAsync<IResult>(command, new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
         }
 
         static Task<IResult> UpdateAuthor(
             Guid id,
             [FromBody] Commands.UpdateAuthorRequest request,
             [FromServices] IMessageBus bus,
+            [FromServices] ITenantContext tenantContext,
             HttpContext context,
             CancellationToken cancellationToken)
         {
             var etag = context.Request.Headers["If-Match"].FirstOrDefault();
             var command = new Commands.UpdateAuthor(id, request.Name, request.Translations) { ETag = etag };
-            return bus.InvokeAsync<IResult>(command, cancellationToken);
+            return bus.InvokeAsync<IResult>(command, new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
         }
 
         static Task<IResult> SoftDeleteAuthor(
             Guid id,
             [FromServices] IMessageBus bus,
+            [FromServices] ITenantContext tenantContext,
             HttpContext context,
             CancellationToken cancellationToken)
         {
             var etag = context.Request.Headers["If-Match"].FirstOrDefault();
             var command = new Commands.SoftDeleteAuthor(id) { ETag = etag };
-            return bus.InvokeAsync<IResult>(command, cancellationToken);
+            return bus.InvokeAsync<IResult>(command, new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
         }
 
         static Task<IResult> RestoreAuthor(
             Guid id,
             [FromServices] IMessageBus bus,
+            [FromServices] ITenantContext tenantContext,
             HttpContext context,
             CancellationToken cancellationToken)
         {
             var etag = context.Request.Headers["If-Match"].FirstOrDefault();
             var command = new Commands.RestoreAuthor(id) { ETag = etag };
-            return bus.InvokeAsync<IResult>(command, cancellationToken);
-        }
-    }
+            return bus.InvokeAsync<IResult>(command, new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
+        }    }
 }

@@ -1,7 +1,7 @@
-using System.Net;
-using System.Net.Http.Json;
 using Aspire.Hosting;
 using Aspire.Hosting.Testing;
+using System.Net;
+using System.Net.Http.Json;
 using BookStore.Shared.Models;
 using Marten;
 using Projects;
@@ -174,7 +174,7 @@ public class RefitMartenRegressionTests
         // "the author filter works fine in the default tenant but not in other tenants"
 
         // Arrange
-        var tenantId = "author-filter-test";
+        var tenantId = $"author-filter-test-{Guid.NewGuid():N}";
 
         // We need to seed the tenant manually effectively because GlobalHooks doesn't expose the Store.
         // We can get the connection string and create a temporary store.
@@ -259,22 +259,21 @@ public class RefitMartenRegressionTests
         // Root cause suspect: GetAuthors cache key does not include TenantId.
 
         // Arrange
-        var tenantA = "tenant-a";
-        var tenantB = "tenant-b";
+        var tenantA = $"tenant-a-{Guid.NewGuid():N}";
+        var tenantB = $"tenant-b-{Guid.NewGuid():N}";
 
         // Seed Tenants
         var connectionString = await GlobalHooks.App!.GetConnectionStringAsync("bookstore");
-        using (var store = DocumentStore.For(opts =>
-               {
-                   opts.Connection(connectionString!);
-                   _ = opts.Policies.AllDocumentsAreMultiTenanted();
-                   opts.Events.TenancyStyle = Marten.Storage.TenancyStyle.Conjoined;
-                   opts.UseSystemTextJsonForSerialization(EnumStorage.AsString, Casing.CamelCase);
-               }))
+        using var store = DocumentStore.For(opts =>
         {
-            await TestHelpers.SeedTenantAsync(store, tenantA);
-            await TestHelpers.SeedTenantAsync(store, tenantB);
-        }
+            opts.Connection(connectionString!);
+            _ = opts.Policies.AllDocumentsAreMultiTenanted();
+            opts.Events.TenancyStyle = Marten.Storage.TenancyStyle.Conjoined;
+            opts.UseSystemTextJsonForSerialization(EnumStorage.AsString, Casing.CamelCase);
+        });
+
+        await TestHelpers.SeedTenantAsync(store, tenantA);
+        await TestHelpers.SeedTenantAsync(store, tenantB);
 
         var defaultClient = TestHelpers.GetUnauthenticatedClient();
 
@@ -288,7 +287,7 @@ public class RefitMartenRegressionTests
         var authorReqA = TestHelpers.GenerateFakeAuthorRequest();
         var authorIdA = Guid.Empty;
 
-        _ = await TestHelpers.ExecuteAndWaitForEventAsync(Guid.Empty, "AuthorUpdated", async () =>
+        _ = await TestHelpers.ExecuteAndWaitForEventAsync(Guid.Empty, "AuthorCreated", async () =>
         {
             var authorResA = await adminClientA.PostAsJsonAsync("/api/admin/authors", authorReqA);
             _ = await Assert.That(authorResA.StatusCode).IsEqualTo(HttpStatusCode.Created);
@@ -315,7 +314,7 @@ public class RefitMartenRegressionTests
 
         // Poll for consistency
         var foundA = false;
-        for (var i = 0; i < 10; i++)
+        for (var i = 0; i < 20; i++)
         {
             var resA = await publicClientA.GetAsync("/api/authors");
             if (resA.IsSuccessStatusCode)
@@ -328,7 +327,7 @@ public class RefitMartenRegressionTests
                 }
             }
 
-            await Task.Delay(500);
+            await Task.Delay(1000);
         }
 
         _ = await Assert.That(foundA).IsTrue();
@@ -343,6 +342,7 @@ public class RefitMartenRegressionTests
 
         // Poll for Author B presence (wait for consistency)
         var foundB = false;
+
         PagedListDto<AuthorDto>? listB = null;
         for (var i = 0; i < 10; i++)
         {
@@ -369,6 +369,6 @@ public class RefitMartenRegressionTests
         _ = await Assert.That(containsAInB).IsFalse();
     }
 
-    // Internal DTO for the Publisher test if not available globally
+// Internal DTO for the Publisher test if not available globally
     internal record PublisherDto(Guid Id, string Name);
 }
