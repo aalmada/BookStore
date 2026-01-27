@@ -12,6 +12,7 @@ using BookStore.ApiService.Projections;
 using BookStore.Shared.Infrastructure;
 using BookStore.Shared.Models;
 using Marten;
+using Marten.Linq.MatchesSql;
 using Marten.Pagination;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
@@ -119,6 +120,12 @@ public static class BookEndpoints
             (c.Type == System.Security.Claims.ClaimTypes.Role || c.Type == "role") &&
             string.Equals(c.Value, "Admin", StringComparison.OrdinalIgnoreCase));
 
+        // Fix binding if Currency is null but present in query (workaround for potential AsParameters binding issue)
+        if (string.IsNullOrWhiteSpace(request.Currency) && context.Request.Query.TryGetValue("currency", out var currencyQuery))
+        {
+            request = request with { Currency = currencyQuery.ToString() };
+        }
+
         var normalizedSortOrder = request.SortOrder?.ToLowerInvariant() == "desc" ? "desc" : "asc";
         var normalizedSortBy = request.SortBy?.ToLowerInvariant();
 
@@ -180,20 +187,77 @@ public static class BookEndpoints
                     query = query.Where(b => b.Sales.Any(s => s.Start <= currentTime && s.End > currentTime));
                 }
 
-                // Filter by price range if specified
+                // If Currency is specified but NO price range, we must still filter by currency existence
+                if (!string.IsNullOrWhiteSpace(request.Currency) && !request.MinPrice.HasValue && !request.MaxPrice.HasValue)
+                {
+                    query = query.Where(b => b.Prices.Any(p => p.Currency == request.Currency));
+                }
+
+                // Discount SQL (returns a percentage like 0.5 or 0)
+                // We use raw SQL to calculate the effective price because LINQ cannot easily handle
+                // dynamic computation inside JSON arrays (Prices) correlated with other arrays (Sales).
+                // We use COALESCE to handle potential casing differences dynamically
+                // (e.g. 'prices' vs 'Prices', 'value' vs 'Value')
+                const string discountSql = @"
+                    (
+                        SELECT COALESCE(
+                            (s ->> 'percentage')::decimal, 
+                            (s ->> 'Percentage')::decimal, 
+                            0
+                        )
+                        FROM jsonb_array_elements(COALESCE(d.data -> 'sales', d.data -> 'Sales', '[]'::jsonb)) s
+                        WHERE COALESCE(s ->> 'start', s ->> 'Start')::timestamptz <= ?
+                          AND COALESCE(s ->> 'end', s ->> 'End')::timestamptz > ?
+                        LIMIT 1
+                    )";
+
+                var queryNow = DateTimeOffset.UtcNow;
+
                 // Filter by price range if specified
                 if (request.MinPrice.HasValue)
                 {
-                    query = !string.IsNullOrWhiteSpace(request.Currency)
-                        ? query.Where(b => b.Prices.Any(p => p.Currency == request.Currency && p.Value >= request.MinPrice.Value))
-                        : query.Where(b => b.Prices.Any(p => p.Value >= request.MinPrice.Value));
+                    if (!string.IsNullOrWhiteSpace(request.Currency))
+                    {
+                        query = query.Where(b => b.MatchesSql($@"
+                            exists (
+                              select 1
+                              from jsonb_array_elements(COALESCE(d.data -> 'prices', d.data -> 'Prices', '[]'::jsonb)) p
+                              where COALESCE(p ->> 'currency', p ->> 'Currency') = ?
+                                and COALESCE(p ->> 'value', p ->> 'Value')::decimal * (1 - COALESCE({discountSql}, 0)) >= ?
+                            )", request.Currency, queryNow, queryNow, request.MinPrice.Value));
+                    }
+                    else
+                    {
+                        query = query.Where(b => b.MatchesSql($@"
+                            exists (
+                              select 1
+                              from jsonb_array_elements(COALESCE(d.data -> 'prices', d.data -> 'Prices', '[]'::jsonb)) p
+                              where COALESCE(p ->> 'value', p ->> 'Value')::decimal * (1 - COALESCE({discountSql}, 0)) >= ?
+                            )", queryNow, queryNow, request.MinPrice.Value));
+                    }
                 }
 
                 if (request.MaxPrice.HasValue)
                 {
-                    query = !string.IsNullOrWhiteSpace(request.Currency)
-                        ? query.Where(b => b.Prices.Any(p => p.Currency == request.Currency && p.Value <= request.MaxPrice.Value))
-                        : query.Where(b => b.Prices.Any(p => p.Value <= request.MaxPrice.Value));
+                    if (!string.IsNullOrWhiteSpace(request.Currency))
+                    {
+                        query = query.Where(b => b.MatchesSql($@"
+                            exists (
+                              select 1
+                              from jsonb_array_elements(COALESCE(d.data -> 'prices', d.data -> 'Prices', '[]'::jsonb)) p
+                              where COALESCE(p ->> 'currency', p ->> 'Currency') = ?
+                                and COALESCE(p ->> 'value', p ->> 'Value')::decimal * (1 - COALESCE({discountSql}, 0)) <= ?
+                            )", request.Currency, queryNow, queryNow, request.MaxPrice.Value));
+                    }
+                    else
+                    {
+                        query = query.Where(b => b.MatchesSql($@"
+                            exists (
+                              select 1
+                              from jsonb_array_elements(COALESCE(d.data -> 'prices', d.data -> 'Prices', '[]'::jsonb)) p
+                              where COALESCE(p ->> 'value', p ->> 'Value')::decimal * (1 - COALESCE({discountSql}, 0)) <= ?
+                            )", queryNow, queryNow, request.MaxPrice.Value));
+                    }
                 }
 
                 // Apply sorting
