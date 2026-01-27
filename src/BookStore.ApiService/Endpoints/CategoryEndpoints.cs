@@ -31,6 +31,7 @@ public static class CategoryEndpoints
 
     static async Task<Ok<PagedListDto<CategoryDto>>> GetCategories(
         [FromServices] IDocumentStore store,
+        [FromServices] ITenantContext tenantContext,
         [FromServices] IOptions<PaginationOptions> paginationOptions,
         [FromServices] IOptions<LocalizationOptions> localizationOptions,
         [FromServices] HybridCache cache,
@@ -45,14 +46,14 @@ public static class CategoryEndpoints
         var normalizedSortOrder = request.SortOrder?.ToLowerInvariant() == "desc" ? "desc" : "asc";
         var normalizedSortBy = request.SortBy?.ToLowerInvariant();
 
-        // Create cache key based on pagination and sorting
-        var cacheKey = $"categories:page={paging.Page}:size={paging.PageSize}:sort={normalizedSortBy}:{normalizedSortOrder}";
+        // Create cache key based on pagination, sorting, AND Tenant
+        var cacheKey = $"categories:tenant={tenantContext.TenantId}:page={paging.Page}:size={paging.PageSize}:sort={normalizedSortBy}:{normalizedSortOrder}";
 
         var response = await cache.GetOrCreateLocalizedAsync(
             cacheKey,
             async cancel =>
             {
-                await using var session = store.QuerySession();
+                await using var session = store.QuerySession(tenantContext.TenantId);
 
                 var query = session.Query<CategoryProjection>()
                     .Where(c => !c.Deleted);
@@ -94,6 +95,7 @@ public static class CategoryEndpoints
     static async Task<Results<Ok<CategoryDto>, NotFound>> GetCategory(
         Guid id,
         [FromServices] IDocumentStore store,
+        [FromServices] ITenantContext tenantContext,
         [FromServices] IOptions<LocalizationOptions> localizationOptions,
         [FromServices] HybridCache cache,
         HttpContext context,
@@ -103,10 +105,10 @@ public static class CategoryEndpoints
         var defaultCulture = localizationOptions.Value.DefaultCulture;
 
         var projection = await cache.GetOrCreateLocalizedAsync(
-            $"category:projection:{id}",
+            $"category:projection:{id}:tenant={tenantContext.TenantId}",
             async cancel =>
             {
-                await using var session = store.QuerySession();
+                await using var session = store.QuerySession(tenantContext.TenantId);
                 var category = await session.LoadAsync<CategoryProjection>(id, cancel);
                 if (category == null || category.Deleted)
                 {

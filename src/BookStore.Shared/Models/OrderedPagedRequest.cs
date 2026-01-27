@@ -1,4 +1,4 @@
-namespace BookStore.ApiService.Infrastructure;
+namespace BookStore.Shared.Models;
 
 public record OrderedPagedRequest : PagedRequest
 {

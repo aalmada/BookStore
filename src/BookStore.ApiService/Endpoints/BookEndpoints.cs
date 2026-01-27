@@ -123,7 +123,7 @@ public static class BookEndpoints
         var normalizedSortBy = request.SortBy?.ToLowerInvariant();
 
         // Create cache key including all search parameters
-        var cacheKey = $"books:search={request.Search}:author={request.AuthorId}:category={request.CategoryId}:publisher={request.PublisherId}:onSale={request.OnSale}:minPrice={request.MinPrice}:maxPrice={request.MaxPrice}:page={paging.Page}:size={paging.PageSize}:sort={normalizedSortBy}:{normalizedSortOrder}:admin={isAdmin}:tenant={tenantContext.TenantId}";
+        var cacheKey = $"books:search={request.Search}:author={request.AuthorId}:category={request.CategoryId}:publisher={request.PublisherId}:onSale={request.OnSale}:minPrice={request.MinPrice}:maxPrice={request.MaxPrice}:currency={request.Currency}:page={paging.Page}:size={paging.PageSize}:sort={normalizedSortBy}:{normalizedSortOrder}:admin={isAdmin}:tenant={tenantContext.TenantId}";
 
         var response = await cache.GetOrCreateLocalizedAsync(
             cacheKey,
@@ -181,14 +181,19 @@ public static class BookEndpoints
                 }
 
                 // Filter by price range if specified
+                // Filter by price range if specified
                 if (request.MinPrice.HasValue)
                 {
-                    query = query.Where(b => b.Prices.Any(p => p.Value >= request.MinPrice.Value));
+                    query = !string.IsNullOrWhiteSpace(request.Currency)
+                        ? query.Where(b => b.Prices.Any(p => p.Currency == request.Currency && p.Value >= request.MinPrice.Value))
+                        : query.Where(b => b.Prices.Any(p => p.Value >= request.MinPrice.Value));
                 }
 
                 if (request.MaxPrice.HasValue)
                 {
-                    query = query.Where(b => b.Prices.Any(p => p.Value <= request.MaxPrice.Value));
+                    query = !string.IsNullOrWhiteSpace(request.Currency)
+                        ? query.Where(b => b.Prices.Any(p => p.Currency == request.Currency && p.Value <= request.MaxPrice.Value))
+                        : query.Where(b => b.Prices.Any(p => p.Value <= request.MaxPrice.Value));
                 }
 
                 // Apply sorting
@@ -201,14 +206,10 @@ public static class BookEndpoints
                         .OrderBy(b => b.PublisherName)
                         .ThenBy(b => b.Title),
                     ("date", "desc") => query
-                        .OrderByDescending(b => b.PublicationDate.GetValueOrDefault().Year)
-                        .ThenByDescending(b => b.PublicationDate.GetValueOrDefault().Month)
-                        .ThenByDescending(b => b.PublicationDate.GetValueOrDefault().Day)
+                        .OrderByDescending(b => b.PublicationDateString)
                         .ThenBy(b => b.Title),
                     ("date", "asc") => query
-                        .OrderBy(b => b.PublicationDate.GetValueOrDefault().Year)
-                        .ThenBy(b => b.PublicationDate.GetValueOrDefault().Month)
-                        .ThenBy(b => b.PublicationDate.GetValueOrDefault().Day)
+                        .OrderBy(b => b.PublicationDateString)
                         .ThenBy(b => b.Title),
                     ("title", "desc") => query
                         .OrderByDescending(b => b.Title),
@@ -268,7 +269,7 @@ public static class BookEndpoints
                         stats?.AverageRating ?? 0f,
                         stats?.RatingCount ?? 0,
                         0, // UserRating is always 0 in cache, will be overlaid if authenticated
-                        book.Prices,
+                        book.Prices.ToDictionary(p => p.Currency, p => p.Value),
                         GenerateCoverUrl(book.Id, book.CoverFormat, tenantContext.TenantId, context.Request),
                         activeSale,
                         book.Deleted
@@ -396,14 +397,10 @@ public static class BookEndpoints
                 .OrderBy(b => b.PublisherName)
                 .ThenBy(b => b.Title),
             ("date", "desc") => query
-                .OrderByDescending(b => b.PublicationDate.GetValueOrDefault().Year)
-                .ThenByDescending(b => b.PublicationDate.GetValueOrDefault().Month)
-                .ThenByDescending(b => b.PublicationDate.GetValueOrDefault().Day)
+                .OrderByDescending(b => b.PublicationDateString)
                 .ThenBy(b => b.Title),
             ("date", "asc") => query
-                .OrderBy(b => b.PublicationDate.GetValueOrDefault().Year)
-                .ThenBy(b => b.PublicationDate.GetValueOrDefault().Month)
-                .ThenBy(b => b.PublicationDate.GetValueOrDefault().Day)
+                .OrderBy(b => b.PublicationDateString)
                 .ThenBy(b => b.Title),
             ("title", "desc") => query
                 .OrderByDescending(b => b.Title),
@@ -463,7 +460,7 @@ public static class BookEndpoints
                 stats?.AverageRating ?? 0f,
                 stats?.RatingCount ?? 0,
                 profile.BookRatings.TryGetValue(book.Id, out var userRating) ? userRating : 0,
-                book.Prices,
+                book.Prices.ToDictionary(p => p.Currency, p => p.Value),
                 GenerateCoverUrl(book.Id, book.CoverFormat, session.TenantId, context.Request),
                 activeSale,
                 book.Deleted
@@ -593,7 +590,7 @@ public static class BookEndpoints
                     stats?.AverageRating ?? 0f,
                     stats?.RatingCount ?? 0,
                     0, // UserRating is always 0 in cache, will be overlaid if authenticated
-                    book.Prices,
+                    book.Prices.ToDictionary(p => p.Currency, p => p.Value),
                     GenerateCoverUrl(book.Id, book.CoverFormat, tenantContext.TenantId, context.Request),
                     activeSale,
                     book.Deleted

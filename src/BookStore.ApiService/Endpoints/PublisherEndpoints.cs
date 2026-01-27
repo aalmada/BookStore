@@ -30,7 +30,8 @@ public static class PublisherEndpoints
     }
 
     static async Task<Ok<PagedListAdapter<PublisherDto>>> GetPublishers(
-        [FromServices] IQuerySession session,
+        [FromServices] IDocumentStore store,
+        [FromServices] ITenantContext tenantContext,
         [FromServices] IOptions<PaginationOptions> paginationOptions,
         [FromServices] HybridCache cache,
         [AsParameters] OrderedPagedRequest request,
@@ -41,13 +42,15 @@ public static class PublisherEndpoints
         var normalizedSortOrder = request.SortOrder?.ToLowerInvariant() == "desc" ? "desc" : "asc";
         var normalizedSortBy = request.SortBy?.ToLowerInvariant();
 
-        // Create cache key based on pagination and sorting
-        var cacheKey = $"publishers:page={paging.Page}:size={paging.PageSize}:sort={normalizedSortBy}:{normalizedSortOrder}";
+        // Create cache key based on pagination, sorting, AND Tenant
+        var cacheKey = $"publishers:tenant={tenantContext.TenantId}:page={paging.Page}:size={paging.PageSize}:sort={normalizedSortBy}:{normalizedSortOrder}";
 
         var response = await cache.GetOrCreateAsync(
             cacheKey,
             async cancel =>
             {
+                await using var session = store.QuerySession(tenantContext.TenantId);
+
                 var query = session.Query<PublisherProjection>()
                     .Where(p => !p.Deleted);
 
@@ -86,14 +89,16 @@ public static class PublisherEndpoints
 
     static async Task<Microsoft.AspNetCore.Http.HttpResults.Results<Ok<PublisherDto>, NotFound>> GetPublisher(
         Guid id,
-        [FromServices] IQuerySession session,
+        [FromServices] IDocumentStore store,
+        [FromServices] ITenantContext tenantContext,
         [FromServices] HybridCache cache,
         CancellationToken cancellationToken)
     {
         var response = await cache.GetOrCreateAsync(
-            $"publisher:{id}",
+            $"publisher:{id}:tenant={tenantContext.TenantId}",
             async cancel =>
             {
+                await using var session = store.QuerySession(tenantContext.TenantId);
                 var publisher = await session.LoadAsync<PublisherProjection>(id, cancel);
                 if (publisher == null || publisher.Deleted)
                 {
