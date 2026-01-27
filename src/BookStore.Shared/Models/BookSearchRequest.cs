@@ -1,6 +1,4 @@
-using BookStore.ApiService.Infrastructure;
-
-namespace BookStore.ApiService.Models;
+namespace BookStore.Shared.Models;
 
 public record BookSearchRequest : OrderedPagedRequest
 {
@@ -11,4 +9,5 @@ public record BookSearchRequest : OrderedPagedRequest
     public bool? OnSale { get; init; }
     public decimal? MinPrice { get; init; }
     public decimal? MaxPrice { get; init; }
+    public string? Currency { get; init; }
 }

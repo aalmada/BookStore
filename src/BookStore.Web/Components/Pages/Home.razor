@@ -12,22 +12,111 @@
 @inject ISnackbar Snackbar
 @implements IAsyncDisposable
 
+@inject IAuthorsClient AuthorsClient
+@inject ICategoriesClient CategoriesClient
+@inject IPublishersClient PublishersClient
+
 @inject TenantService TenantService
 @inject CurrencyService CurrencyService
 
 <PageTitle>@TenantService.CurrentTenantName - Discover Your Next Great Read</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraExtraLarge" Class="mt-6">
-    @* Hero Section *@
-    <MudPaper Elevation="0" Class="pa-6 mb-6" Style="background: var(--mud-palette-primary); color: var(--mud-palette-primary-text); border-radius: 16px;">
-        <MudText Typo="Typo.h3" Color="Color.Inherit" Class="mb-2">
-            <MudIcon Icon="@Icons.Material.Filled.MenuBook" Size="Size.Large" /> @TenantService.CurrentTenantName
-        </MudText>
-        <MudText Typo="Typo.h6" Color="Color.Inherit" Style="opacity: 0.9;">
-            @TenantService.CurrentTenantTagline
-        </MudText>
-    </MudPaper>
+@* Hero Section *@
+<MudPaper Elevation="0" Class="pa-6 mb-6" Style="background: var(--mud-palette-primary); color: var(--mud-palette-primary-text); border-radius: 16px;">
+    <MudText Typo="Typo.h3" Color="Color.Inherit" Class="mb-2">
+        <MudIcon Icon="@Icons.Material.Filled.MenuBook" Size="Size.Large"/> @TenantService.CurrentTenantName
+    </MudText>
+    <MudText Typo="Typo.h6" Color="Color.Inherit" Style="opacity: 0.9;">
+        @TenantService.CurrentTenantTagline
+    </MudText>
+</MudPaper>
 
+<MudGrid Spacing="6">
+@* Filters Sidebar *@
+<MudItem xs="12" md="3">
+    <MudPaper Class="pa-4 mb-6" Elevation="2" Style="border-radius: 12px; position: sticky; top: 20px;">
+        <MudText Typo="Typo.h6" Class="mb-4">
+            <MudIcon Icon="@Icons.Material.Filled.FilterList" Class="mr-2"/> Filters
+        </MudText>
+
+        <MudStack Spacing="3">
+            @* Sort *@
+            <MudSelect T="string" Label="Sort By" Value="@sortBy" AnchorOrigin="Origin.BottomCenter" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" ValueChanged="@(async (string v) =>
+                                                                                                                                                                                 {
+                                                                                                                                                                                     sortBy = v;
+                                                                                                                                                                                     await SearchBooks();
+                                                                                                                                                                                 })">
+                <MudSelectItem Value="@("title")">Title</MudSelectItem>
+                <MudSelectItem Value="@("date")">Date Added</MudSelectItem>
+                <MudSelectItem Value="@("publisher")">Publisher</MudSelectItem>
+            </MudSelect>
+
+            <MudSelect T="string" Label="Order" Value="@sortOrder" AnchorOrigin="Origin.BottomCenter" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" ValueChanged="@(async (string v) =>
+                                                                                                                                                                                  {
+                                                                                                                                                                                      sortOrder = v;
+                                                                                                                                                                                      await SearchBooks();
+                                                                                                                                                                                  })">
+                <MudSelectItem Value="@("asc")">Ascending</MudSelectItem>
+                <MudSelectItem Value="@("desc")">Descending</MudSelectItem>
+            </MudSelect>
+
+            <MudDivider/>
+
+            @* Author *@
+            <MudAutocomplete T="AuthorDto" Label="Author" Value="@selectedAuthor" ValueChanged="@OnAuthorChanged"
+                             SearchFunc="@SearchAuthors" ToStringFunc="@(e => e == null ? null : $"{e.Name}")"
+                             Clearable="true" ResetValueOnEmptyText="true" CoerceText="true" CoerceValue="true"
+                             AnchorOrigin="Origin.BottomCenter" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true"
+                             AdornmentIcon="@Icons.Material.Filled.Search" AdornmentColor="Color.Primary"/>
+
+            @* Category *@
+            <MudAutocomplete T="CategoryDto" Label="Category" Value="@selectedCategory" ValueChanged="@OnCategoryChanged"
+                             SearchFunc="@SearchCategories" ToStringFunc="@(e => e == null ? null : $"{e.Name}")"
+                             Clearable="true" ResetValueOnEmptyText="true" CoerceText="true" CoerceValue="true"
+                             AnchorOrigin="Origin.BottomCenter" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true"
+                             AdornmentIcon="@Icons.Material.Filled.Search" AdornmentColor="Color.Primary"/>
+
+            @* Publisher *@
+            <MudAutocomplete T="PublisherDto" Label="Publisher" Value="@selectedPublisher" ValueChanged="@OnPublisherChanged"
+                             SearchFunc="@SearchPublishers" ToStringFunc="@(e => e == null ? null : $"{e.Name}")"
+                             Clearable="true" ResetValueOnEmptyText="true" CoerceText="true" CoerceValue="true"
+                             AnchorOrigin="Origin.BottomCenter" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true"
+                             AdornmentIcon="@Icons.Material.Filled.Search" AdornmentColor="Color.Primary"/>
+
+            <MudDivider/>
+
+            @* Price *@
+            <MudText Typo="Typo.subtitle2">Price Range</MudText>
+            <MudStack Row="true">
+                <MudNumericField T="decimal?" Value="@minPrice" Label="Min" Variant="Variant.Outlined" Margin="Margin.Dense" HideSpinButtons="true" ValueChanged="@(async (decimal? v) =>
+                                                                                                                                                                  {
+                                                                                                                                                                      minPrice = v;
+                                                                                                                                                                      await SearchBooks();
+                                                                                                                                                                  })"/>
+                <MudNumericField T="decimal?" Value="@maxPrice" Label="Max" Variant="Variant.Outlined" Margin="Margin.Dense" HideSpinButtons="true" ValueChanged="@(async (decimal? v) =>
+                                                                                                                                                                  {
+                                                                                                                                                                      maxPrice = v;
+                                                                                                                                                                      await SearchBooks();
+                                                                                                                                                                  })"/>
+            </MudStack>
+
+            @* On Sale *@
+            <MudCheckBox T="bool" Value="@onSale" Label="On Sale Only" Color="Color.Error" Dense="true" ValueChanged="@(async (bool v) =>
+                                                                                                                      {
+                                                                                                                          onSale = v;
+                                                                                                                          await SearchBooks();
+                                                                                                                      })"/>
+
+            <MudButton OnClick="ClearFilters" Variant="Variant.Text" Color="Color.Secondary" FullWidth="true" Class="mt-2" StartIcon="@Icons.Material.Filled.ClearAll">
+                Reset Filters
+            </MudButton>
+        </MudStack>
+    </MudPaper>
+</MudItem>
+
+@* Main Content *@
+<MudItem xs="12" md="9">
     @* Search Bar *@
     <MudPaper Elevation="2" Class="pa-4 mb-6" Style="border-radius: 12px;">
         <MudTextField @bind-Value="searchQuery"
@@ -43,7 +132,7 @@
                       OnClearButtonClick="ClearSearch"
                       Immediate="true"
                       FullWidth="true"
-                      Class="mud-text-field-large" />
+                      Class="mud-text-field-large"/>
     </MudPaper>
 
     @if (isLoading && pagedBooks == null)
@@ -51,13 +140,13 @@
         <MudGrid>
             @for (int i = 0; i < 8; i++)
             {
-                <MudItem xs="12" sm="6" md="4" lg="3">
+                <MudItem xs="12" sm="6" md="4" lg="4">
                     <MudCard Elevation="2">
-                        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="200px" />
+                        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="200px"/>
                         <MudCardContent>
-                            <MudSkeleton Width="80%" />
-                            <MudSkeleton Width="60%" Class="mt-2" />
-                            <MudSkeleton Width="40%" Class="mt-2" />
+                            <MudSkeleton Width="80%"/>
+                            <MudSkeleton Width="60%" Class="mt-2"/>
+                            <MudSkeleton Width="40%" Class="mt-2"/>
                         </MudCardContent>
                     </MudCard>
                 </MudItem>
@@ -84,16 +173,16 @@
                     <MudChip T="string" Size="Size.Small" Color="Color.Primary" Class="ml-2">@searchQuery</MudChip>
                 }
             </MudText>
-            <MudSpacer />
+            <MudSpacer/>
             @if (isFetching)
             {
-                <MudProgressCircular Color="Color.Primary" Size="Size.Small" Indeterminate="true" />
+                <MudProgressCircular Color="Color.Primary" Size="Size.Small" Indeterminate="true"/>
             }
         </MudStack>
 
         @if (isFetching)
         {
-            <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-4" />
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-4"/>
         }
         else
         {
@@ -105,20 +194,20 @@
             @* Optimistic books (being saved) *@
             @foreach (var optimisticBook in OptimisticService.GetOptimisticBooks())
             {
-                <MudItem xs="12" sm="6" md="4" lg="3">
+                <MudItem xs="12" sm="6" md="4" lg="4">
                     <MudCard Elevation="4" Class="optimistic-card" Style="height: 100%; border-radius: 12px;">
                         <MudPaper Elevation="0" Height="200px" Style="background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); display: flex; align-items: center; justify-content: center;">
-                            <MudIcon Icon="@Icons.Material.Filled.MenuBook" Size="Size.Large" Color="Color.Secondary" Style="font-size: 4rem;" />
+                            <MudIcon Icon="@Icons.Material.Filled.MenuBook" Size="Size.Large" Color="Color.Secondary" Style="font-size: 4rem;"/>
                         </MudPaper>
                         <MudCardContent>
                             <MudText Typo="Typo.h6" Class="mb-2">@optimisticBook.Title</MudText>
                             <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-1">
-                                <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" /> @optimisticBook.AuthorNames
+                                <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small"/> @optimisticBook.AuthorNames
                             </MudText>
                             @if (!string.IsNullOrWhiteSpace(optimisticBook.PublisherName))
                             {
                                 <MudText Typo="Typo.body2" Color="Color.Secondary">
-                                    <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" /> @optimisticBook.PublisherName
+                                    <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small"/> @optimisticBook.PublisherName
                                 </MudText>
                             }
                         </MudCardContent>
@@ -132,9 +221,9 @@
             @* Actual books from server *@
             @foreach (var book in pagedBooks.Items)
             {
-                <MudItem xs="12" sm="6" md="4" lg="3">
+                <MudItem xs="12" sm="6" md="4" lg="4">
                     <MudCard Elevation="2" Class="@($"book-card {(book.IsDeleted ? "deleted-book" : "")}")" Style="height: 100%; border-radius: 12px; transition: all 0.3s ease; position: relative; overflow: hidden;">
-                         @* Heart Overlay *@
+                        @* Heart Overlay *@
                         <AuthorizeView>
                             <Authorized>
                                 <MudIconButton Icon="@(book.IsFavorite ? Icons.Material.Filled.Favorite : Icons.Material.Filled.FavoriteBorder)"
@@ -142,14 +231,14 @@
                                                OnClick="@(() => ToggleFavorite(book))"
                                                Class="favorite-overlay"
                                                Style="position: absolute; top: 12px; right: 12px; z-index: 10; background-color: rgba(255,255,255,0.8); backdrop-filter: blur(4px);"
-                                               Size="Size.Medium" />
+                                               Size="Size.Medium"/>
                             </Authorized>
                         </AuthorizeView>
 
                         @* Deleted Overlay/Badge *@
                         @if (book.IsDeleted)
                         {
-                            <MudChip T="string" Color="Color.Error" Size="Size.Small" Class="deleted-badge" 
+                            <MudChip T="string" Color="Color.Error" Size="Size.Small" Class="deleted-badge"
                                      Style="position: absolute; top: 12px; left: 12px; z-index: 10;">
                                 DELETED
                             </MudChip>
@@ -157,12 +246,12 @@
 
                         @if (!string.IsNullOrEmpty(book.CoverImageUrl))
                         {
-                             <MudImage Src="@book.CoverImageUrl" Alt="@book.Title" ObjectFit="@ObjectFit.Cover" Height="200" Fluid="true" Class="rounded-lg" />
+                            <MudImage Src="@book.CoverImageUrl" Alt="@book.Title" ObjectFit="@ObjectFit.Cover" Height="200" Fluid="true" Class="rounded-lg"/>
                         }
                         else
                         {
                             <MudPaper Elevation="0" Height="200px" Style="background: var(--mud-palette-primary); color: var(--mud-palette-primary-text); display: flex; align-items: center; justify-content: center;">
-                                <MudIcon Icon="@Icons.Material.Filled.MenuBook" Size="Size.Large" Color="Color.Inherit" Style="font-size: 4rem;" />
+                                <MudIcon Icon="@Icons.Material.Filled.MenuBook" Size="Size.Large" Color="Color.Inherit" Style="font-size: 4rem;"/>
                             </MudPaper>
                         }
                         <MudCardContent>
@@ -170,12 +259,12 @@
                                 @book.Title
                             </MudText>
                             <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-1">
-                                <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" /> @string.Join(", ", book.Authors.Select(a => a.Name))
+                                <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small"/> @string.Join(", ", book.Authors.Select(a => a.Name))
                             </MudText>
                             @if (book.Categories?.Count > 0)
                             {
                                 <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-1">
-                                    <MudIcon Icon="@Icons.Material.Filled.Category" Size="Size.Small" />
+                                    <MudIcon Icon="@Icons.Material.Filled.Category" Size="Size.Small"/>
                                     @foreach (var category in book.Categories)
                                     {
                                         <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" Class="mr-1">@category.Name</MudChip>
@@ -185,26 +274,26 @@
                             @if (book.Publisher != null)
                             {
                                 <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-1">
-                                    <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" /> @book.Publisher.Name
+                                    <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small"/> @book.Publisher.Name
                                 </MudText>
                             }
                             @if (book.PublicationDate.HasValue)
                             {
                                 <MudText Typo="Typo.body2" Color="Color.Secondary">
-                                    <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" /> @book.PublicationDate.Value.Year
+                                    <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small"/> @book.PublicationDate.Value.Year
                                 </MudText>
                             }
                             @if (book.ActiveSale != null && book.Prices != null && book.Prices.TryGetValue(CurrencyService.CurrentCurrency, out var originalPrice))
                             {
                                 var discountedPrice = book.ActiveSale.Value.CalculateDiscountedPrice(originalPrice);
                                 <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mt-2">
-                                     <MudText Typo="Typo.body2" Style="text-decoration: line-through; color: var(--mud-palette-text-secondary); opacity: 0.7;">
-                                         @CurrencyService.FormatPrice(originalPrice)
-                                     </MudText>
-                                     <MudText Typo="Typo.h6" Color="Color.Error" Class="font-weight-bold">
+                                    <MudText Typo="Typo.body2" Style="text-decoration: line-through; color: var(--mud-palette-text-secondary); opacity: 0.7;">
+                                        @CurrencyService.FormatPrice(originalPrice)
+                                    </MudText>
+                                    <MudText Typo="Typo.h6" Color="Color.Error" Class="font-weight-bold">
                                         @CurrencyService.FormatPrice(discountedPrice)
-                                     </MudText>
-                                     <BookSaleBadge Sale="@book.ActiveSale" />
+                                    </MudText>
+                                    <BookSaleBadge Sale="@book.ActiveSale"/>
                                 </MudStack>
                             }
                             else
@@ -218,11 +307,11 @@
                             <MudButton Href="@($"/book/{book.Id}")" Variant="Variant.Text" Color="Color.Primary" FullWidth="true" StartIcon="@Icons.Material.Filled.Visibility">
                                 View Details
                             </MudButton>
-                            <MudSpacer />
+                            <MudSpacer/>
                             @if (book.RatingCount > 0)
                             {
                                 <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                                    <MudIcon Icon="@Icons.Material.Filled.Star" Color="Color.Warning" Size="Size.Small" />
+                                    <MudIcon Icon="@Icons.Material.Filled.Star" Color="Color.Warning" Size="Size.Small"/>
                                     <MudText Typo="Typo.caption">@book.AverageRating.ToString("F1")</MudText>
                                 </MudStack>
                             }
@@ -239,33 +328,38 @@
         @if (pagedBooks.PageCount > 1)
         {
             <MudPaper Elevation="0" Class="d-flex justify-center pa-4">
-                <MudPagination Count="@((int)pagedBooks.PageCount)" 
-                              Selected="@currentPage" 
-                              SelectedChanged="LoadPage"
-                              Color="Color.Primary"
-                              Variant="Variant.Filled"
-                              ShowFirstButton="true"
-                              ShowLastButton="true" />
+                <MudPagination Count="@((int)pagedBooks.PageCount)"
+                               Selected="@currentPage"
+                               SelectedChanged="LoadPage"
+                               Color="Color.Primary"
+                               Variant="Variant.Filled"
+                               ShowFirstButton="true"
+                               ShowLastButton="true"/>
             </MudPaper>
         }
 
         @* Empty State *@
-        @if (pagedBooks.Items.Count == 0 && !string.IsNullOrWhiteSpace(searchQuery))
+        @if (pagedBooks.Items.Count == 0)
         {
             <MudPaper Elevation="0" Class="pa-8 text-center">
-                <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="Size.Large" Color="Color.Secondary" Style="font-size: 6rem;" />
+                <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="Size.Large" Color="Color.Secondary" Style="font-size: 6rem;"/>
                 <MudText Typo="Typo.h5" Class="mt-4 mb-2">No books found</MudText>
                 <MudText Typo="Typo.body1" Color="Color.Secondary">
-                    Try adjusting your search terms or <MudLink OnClick="ClearSearch" Color="Color.Primary">browse all books</MudLink>
+                    Try adjusting your search terms or filters
                 </MudText>
+                <MudButton OnClick="ClearFilters" Variant="Variant.Text" Color="Color.Primary" Class="mt-2">
+                    Clear All Filters
+                </MudButton>
             </MudPaper>
         }
     }
+</MudItem>
+</MudGrid>
 </MudContainer>
 
 @code {
-    private ReactiveQuery<BookStore.Client.PagedListDtoOfBookDto>? bookQuery;
-    private BookStore.Client.PagedListDtoOfBookDto? pagedBooks => bookQuery?.Data;
+    private ReactiveQuery<PagedListDto<BookDto>>? bookQuery;
+    private PagedListDto<BookDto>? pagedBooks => bookQuery?.Data;
     private bool isLoading => bookQuery?.IsLoading ?? true;
     private bool isFetching => bookQuery?.IsFetching ?? false;
     private string? errorMessage => bookQuery?.Error;
@@ -273,12 +367,29 @@
     private string searchQuery = string.Empty;
     private int currentPage = 1;
     private const int pageSize = 10;
+
+    // Filters
+    private AuthorDto? selectedAuthor;
+    private CategoryDto? selectedCategory;
+    private PublisherDto? selectedPublisher;
+
+    private bool onSale;
+    private decimal? minPrice;
+    private decimal? maxPrice;
+    private string sortBy = "title";
+    private string sortOrder = "asc";
+
+    // Filter Data
+    private List<AuthorDto> authors = new();
+    private List<CategoryDto> categories = new();
+    private List<PublisherDto> publishers = new();
+
     private System.Threading.Timer? debounceTimer;
     private System.Threading.Timer? cleanupTimer;
 
     [Inject] private ILogger<Home> Logger { get; set; } = default!;
     [Inject] private QueryInvalidationService InvalidationService { get; set; } = default!;
-    
+
     [CascadingParameter] private Task<AuthenticationState> AuthStateTask { get; set; } = default!;
     private System.Security.Claims.ClaimsPrincipal? user;
 
@@ -286,35 +397,59 @@
     {
         // Initialize Tenant FIRST
         await TenantService.InitializeAsync();
-        
+
         // Subscribe to optimistic update changes
         OptimisticService.OnBooksChanged += HandleOptimisticBooksChanged;
-        
+
         // Start SSE listening
         EventsService.StartListening();
         EventsService.OnNotificationReceived += HandleNotification;
 
         // Initialize ReactiveQuery
-        bookQuery = new ReactiveQuery<BookStore.Client.PagedListDtoOfBookDto>(
+        bookQuery = new ReactiveQuery<PagedListDto<BookDto>>(
             queryFn: FetchBooksAsync,
             eventsService: EventsService,
             invalidationService: InvalidationService,
-            queryKeys: new[] { "Books", "Authors", "Publishers" }, 
+            queryKeys: new[] { "Books", "Authors", "Publishers" },
             onStateChanged: StateHasChanged,
             logger: Logger
         );
-        
+
         // Initial load
         await bookQuery.LoadAsync();
-        
+
         // Start cleanup timer for stale optimistic books
         StartCleanupTimer();
 
         // Subscribe to currency changes
         CurrencyService.OnCurrencyChanged += StateHasChanged;
-        
+
         // Subscribe to tenant changes (and reload data)
         TenantService.OnChange += HandleTenantChanged;
+        // Subscribe to tenant changes (and reload data)
+        TenantService.OnChange += HandleTenantChanged;
+
+        await LoadFiltersAsync();
+    }
+
+    private async Task LoadFiltersAsync()
+    {
+        try
+        {
+            var authorsTask = AuthorsClient.GetAuthorsAsync(1, 1000, "1.0", "en"); // Fetch more for autocomplete
+            var categoriesTask = CategoriesClient.GetCategoriesAsync(1, 1000, "1.0", "en");
+            var publishersTask = PublishersClient.GetPublishersAsync(1, 1000, "1.0", "en");
+
+            await Task.WhenAll(authorsTask, categoriesTask, publishersTask);
+
+            authors = (await authorsTask).Items.ToList();
+            categories = (await categoriesTask).Items.ToList();
+            publishers = (await publishersTask).Items.ToList();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load filters");
+        }
     }
 
     protected override Task OnAfterRenderAsync(bool firstRender)
@@ -336,20 +471,72 @@
 
         if (user == null || newUser.Identity?.Name != user.Identity?.Name || newUser.Identity?.IsAuthenticated != user.Identity?.IsAuthenticated)
         {
-             user = newUser;
-             if (user.Identity?.IsAuthenticated == true && bookQuery != null)
-             {
-                 await bookQuery.LoadAsync(silent: true);
-             }
+            user = newUser;
+            if (user.Identity?.IsAuthenticated == true && bookQuery != null)
+            {
+                await bookQuery.LoadAsync(silent: true);
+            }
         }
     }
 
-    private async Task<BookStore.Client.PagedListDtoOfBookDto> FetchBooksAsync()
+    private async Task<IEnumerable<AuthorDto>> SearchAuthors(string value, CancellationToken token)
     {
+        if (string.IsNullOrEmpty(value))
+            return authors;
+        return authors.Where(x => x.Name?.Contains(value, StringComparison.InvariantCultureIgnoreCase) ?? false);
+    }
+
+    private async Task<IEnumerable<CategoryDto>> SearchCategories(string value, CancellationToken token)
+    {
+        if (string.IsNullOrEmpty(value))
+            return categories;
+        return categories.Where(x => x.Name?.Contains(value, StringComparison.InvariantCultureIgnoreCase) ?? false);
+    }
+
+    private async Task<IEnumerable<PublisherDto>> SearchPublishers(string value, CancellationToken token)
+    {
+        if (string.IsNullOrEmpty(value))
+            return publishers;
+        return publishers.Where(x => x.Name?.Contains(value, StringComparison.InvariantCultureIgnoreCase) ?? false);
+    }
+
+    private async Task OnAuthorChanged(AuthorDto? author)
+    {
+        selectedAuthor = author;
+        await SearchBooks();
+    }
+
+    private async Task OnCategoryChanged(CategoryDto? category)
+    {
+        selectedCategory = category;
+        await SearchBooks();
+    }
+
+    private async Task OnPublisherChanged(PublisherDto? publisher)
+    {
+        selectedPublisher = publisher;
+        await SearchBooks();
+    }
+
+    private async Task<PagedListDto<BookDto>> FetchBooksAsync()
+    {
+        var request = new BookSearchRequest
+        {
+            Page = currentPage,
+            PageSize = pageSize,
+            Search = string.IsNullOrWhiteSpace(searchQuery) ? string.Empty : searchQuery,
+            AuthorId = selectedAuthor?.Id,
+            CategoryId = selectedCategory?.Id,
+            PublisherId = selectedPublisher?.Id,
+            OnSale = onSale ? true : null,
+            MinPrice = minPrice,
+            MaxPrice = maxPrice,
+            SortBy = sortBy,
+            SortOrder = sortOrder
+        };
+
         return await BooksClient.GetBooksAsync(
-            page: currentPage,
-            pageSize: pageSize,
-            search: string.IsNullOrWhiteSpace(searchQuery) ? string.Empty : searchQuery,
+            request,
             api_version: "1.0",
             accept_Language: "en");
     }
@@ -373,10 +560,7 @@
 
         // Debounce search
         debounceTimer?.Dispose();
-        debounceTimer = new System.Threading.Timer(async _ =>
-        {
-            await InvokeAsync(SearchBooks);
-        }, null, 500, Timeout.Infinite);
+        debounceTimer = new System.Threading.Timer(async _ => { await InvokeAsync(SearchBooks); }, null, 500, Timeout.Infinite);
     }
 
     private async Task SearchBooks()
@@ -394,6 +578,21 @@
         _ = SearchBooks();
     }
 
+    private void ClearFilters()
+    {
+        selectedAuthor = null;
+        selectedCategory = null;
+        selectedPublisher = null;
+        minPrice = null;
+        maxPrice = null;
+        onSale = false;
+        searchQuery = string.Empty;
+        sortBy = "title";
+        sortOrder = "asc";
+
+        _ = SearchBooks();
+    }
+
     private async Task LoadPage(int page)
     {
         currentPage = page;
@@ -406,7 +605,7 @@
     private async Task ToggleFavorite(BookDto book)
     {
         var originalState = book.IsFavorite;
-        
+
         // 1. Optimistic Update (Immediate Feedback)
         bookQuery?.MutateData(currentList =>
         {
@@ -414,22 +613,19 @@
             var index = items.FindIndex(b => b.Id == book.Id);
             if (index != -1)
             {
-                items[index] = items[index] with 
-                { 
+                items[index] = items[index] with
+                {
                     IsFavorite = !originalState,
                     LikeCount = originalState ? items[index].LikeCount - 1 : items[index].LikeCount + 1
                 };
             }
-            return new BookStore.Client.PagedListDtoOfBookDto
-            {
-                Items = items,
-                PageNumber = currentList.PageNumber,
-                PageSize = currentList.PageSize,
-                TotalItemCount = currentList.TotalItemCount,
-                PageCount = currentList.PageCount,
-                HasPreviousPage = currentList.HasPreviousPage,
-                HasNextPage = currentList.HasNextPage
-            };
+
+            return new PagedListDto<BookDto>(
+                items,
+                currentList.PageNumber,
+                currentList.PageSize,
+                currentList.TotalItemCount
+            );
         });
 
         // 2. Call API
@@ -449,7 +645,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Failed to toggle favorite for book {BookId}", book.Id);
-            
+
             // 3. Rollback on failure
             bookQuery?.MutateData(currentList =>
             {
@@ -457,25 +653,22 @@
                 var index = items.FindIndex(b => b.Id == book.Id);
                 if (index != -1)
                 {
-                    items[index] = items[index] with 
-                    { 
+                    items[index] = items[index] with
+                    {
                         IsFavorite = originalState,
                         LikeCount = originalState ? items[index].LikeCount + 1 : items[index].LikeCount - 1
                     };
                 }
-                return new BookStore.Client.PagedListDtoOfBookDto
-                {
-                    Items = items,
-                    PageNumber = currentList.PageNumber,
-                    PageSize = currentList.PageSize,
-                    TotalItemCount = currentList.TotalItemCount,
-                    PageCount = currentList.PageCount,
-                    HasPreviousPage = currentList.HasPreviousPage,
-                    HasNextPage = currentList.HasNextPage
-                };
+
+                return new PagedListDto<BookDto>(
+                    items,
+                    currentList.PageNumber,
+                    currentList.PageSize,
+                    currentList.TotalItemCount
+                );
             });
-            
-             Snackbar.Add($"Failed: {ex.Message}", Severity.Error);
+
+            Snackbar.Add($"Failed: {ex.Message}", Severity.Error);
         }
     }
 
@@ -491,22 +684,19 @@
     {
         debounceTimer?.Dispose();
     }
-    
+
     private void HandleOptimisticBooksChanged()
     {
         // Refresh UI when optimistic books change
         InvokeAsync(StateHasChanged);
     }
-    
+
     private void StartCleanupTimer()
     {
         // Clean up stale optimistic books every 5 seconds
-        cleanupTimer = new System.Threading.Timer(_ =>
-        {
-            OptimisticService.CleanupStaleBooks();
-        }, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+        cleanupTimer = new System.Threading.Timer(_ => { OptimisticService.CleanupStaleBooks(); }, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
     }
-    
+
     public async ValueTask DisposeAsync()
     {
         bookQuery?.Dispose();
@@ -514,11 +704,12 @@
         EventsService.OnNotificationReceived -= HandleNotification;
         CurrencyService.OnCurrencyChanged -= StateHasChanged;
         TenantService.OnChange -= HandleTenantChanged;
-        
+
         // Dispose timers
         debounceTimer?.Dispose();
         cleanupTimer?.Dispose();
     }
+
 }
 
 <style>

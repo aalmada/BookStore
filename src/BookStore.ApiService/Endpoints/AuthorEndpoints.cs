@@ -31,6 +31,7 @@ public static class AuthorEndpoints
 
     static async Task<Ok<PagedListDto<AuthorDto>>> GetAuthors(
         [FromServices] IDocumentStore store,
+        [FromServices] ITenantContext tenantContext,
         [FromServices] IOptions<PaginationOptions> paginationOptions,
         [FromServices] IOptions<LocalizationOptions> localizationOptions,
         [FromServices] HybridCache cache,
@@ -45,14 +46,14 @@ public static class AuthorEndpoints
         var normalizedSortOrder = request.SortOrder?.ToLowerInvariant() == "desc" ? "desc" : "asc";
         var normalizedSortBy = request.SortBy?.ToLowerInvariant();
 
-        // Create cache key based on pagination and sorting
-        var cacheKey = $"authors:page={paging.Page}:size={paging.PageSize}:sort={normalizedSortBy}:{normalizedSortOrder}";
+        // Create cache key based on pagination, sorting, AND Tenant
+        var cacheKey = $"authors:tenant={tenantContext.TenantId}:page={paging.Page}:size={paging.PageSize}:sort={normalizedSortBy}:{normalizedSortOrder}";
 
         var response = await cache.GetOrCreateLocalizedAsync(
             cacheKey,
             async cancel =>
             {
-                await using var session = store.QuerySession();
+                await using var session = store.QuerySession(tenantContext.TenantId);
 
                 var query = session.Query<AuthorProjection>()
                     .Where(a => !a.Deleted);
@@ -94,6 +95,7 @@ public static class AuthorEndpoints
     static async Task<Results<Ok<AuthorDto>, NotFound>> GetAuthor(
         Guid id,
         [FromServices] IDocumentStore store,
+        [FromServices] ITenantContext tenantContext,
         [FromServices] IOptions<LocalizationOptions> localizationOptions,
         [FromServices] HybridCache cache,
         HttpContext context,
@@ -103,10 +105,10 @@ public static class AuthorEndpoints
         var defaultCulture = localizationOptions.Value.DefaultCulture;
 
         var response = await cache.GetOrCreateLocalizedAsync(
-            $"author:{id}",
+            $"author:{id}:tenant={tenantContext.TenantId}",
             async cancel =>
             {
-                await using var session = store.QuerySession();
+                await using var session = store.QuerySession(tenantContext.TenantId);
                 var author = await session.LoadAsync<AuthorProjection>(id, cancel);
                 if (author == null || author.Deleted)
                 {

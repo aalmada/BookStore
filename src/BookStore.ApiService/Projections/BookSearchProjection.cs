@@ -13,14 +13,15 @@ public class BookSearchProjection
     public string? Isbn { get; set; }
     public string OriginalLanguage { get; set; } = string.Empty;
     public PartialDate? PublicationDate { get; set; }
+    public string? PublicationDateString { get; set; } // For generic string sorting (Marten friendly)
     public bool Deleted { get; set; }
     public DateTimeOffset? DeletedAt { get; set; }
 
     // Localized field as dictionary (key = culture, value = description)
     public Dictionary<string, string> Descriptions { get; set; } = [];
 
-    // Prices as dictionary (key = currency, value = price)
-    public Dictionary<string, decimal> Prices { get; set; } = [];
+    // Prices as list for better query support in Marten
+    public List<PriceEntry> Prices { get; set; } = [];
 
     // Denormalized fields for performance
     public Guid? PublisherId { get; set; }
@@ -46,13 +47,16 @@ public class BookSearchProjection
             Isbn = @event.Isbn,
             OriginalLanguage = @event.Language,
             PublicationDate = @event.PublicationDate,
+            PublicationDateString = @event.PublicationDate?.ToString(),
             PublisherId = @event.PublisherId,
             AuthorIds = @event.AuthorIds,
             CategoryIds = @event.CategoryIds,
             Descriptions = @event.Translations?
                 .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Description)
                 ?? [],
-            Prices = @event.Prices ?? []
+            Prices = @event.Prices?
+                .Select(kvp => new PriceEntry(kvp.Key, kvp.Value))
+                .ToList() ?? []
         };
 
         LoadDenormalizedData(projection, session);
@@ -67,13 +71,16 @@ public class BookSearchProjection
         Isbn = @event.Isbn;
         OriginalLanguage = @event.Language;
         PublicationDate = @event.PublicationDate;
+        PublicationDateString = @event.PublicationDate?.ToString();
         PublisherId = @event.PublisherId;
         AuthorIds = @event.AuthorIds;
         CategoryIds = @event.CategoryIds;
         Descriptions = @event.Translations?
             .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Description)
             ?? [];
-        Prices = @event.Prices ?? [];
+        Prices = @event.Prices?
+            .Select(kvp => new PriceEntry(kvp.Key, kvp.Value))
+            .ToList() ?? [];
 
         LoadDenormalizedData(this, session);
         UpdateSearchText(this);
@@ -135,3 +142,5 @@ public class BookSearchProjection
 
     static void UpdateSearchText(BookSearchProjection projection) => projection.SearchText = $"{projection.Title} {projection.Isbn ?? string.Empty} {projection.PublisherName ?? string.Empty} {projection.AuthorNames}".Trim();
 }
+
+public record PriceEntry(string Currency, decimal Value);
