@@ -1,7 +1,11 @@
 
+using System.Net;
+using System.Net.Http.Json;
 using BookStore.Shared.Models;
 using Marten;
 using Weasel.Core;
+using Aspire.Hosting;
+using Aspire.Hosting.Testing;
 
 namespace BookStore.AppHost.Tests;
 
@@ -11,7 +15,7 @@ public class BookFilterRegressionTests
     public async Task SearchBooks_InNonDefaultTenant_ShouldRespectAuthorFilter()
     {
         // Debugging Multi-Tenant Author Filter
-        var tenantId = "book-filter-test-tenant";
+        var tenantId = $"book-filter-test-{Guid.NewGuid():N}";
 
         // Seed Tenant
         var connectionString = await GlobalHooks.App!.GetConnectionStringAsync("bookstore");
@@ -126,7 +130,7 @@ public class BookFilterRegressionTests
         };
 
         // Wait for projection
-        _ = await TestHelpers.ExecuteAndWaitForEventAsync(Guid.Empty, "BookUpdated", async () =>
+        _ = await TestHelpers.ExecuteAndWaitForEventAsync(Guid.Empty, "BookCreated", async () =>
         {
             var res = await authClient.PostAsJsonAsync("/api/admin/books", createRequest);
             _ = await Assert.That(res.StatusCode).IsEqualTo(HttpStatusCode.Created);
@@ -221,9 +225,7 @@ public class BookFilterRegressionTests
         // 50 * 0.5 = 25. Should be found with MaxPrice=40.
         var saleRequest = new
         {
-            Percentage = 0.5m,
-            Start = DateTimeOffset.UtcNow.AddDays(-1),
-            End = DateTimeOffset.UtcNow.AddDays(1)
+            Percentage = 0.5m, Start = DateTimeOffset.UtcNow.AddDays(-1), End = DateTimeOffset.UtcNow.AddDays(1)
         };
 
         _ = await TestHelpers.ExecuteAndWaitForEventAsync(bookId, "BookSaleScheduled", async () =>
