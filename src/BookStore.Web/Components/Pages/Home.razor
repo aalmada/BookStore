@@ -422,14 +422,19 @@
         StartCleanupTimer();
 
         // Subscribe to currency changes
-        CurrencyService.OnCurrencyChanged += StateHasChanged;
+        CurrencyService.OnCurrencyChanged += HandleCurrencyChanged;
 
-        // Subscribe to tenant changes (and reload data)
-        TenantService.OnChange += HandleTenantChanged;
         // Subscribe to tenant changes (and reload data)
         TenantService.OnChange += HandleTenantChanged;
 
         await LoadFiltersAsync();
+    }
+
+    private void HandleCurrencyChanged()
+    {
+        // Reload books when currency changes
+        _ = bookQuery?.LoadAsync();
+        StateHasChanged();
     }
 
     private async Task LoadFiltersAsync()
@@ -531,6 +536,7 @@
             OnSale = onSale ? true : null,
             MinPrice = minPrice,
             MaxPrice = maxPrice,
+            Currency = CurrencyService.CurrentCurrency,
             SortBy = sortBy,
             SortOrder = sortOrder
         };
@@ -702,7 +708,7 @@
         bookQuery?.Dispose();
         OptimisticService.OnBooksChanged -= HandleOptimisticBooksChanged;
         EventsService.OnNotificationReceived -= HandleNotification;
-        CurrencyService.OnCurrencyChanged -= StateHasChanged;
+        CurrencyService.OnCurrencyChanged -= HandleCurrencyChanged;
         TenantService.OnChange -= HandleTenantChanged;
 
         // Dispose timers
