@@ -222,7 +222,9 @@ public class BookFilterRegressionTests
         // 50 * 0.5 = 25. Should be found with MaxPrice=40.
         var saleRequest = new
         {
-            Percentage = 50m, Start = DateTimeOffset.UtcNow.AddSeconds(-5), End = DateTimeOffset.UtcNow.AddDays(1)
+            Percentage = 50m,
+            Start = DateTimeOffset.UtcNow.AddSeconds(-5),
+            End = DateTimeOffset.UtcNow.AddDays(1)
         };
 
         _ = await TestHelpers.ExecuteAndWaitForEventAsync(bookId, "BookSaleScheduled", async () =>

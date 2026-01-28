@@ -1,9 +1,9 @@
+using BookStore.ApiService.Infrastructure.Tenant;
+using BookStore.Shared.Models; // Also usually needed for DTOs in other files, but ensuring tenant infra is there.
 using Marten;
 using Marten.Linq.SoftDeletes;
 using Microsoft.AspNetCore.Mvc;
 using Wolverine;
-using BookStore.ApiService.Infrastructure.Tenant;
-using BookStore.Shared.Models; // Also usually needed for DTOs in other files, but ensuring tenant infra is there.
 
 namespace BookStore.ApiService.Commands
 {
@@ -97,5 +97,6 @@ namespace BookStore.ApiService.Endpoints.Admin
             var etag = context.Request.Headers["If-Match"].FirstOrDefault();
             var command = new Commands.RestoreAuthor(id) { ETag = etag };
             return bus.InvokeAsync<IResult>(command, new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
-        }    }
+        }
+    }
 }

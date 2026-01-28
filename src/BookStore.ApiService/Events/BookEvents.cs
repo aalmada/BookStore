@@ -39,7 +39,6 @@ public record BookSaleCancelled(Guid Id, DateTimeOffset SaleStart);
 
 public record BookDiscountUpdated(Guid Id, decimal DiscountPercentage);
 
-
 // Localization model for book descriptions
 public record BookTranslation(string Description);
 
