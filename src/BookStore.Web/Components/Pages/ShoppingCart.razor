@@ -1,6 +1,8 @@
 @page "/cart"
 @using BookStore.Web.Services
 @using BookStore.Client
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
 @inject IShoppingCartClient CartClient
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
@@ -12,10 +14,10 @@
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-6">
     <MudText Typo="Typo.h3" Class="mb-6">Shopping Cart</MudText>
-    
+
     @if (isLoading)
     {
-        <MudProgressLinear Indeterminate="true" />
+        <MudProgressLinear Indeterminate="true"/>
     }
     else if (cart?.Items.Count > 0)
     {
@@ -34,25 +36,25 @@
                         </MudText>
                     </MudItem>
                     <MudItem xs="6" md="3">
-                        <MudNumericField Value="@item.Quantity" 
-                                          Min="1" 
-                                          Max="99"
-                                          Label="Quantity"
-                                          Variant="Variant.Outlined"
-                                          ValueChanged="@((int newQty) => UpdateQuantityAsync(item.BookId, newQty))" />
+                        <MudNumericField Value="@item.Quantity"
+                                         Min="1"
+                                         Max="99"
+                                         Label="Quantity"
+                                         Variant="Variant.Outlined"
+                                         ValueChanged="@((int newQty) => UpdateQuantityAsync(item.BookId, newQty))"/>
                     </MudItem>
                     <MudItem xs="6" md="3">
-                        <MudButton Color="Color.Error" 
-                                    Variant="Variant.Outlined" 
-                                    StartIcon="@Icons.Material.Filled.Delete"
-                                    OnClick="@(() => RemoveItemAsync(item.BookId))">
+                        <MudButton Color="Color.Error"
+                                   Variant="Variant.Outlined"
+                                   StartIcon="@Icons.Material.Filled.Delete"
+                                   OnClick="@(() => RemoveItemAsync(item.BookId))">
                             Remove
                         </MudButton>
                     </MudItem>
                 </MudGrid>
-                <MudDivider Class="mb-4" />
+                <MudDivider Class="mb-4"/>
             }
-            
+
             <MudStack Row="true" Justify="Justify.SpaceBetween" Class="mt-4">
                 <MudStack>
                     <MudText Typo="Typo.h6">Total Items: @cart.TotalItems</MudText>
@@ -64,9 +66,9 @@
                     <MudButton Href="/" Variant="Variant.Text" Color="Color.Primary">
                         Continue Shopping
                     </MudButton>
-                    <MudButton Color="Color.Error" 
-                                Variant="Variant.Text" 
-                                OnClick="ClearCartAsync">
+                    <MudButton Color="Color.Error"
+                               Variant="Variant.Text"
+                               OnClick="ClearCartAsync">
                         Clear Cart
                     </MudButton>
                 </MudStack>
@@ -95,7 +97,7 @@
     {
         // Start SSE listening
         EventsService.StartListening();
-        
+
         await InitializeQueryAsync();
 
         // Subscribe to currency changes
@@ -108,9 +110,9 @@
         cartQuery?.Dispose();
 
         cartQuery = new ReactiveQuery<ShoppingCartResponse?>(
-            queryFn: async () => 
+            queryFn: async () =>
             {
-                try 
+                try
                 {
                     return await CartClient.GetShoppingCartAsync();
                 }
@@ -140,12 +142,14 @@
         var previousQuantity = currentItem.Quantity;
 
         // 1. Optimistic update
-        cartQuery?.MutateData(current => current == null ? null : new ShoppingCartResponse(
-            current.Items.Select(i => i.BookId == bookId 
-                ? i with { Quantity = newQuantity } 
-                : i).ToList(),
-            current.TotalItems - previousQuantity + newQuantity
-        ));
+        cartQuery?.MutateData(current => current == null
+            ? null
+            : new ShoppingCartResponse(
+                current.Items.Select(i => i.BookId == bookId
+                    ? i with { Quantity = newQuantity }
+                    : i).ToList(),
+                current.TotalItems - previousQuantity + newQuantity
+            ));
 
         // 2. API Call
         try
@@ -157,12 +161,14 @@
         {
             Logger.LogError(ex, "Failed to update quantity for book {BookId}", bookId);
             // 3. Rollback
-            cartQuery?.MutateData(current => current == null ? null : new ShoppingCartResponse(
-                current.Items.Select(i => i.BookId == bookId 
-                    ? i with { Quantity = previousQuantity } 
-                    : i).ToList(),
-                current.TotalItems - newQuantity + previousQuantity
-            ));
+            cartQuery?.MutateData(current => current == null
+                ? null
+                : new ShoppingCartResponse(
+                    current.Items.Select(i => i.BookId == bookId
+                        ? i with { Quantity = previousQuantity }
+                        : i).ToList(),
+                    current.TotalItems - newQuantity + previousQuantity
+                ));
             Snackbar.Add($"Failed to update: {ex.Message}", Severity.Error);
         }
     }
@@ -175,10 +181,12 @@
         if (itemToRemove == null) return;
 
         // 1. Optimistic update
-        cartQuery?.MutateData(current => current == null ? null : new ShoppingCartResponse(
-            current.Items.Where(i => i.BookId != bookId).ToList(),
-            current.TotalItems - itemToRemove.Quantity
-        ));
+        cartQuery?.MutateData(current => current == null
+            ? null
+            : new ShoppingCartResponse(
+                current.Items.Where(i => i.BookId != bookId).ToList(),
+                current.TotalItems - itemToRemove.Quantity
+            ));
 
         // 2. API Call
         try
@@ -190,10 +198,12 @@
         {
             Logger.LogError(ex, "Failed to remove item {BookId}", bookId);
             // 3. Rollback
-            cartQuery?.MutateData(current => current == null ? null : new ShoppingCartResponse(
-                current.Items.Append(itemToRemove).ToList(),
-                current.TotalItems + itemToRemove.Quantity
-            ));
+            cartQuery?.MutateData(current => current == null
+                ? null
+                : new ShoppingCartResponse(
+                    current.Items.Append(itemToRemove).ToList(),
+                    current.TotalItems + itemToRemove.Quantity
+                ));
             Snackbar.Add($"Failed to remove: {ex.Message}", Severity.Error);
         }
     }
@@ -232,15 +242,17 @@
     {
         if (cart == null) return "N/A";
 
-        var total = cart.Items.Sum(item => 
+        var total = cart.Items.Sum(item =>
         {
             if (item.Prices.TryGetValue(CurrencyService.CurrentCurrency, out var price))
             {
                 return price * item.Quantity;
             }
+
             return 0m;
         });
 
         return CurrencyService.FormatPrice(new Dictionary<string, decimal> { { CurrencyService.CurrentCurrency, total } });
     }
+
 }
