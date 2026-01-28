@@ -1,7 +1,7 @@
+using BookStore.ApiService.Infrastructure; // Added this line
 using BookStore.ApiService.Messages.Commands;
 using BookStore.ApiService.Models;
 using BookStore.ApiService.Projections;
-using BookStore.ApiService.Infrastructure; // Added this line
 using BookStore.Shared.Messages.Events;
 using Marten;
 using Wolverine;

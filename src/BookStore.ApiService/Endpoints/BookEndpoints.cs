@@ -348,7 +348,7 @@ public static class BookEndpoints
                         return result;
                     }).ToList();
 
-        response = response with { Items = updatedItems };
+                    response = response with { Items = updatedItems };
                 }
             }
         }

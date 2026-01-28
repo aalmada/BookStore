@@ -5,7 +5,7 @@ namespace BookStore.ApiService.Infrastructure;
 public static class Instrumentation
 {
     public const string MeterName = "BookStore.ApiService";
-    private static readonly Meter Meter = new(MeterName);
+    static readonly Meter Meter = new(MeterName);
 
     // Book Interactions
     public static readonly Counter<long> BookViews = Meter.CreateCounter<long>("bookstore.books.views", description: "Number of times book profiles are viewed");
