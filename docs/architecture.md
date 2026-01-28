@@ -15,7 +15,7 @@ graph TD
             Admin[Admin Endpoints]
             System[System Endpoints]
         end
-        
+
         subgraph Handlers [Command Handlers / Aggregates]
             Book[Book]
             Author[Author]
@@ -37,10 +37,10 @@ graph TD
     Public --> Handlers
     Admin --> Handlers
     System --> Handlers
-    
+
     Handlers -- Events --> EventStore
     EventStore -- Async Projections --> Projections
-    
+
     EventStore -- PostgreSQL Protocol --> Postgres
     Projections -- PostgreSQL Protocol --> Postgres
 ```
@@ -61,6 +61,7 @@ Instead of storing current state, we store all changes as immutable events.
 - Natural fit for distributed systems
 
 **Implementation**:
+
 ```csharp
 // Events are immutable records
 public record BookAdded(
@@ -89,12 +90,14 @@ See [Marten Guide](guides/marten-guide.md) for implementation details.
 Separate models for writes (commands) and reads (queries).
 
 **Write Side** (Commands):
+
 - Commands routed through Wolverine message bus
 - Handlers execute business logic
 - Events are appended to streams
 - Optimized for consistency
 
 **Read Side** (Queries):
+
 - Projections denormalize data
 - Optimized for specific queries
 - Eventually consistent
@@ -104,7 +107,7 @@ Separate models for writes (commands) and reads (queries).
 Commands are routed through Wolverine's message bus to handlers that execute business logic.
 
 **Command Flow**:
-**Command Flow**:
+
 ```mermaid
 graph LR
     HTTP[HTTP Request] --> Endpoint
@@ -117,12 +120,14 @@ graph LR
 ```
 
 **Benefits**:
+
 - Clean separation of concerns
 - Automatic transaction management
 - Easy to test (pure functions)
 - Foundation for async messaging
 
 **Example**:
+
 ```csharp
 // Endpoint: Just routing
 private static Task<IResult> CreateBook(request, IMessageBus bus)
@@ -143,6 +148,7 @@ public static IResult Handle(CreateBook cmd, IDocumentSession session)
 The system implements **Enterprise-grade Multi-tenancy** using Marten's Conjoined Tenancy model.
 
 **Key Components**:
+
 - **Tenant Resolution**: `TenantResolutionMiddleware` extracts tenant ID from `X-Tenant-ID` header.
 - **Data Isolation**: All Marten documents and events are partitioned by `tenant_id`.
 - **Service Scoping**: `IDocumentSession` and `IQuerySession` are scoped to the current tenant.
@@ -171,44 +177,48 @@ The application automatically sends SSE notifications whenever projections are u
 > For implementation details, flow diagrams, and client integration examples, see the [Real-time Notifications Guide](guides/real-time-notifications.md).
 
 **Key Features**:
+
 - **Automatic**: Tied to projection updates, not API calls.
 - **Reliable**: Notifications only fire if the data is successfully committed.
 - **Integrated**: Handles cache invalidation and notification in a single unit of work.
-```
 
 ## Domain Model
 
 ### Aggregates
 
 **Book Aggregate**:
+
 - Root entity for book management
 - Enforces business rules
 - Emits events: `BookAdded`, `BookUpdated`, `BookSoftDeleted`, `BookRestored`
 
 **Author Aggregate**:
+
 - Manages author information
 - Tracks biography and metadata
 
 **Category Aggregate**:
+
 - Supports multi-language translations
 - Manages category hierarchy
 
 **Publisher Aggregate**:
+
 - Publisher information management
 
 ### Events
 
 All events include:
+
 - Domain data (title, ISBN, etc.)
 - Marten metadata (correlation ID, causation ID, timestamp)
 
 Example event flow:
-```
+
 1. User creates book → BookAdded event
 2. Event stored in mt_events table
 3. Async projection updates BookSearchProjection
 4. Read model available for queries
-```
 
 ## Event Modeling
 
@@ -294,14 +304,13 @@ sequenceDiagram
 
 ### Write Path (Command)
 
-```
 ```mermaid
 sequenceDiagram
     participant Client
     participant API as API Endpoint
     participant Domain as Domain Model
     participant Marten as Marten Event Store
-    
+
     Client->>API: 1. HTTP Request
     API->>Domain: 2. Load Aggregate
     Domain->>Domain: 3. Business Logic
@@ -310,28 +319,24 @@ sequenceDiagram
     Marten->>Marten: 6. SaveChanges
     API->>Client: 7. Return Response
 ```
-```
 
 ### Read Path (Query)
 
-```
 ```mermaid
 sequenceDiagram
     participant Client
     participant API as API Endpoint
     participant DB as Read Model DB
-    
+
     Client->>API: 1. HTTP Request
     API->>DB: 2. Query Projection
     DB->>API: 3. Return Data (DTOs)
     API->>API: 4. Apply Filters/Pagination
     API->>Client: 5. Return Results
 ```
-```
 
 ### Projection Update (Async)
 
-```
 ```mermaid
 sequenceDiagram
     participant EventStore as Marten Event Store
@@ -345,11 +350,11 @@ sequenceDiagram
     Builder->>DB: 4. Update Read Model
     DB-->>Daemon: 5. Commit Checkpoint
 ```
-```
 
 ## Technology Stack
 
 ### Backend
+
 - **ASP.NET Core 10** - Web framework
 - **Minimal APIs** - Endpoint definition
 - **Wolverine** - Command/handler pattern and message bus
@@ -359,6 +364,7 @@ sequenceDiagram
 - **Scalar** - API documentation
 
 ### Features
+
 - **Event Sourcing** - Marten event store
 - **CQRS** - Separate read/write models
 - **Real-time Notifications** - Server-Sent Events (SSE) for all mutations
@@ -372,6 +378,7 @@ sequenceDiagram
 - **Soft Deletion** - Logical deletes with restore
 
 ### Infrastructure
+
 - **Docker** - Container runtime
 - **PgAdmin** - Database management
 - **OpenTelemetry** - Distributed tracing
@@ -386,13 +393,15 @@ sequenceDiagram
 
 ### 1. Event Sourcing with Marten
 
-**Why**: 
+**Why**:
+
 - Built-in event store on PostgreSQL
 - No additional infrastructure needed
 - Strong .NET integration
 - Async projection support
 
 **Trade-offs**:
+
 - Learning curve for event sourcing
 - Eventually consistent reads
 - More complex than CRUD
@@ -400,6 +409,7 @@ sequenceDiagram
 ### 2. Minimal APIs
 
 **Why**:
+
 - Less boilerplate than controllers
 - Better performance
 - Cleaner endpoint definition
@@ -408,11 +418,13 @@ sequenceDiagram
 ### 3. Async Projections
 
 **Why**:
+
 - Decouples write and read models
 - Optimized read models for specific queries
 - Scalable (can run on separate processes)
 
 **Trade-offs**:
+
 - Eventually consistent
 - Projection lag possible
 - More complex than direct queries
@@ -420,6 +432,7 @@ sequenceDiagram
 ### 4. Soft Deletion
 
 **Why**:
+
 - Preserve data integrity
 - Support undo/restore
 - Maintain referential integrity
@@ -428,6 +441,7 @@ sequenceDiagram
 ### 5. ETags for Concurrency
 
 **Why**:
+
 - Standard HTTP mechanism
 - Works with any client
 - Natural fit with stream versions
@@ -437,12 +451,14 @@ sequenceDiagram
 ### 6. Identity Stored as Documents (Not Event Sourced)
 
 **Why**:
+
 - **Standardization**: ASP.NET Core Identity provides robust, battle-tested security.
 - **Compliance**: GDPR "Right to be Forgotten" is easier to implement with mutable documents than immutable event streams.
 - **Simplicity**: Authentication state (current password hash, lock status) is more critical than the history of changes.
 - **Performance**: High-frequency read path (login) benefits from simple index lookups.
 
 **Trade-offs**:
+
 - **Audit Trail**: Account changes (password reset, email change) are not automatically event-sourced (must use separate audit logs).
 - **Consistency**: Auth data lives outside the primary event stream (though still in Postgres/Marten).
 
@@ -471,8 +487,6 @@ sequenceDiagram
 
 ### Authentication & Authorization
 
-### Authentication & Authorization
-
 The application implements a **Token-based authentication system**:
 
 - **JWT Bearer Tokens** - Primary authentication method
@@ -489,7 +503,7 @@ The application implements a **Token-based authentication system**:
 - **Role-Based Authorization** - Admin endpoints protected
   - Admin role for full access
   - Extensible for additional roles
-  
+
 See [Authentication Guide](guides/authentication-guide.md) and [Passkey Guide](guides/passkey-guide.md) for details.
 
 ### Data Protection

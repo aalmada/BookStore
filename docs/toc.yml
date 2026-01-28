@@ -2,9 +2,6 @@
   href: getting-started.md
 - name: Architecture
   href: architecture.md
-  items:
-    - name: Api Documentation
-      href: api/index.md
 - name: Guides
   items:
     - name: Event Sourcing
@@ -63,3 +60,5 @@
   items:
     - name: Analyzer Rules
       href: guides/analyzer-rules.md
+- name: Api Documentation
+  href: api/index.md
