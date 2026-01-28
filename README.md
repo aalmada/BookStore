@@ -29,7 +29,7 @@ A complete book store management system featuring:
 
 ### Book Catalog
 <p float="left">
-  <a href="docs/images/book-list-acme.png"><img src="docs/images/book-list-acme.png" width="49%" alt="Acme Teant Book List" /></a>
+  <a href="docs/images/book-list-acme.png"><img src="docs/images/book-list-acme.png" width="49%" alt="Acme Tenant Book List" /></a>
   <a href="docs/images/book-list-contoso.png"><img src="docs/images/book-list-contoso.png" width="49%" alt="Contoso Tenant Book List" /></a>
 </p>
 
