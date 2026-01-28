@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using System.Security.Claims; // Need this for ClaimsPrincipal if not implicit
 using BookStore.ApiService.Aggregates;
@@ -109,6 +110,10 @@ public static class BookEndpoints
         HttpContext context,
         CancellationToken cancellationToken)
     {
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        var tags = new TagList { { "tenant_id", tenantContext.TenantId } };
+        Instrumentation.BookSearches.Add(1, tags);
+
         var paging = request.Normalize(paginationOptions.Value);
         var culture = CultureInfo.CurrentUICulture.Name;
         var defaultCulture = localizationOptions.Value.DefaultCulture;
@@ -343,10 +348,13 @@ public static class BookEndpoints
                         return result;
                     }).ToList();
 
-                    response = response with { Items = updatedItems };
+        response = response with { Items = updatedItems };
                 }
             }
         }
+
+        stopwatch.Stop();
+        Instrumentation.SearchDuration.Record(stopwatch.Elapsed.TotalMilliseconds, tags);
 
         return TypedResults.Ok(response);
     }
@@ -512,6 +520,8 @@ public static class BookEndpoints
         HttpContext context,
         CancellationToken cancellationToken)
     {
+        Instrumentation.BookViews.Add(1, new TagList { { "tenant_id", tenantContext.TenantId } });
+
         var culture = CultureInfo.CurrentUICulture.Name;
         var defaultCulture = localizationOptions.Value.DefaultCulture;
 

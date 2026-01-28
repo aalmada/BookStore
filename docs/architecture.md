@@ -541,3 +541,4 @@ See [Authentication Guide](guides/authentication-guide.md) and [Passkey Guide](g
 - **[Localization Guide](guides/localization-guide.md)** - Multi-language translation system
 - **[Multi-Currency Pricing Guide](guides/multi-currency-guide.md)** - Regional pricing and psychological strategies
 - **[Getting Started](getting-started.md)** - Setup and running the application
+- **[Usage Tracking & Observability Guide](guides/observability-guide.md)** - Metrics and monitoring with OpenTelemetry

@@ -342,15 +342,16 @@ public static class BookHandlers
     }
 
     /// <summary>
-    /// Handle ScheduleBookSale command with ETag validation
+    /// Handle ScheduleSale command with ETag validation
     /// </summary>
     public static async Task<IResult> Handle(
-        ScheduleBookSale command,
+        ScheduleSale command,
         IDocumentSession session,
         IHttpContextAccessor contextAccessor,
         ILogger logger)
     {
-        var context = contextAccessor.HttpContext;
+        var context = contextAccessor.HttpContext!;
+        Instrumentation.SalesScheduled.Add(1, new System.Diagnostics.TagList { { "tenant_id", session.TenantId } });
 
         // Get current stream state for ETag validation
         var streamState = await session.Events.FetchStreamStateAsync(command.BookId);
@@ -362,8 +363,8 @@ public static class BookHandlers
 
         var currentETag = ETagHelper.GenerateETag(streamState.Version);
 
-        // Check If-Match header for optimistic concurrency (only if we have an HTTP context)
-        if (context != null && !string.IsNullOrEmpty(command.ETag) &&
+        // Check If-Match header for optimistic concurrency
+        if (!string.IsNullOrEmpty(command.ETag) &&
             !ETagHelper.CheckIfMatch(context, currentETag))
         {
             return ETagHelper.PreconditionFailed();
@@ -385,27 +386,25 @@ public static class BookHandlers
 
         _ = session.Events.Append(command.BookId, eventResult.Value);
 
-        // Get new stream state and return new ETag (only if we have an HTTP context)
-        if (context != null)
-        {
-            var newStreamState = await session.Events.FetchStreamStateAsync(command.BookId);
-            var newETag = ETagHelper.GenerateETag(newStreamState!.Version);
-            ETagHelper.AddETagHeader(context, newETag);
-        }
+        // Get new stream state and return new ETag
+        var newStreamState = await session.Events.FetchStreamStateAsync(command.BookId);
+        var newETag = ETagHelper.GenerateETag(newStreamState!.Version);
+        ETagHelper.AddETagHeader(context, newETag);
 
         return Results.NoContent();
     }
 
     /// <summary>
-    /// Handle CancelBookSale command with ETag validation
+    /// Handle CancelSale command with ETag validation
     /// </summary>
     public static async Task<IResult> Handle(
-        CancelBookSale command,
+        CancelSale command,
         IDocumentSession session,
         IHttpContextAccessor contextAccessor,
         ILogger logger)
     {
-        var context = contextAccessor.HttpContext;
+        var context = contextAccessor.HttpContext!;
+        Instrumentation.SalesCanceled.Add(1, new System.Diagnostics.TagList { { "tenant_id", session.TenantId } });
 
         // Get current stream state for ETag validation
         var streamState = await session.Events.FetchStreamStateAsync(command.BookId);
@@ -417,8 +416,8 @@ public static class BookHandlers
 
         var currentETag = ETagHelper.GenerateETag(streamState.Version);
 
-        // Check If-Match header for optimistic concurrency (only if we have an HTTP context)
-        if (context != null && !string.IsNullOrEmpty(command.ETag) &&
+        // Check If-Match header for optimistic concurrency
+        if (!string.IsNullOrEmpty(command.ETag) &&
             !ETagHelper.CheckIfMatch(context, currentETag))
         {
             return ETagHelper.PreconditionFailed();
@@ -440,13 +439,10 @@ public static class BookHandlers
 
         _ = session.Events.Append(command.BookId, eventResult.Value);
 
-        // Get new stream state and return new ETag (only if we have an HTTP context)
-        if (context != null)
-        {
-            var newStreamState = await session.Events.FetchStreamStateAsync(command.BookId);
-            var newETag = ETagHelper.GenerateETag(newStreamState!.Version);
-            ETagHelper.AddETagHeader(context, newETag);
-        }
+        // Get new stream state and return new ETag
+        var newStreamState = await session.Events.FetchStreamStateAsync(command.BookId);
+        var newETag = ETagHelper.GenerateETag(newStreamState!.Version);
+        ETagHelper.AddETagHeader(context, newETag);
 
         return Results.NoContent();
     }

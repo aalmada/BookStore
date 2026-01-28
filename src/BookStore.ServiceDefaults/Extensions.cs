@@ -86,7 +86,8 @@ public static class Extensions
             .WithMetrics(metrics => _ = metrics.AddAspNetCoreInstrumentation()
                 .AddHttpClientInstrumentation()
                 .AddRuntimeInstrumentation()
-                .AddMeter("Wolverine"))
+                .AddMeter("Wolverine")
+                .AddMeter("BookStore.ApiService"))
             .WithTracing(tracing => _ = tracing.AddSource(builder.Environment.ApplicationName)
                 .AddSource("Wolverine")
                 .AddAspNetCoreInstrumentation(tracing =>
@@ -143,12 +144,12 @@ public static class Extensions
 
         // Readiness probe: All health checks must pass for app to be ready to accept traffic
         _ = app.MapHealthChecks(HealthEndpointPath)
-            .WithMetadata(new BookStore.Shared.Infrastructure.AllowAnonymousTenantAttribute());
+            .WithMetadata(new AllowAnonymousTenantAttribute());
 
         // Liveness probe: Only "live" tagged checks must pass for app to be considered alive
         _ = app.MapHealthChecks(AlivenessEndpointPath,
                 new HealthCheckOptions { Predicate = r => r.Tags.Contains("live") })
-            .WithMetadata(new BookStore.Shared.Infrastructure.AllowAnonymousTenantAttribute());
+            .WithMetadata(new AllowAnonymousTenantAttribute());
 
         return app;
     }

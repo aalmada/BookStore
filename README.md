@@ -128,7 +128,8 @@ The Aspire dashboard opens automatically, providing access to:
 - **Full-text Search** with PostgreSQL trigrams and unaccent
 - **Optimistic Concurrency** with ETags
 - **Hybrid Caching** - Multi-tiered caching with Redis and in-memory support
-- **Distributed Tracing** with correlation/causation IDs
+- **Usage Tracking & Observability** - Custom metrics with OpenTelemetry and Aspire Dashboard
+- **Distributed Tracing** - Correlation and causation IDs for distributed tracing
 - **API Versioning** (header-based, v1.0)
 - **Soft Deletion** - Logical deletes with restore capability
 
@@ -181,6 +182,7 @@ See the [Project Structure](docs/getting-started.md#project-structure) guide for
 - [**Testing**](docs/guides/testing-guide.md) - Unit testing with TUnit, assertions, and best practices
 - [**Integration Testing**](docs/guides/integration-testing-guide.md) - End-to-end testing with Aspire and Bogus
 - [**AI Agents**](docs/guides/agent-guide.md): Build strict, maintainable agentic workflows with typed skills and tool-use by design.
+- [**Usage Tracking & Observability**](docs/guides/observability-guide.md) - Metrics and monitoring with OpenTelemetry
 - [**Aspire Deployment**](docs/guides/aspire-deployment-guide.md) - Deploy to Azure and Kubernetes
 - [**Production Scaling**](docs/guides/production-scaling-guide.md) - Scale applications and databases in production
 - [**Documentation Guide**](docs/guides/documentation-guide.md) - How to build and contribute to documentation

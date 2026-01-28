@@ -30,6 +30,8 @@
       href: guides/logging-guide.md
     - name: Correlation & Causation
       href: guides/correlation-causation-guide.md
+    - name: Usage Tracking & Observability
+      href: guides/observability-guide.md
     - name: Localization
       href: guides/localization-guide.md
     - name: Multi-Currency Pricing

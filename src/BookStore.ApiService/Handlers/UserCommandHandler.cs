@@ -1,6 +1,7 @@
 using BookStore.ApiService.Messages.Commands;
 using BookStore.ApiService.Models;
 using BookStore.ApiService.Projections;
+using BookStore.ApiService.Infrastructure; // Added this line
 using BookStore.Shared.Messages.Events;
 using Marten;
 using Wolverine;
@@ -11,6 +12,7 @@ public static class UserCommandHandler
 {
     public static async Task Handle(AddBookToFavorites command, IDocumentSession session)
     {
+        Instrumentation.FavoritesAdded.Add(1, new System.Diagnostics.TagList { { "tenant_id", session.TenantId } });
 
         var profile = await session.LoadAsync<UserProfile>(command.UserId);
 
@@ -44,6 +46,8 @@ public static class UserCommandHandler
 
     public static async Task Handle(RateBook command, IDocumentSession session)
     {
+        Instrumentation.RatingsAdded.Add(1, new System.Diagnostics.TagList { { "tenant_id", session.TenantId } });
+
         // Validate rating is between 1-5
         if (command.Rating is < 1 or > 5)
         {
@@ -78,6 +82,8 @@ public static class UserCommandHandler
 
     public static async Task Handle(AddBookToCart command, IDocumentSession session)
     {
+        Instrumentation.CartAdded.Add(1, new System.Diagnostics.TagList { { "tenant_id", session.TenantId } });
+
         if (command.Quantity <= 0)
         {
             throw new ArgumentException("Quantity must be greater than 0", nameof(command.Quantity));
@@ -100,6 +106,8 @@ public static class UserCommandHandler
 
     public static async Task Handle(RemoveBookFromCart command, IDocumentSession session)
     {
+        Instrumentation.CartRemoved.Add(1, new System.Diagnostics.TagList { { "tenant_id", session.TenantId } });
+
         var profile = await session.LoadAsync<UserProfile>(command.UserId);
 
         // Only append event if book is actually in the cart
