@@ -210,6 +210,86 @@ Example event flow:
 4. Read model available for queries
 ```
 
+## Event Modeling
+
+The system uses specific event patterns to handle temporal logic, such as scheduled sales and price updates.
+
+### Sale Lifecycle Flow
+
+When an administrator schedules a sale, the system orchestrates a multi-step asynchronous flow involving Wolverine's message scheduling.
+
+```mermaid
+graph TD
+    subgraph "Phase 1: Scheduling"
+        C1[ScheduleSale Command] --> E1[BookSaleScheduled Event]
+        E1 --> R1[SaleHandlers Reactor]
+        R1 -->|Schedule at Start| C2[ApplyBookDiscount Command]
+        R1 -->|Schedule at End| C3[RemoveBookDiscount Command]
+    end
+
+    subgraph "Phase 2: Execution (at Start Time)"
+        C2 --> E2[BookDiscountUpdated Event]
+        E2 --> P1[BookSearchProjection]
+        E2 --> H1[HybridCache Invalidation]
+    end
+
+    subgraph "Phase 3: Completion (at End Time)"
+        C3 --> E3[BookDiscountUpdated Event]
+        E3 --> P1
+        E3 --> H1
+    end
+
+    style E1 fill:#f9f,stroke:#333,stroke-width:2px
+    style E2 fill:#f9f,stroke:#333,stroke-width:2px
+    style E3 fill:#f9f,stroke:#333,stroke-width:2px
+    style C1 fill:#bbf,stroke:#333,stroke-width:2px
+    style C2 fill:#bbf,stroke:#333,stroke-width:2px
+    style C3 fill:#bbf,stroke:#333,stroke-width:2px
+```
+
+### Detailed Sequential Flow: Scheduling a Sale
+
+This diagram shows the interaction between the domain aggregates, the event store, and the background messaging system during the scheduling phase.
+
+```mermaid
+sequenceDiagram
+    participant Admin as Admin User
+    participant API as API (/sales)
+    participant SaleAgg as SaleAggregate
+    participant Marten as Event Store (mt_events)
+    participant Reactor as SaleHandlers Reactor
+    participant Wolverine as Wolverine Bus
+
+    Admin->>API: 1. ScheduleSale(BookId, %, Start, End)
+    API->>SaleAgg: 2. ScheduleSale()
+    SaleAgg->>API: 3. BookSaleScheduled
+    API->>Marten: 4. Append Event
+    Marten-->>Reactor: 5. Async Notification
+    Reactor-->>Wolverine: 6. ScheduleAsync(ApplyBookDiscount, Start)
+    Reactor-->>Wolverine: 7. ScheduleAsync(RemoveBookDiscount, End)
+```
+
+### Detailed Sequential Flow: Applying a Discount
+
+When the scheduled time arrives, Wolverine executes the command to update the effective price.
+
+```mermaid
+sequenceDiagram
+    participant Wolverine as Wolverine (Scheduled Job)
+    participant Handler as BookPriceHandlers
+    participant BookAgg as BookAggregate
+    participant Marten as Event Store (mt_events)
+    participant Projection as BookSearchProjection
+    participant Cache as HybridCache
+
+    Wolverine->>Handler: 1. ApplyBookDiscount(BookId, %)
+    Handler->>BookAgg: 2. ApplyDiscount(%)
+    BookAgg->>Handler: 3. BookDiscountUpdated
+    Handler->>Marten: 4. Append Event (with TenantId)
+    Marten-->>Projection: 5. Async Update (CurrentPrices)
+    Handler-->>Cache: 6. InvalidateByTag("books", "book:{id}")
+```
+
 ## Data Flow
 
 ### Write Path (Command)
