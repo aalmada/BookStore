@@ -23,6 +23,7 @@ public class BookAggregate : ISoftDeleted
 #pragma warning restore BS3005
     public Dictionary<string, decimal> Prices { get; private set; } = [];
     public List<BookSale> Sales { get; private set; } = [];
+    public decimal CurrentDiscountPercentage { get; private set; }
     public CoverImageFormat CoverFormat { get; private set; } = CoverImageFormat.None;
 
     // Marten uses this for rehydration
@@ -76,6 +77,9 @@ public class BookAggregate : ISoftDeleted
     }
 
     void Apply(BookSaleCancelled @event) => _ = Sales.RemoveAll(s => s.Start == @event.SaleStart);
+
+    void Apply(BookDiscountUpdated @event) => CurrentDiscountPercentage = @event.DiscountPercentage;
+
 
     // Command methods
     public static Result<BookAdded> CreateEvent(
@@ -397,6 +401,31 @@ public class BookAggregate : ISoftDeleted
         }
 
         return new BookSaleCancelled(Id, saleStart);
+    }
+
+    public Result<BookDiscountUpdated> ApplyDiscount(decimal percentage)
+    {
+        if (Deleted)
+        {
+            return Result.Failure<BookDiscountUpdated>(Error.Conflict(ErrorCodes.Books.AlreadyDeleted, "Cannot update discount for a deleted book"));
+        }
+
+        if (percentage is < 0 or >= 100)
+        {
+            return Result.Failure<BookDiscountUpdated>(Error.Validation(ErrorCodes.Books.PriceNegative, "Discount percentage must be between 0 and 100"));
+        }
+
+        return new BookDiscountUpdated(Id, percentage);
+    }
+
+    public Result<BookDiscountUpdated> RemoveDiscount()
+    {
+        if (Deleted)
+        {
+            return Result.Failure<BookDiscountUpdated>(Error.Conflict(ErrorCodes.Books.AlreadyDeleted, "Cannot update discount for a deleted book"));
+        }
+
+        return new BookDiscountUpdated(Id, 0);
     }
 }
 

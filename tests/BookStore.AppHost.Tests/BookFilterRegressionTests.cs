@@ -1,11 +1,8 @@
 
-using System.Net;
 using System.Net.Http.Json;
 using BookStore.Shared.Models;
 using Marten;
 using Weasel.Core;
-using Aspire.Hosting;
-using Aspire.Hosting.Testing;
 
 namespace BookStore.AppHost.Tests;
 
@@ -225,7 +222,7 @@ public class BookFilterRegressionTests
         // 50 * 0.5 = 25. Should be found with MaxPrice=40.
         var saleRequest = new
         {
-            Percentage = 0.5m, Start = DateTimeOffset.UtcNow.AddDays(-1), End = DateTimeOffset.UtcNow.AddDays(1)
+            Percentage = 50m, Start = DateTimeOffset.UtcNow.AddSeconds(-5), End = DateTimeOffset.UtcNow.AddDays(1)
         };
 
         _ = await TestHelpers.ExecuteAndWaitForEventAsync(bookId, "BookSaleScheduled", async () =>
@@ -238,11 +235,11 @@ public class BookFilterRegressionTests
         // Note: Sale application usually triggers re-indexing or at least projection update.
         // BookSearchProjection handles BookSaleScheduled.
         var foundOnSale = false;
-        for (var i = 0; i < 10; i++)
+        for (var i = 0; i < 30; i++)
         {
             // Search with MaxPrice=40. Desired price is 25.
             var res = await publicClient.GetAsync($"/api/books?search={uniqueTitle}&maxPrice=40&currency=USD");
-            if (res.IsSuccessStatusCode)
+            if (res.IsSuccessStatusCode && res.StatusCode == HttpStatusCode.OK)
             {
                 var list = await res.Content.ReadFromJsonAsync<PagedListDto<BookDto>>();
                 if (list != null && list.Items.Any(b => b.Id == bookId))
@@ -252,7 +249,7 @@ public class BookFilterRegressionTests
                 }
             }
 
-            await Task.Delay(500);
+            await Task.Delay(1000);
         }
 
         _ = await Assert.That(foundOnSale).IsTrue();

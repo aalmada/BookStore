@@ -2,6 +2,8 @@ using System.Text.Json.Serialization;
 
 namespace BookStore.Shared.Models;
 
+public record PriceEntry(string Currency, decimal Value);
+
 /// <summary>
 /// DTO for book responses with full related entity details
 /// </summary>
@@ -26,5 +28,6 @@ public record BookDto(
     string? CoverImageUrl = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     BookSale? ActiveSale = null, // Currently active sale, if any
+    IReadOnlyList<PriceEntry>? CurrentPrices = null,
     bool IsDeleted = false);
 
