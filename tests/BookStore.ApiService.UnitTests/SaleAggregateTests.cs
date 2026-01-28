@@ -15,8 +15,8 @@ public class SaleAggregateTests
 
         var result = aggregate.ScheduleSale(20m, start, end);
 
-        await Assert.That(result.IsSuccess).IsTrue();
-        await Assert.That(result.Value.Sale.Percentage).IsEqualTo(20m);
+        _ = await Assert.That(result.IsSuccess).IsTrue();
+        _ = await Assert.That(result.Value.Sale.Percentage).IsEqualTo(20m);
     }
 
     [Test]
@@ -31,6 +31,6 @@ public class SaleAggregateTests
         var r1 = aggregate.ScheduleSale(20m, start, end);
         // ... (comments)
         
-        await Assert.That(r1.IsSuccess).IsTrue();
+        _ = await Assert.That(r1.IsSuccess).IsTrue();
     }
 }
