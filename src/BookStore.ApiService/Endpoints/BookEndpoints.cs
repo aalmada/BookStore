@@ -136,6 +136,9 @@ public static class BookEndpoints
             cacheKey,
             async cancel =>
             {
+                // Diagnostic: Check total books in projection
+                var totalBooks = await session.Query<BookSearchProjection>().CountAsync(cancel);
+
                 // Session is already scoped and tenant-aware
 
                 // Dictionaries to hold included documents
@@ -193,47 +196,16 @@ public static class BookEndpoints
                     query = query.Where(b => b.Prices.Any(p => p.Currency == request.Currency));
                 }
 
-                // Discount SQL (returns a percentage like 0.5 or 0)
-                // We use raw SQL to calculate the effective price because LINQ cannot easily handle
-                // dynamic computation inside JSON arrays (Prices) correlated with other arrays (Sales).
-                // We use COALESCE to handle potential casing differences dynamically
-                // (e.g. 'prices' vs 'Prices', 'value' vs 'Value')
-                const string discountSql = @"
-                    (
-                        SELECT COALESCE(
-                            (s ->> 'percentage')::decimal, 
-                            (s ->> 'Percentage')::decimal, 
-                            0
-                        )
-                        FROM jsonb_array_elements(COALESCE(d.data -> 'sales', d.data -> 'Sales', '[]'::jsonb)) s
-                        WHERE COALESCE(s ->> 'start', s ->> 'Start')::timestamptz <= ?
-                          AND COALESCE(s ->> 'end', s ->> 'End')::timestamptz > ?
-                        LIMIT 1
-                    )";
-
-                var queryNow = DateTimeOffset.UtcNow;
-
                 // Filter by price range if specified
                 if (request.MinPrice.HasValue)
                 {
                     if (!string.IsNullOrWhiteSpace(request.Currency))
                     {
-                        query = query.Where(b => b.MatchesSql($@"
-                            exists (
-                              select 1
-                              from jsonb_array_elements(COALESCE(d.data -> 'prices', d.data -> 'Prices', '[]'::jsonb)) p
-                              where COALESCE(p ->> 'currency', p ->> 'Currency') = ?
-                                and COALESCE(p ->> 'value', p ->> 'Value')::decimal * (1 - COALESCE({discountSql}, 0)) >= ?
-                            )", request.Currency, queryNow, queryNow, request.MinPrice.Value));
+                        query = query.Where(b => b.CurrentPrices.Any(p => p.Currency == request.Currency && p.Value >= request.MinPrice.Value));
                     }
                     else
                     {
-                        query = query.Where(b => b.MatchesSql($@"
-                            exists (
-                              select 1
-                              from jsonb_array_elements(COALESCE(d.data -> 'prices', d.data -> 'Prices', '[]'::jsonb)) p
-                              where COALESCE(p ->> 'value', p ->> 'Value')::decimal * (1 - COALESCE({discountSql}, 0)) >= ?
-                            )", queryNow, queryNow, request.MinPrice.Value));
+                        query = query.Where(b => b.CurrentPrices.Any(p => p.Value >= request.MinPrice.Value));
                     }
                 }
 
@@ -241,22 +213,11 @@ public static class BookEndpoints
                 {
                     if (!string.IsNullOrWhiteSpace(request.Currency))
                     {
-                        query = query.Where(b => b.MatchesSql($@"
-                            exists (
-                              select 1
-                              from jsonb_array_elements(COALESCE(d.data -> 'prices', d.data -> 'Prices', '[]'::jsonb)) p
-                              where COALESCE(p ->> 'currency', p ->> 'Currency') = ?
-                                and COALESCE(p ->> 'value', p ->> 'Value')::decimal * (1 - COALESCE({discountSql}, 0)) <= ?
-                            )", request.Currency, queryNow, queryNow, request.MaxPrice.Value));
+                        query = query.Where(b => b.CurrentPrices.Any(p => p.Currency == request.Currency && p.Value <= request.MaxPrice.Value));
                     }
                     else
                     {
-                        query = query.Where(b => b.MatchesSql($@"
-                            exists (
-                              select 1
-                              from jsonb_array_elements(COALESCE(d.data -> 'prices', d.data -> 'Prices', '[]'::jsonb)) p
-                              where COALESCE(p ->> 'value', p ->> 'Value')::decimal * (1 - COALESCE({discountSql}, 0)) <= ?
-                            )", queryNow, queryNow, request.MaxPrice.Value));
+                        query = query.Where(b => b.CurrentPrices.Any(p => p.Value <= request.MaxPrice.Value));
                     }
                 }
 
@@ -336,6 +297,7 @@ public static class BookEndpoints
                         book.Prices.ToDictionary(p => p.Currency, p => p.Value),
                         GenerateCoverUrl(book.Id, book.CoverFormat, tenantContext.TenantId, context.Request),
                         activeSale,
+                        book.CurrentPrices,
                         book.Deleted
                     );
                 }).ToList();
@@ -527,6 +489,7 @@ public static class BookEndpoints
                 book.Prices.ToDictionary(p => p.Currency, p => p.Value),
                 GenerateCoverUrl(book.Id, book.CoverFormat, session.TenantId, context.Request),
                 activeSale,
+                book.CurrentPrices,
                 book.Deleted
             );
         }).ToList();
@@ -657,6 +620,7 @@ public static class BookEndpoints
                     book.Prices.ToDictionary(p => p.Currency, p => p.Value),
                     GenerateCoverUrl(book.Id, book.CoverFormat, tenantContext.TenantId, context.Request),
                     activeSale,
+                    book.CurrentPrices,
                     book.Deleted
                     );
             },
@@ -794,12 +758,20 @@ public static class BookEndpoints
         CancellationToken cancellationToken)
     {
         var etag = context.Request.Headers.IfMatch.FirstOrDefault();
-        var command = new ScheduleBookSale(id, request.Percentage, request.Start, request.End)
+        var command = new ScheduleSale(id, request.Percentage, request.Start, request.End)
         {
             ETag = etag
         };
 
-        return await bus.InvokeAsync<IResult>(command, new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
+        try
+        {
+            return await bus.InvokeAsync<IResult>(command, new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+             Console.WriteLine($"[BookEndpoints] Failed to invoke ScheduleSale: {ex}");
+             return Results.Problem(ex.ToString());
+        }
     }
 
     static async Task<IResult> CancelSale(
@@ -811,7 +783,7 @@ public static class BookEndpoints
         CancellationToken cancellationToken)
     {
         var etag = context.Request.Headers.IfMatch.FirstOrDefault();
-        var command = new CancelBookSale(id, saleStart)
+        var command = new CancelSale(id, saleStart)
         {
             ETag = etag
         };

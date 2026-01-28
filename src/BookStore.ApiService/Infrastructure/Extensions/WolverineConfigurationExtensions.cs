@@ -34,11 +34,13 @@ public static class WolverineConfigurationExtensions
         _ = opts.Discovery.IncludeType(typeof(Handlers.Authors.AuthorHandlers));
         _ = opts.Discovery.IncludeType(typeof(Handlers.Books.BookHandlers));
         _ = opts.Discovery.IncludeType(typeof(Handlers.Books.BookCoverHandlers));
+        _ = opts.Discovery.IncludeType(typeof(Handlers.Books.BookPriceHandlers));
         _ = opts.Discovery.IncludeType(typeof(Handlers.Categories.CategoryHandlers));
         _ = opts.Discovery.IncludeType(typeof(Handlers.Publishers.PublisherHandlers));
         _ = opts.Discovery.IncludeType(typeof(Handlers.Notifications.EmailHandlers));
         _ = opts.Discovery.IncludeType(typeof(Handlers.UserCommandHandler));
         _ = opts.Discovery.IncludeType(typeof(Handlers.TenantAdminHandler));
         _ = opts.Discovery.IncludeType(typeof(Handlers.Maintenance.AccountCleanupHandlers));
+        _ = opts.Discovery.IncludeType(typeof(Handlers.Sales.SaleHandlers));
     }
 }

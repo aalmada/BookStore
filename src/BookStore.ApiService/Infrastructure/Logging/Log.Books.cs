@@ -154,5 +154,22 @@ public static partial class Log
             ILogger logger,
             Guid bookId,
             string error);
+
+        // Discount Operations
+        [LoggerMessage(
+            Level = LogLevel.Error,
+            Message = "Failed to apply discount to book: BookId={BookId}, Error={Error}")]
+        public static partial void ApplyDiscountFailed(
+            ILogger logger,
+            Guid bookId,
+            string error);
+
+        [LoggerMessage(
+            Level = LogLevel.Error,
+            Message = "Failed to remove discount from book: BookId={BookId}, Error={Error}")]
+        public static partial void RemoveDiscountFailed(
+            ILogger logger,
+            Guid bookId,
+            string error);
     }
 }
