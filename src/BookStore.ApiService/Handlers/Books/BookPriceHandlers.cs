@@ -37,7 +37,7 @@ public static class BookPriceHandlers
 
         _ = session.Events.Append(command.BookId, eventResult.Value);
         await session.SaveChangesAsync(ct);
-        
+
         // Invalidate cache
         await cache.RemoveByTagAsync([CacheTags.BookList, CacheTags.ForItem(CacheTags.BookItemPrefix, command.BookId)], ct);
 
@@ -68,7 +68,7 @@ public static class BookPriceHandlers
 
         _ = session.Events.Append(command.BookId, eventResult.Value);
         await session.SaveChangesAsync(ct);
-        
+
         // Invalidate cache
         await cache.RemoveByTagAsync([CacheTags.BookList, CacheTags.ForItem(CacheTags.BookItemPrefix, command.BookId)], ct);
 

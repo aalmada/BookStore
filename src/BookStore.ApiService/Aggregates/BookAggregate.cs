@@ -80,7 +80,6 @@ public class BookAggregate : ISoftDeleted
 
     void Apply(BookDiscountUpdated @event) => CurrentDiscountPercentage = @event.DiscountPercentage;
 
-
     // Command methods
     public static Result<BookAdded> CreateEvent(
         Guid id,

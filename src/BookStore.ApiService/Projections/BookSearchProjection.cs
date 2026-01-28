@@ -85,7 +85,7 @@ public class BookSearchProjection
         Prices = @event.Prices?
             .Select(kvp => new PriceEntry(kvp.Key, kvp.Value))
             .ToList() ?? [];
-        
+
         // Reset current prices to base prices (discount needs to be re-applied via event if state is rebuild, 
         // OR we need to remember discount? But BookUpdated overwrites everything usually.
         // Assuming BookUpdated is a full replacement.
@@ -94,8 +94,8 @@ public class BookSearchProjection
         // Since discount is separate state in Aggregate now, we should preserve it IF we tracked it in Projection.
         // But the Projection doesn't track 'DiscountPercentage'. 
         // We should add 'DiscountPercentage' to Projection to safely recalculate on Price/Book updates.
-        CurrentPrices = Prices.Select(p => p with { }).ToList(); // Deep copyish
-        
+        CurrentPrices = [.. Prices.Select(p => p with { })]; // Deep copyish
+
         LoadDenormalizedData(this, session);
         UpdateSearchText(this);
 
@@ -106,10 +106,13 @@ public class BookSearchProjection
     public void Apply(BookDiscountUpdated @event)
     {
         // Calculate new CurrentPrices based on Prices and Discount
-        if (Prices == null) return;
+        if (Prices == null)
+        {
+            return;
+        }
 
         var factor = 1 - (@event.DiscountPercentage / 100m);
-        CurrentPrices = Prices.Select(p => new PriceEntry(p.Currency, p.Value * factor)).ToList();
+        CurrentPrices = [.. Prices.Select(p => new PriceEntry(p.Currency, p.Value * factor))];
     }
 
     public void Apply(BookSoftDeleted @event)
@@ -134,7 +137,7 @@ public class BookSearchProjection
         // Or we rely on 'CurrentPrices' for the effective price and don't care about displaying usage of 'Sale' object in search list.
         // The list view usually shows "On Sale" badge. We need to know if it's on sale.
         // 'CurrentPrices' < 'Prices' implies sale.
-        
+
         // Remove any existing sale with the same start time
         _ = Sales.RemoveAll(s => s.Start == @event.Sale.Start);
         Sales.Add(@event.Sale);

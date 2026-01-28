@@ -18,10 +18,7 @@ public record SaleAggregate
         ScheduledSales.Add(@event.Sale);
     }
 
-    internal void Apply(BookSaleCancelled @event)
-    {
-        _ = ScheduledSales.RemoveAll(s => s.Start == @event.SaleStart);
-    }
+    internal void Apply(BookSaleCancelled @event) => _ = ScheduledSales.RemoveAll(s => s.Start == @event.SaleStart);
 
     public Result<BookSaleScheduled> ScheduleSale(decimal percentage, DateTimeOffset start, DateTimeOffset end)
     {

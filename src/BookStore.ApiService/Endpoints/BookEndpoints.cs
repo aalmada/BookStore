@@ -769,8 +769,8 @@ public static class BookEndpoints
         }
         catch (Exception ex)
         {
-             Console.WriteLine($"[BookEndpoints] Failed to invoke ScheduleSale: {ex}");
-             return Results.Problem(ex.ToString());
+            Console.WriteLine($"[BookEndpoints] Failed to invoke ScheduleSale: {ex}");
+            return Results.Problem(ex.ToString());
         }
     }
 

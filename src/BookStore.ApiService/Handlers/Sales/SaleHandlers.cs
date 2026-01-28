@@ -13,15 +13,14 @@ public static class SaleHandlers
 {
     public static async Task<IResult> Handle(
         ScheduleSale command,
-        IDocumentSession session,
-        ILogger logger)
+        IDocumentSession session)
     {
         try
         {
             var streamState = await session.Events.FetchStreamStateAsync(command.BookId);
             if (streamState == null)
             {
-                 return Results.NotFound();
+                return Results.NotFound();
             }
 
             // Manually project SaleAggregate to avoid Marten exceptions on unknown events
@@ -29,8 +28,15 @@ public static class SaleHandlers
             var aggregate = new SaleAggregate { Id = command.BookId };
             foreach (var e in events)
             {
-                if (e.Data is BookSaleScheduled s) aggregate.Apply(s);
-                if (e.Data is BookSaleCancelled c) aggregate.Apply(c);
+                if (e.Data is BookSaleScheduled s)
+                {
+                    aggregate.Apply(s);
+                }
+
+                if (e.Data is BookSaleCancelled c)
+                {
+                    aggregate.Apply(c);
+                }
             }
 
             var result = aggregate.ScheduleSale(command.Percentage, command.Start, command.End);
@@ -40,7 +46,7 @@ public static class SaleHandlers
             }
 
             // Append with expected version to force Marten to recognize existing stream
-            session.Events.Append(command.BookId, streamState.Version + 1, result.Value);
+            _ = session.Events.Append(command.BookId, streamState.Version + 1, result.Value);
             await session.SaveChangesAsync();
             return Results.NoContent();
         }
@@ -52,13 +58,12 @@ public static class SaleHandlers
 
     public static async Task<IResult> Handle(
         CancelSale command,
-        IDocumentSession session,
-        ILogger logger)
+        IDocumentSession session)
     {
         var streamState = await session.Events.FetchStreamStateAsync(command.BookId);
         if (streamState == null)
         {
-             return Results.NotFound();
+            return Results.NotFound();
         }
 
         // Manually project SaleAggregate
@@ -66,8 +71,15 @@ public static class SaleHandlers
         var aggregate = new SaleAggregate();
         foreach (var e in events)
         {
-            if (e.Data is BookSaleScheduled s) aggregate.Apply(s);
-            if (e.Data is BookSaleCancelled c) aggregate.Apply(c);
+            if (e.Data is BookSaleScheduled s)
+            {
+                aggregate.Apply(s);
+            }
+
+            if (e.Data is BookSaleCancelled c)
+            {
+                aggregate.Apply(c);
+            }
         }
 
         var eventResult = aggregate.CancelSale(command.SaleStart);

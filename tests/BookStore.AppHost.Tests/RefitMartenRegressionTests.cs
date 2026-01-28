@@ -1,7 +1,7 @@
-using Aspire.Hosting;
-using Aspire.Hosting.Testing;
 using System.Net;
 using System.Net.Http.Json;
+using Aspire.Hosting;
+using Aspire.Hosting.Testing;
 using BookStore.Shared.Models;
 using Marten;
 using Projects;
@@ -369,6 +369,6 @@ public class RefitMartenRegressionTests
         _ = await Assert.That(containsAInB).IsFalse();
     }
 
-// Internal DTO for the Publisher test if not available globally
+    // Internal DTO for the Publisher test if not available globally
     internal record PublisherDto(Guid Id, string Name);
 }
