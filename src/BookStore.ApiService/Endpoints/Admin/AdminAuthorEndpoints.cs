@@ -1,8 +1,15 @@
+using System.Globalization;
+using System.Linq;
+using BookStore.ApiService.Infrastructure;
+using BookStore.ApiService.Infrastructure.Extensions;
 using BookStore.ApiService.Infrastructure.Tenant;
-using BookStore.Shared.Models; // Also usually needed for DTOs in other files, but ensuring tenant infra is there.
+using BookStore.ApiService.Projections;
+using BookStore.Shared.Models;
 using Marten;
 using Marten.Linq.SoftDeletes;
+using Marten.Pagination;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using Wolverine;
 
 namespace BookStore.ApiService.Commands
@@ -42,14 +49,49 @@ namespace BookStore.ApiService.Endpoints.Admin
 
         static async Task<IResult> GetAllAuthors(
             [FromServices] IQuerySession session,
+            [FromServices] IOptions<PaginationOptions> paginationOptions,
+            [FromServices] IOptions<LocalizationOptions> localizationOptions,
+            [AsParameters] AuthorSearchRequest request,
             CancellationToken cancellationToken)
         {
-            var authors = await session.Query<Projections.AuthorProjection>()
-                .Where(x => x.MaybeDeleted())
-                .OrderBy(x => x.Name)
-                .ToListAsync(cancellationToken);
+            var paging = request.Normalize(paginationOptions.Value);
+            var culture = CultureInfo.CurrentUICulture.Name;
+            var defaultCulture = localizationOptions.Value.DefaultCulture;
 
-            return Results.Ok(authors);
+            var normalizedSortOrder = request.SortOrder?.ToLowerInvariant() == "desc" ? "desc" : "asc";
+            var normalizedSortBy = request.SortBy?.ToLowerInvariant();
+
+            // Use IQueryable to avoid compilation errors when reassigning after standard LINQ operators
+            IQueryable<AuthorProjection> query = session.Query<AuthorProjection>();
+
+            // Admin specifically wants to see both deleted and non-deleted
+            // Since Marten native soft-delete is not enabled, session.Query returns all by default.
+
+            if (!string.IsNullOrWhiteSpace(request.Search))
+            {
+                var search = request.Search.ToLower();
+                query = query.Where(x => x.Name.ToLower().Contains(search));
+            }
+
+            query = (normalizedSortBy, normalizedSortOrder) switch
+            {
+                ("id", "desc") => query.OrderByDescending(x => x.Id),
+                ("id", "asc") => query.OrderBy(x => x.Id),
+                ("name", "desc") => query.OrderByDescending(x => x.Name),
+                _ => query.OrderBy(x => x.Name)
+            };
+
+            var pagedList = await query.ToPagedListAsync(paging.Page!.Value, paging.PageSize!.Value, cancellationToken);
+
+            // Mapping MUST happen on the client side (after ToList()) because Marten 
+            // cannot translate complex Dictionary access or helper methods in Select()
+            var dtos = pagedList.ToList().Select(x => new AuthorDto(
+                x.Id,
+                x.Name,
+                LocalizationHelper.GetLocalizedValue(x.Biographies, culture, defaultCulture, "")
+            )).ToList();
+
+            return Results.Ok(new PagedListDto<AuthorDto>(dtos, pagedList.PageNumber, pagedList.PageSize, pagedList.TotalItemCount));
         }
 
         static Task<IResult> CreateAuthor(

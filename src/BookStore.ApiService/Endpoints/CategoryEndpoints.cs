@@ -35,7 +35,7 @@ public static class CategoryEndpoints
         [FromServices] IOptions<PaginationOptions> paginationOptions,
         [FromServices] IOptions<LocalizationOptions> localizationOptions,
         [FromServices] HybridCache cache,
-        [AsParameters] OrderedPagedRequest request,
+        [AsParameters] CategorySearchRequest request,
         HttpContext context,
         CancellationToken cancellationToken)
     {
@@ -46,8 +46,8 @@ public static class CategoryEndpoints
         var normalizedSortOrder = request.SortOrder?.ToLowerInvariant() == "desc" ? "desc" : "asc";
         var normalizedSortBy = request.SortBy?.ToLowerInvariant();
 
-        // Create cache key based on pagination, sorting, AND Tenant
-        var cacheKey = $"categories:tenant={tenantContext.TenantId}:page={paging.Page}:size={paging.PageSize}:sort={normalizedSortBy}:{normalizedSortOrder}";
+        // Create cache key based on search, pagination, sorting, AND Tenant
+        var cacheKey = $"categories:tenant={tenantContext.TenantId}:search={request.Search}:page={paging.Page}:size={paging.PageSize}:sort={normalizedSortBy}:{normalizedSortOrder}";
 
         var response = await cache.GetOrCreateLocalizedAsync(
             cacheKey,
@@ -57,6 +57,12 @@ public static class CategoryEndpoints
 
                 var query = session.Query<CategoryProjection>()
                     .Where(c => !c.Deleted);
+
+                if (!string.IsNullOrWhiteSpace(request.Search))
+                {
+                    // Search across all localized names
+                    query = query.Where(c => c.Names.Any(name => name.Value.Contains(request.Search, StringComparison.OrdinalIgnoreCase)));
+                }
 
                 // Note: Cannot sort by localized name since it's in a dictionary
                 // Sorting by ID only

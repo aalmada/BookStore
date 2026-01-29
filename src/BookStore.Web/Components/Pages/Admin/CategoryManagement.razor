@@ -1,0 +1,129 @@
+@page "/admin/categories"
+@using BookStore.Client
+@using BookStore.Shared.Models
+@using Microsoft.AspNetCore.Authorization
+@using MudBlazor
+@inject ICategoriesClient CategoriesClient
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@attribute [Authorize(Roles = "Admin")]
+
+<PageTitle>Category Management - BookStore</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-8 mb-12">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-6">
+        <MudText Typo="Typo.h4" Class="fw-bold">Category Management</MudText>
+        <MudSpacer/>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenAddDialog">
+            Add Category
+        </MudButton>
+    </MudStack>
+
+    <MudTable T="CategoryDto" @ref="_table" ServerData="ReloadData" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="0"
+              Class="glass-table rounded-xl overflow-hidden">
+        <ToolBarContent>
+            <MudSpacer/>
+            <MudTextField @bind-Value="_searchString" Placeholder="Search categories..." Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="search-field"
+                          Clearable="true" Immediate="true" Variant="Variant.Outlined" Margin="Margin.Dense"/>
+        </ToolBarContent>
+        <HeaderContent>
+            <MudTh>Name</MudTh>
+            <MudTh>Actions</MudTh>
+        </HeaderContent>
+        <RowTemplate Context="context">
+            <MudTd DataLabel="Name">
+                <MudText Typo="Typo.body2" Class="fw-semibold">@context.Name</MudText>
+            </MudTd>
+            <MudTd DataLabel="Actions">
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" OnClick="@(() => EditCategory(context))" Size="Size.Small"/>
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => DeleteCategory(context))" Size="Size.Small"/>
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+</MudContainer>
+
+@code {
+    private MudTable<CategoryDto> _table = null!;
+
+    private string? _searchString
+    {
+        get => _searchStringFieldValue;
+        set
+        {
+            if (_searchStringFieldValue == value) return;
+            _searchStringFieldValue = value;
+            _table.ReloadServerData();
+        }
+    }
+
+    private string? _searchStringFieldValue;
+
+    private void OnSearchCleared()
+    {
+        _searchString = null;
+    }
+
+    private async Task<TableData<CategoryDto>> ReloadData(TableState state, CancellationToken cancellationToken)
+    {
+        var request = new CategorySearchRequest
+        {
+            Page = state.Page + 1,
+            PageSize = state.PageSize,
+            SortBy = state.SortLabel,
+            SortOrder = state.SortDirection == SortDirection.Descending ? "desc" : "asc",
+            Search = _searchString
+        };
+
+        var paged = await CategoriesClient.GetAllCategoriesAsync(
+            request,
+            "1.0",
+            "en-US",
+            cancellationToken);
+
+        return new TableData<CategoryDto> { Items = paged.Items, TotalItems = (int)paged.TotalItemCount };
+    }
+
+    private async Task EditCategory(CategoryDto category)
+    {
+        var parameters = new DialogParameters<UpdateCategoryDialog> { { x => x.Category, category } };
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<UpdateCategoryDialog>("Edit Category", parameters, options);
+        var result = await dialog.Result;
+        if (result is { Canceled: false }) await _table.ReloadServerData();
+    }
+
+    private async Task DeleteCategory(CategoryDto category)
+    {
+        var result = await DialogService.ShowMessageBox(
+            "Delete Category",
+            $"Are you sure you want to delete category {category.Name}?",
+            yesText: "Delete", cancelText: "Cancel");
+
+        if (result == true)
+        {
+            try
+            {
+                await ((ISoftDeleteCategoryEndpoint)CategoriesClient).Execute(category.Id, "1.0", "en-US");
+                Snackbar.Add($"Category {category.Name} deleted successfully.", Severity.Success);
+                await _table.ReloadServerData();
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task OpenAddDialog()
+    {
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<CreateCategoryDialog>("Add Category", options);
+        var result = await dialog.Result;
+        if (result != null && !result.Canceled)
+        {
+            await _table.ReloadServerData();
+        }
+    }
+
+}

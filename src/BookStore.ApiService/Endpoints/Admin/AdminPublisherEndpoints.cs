@@ -1,6 +1,13 @@
+using System.Linq;
+using BookStore.ApiService.Infrastructure;
+using BookStore.ApiService.Infrastructure.Extensions;
+using BookStore.ApiService.Projections;
+using BookStore.Shared.Models;
 using Marten;
 using Marten.Linq.SoftDeletes;
+using Marten.Pagination;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using Wolverine;
 
 namespace BookStore.ApiService.Commands
@@ -40,14 +47,39 @@ namespace BookStore.ApiService.Endpoints.Admin
 
         static async Task<IResult> GetAllPublishers(
             [FromServices] IQuerySession session,
+            [FromServices] IOptions<PaginationOptions> paginationOptions,
+            [AsParameters] PublisherSearchRequest request,
             CancellationToken cancellationToken)
         {
-            var publishers = await session.Query<Projections.PublisherProjection>()
-                .Where(x => x.MaybeDeleted())
-                .OrderBy(x => x.Name)
-                .ToListAsync(cancellationToken);
+            var paging = request.Normalize(paginationOptions.Value);
 
-            return Results.Ok(publishers);
+            var normalizedSortOrder = request.SortOrder?.ToLowerInvariant() == "desc" ? "desc" : "asc";
+            var normalizedSortBy = request.SortBy?.ToLowerInvariant();
+
+            IQueryable<PublisherProjection> query = session.Query<PublisherProjection>();
+
+            if (!string.IsNullOrWhiteSpace(request.Search))
+            {
+                var search = request.Search.ToLower();
+                query = query.Where(x => x.Name.ToLower().Contains(search));
+            }
+
+            query = (normalizedSortBy, normalizedSortOrder) switch
+            {
+                ("id", "desc") => query.OrderByDescending(x => x.Id),
+                ("id", "asc") => query.OrderBy(x => x.Id),
+                ("name", "desc") => query.OrderByDescending(x => x.Name),
+                _ => query.OrderBy(x => x.Name)
+            };
+
+            var pagedList = await query.ToPagedListAsync(paging.Page!.Value, paging.PageSize!.Value, cancellationToken);
+
+            var dtos = pagedList.ToList().Select(x => new PublisherDto(
+                x.Id,
+                x.Name
+            )).ToList();
+
+            return Results.Ok(new PagedListDto<PublisherDto>(dtos, pagedList.PageNumber, pagedList.PageSize, pagedList.TotalItemCount));
         }
 
         static Task<IResult> CreatePublisher(

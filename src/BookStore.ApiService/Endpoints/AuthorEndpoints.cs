@@ -35,7 +35,7 @@ public static class AuthorEndpoints
         [FromServices] IOptions<PaginationOptions> paginationOptions,
         [FromServices] IOptions<LocalizationOptions> localizationOptions,
         [FromServices] HybridCache cache,
-        [AsParameters] OrderedPagedRequest request,
+        [AsParameters] AuthorSearchRequest request,
         HttpContext context,
         CancellationToken cancellationToken)
     {
@@ -46,8 +46,8 @@ public static class AuthorEndpoints
         var normalizedSortOrder = request.SortOrder?.ToLowerInvariant() == "desc" ? "desc" : "asc";
         var normalizedSortBy = request.SortBy?.ToLowerInvariant();
 
-        // Create cache key based on pagination, sorting, AND Tenant
-        var cacheKey = $"authors:tenant={tenantContext.TenantId}:page={paging.Page}:size={paging.PageSize}:sort={normalizedSortBy}:{normalizedSortOrder}";
+        // Create cache key based on search, pagination, sorting, AND Tenant
+        var cacheKey = $"authors:tenant={tenantContext.TenantId}:search={request.Search}:page={paging.Page}:size={paging.PageSize}:sort={normalizedSortBy}:{normalizedSortOrder}";
 
         var response = await cache.GetOrCreateLocalizedAsync(
             cacheKey,
@@ -57,6 +57,11 @@ public static class AuthorEndpoints
 
                 var query = session.Query<AuthorProjection>()
                     .Where(a => !a.Deleted);
+
+                if (!string.IsNullOrWhiteSpace(request.Search))
+                {
+                    query = query.Where(a => a.Name.Contains(request.Search, StringComparison.OrdinalIgnoreCase));
+                }
 
                 // Can sort by Name since it's not localized
                 query = (normalizedSortBy, normalizedSortOrder) switch

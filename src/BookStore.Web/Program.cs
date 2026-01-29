@@ -137,9 +137,13 @@ static void RegisterScopedRefitClients(
     AddScopedClient<IPasskeyClient>();
     AddScopedClient<IAdminTenantClient>();
     AddScopedClient<IAdminUserClient>();
+    AddScopedClient<ISalesClient>();
 }
 
 // Add authentication services (JWT token-based)
+builder.Services.AddAuthentication(options => options.DefaultScheme = "Cookies")
+    .AddCookie("Cookies");
+builder.Services.AddAuthorization();
 builder.Services.AddScoped<ClientContextService>();
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<PasskeyService>();
@@ -187,7 +191,10 @@ if (!app.Environment.IsDevelopment())
 }
 
 // Add Forwarded Headers middleware early in the pipeline
+
 app.UseForwardedHeaders();
+app.UseAuthentication();
+app.UseAuthorization();
 
 var supportedCultures = new[] { "en-US" };
 var localizationOptions = new RequestLocalizationOptions()

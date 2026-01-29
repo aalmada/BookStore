@@ -1,0 +1,55 @@
+@page "/admin/sales"
+@using BookStore.Client
+@using BookStore.Shared.Models
+@using Microsoft.AspNetCore.Authorization
+@using MudBlazor
+@inject ISalesClient SalesClient
+@inject ISnackbar Snackbar
+@attribute [Authorize(Roles = "Admin")]
+
+<PageTitle>Sales Management - BookStore</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-8 mb-12">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-6">
+        <MudText Typo="Typo.h4" Class="fw-bold">Sales Management</MudText>
+    </MudStack>
+
+    <MudTable T="SaleDto" @ref="_table" ServerData="ReloadData" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="0"
+              Class="glass-table rounded-xl overflow-hidden">
+        <ToolBarContent>
+            <MudSpacer/>
+            <MudTextField @bind-Value="_searchString" Placeholder="Search sales..." Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="search-field"
+                          Clearable="true" Immediate="true" Variant="Variant.Outlined" Margin="Margin.Dense"/>
+        </ToolBarContent>
+        <HeaderContent>
+            <MudTh>Book</MudTh>
+            <MudTh>Buyer</MudTh>
+            <MudTh>Date</MudTh>
+            <MudTh>Amount</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh>Actions</MudTh>
+        </HeaderContent>
+        <RowTemplate Context="context">
+            <MudTd DataLabel="Book">@context.BookTitle</MudTd>
+            <MudTd DataLabel="Buyer">@context.BuyerName</MudTd>
+            <MudTd DataLabel="Date">@context.Date.ToString("g")</MudTd>
+            <MudTd DataLabel="Amount">@context.Amount.ToString("C")</MudTd>
+            <MudTd DataLabel="Status">@context.Status</MudTd>
+            <MudTd DataLabel="Actions">
+                <!-- Actions like View/Refund can be added here -->
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+</MudContainer>
+
+@code {
+    private MudTable<SaleDto> _table = null!;
+    private string? _searchString;
+
+    private async Task<TableData<SaleDto>> ReloadData(TableState state, CancellationToken cancellationToken)
+    {
+        // TODO: Implement server data loading
+        return new TableData<SaleDto> { Items = new List<SaleDto>(), TotalItems = 0 };
+    }
+}

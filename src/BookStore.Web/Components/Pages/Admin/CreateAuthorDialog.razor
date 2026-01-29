@@ -1,0 +1,134 @@
+@using BookStore.Client
+@using MudBlazor
+@inject IAuthorsClient AuthorsClient
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Person" Class="mr-3 mb-n1"/>
+            Add New Author
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="_success">
+            <MudTextField T="string" Label="Name" @bind-Value="_model.Name" Required="true" RequiredError="Author name is required!" Variant="Variant.Outlined" Class="mb-4"/>
+
+            <MudDivider Class="my-4"/>
+
+            <MudText Typo="Typo.subtitle1" Class="mb-2">Biographies</MudText>
+
+            <div class="d-flex flex-column gap-3">
+                <div class="d-flex align-end gap-2">
+                    <MudSelect T="string" Label="Language" Value="_selectedLanguage" ValueChanged="OnLanguageChanged" Variant="Variant.Outlined" Dense="true" Style="max-width: 150px;">
+                        @foreach (var lang in _supportedLanguages)
+                        {
+                            <MudSelectItem Value="@lang.Key">@lang.Value</MudSelectItem>
+                        }
+                    </MudSelect>
+                    <MudButton StartIcon="@Icons.Material.Filled.Add" Color="Color.Secondary" Variant="Variant.Filled" OnClick="AddTranslation" Disabled="@(string.IsNullOrWhiteSpace(_currentBiography))">
+                        Add
+                    </MudButton>
+                </div>
+
+                <MudTextField T="string" Label="Biography" @bind-Value="_currentBiography" Lines="3" Variant="Variant.Outlined" Placeholder="Enter biography for the selected language..."/>
+
+                @if (_translations.Any())
+                {
+                    <MudPaper Elevation="0" Outlined="true" Class="pa-2">
+                        <MudList T="string" Dense="true">
+                            @foreach (var translation in _translations)
+                            {
+                                <MudListItem Icon="@Icons.Material.Filled.Language">
+                                    <div class="d-flex justify-space-between align-center" style="width: 100%;">
+                                        <MudText>@($"{_supportedLanguages.GetValueOrDefault(translation.Key, translation.Key)}: {Truncate(translation.Value, 50)}")</MudText>
+                                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(() => RemoveTranslation(translation.Key))" Disabled="@(translation.Key == "en")"/>
+                                    </div>
+                                </MudListItem>
+                            }
+                        </MudList>
+                    </MudPaper>
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Warning" Dense="true">At least the default biography (English) is required.</MudAlert>
+                }
+            </div>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="@(!_success || !_translations.ContainsKey("en"))">Create</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+    private MudForm _form = null!;
+    private bool _success;
+    private CreateAuthorRequest _model = new();
+
+    private string _selectedLanguage = "en";
+    private string _currentBiography = "";
+    private Dictionary<string, string> _translations = new();
+
+    private readonly Dictionary<string, string> _supportedLanguages = new()
+    {
+        { "en", "English" },
+        { "pt", "Portuguese" },
+        { "pt-PT", "Portuguese (Portugal)" },
+        { "fr", "French" },
+        { "de", "German" },
+        { "es", "Spanish" }
+    };
+
+    private void OnLanguageChanged(string lang)
+    {
+        _selectedLanguage = lang;
+        _currentBiography = _translations.TryGetValue(lang, out var bio) ? bio : "";
+    }
+
+    private void AddTranslation()
+    {
+        if (string.IsNullOrWhiteSpace(_currentBiography)) return;
+        _translations[_selectedLanguage] = _currentBiography;
+        _currentBiography = "";
+        StateHasChanged();
+    }
+
+    private void RemoveTranslation(string lang)
+    {
+        _translations.Remove(lang);
+        StateHasChanged();
+    }
+
+    private string Truncate(string text, int maxLength)
+    {
+        if (string.IsNullOrEmpty(text)) return "";
+        return text.Length <= maxLength ? text : text.Substring(0, maxLength) + "...";
+    }
+
+    private async Task Submit()
+    {
+        await _form.Validate();
+        if (!_form.IsValid || !_translations.ContainsKey("en")) return;
+
+        try
+        {
+            _model.Translations = _translations.ToDictionary(
+                kvp => kvp.Key,
+                kvp => new AuthorTranslationDto { Biography = kvp.Value }
+            );
+
+            await AuthorsClient.Execute(_model, "1.0", "en-US");
+            Snackbar.Add($"Author {_model.Name} created successfully.", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

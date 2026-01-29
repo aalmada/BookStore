@@ -35,18 +35,12 @@ public static class CategoryHandlers
                 Log.Categories.NameTooLong(logger, command.Id, languageCode, CategoryAggregate.MaxNameLength, translation.Name.Length);
                 return Result.Failure(Error.Validation(ErrorCodes.Categories.NameTooLong, $"Category name for language '{languageCode}' cannot exceed {CategoryAggregate.MaxNameLength} characters")).ToProblemDetails();
             }
-
-            if (translation.Description?.Length > CategoryAggregate.MaxDescriptionLength)
-            {
-                Log.Categories.DescriptionTooLong(logger, command.Id, languageCode, CategoryAggregate.MaxDescriptionLength, translation.Description.Length);
-                return Result.Failure(Error.Validation(ErrorCodes.Categories.DefaultTranslationRequired, $"Category description for language '{languageCode}' cannot exceed {CategoryAggregate.MaxDescriptionLength} characters")).ToProblemDetails(); // Using a sensible fallback if DescriptionTooLong not in Categories, but wait, DescriptionTooLong IS in Categories? No, I added NameTooLong. Let's check ErrorCodes.cs.
-            }
         }
 
         // Convert DTOs to domain objects
         var translations = command.Translations.ToDictionary(
             kvp => kvp.Key,
-            kvp => new CategoryTranslation(kvp.Value.Name, kvp.Value.Description));
+            kvp => new CategoryTranslation(kvp.Value.Name));
 
         var eventResult = CategoryAggregate.CreateEvent(
             command.Id,
@@ -88,11 +82,6 @@ public static class CategoryHandlers
             {
                 return Result.Failure(Error.Validation(ErrorCodes.Categories.NameTooLong, $"Category name for language '{languageCode}' cannot exceed {CategoryAggregate.MaxNameLength} characters")).ToProblemDetails();
             }
-
-            if (translation.Description?.Length > CategoryAggregate.MaxDescriptionLength)
-            {
-                return Result.Failure(Error.Validation(ErrorCodes.Categories.DefaultTranslationRequired, $"Category description for language '{languageCode}' cannot exceed {CategoryAggregate.MaxDescriptionLength} characters")).ToProblemDetails();
-            }
         }
 
         var streamState = await session.Events.FetchStreamStateAsync(command.Id);
@@ -122,7 +111,7 @@ public static class CategoryHandlers
 
         var translations = command.Translations.ToDictionary(
             kvp => kvp.Key,
-            kvp => new CategoryTranslation(kvp.Value.Name, kvp.Value.Description));
+            kvp => new CategoryTranslation(kvp.Value.Name));
 
         var eventResult = aggregate.UpdateEvent(translations);
         if (eventResult.IsFailure)

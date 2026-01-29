@@ -1,0 +1,113 @@
+@using BookStore.Client
+@using MudBlazor
+@inject ICategoriesClient CategoriesClient
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Category" Class="mr-3 mb-n1"/>
+            Add New Category
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="_success">
+            <MudCard Elevation="0" Class="p-4 glass">
+                <MudText Typo="Typo.subtitle1" Class="mb-2 fw-bold">Translations (Multi-language)</MudText>
+
+                <div class="d-flex align-center gap-2 mb-4">
+                    <MudSelect T="string" Label="Language" Value="_selectedLanguage" ValueChanged="OnLanguageChanged" Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense">
+                        <MudSelectItem Value="@("en")">English</MudSelectItem>
+                        <MudSelectItem Value="@("pt")">Portuguese</MudSelectItem>
+                        <MudSelectItem Value="@("es")">Spanish</MudSelectItem>
+                        <MudSelectItem Value="@("fr")">French</MudSelectItem>
+                        <MudSelectItem Value="@("de")">German</MudSelectItem>
+                    </MudSelect>
+                    <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="AddOrUpdateTranslation" StartIcon="@Icons.Material.Filled.Add">
+                        @(_translations.ContainsKey(_selectedLanguage) ? "Update" : "Add")
+                    </MudButton>
+                </div>
+
+                <MudTextField T="string" Label="@($"Name ({_selectedLanguage})")" @bind-Value="_currentName"
+                              Required="true" RequiredError="Name is required for the language!" Variant="Variant.Outlined"/>
+
+                <MudList T="string" Class="mt-2">
+                    @foreach (var translation in _translations)
+                    {
+                        <MudListItem Icon="@Icons.Material.Filled.Language">
+                            <div class="d-flex align-center justify-space-between w-100">
+                                <MudText>
+                                    <b>@translation.Key:</b> @translation.Value
+                                </MudText>
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(() => RemoveTranslation(translation.Key))" Disabled="@(translation.Key == "en")"/>
+                            </div>
+                        </MudListItem>
+                    }
+                </MudList>
+                @if (!_translations.ContainsKey("en"))
+                {
+                    <MudAlert Severity="Severity.Warning" Class="mt-2 text-glow">English translation is required!</MudAlert>
+                }
+            </MudCard>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="@(!_success || !_translations.ContainsKey("en"))">Create</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+    private MudForm _form = null!;
+    private bool _success;
+
+    private string _selectedLanguage = "en";
+    private string _currentName = "";
+    private Dictionary<string, string> _translations = new();
+
+    private void OnLanguageChanged(string lang)
+    {
+        _selectedLanguage = lang;
+        _currentName = _translations.TryGetValue(lang, out var name) ? name : "";
+    }
+
+    private void AddOrUpdateTranslation()
+    {
+        if (string.IsNullOrWhiteSpace(_currentName)) return;
+        _translations[_selectedLanguage] = _currentName;
+        _currentName = "";
+    }
+
+    private void RemoveTranslation(string lang)
+    {
+        _translations.Remove(lang);
+    }
+
+    private async Task Submit()
+    {
+        await _form.Validate();
+        if (!_translations.ContainsKey("en")) return;
+
+        try
+        {
+            var translations = _translations.ToDictionary(
+                kvp => kvp.Key,
+                kvp => new CategoryTranslationDto { Name = kvp.Value }
+            );
+
+            var request = new CreateCategoryRequest { Translations = translations };
+            await CategoriesClient.Execute(request, "1.0", "en-US");
+
+            var englishName = _translations["en"];
+            Snackbar.Add($"Category {englishName} created successfully.", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

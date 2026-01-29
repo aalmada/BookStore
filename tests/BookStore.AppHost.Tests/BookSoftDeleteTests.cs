@@ -48,11 +48,10 @@ public class BookSoftDeleteTests
 
         // 4. Verify Admin API still returns it (using MaybeDeleted)
         // Note: The Admin Get All endpoint should return it
-        var adminGetAll = await adminClient.GetFromJsonAsync<List<BookSearchProjection>>("/api/admin/books");
+        var adminGetAll = await adminClient.GetFromJsonAsync<List<BookDto>>("/api/admin/books");
         var adminBook = adminGetAll!.FirstOrDefault(b => b.Id == bookId);
         _ = await Assert.That(adminBook).IsNotNull();
-        _ = await Assert.That(adminBook!.Deleted).IsTrue();
-        _ = await Assert.That(adminBook.DeletedAt).IsNotNull();
+        _ = await Assert.That(adminBook!.IsDeleted).IsTrue();
 
         // 5. Restore via Admin API
         // We need ETag again. Since we can't get it from public API (404),
@@ -79,7 +78,8 @@ public class BookSoftDeleteTests
         // Actually, if we soft-deleted, the stream version incremented.
         // If we don't provide ETag, Wolverine might just append.
 
-        _ = await Assert.That(restoreResponse.StatusCode).IsEqualTo(HttpStatusCode.OK).Or.IsEqualTo(HttpStatusCode.NoContent);
+        _ = await Assert.That(restoreResponse.StatusCode).IsEqualTo(HttpStatusCode.OK).Or
+            .IsEqualTo(HttpStatusCode.NoContent);
 
         // 6. Verify Reappearance
         await TestHelpers.WaitForConditionAsync(async () =>
@@ -142,11 +142,14 @@ public class BookSoftDeleteTests
         // 2. Search/List Endpoint
 
         // Public -> Should NOT contain the book
-        var publicSearch = await publicClient.GetFromJsonAsync<PagedListDto<BookDto>>($"/api/books?search={createdBook.Title}");
+        var publicSearch =
+            await publicClient.GetFromJsonAsync<PagedListDto<BookDto>>($"/api/books?search={createdBook.Title}");
         _ = await Assert.That(publicSearch!.Items.Any(b => b.Id == bookId)).IsFalse();
 
         // Admin -> Should contain the book with IsDeleted=true
-        var adminSearch = await adminClient.GetFromJsonAsync<PagedListDto<BookDto>>($"/api/books?search={Uri.EscapeDataString(createdBook.Title)}");
+        var adminSearch =
+            await adminClient.GetFromJsonAsync<PagedListDto<BookDto>>(
+                $"/api/books?search={Uri.EscapeDataString(createdBook.Title)}");
 
         // Note: The search endpoint might need to cache update or re-query. Admin requests have their own cache key due to isAdmin param.
         // We might need to wait for the cache to invalidate or just rely on the new key being generated fresh if not present.
@@ -158,13 +161,5 @@ public class BookSoftDeleteTests
 
         _ = await Assert.That(foundBook).IsNotNull();
         _ = await Assert.That(foundBook!.IsDeleted).IsTrue();
-    }
-
-    // Helper class to deserialzie the projection from Admin API
-    class BookSearchProjection
-    {
-        public Guid Id { get; set; }
-        public bool Deleted { get; set; }
-        public DateTimeOffset? DeletedAt { get; set; }
     }
 }

@@ -20,4 +20,4 @@ public record CategoryRestored(
     DateTimeOffset Timestamp);
 
 // Localization model for category names and descriptions
-public record CategoryTranslation(string Name, string? Description);
+public record CategoryTranslation(string Name);

@@ -8,6 +8,7 @@ public interface ICategoriesClient :
     ICreateCategoryEndpoint,
     IUpdateCategoryEndpoint,
     ISoftDeleteCategoryEndpoint,
-    IRestoreCategoryEndpoint
+    IRestoreCategoryEndpoint,
+    IGetAllCategoriesAdminEndpoint
 {
 }
