@@ -1,0 +1,264 @@
+@using BookStore.Client
+@using BookStore.Shared.Models
+@using MudBlazor
+@inject IBooksClient BooksClient
+@inject IAuthorsClient AuthorsClient
+@inject ICategoriesClient CategoriesClient
+@inject IPublishersClient PublishersClient
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Book" Class="mr-3 mb-n1"/>
+            @(IsEdit ? "Edit Book" : "Add New Book")
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="_success">
+            <MudGrid>
+                <MudItem xs="12" sm="8">
+                    <MudTextField T="string" Label="Title" @bind-Value="_model.Title" Required="true" RequiredError="Title is required!" Variant="Variant.Outlined"/>
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudTextField T="string" Label="ISBN" @bind-Value="_model.Isbn" Variant="Variant.Outlined"/>
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="string" Label="Language" @bind-Value="_model.Language" Required="true" Variant="Variant.Outlined">
+                        <MudSelectItem Value="@("en-US")">English (US)</MudSelectItem>
+                        <MudSelectItem Value="@("pt-PT")">Portuguese (Portugal)</MudSelectItem>
+                        <MudSelectItem Value="@("es-ES")">Spanish (Spain)</MudSelectItem>
+                        <MudSelectItem Value="@("fr-FR")">French (France)</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <MudNumericField T="int" Label="Publication Year" @bind-Value="_pubYear" Required="true" Min="1" Max="9999" Variant="Variant.Outlined"/>
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudStack Row="true" AlignItems="AlignItems.Center">
+                        <MudAutocomplete T="PublisherDto" Label="Publisher" @bind-Value="_selectedPublisher"
+                                         SearchFunc="@SearchPublishers" ToStringFunc="@(p => p?.Name)"
+                                         Variant="Variant.Outlined" Clearable="true" Class="flex-grow-1"/>
+                        <MudIconButton Icon="@Icons.Material.Filled.Add" Color="Color.Primary" OnClick="AddNewPublisher"/>
+                    </MudStack>
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudStack Row="true" AlignItems="AlignItems.Start">
+                        <MudAutocomplete T="AuthorDto" Label="Authors" @bind-Value="_currentAuthor"
+                                         SearchFunc="@SearchAuthors" ToStringFunc="@(a => a?.Name)"
+                                         Variant="Variant.Outlined" Clearable="true" Class="flex-grow-1"
+                                         OnAdornmentClick="AddAuthorToList" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Add"/>
+                        <MudIconButton Icon="@Icons.Material.Filled.PersonAdd" Color="Color.Primary" OnClick="AddNewAuthor" Class="mt-1"/>
+                    </MudStack>
+                    <MudChipSet T="AuthorDto" Class="mt-2">
+                        @foreach (var author in _selectedAuthors)
+                        {
+                            <MudChip T="AuthorDto" Value="author" Text="@author.Name" Color="Color.Secondary" Variant="Variant.Text" OnClose="() => RemoveAuthor(author)"/>
+                        }
+                    </MudChipSet>
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudStack Row="true" AlignItems="AlignItems.Start">
+                        <MudAutocomplete T="CategoryDto" Label="Categories" @bind-Value="_currentCategory"
+                                         SearchFunc="@SearchCategories" ToStringFunc="@(c => c?.Name)"
+                                         Variant="Variant.Outlined" Clearable="true" Class="flex-grow-1"
+                                         OnAdornmentClick="AddCategoryToList" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Add"/>
+                        <MudIconButton Icon="@Icons.Material.Filled.PlaylistAdd" Color="Color.Primary" OnClick="AddNewCategory" Class="mt-1"/>
+                    </MudStack>
+                    <MudChipSet T="CategoryDto" Class="mt-2">
+                        @foreach (var category in _selectedCategories)
+                        {
+                            <MudChip T="CategoryDto" Value="category" Text="@category.Name" Color="Color.Info" Variant="Variant.Text" OnClose="() => RemoveCategory(category)"/>
+                        }
+                    </MudChipSet>
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">Prices</MudText>
+                    <MudGrid>
+                        <MudItem xs="6">
+                            <MudNumericField T="decimal" Label="USD" @bind-Value="_priceUsd" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.AttachMoney" Variant="Variant.Outlined"/>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudNumericField T="decimal" Label="EUR" @bind-Value="_priceEur" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Euro" Variant="Variant.Outlined"/>
+                        </MudItem>
+                    </MudGrid>
+                </MudItem>
+
+            </MudGrid>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="@(!_success)">@(IsEdit ? "Update" : "Create")</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public CreateBookRequest Model { get; set; } = new();
+    [Parameter] public bool IsEdit { get; set; }
+
+    private MudForm _form = null!;
+    private bool _success;
+    private CreateBookRequest _model = new();
+    private int _pubYear = DateTime.Now.Year;
+    private decimal _priceUsd;
+    private decimal _priceEur;
+
+    private PublisherDto? _selectedPublisher;
+    private AuthorDto? _currentAuthor;
+    private List<AuthorDto> _selectedAuthors = new();
+    private CategoryDto? _currentCategory;
+    private List<CategoryDto> _selectedCategories = new();
+
+    protected override void OnInitialized()
+    {
+        _model = Model ?? new CreateBookRequest { Language = "en-US" };
+        if (IsEdit)
+        {
+            // Initialization for edit mode if needed
+        }
+    }
+
+    private async Task<IEnumerable<PublisherDto>> SearchPublishers(string value, CancellationToken ct)
+    {
+        try
+        {
+            var result = await PublishersClient.GetPublishersAsync(1, 20, "1.0", "en-US", cancellationToken: ct);
+            if (string.IsNullOrEmpty(value)) return result.Items;
+            return result.Items.Where(x => x.Name.Contains(value, StringComparison.OrdinalIgnoreCase));
+        }
+        catch
+        {
+            return Array.Empty<PublisherDto>();
+        }
+    }
+
+    private async Task<IEnumerable<AuthorDto>> SearchAuthors(string value, CancellationToken ct)
+    {
+        try
+        {
+            var result = await AuthorsClient.GetAuthorsAsync(1, 20, "1.0", "en-US", cancellationToken: ct);
+            if (string.IsNullOrEmpty(value)) return result.Items;
+            return result.Items.Where(x => x.Name.Contains(value, StringComparison.OrdinalIgnoreCase));
+        }
+        catch
+        {
+            return Array.Empty<AuthorDto>();
+        }
+    }
+
+    private async Task<IEnumerable<CategoryDto>> SearchCategories(string value, CancellationToken ct)
+    {
+        try
+        {
+            var result = await CategoriesClient.GetCategoriesAsync(1, 20, "1.0", "en-US", cancellationToken: ct);
+            if (string.IsNullOrEmpty(value)) return result.Items;
+            return result.Items.Where(x => x.Name.Contains(value, StringComparison.OrdinalIgnoreCase));
+        }
+        catch
+        {
+            return Array.Empty<CategoryDto>();
+        }
+    }
+
+    private void AddAuthorToList()
+    {
+        if (_currentAuthor != null && !_selectedAuthors.Any(a => a.Id == _currentAuthor.Id))
+        {
+            _selectedAuthors.Add(_currentAuthor);
+            _currentAuthor = null;
+        }
+    }
+
+    private void RemoveAuthor(AuthorDto author) => _selectedAuthors.Remove(author);
+
+    private void AddCategoryToList()
+    {
+        if (_currentCategory != null && !_selectedCategories.Any(c => c.Id == _currentCategory.Id))
+        {
+            _selectedCategories.Add(_currentCategory);
+            _currentCategory = null;
+        }
+    }
+
+    private void RemoveCategory(CategoryDto category) => _selectedCategories.Remove(category);
+
+    private async Task AddNewAuthor()
+    {
+        var options = new DialogOptions { CloseOnEscapeKey = true };
+        var dialog = await DialogService.ShowAsync<CreateAuthorDialog>("Add Author", options);
+        var result = await dialog.Result;
+        if (result != null && !result.Canceled)
+        {
+            Snackbar.Add("New author created. You can now search for it.", Severity.Info);
+        }
+    }
+
+    private async Task AddNewCategory()
+    {
+        var options = new DialogOptions { CloseOnEscapeKey = true };
+        var dialog = await DialogService.ShowAsync<CreateCategoryDialog>("Add Category", options);
+        var result = await dialog.Result;
+        if (result != null && !result.Canceled)
+        {
+            Snackbar.Add("New category created. You can now search for it.", Severity.Info);
+        }
+    }
+
+    private async Task AddNewPublisher()
+    {
+        var options = new DialogOptions { CloseOnEscapeKey = true };
+        var dialog = await DialogService.ShowAsync<CreatePublisherDialog>("Add Publisher", options);
+        var result = await dialog.Result;
+        if (result != null && !result.Canceled)
+        {
+            Snackbar.Add("New publisher created. You can now search for it.", Severity.Info);
+        }
+    }
+
+    private async Task Submit()
+    {
+        await _form.Validate();
+        if (!_form.IsValid) return;
+
+        try
+        {
+            _model.PublisherId = _selectedPublisher?.Id;
+            _model.AuthorIds = _selectedAuthors.Select(a => a.Id).ToList();
+            _model.CategoryIds = _selectedCategories.Select(c => c.Id).ToList();
+            _model.PublicationDate = new PartialDate(_pubYear);
+
+            _model.AdditionalProperties["prices"] = new Dictionary<string, decimal>
+            {
+                ["USD"] = _priceUsd,
+                ["EUR"] = _priceEur
+            };
+
+            if (IsEdit)
+            {
+                // Logic for update
+            }
+            else
+            {
+                await BooksClient.CreateBookAsync(_model, "1.0", "en-US");
+                Snackbar.Add("Book created successfully.", Severity.Success);
+            }
+
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

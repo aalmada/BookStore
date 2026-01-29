@@ -1,10 +1,14 @@
+using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using BookStore.ApiService.Infrastructure.Extensions;
 using BookStore.ApiService.Infrastructure.Tenant;
 using BookStore.Shared.Models;
 using Marten;
 using Marten.Linq;
 using Marten.Linq.SoftDeletes;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Wolverine;
 
@@ -158,11 +162,54 @@ namespace BookStore.ApiService.Endpoints.Admin
             [FromServices] IQuerySession session,
             CancellationToken cancellationToken)
         {
+            // Dictionaries to hold included documents
+            var publishers = new Dictionary<Guid, Projections.PublisherProjection>();
+            var authors = new Dictionary<Guid, Projections.AuthorProjection>();
+            var categories = new Dictionary<Guid, Projections.CategoryProjection>();
+
+#pragma warning disable CS8603 // Possible null reference return - false positive from Marten's Include API
             var books = await session.Query<Projections.BookSearchProjection>()
+                .Include(publishers).On(x => x.PublisherId)!
+                .Include(authors).On(x => x.AuthorIds)!
+                .Include(categories).On(x => x.CategoryIds)!
                 .OrderBy(b => b.Title)
                 .ToListAsync(cancellationToken);
+#pragma warning restore CS8603
 
-            return Results.Ok(books);
+            var bookDtos = books.Select(book => new BookDto(
+                book.Id,
+                book.Title,
+                book.Isbn,
+                book.OriginalLanguage,
+                "", // Lang name
+                "", // Description
+                book.PublicationDate,
+                false,
+                book.PublisherId.HasValue && publishers.TryGetValue(book.PublisherId.Value, out var pub)
+                    ? new PublisherDto(pub.Id, pub.Name)
+                    : null,
+                [.. book.AuthorIds
+                    .Select(id => authors.TryGetValue(id, out var author)
+                        ? new AuthorDto(author.Id, author.Name, "")
+                        : null)
+                    .Where(a => a != null)
+                    .Cast<AuthorDto>()],
+                [.. book.CategoryIds
+                    .Select(id => categories.TryGetValue(id, out var cat)
+                        ? new CategoryDto(cat.Id, "")
+                        : null)
+                    .Where(c => c != null)
+                    .Cast<CategoryDto>()],
+                false,
+                0, 0f, 0, 0,
+                book.Prices.ToDictionary(p => p.Currency, p => p.Value),
+                null,
+                null,
+                book.CurrentPrices,
+                book.Deleted
+            )).ToList();
+
+            return Results.Ok(bookDtos);
         }
 
         static async Task<IResult> UploadCover(

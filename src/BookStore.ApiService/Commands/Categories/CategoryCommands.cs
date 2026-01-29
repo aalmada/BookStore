@@ -12,7 +12,7 @@ public record CreateCategory(
 /// <summary>
 /// DTO for localized category names
 /// </summary>
-public record CategoryTranslationDto(string Name, string? Description);
+public record CategoryTranslationDto(string Name);
 
 /// <summary>
 /// Command to update an existing category

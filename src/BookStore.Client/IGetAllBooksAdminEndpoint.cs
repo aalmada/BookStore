@@ -19,7 +19,7 @@ namespace BookStore.Client
     public partial interface IGetAllBooksAdminEndpoint
     {
         [Get("/api/admin/books")]
-        Task GetAllBooksAdminAsync([Header("api-version")] string api_version, [Header("Accept-Language")] string accept_Language, [Header("X-Correlation-ID")] string? x_Correlation_ID = null, [Header("X-Causation-ID")] string? x_Causation_ID = null, CancellationToken cancellationToken = default);
+        Task<System.Collections.Generic.ICollection<BookDto>> GetAllBooksAdminAsync([Header("api-version")] string api_version, [Header("Accept-Language")] string accept_Language, [Header("X-Correlation-ID")] string? x_Correlation_ID = null, [Header("X-Causation-ID")] string? x_Causation_ID = null, CancellationToken cancellationToken = default);
     }
 
 }

@@ -247,7 +247,7 @@ public static class GlobalHooks
 
         // Seed Category
         var categoryEvent = new CategoryAdded(categoryId,
-            new Dictionary<string, CategoryTranslation> { ["en"] = new("Test Category", null) }, DateTimeOffset.UtcNow);
+            new Dictionary<string, CategoryTranslation> { ["en"] = new("Test Category") }, DateTimeOffset.UtcNow);
         _ = session.Events.StartStream<CategoryAggregate>(categoryId, categoryEvent);
 
         // Seed Books

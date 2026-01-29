@@ -199,7 +199,7 @@ public static class MartenConfigurationExtensions
             .NgramIndex(x => x.Name)    // NGram search on author name
             .Index(x => x.Deleted);     // Index for soft-delete filtering
 
-        // Note: CategoryProjection no longer has a Name field - uses Translations dictionary
+        // CategoryProjection indexes
         _ = options.Schema.For<CategoryProjection>()
              .Index(x => x.Deleted);    // Index for soft-delete filtering
 

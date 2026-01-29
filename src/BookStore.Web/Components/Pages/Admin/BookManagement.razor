@@ -1,0 +1,159 @@
+@page "/admin/books"
+@using BookStore.Client
+@using BookStore.Shared.Models
+@using Microsoft.AspNetCore.Authorization
+@using MudBlazor
+@inject IBooksClient BooksClient
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@attribute [Authorize(Roles = "Admin")]
+
+<PageTitle>Book Management - BookStore</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-8 mb-12">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-6">
+        <MudText Typo="Typo.h4" Class="fw-bold">Book Management</MudText>
+        <MudSpacer/>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenAddDialog">
+            Add Book
+        </MudButton>
+    </MudStack>
+
+    <MudTable @ref="_table" ServerData="ReloadData" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="0"
+              Class="glass-table rounded-xl overflow-hidden">
+        <ToolBarContent>
+            <MudSpacer/>
+            <MudTextField @bind-Value="_searchString" Placeholder="Search books..." Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="search-field"
+                          Clearable="true" Immediate="true" Variant="Variant.Outlined" Margin="Margin.Dense"/>
+        </ToolBarContent>
+        <HeaderContent>
+            <MudTh>Title</MudTh>
+            <MudTh>ISBN</MudTh>
+            <MudTh>Language</MudTh>
+            <MudTh>Publication</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh Class="text-end">Actions</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Title">
+                <MudText Typo="Typo.body2" Class="fw-semibold">@context.Title</MudText>
+            </MudTd>
+            <MudTd DataLabel="ISBN">@context.Isbn</MudTd>
+            <MudTd DataLabel="Language">@context.Language</MudTd>
+            <MudTd DataLabel="Publication">@context.PublicationDate?.ToString()</MudTd>
+            <MudTd DataLabel="Status">
+                @if (context.IsDeleted)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Error" Variant="Variant.Text">Deleted</MudChip>
+                }
+                else
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Text">Active</MudChip>
+                }
+            </MudTd>
+            <MudTd DataLabel="Actions" Class="text-end">
+                <MudMenu Icon="@Icons.Material.Filled.MoreVert" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" Dense="true">
+                    @if (context.IsDeleted)
+                    {
+                        <MudMenuItem Icon="@Icons.Material.Filled.Restore" OnClick="@(() => RestoreBook(context.Id))">Restore</MudMenuItem>
+                    }
+                    else
+                    {
+                        <MudMenuItem Icon="@Icons.Material.Filled.Delete" OnClick="@(() => DeleteBook(context.Id))">Delete</MudMenuItem>
+                    }
+                </MudMenu>
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText>No books found.</MudText>
+        </NoRecordsContent>
+        <LoadingContent>
+            <MudText>Loading books...</MudText>
+        </LoadingContent>
+        <PagerContent>
+            <MudTablePager/>
+        </PagerContent>
+    </MudTable>
+</MudContainer>
+
+<style>
+    .glass-table {
+        background: rgba(255, 255, 255, 0.7) !important;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07) !important;
+    }
+    .search-field { max-width: 300px; }
+    .fw-bold { font-weight: 700 !important; }
+    .fw-semibold { font-weight: 600 !important; }
+</style>
+
+@code {
+    private MudTable<BookDto> _table = null!;
+    private string _searchString = "";
+
+    private async Task<TableData<BookDto>> ReloadData(TableState state, CancellationToken ct)
+    {
+        try
+        {
+            var books = await BooksClient.GetAllBooksAdminAsync("1.0", "en-US", cancellationToken: ct);
+
+            var filtered = books
+                .Where(b => string.IsNullOrEmpty(_searchString) ||
+                            b.Title.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            return new TableData<BookDto>
+            {
+                TotalItems = filtered.Count,
+                Items = filtered.Skip(state.Page * state.PageSize).Take(state.PageSize)
+            };
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load books: {ex.Message}", Severity.Error);
+            return new TableData<BookDto> { TotalItems = 0, Items = Array.Empty<BookDto>() };
+        }
+    }
+
+    private async Task OpenAddDialog()
+    {
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<AddBookDialog>("Add New Book", options);
+        var result = await dialog.Result;
+        if (result != null && !result.Canceled)
+        {
+            await _table.ReloadServerData();
+        }
+    }
+
+    private async Task DeleteBook(Guid id)
+    {
+        try
+        {
+            await BooksClient.SoftDeleteBookAsync(id, "1.0", "en-US");
+            Snackbar.Add("Book deleted.", Severity.Success);
+            await _table.ReloadServerData();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to delete book: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task RestoreBook(Guid id)
+    {
+        try
+        {
+            await BooksClient.RestoreBookAsync(id, apiVersion: "1.0");
+            Snackbar.Add("Book restored.", Severity.Success);
+            await _table.ReloadServerData();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to restore book: {ex.Message}", Severity.Error);
+        }
+    }
+
+}

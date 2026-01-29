@@ -1,8 +1,15 @@
 using System.Collections.Immutable;
+using System.Globalization;
+using System.Linq;
 using BookStore.ApiService.Commands;
+using BookStore.ApiService.Infrastructure;
+using BookStore.ApiService.Infrastructure.Extensions;
+using BookStore.ApiService.Projections;
 using Marten;
 using Marten.Linq.SoftDeletes;
+using Marten.Pagination;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using Wolverine;
 
 namespace BookStore.ApiService.Commands
@@ -45,14 +52,42 @@ namespace BookStore.ApiService.Endpoints.Admin
 
         static async Task<IResult> GetAllCategories(
             [FromServices] IQuerySession session,
+            [FromServices] IOptions<PaginationOptions> paginationOptions,
+            [FromServices] IOptions<LocalizationOptions> localizationOptions,
+            [AsParameters] CategorySearchRequest request,
             CancellationToken cancellationToken)
         {
-            var categories = await session.Query<Projections.CategoryProjection>()
-                .Where(x => x.MaybeDeleted())
-                .OrderBy(x => x.Id) // Categories don't have a single name to sort by easily, ID is safe or we can default sort
-                .ToListAsync(cancellationToken);
+            var paging = request.Normalize(paginationOptions.Value);
+            var culture = CultureInfo.CurrentUICulture.Name;
+            var defaultCulture = localizationOptions.Value.DefaultCulture;
 
-            return Results.Ok(categories);
+            var normalizedSortOrder = request.SortOrder?.ToLowerInvariant() == "desc" ? "desc" : "asc";
+            var normalizedSortBy = request.SortBy?.ToLowerInvariant();
+
+            IQueryable<CategoryProjection> query = session.Query<CategoryProjection>();
+
+            if (!string.IsNullOrWhiteSpace(request.Search))
+            {
+                var search = request.Search.ToLower();
+                // Simpler dictionary search, though still might be problematic for Marten 
+                // on projections. We'll try this first.
+                query = query.Where(x => x.Names.Values.Any(v => v.Contains(request.Search, StringComparison.OrdinalIgnoreCase)));
+            }
+
+            query = (normalizedSortBy, normalizedSortOrder) switch
+            {
+                ("id", "desc") => query.OrderByDescending(x => x.Id),
+                _ => query.OrderBy(x => x.Id)
+            };
+
+            var pagedList = await query.ToPagedListAsync(paging.Page!.Value, paging.PageSize!.Value, cancellationToken);
+
+            var dtos = pagedList.ToList().Select(x => new CategoryDto(
+                x.Id,
+                LocalizationHelper.GetLocalizedValue(x.Names, culture, defaultCulture, "Unknown")
+            )).ToList();
+
+            return Results.Ok(new PagedListDto<CategoryDto>(dtos, pagedList.PageNumber, pagedList.PageSize, pagedList.TotalItemCount));
         }
 
         static Task<IResult> CreateCategory(

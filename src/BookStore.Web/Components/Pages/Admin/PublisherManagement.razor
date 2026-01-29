@@ -1,0 +1,129 @@
+@page "/admin/publishers"
+@using BookStore.Client
+@using BookStore.Shared.Models
+@using Microsoft.AspNetCore.Authorization
+@using MudBlazor
+@inject IPublishersClient PublishersClient
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@attribute [Authorize(Roles = "Admin")]
+
+<PageTitle>Publisher Management - BookStore</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-8 mb-12">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-6">
+        <MudText Typo="Typo.h4" Class="fw-bold">Publisher Management</MudText>
+        <MudSpacer/>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenAddDialog">
+            Add Publisher
+        </MudButton>
+    </MudStack>
+
+    <MudTable T="PublisherDto" @ref="_table" ServerData="ReloadData" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="0"
+              Class="glass-table rounded-xl overflow-hidden">
+        <ToolBarContent>
+            <MudSpacer/>
+            <MudTextField @bind-Value="_searchString" Placeholder="Search publishers..." Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="search-field"
+                          Clearable="true" Immediate="true" Variant="Variant.Outlined" Margin="Margin.Dense"/>
+        </ToolBarContent>
+        <HeaderContent>
+            <MudTh>Name</MudTh>
+            <MudTh>Actions</MudTh>
+        </HeaderContent>
+        <RowTemplate Context="context">
+            <MudTd DataLabel="Name">
+                <MudText Typo="Typo.body2" Class="fw-semibold">@context.Name</MudText>
+            </MudTd>
+            <MudTd DataLabel="Actions">
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" OnClick="@(() => EditPublisher(context))" Size="Size.Small"/>
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => DeletePublisher(context))" Size="Size.Small"/>
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+</MudContainer>
+
+@code {
+    private MudTable<PublisherDto> _table = null!;
+
+    private string? _searchString
+    {
+        get => _searchStringFieldValue;
+        set
+        {
+            if (_searchStringFieldValue == value) return;
+            _searchStringFieldValue = value;
+            _table.ReloadServerData();
+        }
+    }
+
+    private string? _searchStringFieldValue;
+
+    private void OnSearchCleared()
+    {
+        _searchString = null;
+    }
+
+    private async Task<TableData<PublisherDto>> ReloadData(TableState state, CancellationToken cancellationToken)
+    {
+        var request = new PublisherSearchRequest
+        {
+            Page = state.Page + 1,
+            PageSize = state.PageSize,
+            SortBy = state.SortLabel,
+            SortOrder = state.SortDirection == SortDirection.Descending ? "desc" : "asc",
+            Search = _searchString
+        };
+
+        var paged = await PublishersClient.GetAllPublishersAsync(
+            request,
+            "1.0",
+            "en-US",
+            cancellationToken);
+
+        return new TableData<PublisherDto> { Items = paged.Items, TotalItems = (int)paged.TotalItemCount };
+    }
+
+    private async Task EditPublisher(PublisherDto publisher)
+    {
+        var parameters = new DialogParameters<UpdatePublisherDialog> { { x => x.Publisher, publisher } };
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<UpdatePublisherDialog>("Edit Publisher", parameters, options);
+        var result = await dialog.Result;
+        if (result is { Canceled: false }) await _table.ReloadServerData();
+    }
+
+    private async Task DeletePublisher(PublisherDto publisher)
+    {
+        var result = await DialogService.ShowMessageBox(
+            "Delete Publisher",
+            $"Are you sure you want to delete publisher {publisher.Name}?",
+            yesText: "Delete", cancelText: "Cancel");
+
+        if (result == true)
+        {
+            try
+            {
+                await ((ISoftDeletePublisherEndpoint)PublishersClient).Execute(publisher.Id, "1.0", "en-US");
+                Snackbar.Add($"Publisher {publisher.Name} deleted successfully.", Severity.Success);
+                await _table.ReloadServerData();
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task OpenAddDialog()
+    {
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<CreatePublisherDialog>("Add Publisher", options);
+        var result = await dialog.Result;
+        if (result != null && !result.Canceled)
+        {
+            await _table.ReloadServerData();
+        }
+    }
+
+}
