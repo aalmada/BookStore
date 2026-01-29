@@ -78,15 +78,6 @@ public static partial class Log
             int maxLength,
             int actualLength);
 
-        [LoggerMessage(
-            Level = LogLevel.Warning,
-            Message = "Category description too long: CategoryId={CategoryId}, LanguageCode={LanguageCode}, MaxLength={MaxLength}, ActualLength={ActualLength}")]
-        public static partial void DescriptionTooLong(
-            ILogger logger,
-            Guid categoryId,
-            string languageCode,
-            int maxLength,
-            int actualLength);
 
         // ETag Validation
         [LoggerMessage(
