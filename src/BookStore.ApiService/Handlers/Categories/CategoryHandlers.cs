@@ -21,7 +21,7 @@ public static class CategoryHandlers
             return Result.Failure(Error.Validation(ErrorCodes.Categories.TranslationLanguageInvalid, $"The following language codes are not valid: {string.Join(", ", invalidCodes)}")).ToProblemDetails();
         }
 
-        // Validate name and description lengths
+        // Validate name lengths
         foreach (var (languageCode, translation) in command.Translations)
         {
             if (string.IsNullOrWhiteSpace(translation.Name))
@@ -70,7 +70,7 @@ public static class CategoryHandlers
             return Result.Failure(Error.Validation(ErrorCodes.Categories.TranslationLanguageInvalid, $"The following language codes are not valid: {string.Join(", ", invalidCodes)}")).ToProblemDetails();
         }
 
-        // Validate name and description lengths
+        // Validate name lengths
         foreach (var (languageCode, translation) in command.Translations)
         {
             if (string.IsNullOrWhiteSpace(translation.Name))
