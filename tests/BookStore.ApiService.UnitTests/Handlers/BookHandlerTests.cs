@@ -3,11 +3,15 @@ using BookStore.ApiService.Aggregates;
 using BookStore.ApiService.Commands;
 using BookStore.ApiService.Events;
 using BookStore.ApiService.Handlers.Books;
+using BookStore.ApiService.Handlers.Sales;
 using BookStore.ApiService.Infrastructure;
+using BookStore.ApiService.Infrastructure.Logging;
 using BookStore.Shared.Models;
 using Marten;
 using Marten.Events;
+using JasperFx.Events;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NSubstitute;
@@ -203,47 +207,44 @@ public class BookHandlerTests
     }
     [Test]
     [Category("Unit")]
-    public async Task ScheduleBookSale_ShouldAppendEvent()
+    public async Task ScheduleSale_ShouldAppendEvent()
     {
         // Arrange
         var bookId = Guid.CreateVersion7();
-        var command = new ScheduleBookSale(bookId, 10m, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddDays(1));
+        var command = new ScheduleSale(bookId, 10m, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddDays(1));
         var session = Substitute.For<IDocumentSession>();
 
         // Mock FetchStreamStateAsync to return a valid state (book exists)
         _ = session.Events.FetchStreamStateAsync(bookId).Returns(new Marten.Events.StreamState { Version = 1 });
 
-        // Mock AggregateStreamAsync to return a valid aggregate
-        var aggregate = new BookAggregate();
-        SetPrivateProperty(aggregate, "Id", bookId);
-        _ = session.Events.AggregateStreamAsync<BookAggregate>(bookId).Returns(aggregate);
+        // SaleHandlers uses FetchStreamAsync and projects manually
+        _ = session.Events.FetchStreamAsync(bookId).Returns(new List<IEvent>());
 
         // Act
-        var result = await BookHandlers.Handle(command, session, Substitute.For<IHttpContextAccessor>(), Substitute.For<ILogger<ScheduleBookSale>>());
+        var result = await SaleHandlers.Handle(command, session);
 
         // Assert
         _ = await Assert.That(result).IsTypeOf<Microsoft.AspNetCore.Http.HttpResults.NoContent>();
         _ = session.Events.Received(1).Append(
             bookId,
+            2,
             Arg.Is<BookSaleScheduled>(e => e.Sale.Percentage == 10m));
     }
 
     [Test]
     [Category("Unit")]
-    public async Task ScheduleBookSale_WithInvalidPercentage_ShouldReturnBadRequest()
+    public async Task ScheduleSale_WithInvalidPercentage_ShouldReturnBadRequest()
     {
         // Arrange
         var bookId = Guid.CreateVersion7();
-        var command = new ScheduleBookSale(bookId, 150m, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddDays(1));
+        var command = new ScheduleSale(bookId, 150m, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddDays(1));
         var session = Substitute.For<IDocumentSession>();
 
         _ = session.Events.FetchStreamStateAsync(bookId).Returns(new Marten.Events.StreamState { Version = 1 });
-        var aggregate = new BookAggregate();
-        SetPrivateProperty(aggregate, "Id", bookId);
-        _ = session.Events.AggregateStreamAsync<BookAggregate>(bookId).Returns(aggregate);
+        _ = session.Events.FetchStreamAsync(bookId).Returns(new List<IEvent>());
 
         // Act
-        var result = await BookHandlers.Handle(command, session, Substitute.For<IHttpContextAccessor>(), Substitute.For<ILogger<ScheduleBookSale>>());
+        var result = await SaleHandlers.Handle(command, session);
 
         // Assert
         _ = await Assert.That(result).IsAssignableTo<IStatusCodeHttpResult>();
@@ -253,17 +254,17 @@ public class BookHandlerTests
 
     [Test]
     [Category("Unit")]
-    public async Task ScheduleBookSale_WithMissingBook_ShouldReturnNotFound()
+    public async Task ScheduleSale_WithMissingBook_ShouldReturnNotFound()
     {
         // Arrange
         var bookId = Guid.CreateVersion7();
-        var command = new ScheduleBookSale(bookId, 10m, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddDays(1));
+        var command = new ScheduleSale(bookId, 10m, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddDays(1));
         var session = Substitute.For<IDocumentSession>();
 
         _ = session.Events.FetchStreamStateAsync(bookId).Returns(Task.FromResult<Marten.Events.StreamState?>(null));
 
         // Act
-        var result = await BookHandlers.Handle(command, session, Substitute.For<IHttpContextAccessor>(), Substitute.For<ILogger<ScheduleBookSale>>());
+        var result = await SaleHandlers.Handle(command, session);
 
         // Assert
         _ = await Assert.That(result).IsTypeOf<Microsoft.AspNetCore.Http.HttpResults.NotFound>();
@@ -271,30 +272,31 @@ public class BookHandlerTests
 
     [Test]
     [Category("Unit")]
-    public async Task CancelBookSale_ShouldAppendEvent()
+    public async Task CancelSale_ShouldAppendEvent()
     {
         // Arrange
         var bookId = Guid.CreateVersion7();
         var saleStart = DateTimeOffset.UtcNow;
-        var command = new CancelBookSale(bookId, saleStart);
+        var command = new CancelSale(bookId, saleStart);
         var session = Substitute.For<IDocumentSession>();
 
         _ = session.Events.FetchStreamStateAsync(bookId).Returns(new Marten.Events.StreamState { Version = 1 });
-        var aggregate = new BookAggregate();
-        SetPrivateProperty(aggregate, "Id", bookId);
-        // Pre-seed an active sale using reflection to access private list
-        var salesList = (List<BookSale>)aggregate.GetType().GetProperty("Sales", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)!.GetValue(aggregate)!;
-        salesList.Add(new BookSale(10m, saleStart, saleStart.AddDays(1)));
-
-        _ = session.Events.AggregateStreamAsync<BookAggregate>(bookId).Returns(aggregate);
+        
+        // SaleHandlers.Handle for CancelSale fetches stream and projects manually
+        var events = new List<IEvent>
+        {
+            new JasperFx.Events.Event<BookSaleScheduled>(new BookSaleScheduled(bookId, new BookSale(10m, saleStart, saleStart.AddDays(1))))
+        };
+        _ = session.Events.FetchStreamAsync(bookId).Returns(events);
 
         // Act
-        var result = await BookHandlers.Handle(command, session, Substitute.For<IHttpContextAccessor>(), Substitute.For<ILogger<CancelBookSale>>());
+        var result = await SaleHandlers.Handle(command, session);
 
         // Assert
         _ = await Assert.That(result).IsTypeOf<Microsoft.AspNetCore.Http.HttpResults.NoContent>();
         _ = session.Events.Received(1).Append(
             bookId,
+            2, // version + 1
             Arg.Is<BookSaleCancelled>(e => e.SaleStart == saleStart));
     }
 

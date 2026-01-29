@@ -7,7 +7,6 @@ using Marten;
 using Wolverine;
 
 namespace BookStore.ApiService.Handlers;
-
 public static class UserCommandHandler
 {
     public static async Task Handle(AddBookToFavorites command, IDocumentSession session)

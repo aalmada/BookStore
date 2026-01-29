@@ -15,6 +15,7 @@ public static class SaleHandlers
         ScheduleSale command,
         IDocumentSession session)
     {
+        Instrumentation.SalesScheduled.Add(1, new System.Diagnostics.TagList { { "tenant_id", session.TenantId } });
         try
         {
             var streamState = await session.Events.FetchStreamStateAsync(command.BookId);
@@ -60,6 +61,7 @@ public static class SaleHandlers
         CancelSale command,
         IDocumentSession session)
     {
+        Instrumentation.SalesCanceled.Add(1, new System.Diagnostics.TagList { { "tenant_id", session.TenantId } });
         var streamState = await session.Events.FetchStreamStateAsync(command.BookId);
         if (streamState == null)
         {

@@ -202,7 +202,18 @@ public static class BookEndpoints
                 }
 
                 // Filter by price range if specified
-                if (request.MinPrice.HasValue)
+                if (request.MinPrice.HasValue && request.MaxPrice.HasValue)
+                {
+                    if (!string.IsNullOrWhiteSpace(request.Currency))
+                    {
+                        query = query.Where(b => b.CurrentPrices.Any(p => p.Currency == request.Currency && p.Value >= request.MinPrice.Value && p.Value <= request.MaxPrice.Value));
+                    }
+                    else
+                    {
+                        query = query.Where(b => b.CurrentPrices.Any(p => p.Value >= request.MinPrice.Value && p.Value <= request.MaxPrice.Value));
+                    }
+                }
+                else if (request.MinPrice.HasValue)
                 {
                     if (!string.IsNullOrWhiteSpace(request.Currency))
                     {
@@ -213,8 +224,7 @@ public static class BookEndpoints
                         query = query.Where(b => b.CurrentPrices.Any(p => p.Value >= request.MinPrice.Value));
                     }
                 }
-
-                if (request.MaxPrice.HasValue)
+                else if (request.MaxPrice.HasValue)
                 {
                     if (!string.IsNullOrWhiteSpace(request.Currency))
                     {

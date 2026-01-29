@@ -197,4 +197,86 @@ public class BookSearchProjectionTests
         // Assert
         _ = await Assert.That(projection.Sales).IsEmpty();
     }
+
+    [Test]
+    [Category("Unit")]
+    public async Task Apply_BookDiscountUpdated_ShouldRecalculateCurrentPrices()
+    {
+        // Arrange
+        var id = Guid.NewGuid();
+        var projection = new BookSearchProjection
+        {
+            Id = id,
+            Prices = [new PriceEntry("USD", 100m), new PriceEntry("EUR", 80m)],
+            CurrentPrices = [new PriceEntry("USD", 100m), new PriceEntry("EUR", 80m)]
+        };
+
+        var @event = new BookDiscountUpdated(id, 20m); // 20% discount
+
+        // Act
+        projection.Apply(@event);
+
+        // Assert
+        _ = await Assert.That(projection.CurrentPrices).Count().IsEqualTo(2);
+        _ = await Assert.That(projection.CurrentPrices.First(p => p.Currency == "USD").Value).IsEqualTo(80m);
+        _ = await Assert.That(projection.CurrentPrices.First(p => p.Currency == "EUR").Value).IsEqualTo(64m);
+    }
+
+    [Test]
+    [Category("Unit")]
+    public async Task Apply_BookDiscountUpdated_WithZeroDiscount_ShouldResetToOriginalPrices()
+    {
+        // Arrange
+        var id = Guid.NewGuid();
+        var projection = new BookSearchProjection
+        {
+            Id = id,
+            Prices = [new PriceEntry("USD", 100m)],
+            CurrentPrices = [new PriceEntry("USD", 50m)] // Existing 50% discount
+        };
+
+        var @event = new BookDiscountUpdated(id, 0m);
+
+        // Act
+        projection.Apply(@event);
+
+        // Assert
+        _ = await Assert.That(projection.CurrentPrices[0].Value).IsEqualTo(100m);
+    }
+
+    [Test]
+    [Category("Unit")]
+    public async Task Apply_BookUpdated_ShouldPreserveDiscount()
+    {
+        // Arrange
+        var id = Guid.NewGuid();
+        var projection = new BookSearchProjection
+        {
+            Id = id,
+            Prices = [new PriceEntry("USD", 100m)],
+            CurrentPrices = [new PriceEntry("USD", 80m)],
+            DiscountPercentage = 20m
+        };
+
+        var @event = new BookUpdated(
+            id,
+            "Updated Title",
+            "1234567890",
+            "en",
+            new Dictionary<string, BookTranslation> { ["en"] = new BookTranslation("Desc") },
+            null,
+            null,
+            [],
+            [],
+            new Dictionary<string, decimal> { ["USD"] = 200m } // New base price
+        );
+
+        // Act
+        projection.Apply(@event, Substitute.For<IQuerySession>());
+
+        // Assert
+        _ = await Assert.That(projection.DiscountPercentage).IsEqualTo(20m);
+        _ = await Assert.That(projection.Prices[0].Value).IsEqualTo(200m);
+        _ = await Assert.That(projection.CurrentPrices[0].Value).IsEqualTo(160m); // 200 * 0.8
+    }
 }

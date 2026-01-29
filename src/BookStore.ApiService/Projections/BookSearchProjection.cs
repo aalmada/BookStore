@@ -35,6 +35,7 @@ public class BookSearchProjection
     public string SearchText { get; set; } = string.Empty;
 
     public List<BookSale> Sales { get; set; } = [];
+    public decimal DiscountPercentage { get; set; }
 
     public CoverImageFormat CoverFormat { get; set; } = CoverImageFormat.None;
 
@@ -60,7 +61,8 @@ public class BookSearchProjection
                 .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Description)
                 ?? [],
             Prices = prices,
-            CurrentPrices = prices // Initial current prices match base prices
+            CurrentPrices = prices,
+            DiscountPercentage = 0
         };
 
         LoadDenormalizedData(projection, session);
@@ -86,15 +88,7 @@ public class BookSearchProjection
             .Select(kvp => new PriceEntry(kvp.Key, kvp.Value))
             .ToList() ?? [];
 
-        // Reset current prices to base prices (discount needs to be re-applied via event if state is rebuild, 
-        // OR we need to remember discount? But BookUpdated overwrites everything usually.
-        // Assuming BookUpdated is a full replacement.
-        // If we have an active discount, BookUpdated might clear it?
-        // Actually, BookUpdated in Marten is just a partial update in some contexts, but here it looks like full replacement.
-        // Since discount is separate state in Aggregate now, we should preserve it IF we tracked it in Projection.
-        // But the Projection doesn't track 'DiscountPercentage'. 
-        // We should add 'DiscountPercentage' to Projection to safely recalculate on Price/Book updates.
-        CurrentPrices = [.. Prices.Select(p => p with { })]; // Deep copyish
+        RecalculateCurrentPrices();
 
         LoadDenormalizedData(this, session);
         UpdateSearchText(this);
@@ -105,13 +99,18 @@ public class BookSearchProjection
     // New handler for discount updates
     public void Apply(BookDiscountUpdated @event)
     {
-        // Calculate new CurrentPrices based on Prices and Discount
+        DiscountPercentage = @event.DiscountPercentage;
+        RecalculateCurrentPrices();
+    }
+
+    private void RecalculateCurrentPrices()
+    {
         if (Prices == null)
         {
             return;
         }
 
-        var factor = 1 - (@event.DiscountPercentage / 100m);
+        var factor = 1 - (DiscountPercentage / 100m);
         CurrentPrices = [.. Prices.Select(p => new PriceEntry(p.Currency, p.Value * factor))];
     }
 
