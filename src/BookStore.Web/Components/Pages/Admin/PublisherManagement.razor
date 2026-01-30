@@ -28,7 +28,9 @@
                           Clearable="true" Immediate="true" Variant="Variant.Outlined" Margin="Margin.Dense"/>
         </ToolBarContent>
         <HeaderContent>
-            <MudTh>Name</MudTh>
+            <MudTh>
+                <MudTableSortLabel SortLabel="name" T="PublisherDto">Name</MudTableSortLabel>
+            </MudTh>
             <MudTh>Actions</MudTh>
         </HeaderContent>
         <RowTemplate Context="context">
@@ -40,6 +42,9 @@
                 <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => DeletePublisher(context))" Size="Size.Small"/>
             </MudTd>
         </RowTemplate>
+        <PagerContent>
+            <MudTablePager/>
+        </PagerContent>
     </MudTable>
 </MudContainer>
 

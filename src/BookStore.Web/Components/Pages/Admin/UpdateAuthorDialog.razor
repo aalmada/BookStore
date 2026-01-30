@@ -1,4 +1,6 @@
 @* Unnecessary usings removed *@
+@using BookStore.Client
+@using BookStore.Shared.Models
 @inject IAuthorsClient AuthorsClient
 @inject ISnackbar Snackbar
 
@@ -61,7 +63,7 @@
 @code {
     [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
 
-    [Parameter] public AuthorDto Author { get; set; } = null!;
+    [Parameter] public AdminAuthorDto Author { get; set; } = null!;
 
     private MudForm _form = null!;
     private bool _success;
@@ -73,14 +75,25 @@
 
     protected override void OnInitialized()
     {
-        _model = new UpdateAuthorRequest { Name = Author.Name, Translations = new Dictionary<string, AuthorTranslationDto>() };
+        _model = new UpdateAuthorRequest { Name = Author.Name, Translations = new Dictionary<string, BookStore.Client.AuthorTranslationDto>() };
 
-        if (!string.IsNullOrEmpty(Author.Biography))
+        if (Author.Translations != null)
+        {
+            foreach (var translation in Author.Translations)
+            {
+                _translations[translation.Key] = translation.Value.Biography;
+            }
+
+            if (_translations.TryGetValue("en", out var enBio))
+            {
+                _currentBiography = enBio;
+            }
+        }
+        else if (!string.IsNullOrEmpty(Author.Biography))
         {
             _translations["en"] = Author.Biography;
             _currentBiography = Author.Biography;
         }
-        // In a real scenario, we might want to fetch all translations from the API if they are not in AuthorDto
     }
 
     private void OnLanguageChanged(string lang)
@@ -110,7 +123,7 @@
         {
             var updatedTranslations = _translations.ToDictionary(
                 kvp => kvp.Key,
-                kvp => new AuthorTranslationDto { Biography = kvp.Value }
+                kvp => new BookStore.Client.AuthorTranslationDto { Biography = kvp.Value }
             );
 
             var request = new UpdateAuthorRequest { Name = _model.Name, Translations = updatedTranslations };

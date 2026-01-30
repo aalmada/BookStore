@@ -4,10 +4,12 @@ using System.Linq;
 using BookStore.ApiService.Commands;
 using BookStore.ApiService.Infrastructure;
 using BookStore.ApiService.Infrastructure.Extensions;
+using BookStore.ApiService.Infrastructure.Tenant;
 using BookStore.ApiService.Projections;
 using Marten;
 using Marten.Linq.SoftDeletes;
 using Marten.Pagination;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Wolverine;
@@ -82,57 +84,62 @@ namespace BookStore.ApiService.Endpoints.Admin
 
             var pagedList = await query.ToPagedListAsync(paging.Page!.Value, paging.PageSize!.Value, cancellationToken);
 
-            var dtos = pagedList.ToList().Select(x => new CategoryDto(
+            var dtos = pagedList.ToList().Select(x => new AdminCategoryDto(
                 x.Id,
-                LocalizationHelper.GetLocalizedValue(x.Names, culture, defaultCulture, "Unknown")
+                LocalizationHelper.GetLocalizedValue(x.Names, culture, defaultCulture, "Unknown"),
+                x.Names.ToDictionary(kvp => kvp.Key, kvp => new CategoryTranslationDto(kvp.Value))
             )).ToList();
 
-            return Results.Ok(new PagedListDto<CategoryDto>(dtos, pagedList.PageNumber, pagedList.PageSize, pagedList.TotalItemCount));
+            return Results.Ok(new PagedListDto<AdminCategoryDto>(dtos, pagedList.PageNumber, pagedList.PageSize, pagedList.TotalItemCount));
         }
 
         static Task<IResult> CreateCategory(
             [FromBody] Commands.CreateCategoryRequest request,
             [FromServices] IMessageBus bus,
+            [FromServices] ITenantContext tenantContext,
             CancellationToken cancellationToken)
         {
             var translations = request.Translations ?? (IReadOnlyDictionary<string, CategoryTranslationDto>)ImmutableDictionary<string, CategoryTranslationDto>.Empty;
             var command = new Commands.CreateCategory(translations);
-            return bus.InvokeAsync<IResult>(command, cancellationToken);
+            return bus.InvokeAsync<IResult>(command, new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
         }
 
         static Task<IResult> UpdateCategory(
             Guid id,
             [FromBody] Commands.UpdateCategoryRequest request,
             [FromServices] IMessageBus bus,
+            [FromServices] ITenantContext tenantContext,
             HttpContext context,
             CancellationToken cancellationToken)
         {
             var etag = context.Request.Headers["If-Match"].FirstOrDefault();
             var translations = request.Translations ?? (IReadOnlyDictionary<string, CategoryTranslationDto>)ImmutableDictionary<string, CategoryTranslationDto>.Empty;
             var command = new Commands.UpdateCategory(id, translations) { ETag = etag };
-            return bus.InvokeAsync<IResult>(command, cancellationToken);
+            return bus.InvokeAsync<IResult>(command, new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
         }
 
         static Task<IResult> SoftDeleteCategory(
             Guid id,
             [FromServices] IMessageBus bus,
+            [FromServices] ITenantContext tenantContext,
             HttpContext context,
             CancellationToken cancellationToken)
         {
             var etag = context.Request.Headers["If-Match"].FirstOrDefault();
             var command = new Commands.SoftDeleteCategory(id) { ETag = etag };
-            return bus.InvokeAsync<IResult>(command, cancellationToken);
+            return bus.InvokeAsync<IResult>(command, new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
         }
 
         static Task<IResult> RestoreCategory(
             Guid id,
             [FromServices] IMessageBus bus,
+            [FromServices] ITenantContext tenantContext,
             HttpContext context,
             CancellationToken cancellationToken)
         {
             var etag = context.Request.Headers["If-Match"].FirstOrDefault();
             var command = new Commands.RestoreCategory(id) { ETag = etag };
-            return bus.InvokeAsync<IResult>(command, cancellationToken);
+            return bus.InvokeAsync<IResult>(command, new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
         }
     }
 }

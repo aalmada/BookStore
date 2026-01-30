@@ -23,11 +23,6 @@ public record CreateBook(
 }
 
 /// <summary>
-/// DTO for localized book descriptions
-/// </summary>
-public record BookTranslationDto(string Description);
-
-/// <summary>
 /// Command to update an existing book
 /// </summary>
 public record UpdateBook(

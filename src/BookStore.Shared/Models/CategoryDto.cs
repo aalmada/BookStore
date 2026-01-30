@@ -6,3 +6,5 @@ namespace BookStore.Shared.Models;
 public record CategoryDto(
     Guid Id,
     string Name);
+
+public record CategoryTranslationDto(string Name);

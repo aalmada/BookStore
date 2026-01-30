@@ -31,3 +31,5 @@ public record BookDto(
     IReadOnlyList<PriceEntry>? CurrentPrices = null,
     bool IsDeleted = false);
 
+public record BookTranslationDto(string Description);
+

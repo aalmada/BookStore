@@ -11,7 +11,7 @@ namespace BookStore.ApiService.Handlers.Categories;
 
 public static class CategoryHandlers
 {
-    public static IResult Handle(CreateCategory command, IDocumentSession session, ILogger<CreateCategory> logger)
+    public static async Task<IResult> Handle(CreateCategory command, IDocumentSession session, ILogger<CreateCategory> logger)
     {
         Log.Categories.CategoryCreating(logger, command.Id, session.CorrelationId ?? "none");
         // Validate language codes in CategoryTranslation
@@ -52,6 +52,9 @@ public static class CategoryHandlers
         }
 
         _ = session.Events.StartStream<CategoryAggregate>(command.Id, eventResult.Value);
+
+        // Fetch state to ensure flush
+        _ = await session.Events.FetchStreamStateAsync(command.Id);
 
         return Results.Created(
             $"/api/admin/categories/{command.Id}",

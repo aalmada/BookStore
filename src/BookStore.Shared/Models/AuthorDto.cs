@@ -7,3 +7,5 @@ public record AuthorDto(
     Guid Id,
     string Name,
     string? Biography);
+
+public record AuthorTranslationDto(string Biography);

@@ -12,7 +12,7 @@ namespace BookStore.ApiService.Handlers.Authors;
 
 public static class AuthorHandlers
 {
-    public static IResult Handle(CreateAuthor command, IDocumentSession session, IOptions<LocalizationOptions> localizationOptions, ILogger logger)
+    public static async Task<IResult> Handle(CreateAuthor command, IDocumentSession session, IOptions<LocalizationOptions> localizationOptions, ILogger logger)
     {
         Log.Authors.AuthorCreating(logger, command.Id, command.Name, session.CorrelationId ?? "none");
 
@@ -62,6 +62,9 @@ public static class AuthorHandlers
         _ = session.Events.StartStream<AuthorAggregate>(command.Id, eventResult.Value);
 
         Log.Authors.AuthorCreated(logger, command.Id, command.Name);
+
+        // Fetch state to ensure flush and get version for ETag (optional but good for consistency)
+        _ = await session.Events.FetchStreamStateAsync(command.Id);
 
         return Results.Created(
             $"/api/admin/authors/{command.Id}",

@@ -85,13 +85,14 @@ namespace BookStore.ApiService.Endpoints.Admin
 
             // Mapping MUST happen on the client side (after ToList()) because Marten 
             // cannot translate complex Dictionary access or helper methods in Select()
-            var dtos = pagedList.ToList().Select(x => new AuthorDto(
+            var dtos = pagedList.ToList().Select(x => new AdminAuthorDto(
                 x.Id,
                 x.Name,
-                LocalizationHelper.GetLocalizedValue(x.Biographies, culture, defaultCulture, "")
+                LocalizationHelper.GetLocalizedValue(x.Biographies, culture, defaultCulture, ""),
+                x.Biographies.ToDictionary(kvp => kvp.Key, kvp => new AuthorTranslationDto(kvp.Value))
             )).ToList();
 
-            return Results.Ok(new PagedListDto<AuthorDto>(dtos, pagedList.PageNumber, pagedList.PageSize, pagedList.TotalItemCount));
+            return Results.Ok(new PagedListDto<AdminAuthorDto>(dtos, pagedList.PageNumber, pagedList.PageSize, pagedList.TotalItemCount));
         }
 
         static Task<IResult> CreateAuthor(

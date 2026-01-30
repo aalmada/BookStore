@@ -19,7 +19,7 @@
         </MudButton>
     </MudStack>
 
-    <MudTable T="CategoryDto" @ref="_table" ServerData="ReloadData" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="0"
+    <MudTable T="AdminCategoryDto" @ref="_table" ServerData="ReloadData" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="0"
               Class="glass-table rounded-xl overflow-hidden">
         <ToolBarContent>
             <MudSpacer/>
@@ -40,11 +40,14 @@
                 <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => DeleteCategory(context))" Size="Size.Small"/>
             </MudTd>
         </RowTemplate>
+        <PagerContent>
+            <MudTablePager/>
+        </PagerContent>
     </MudTable>
 </MudContainer>
 
 @code {
-    private MudTable<CategoryDto> _table = null!;
+    private MudTable<AdminCategoryDto> _table = null!;
 
     private string? _searchString
     {
@@ -64,7 +67,7 @@
         _searchString = null;
     }
 
-    private async Task<TableData<CategoryDto>> ReloadData(TableState state, CancellationToken cancellationToken)
+    private async Task<TableData<AdminCategoryDto>> ReloadData(TableState state, CancellationToken cancellationToken)
     {
         var request = new CategorySearchRequest
         {
@@ -81,10 +84,10 @@
             "en-US",
             cancellationToken);
 
-        return new TableData<CategoryDto> { Items = paged.Items, TotalItems = (int)paged.TotalItemCount };
+        return new TableData<AdminCategoryDto> { Items = paged.Items, TotalItems = (int)paged.TotalItemCount };
     }
 
-    private async Task EditCategory(CategoryDto category)
+    private async Task EditCategory(AdminCategoryDto category)
     {
         var parameters = new DialogParameters<UpdateCategoryDialog> { { x => x.Category, category } };
         var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
@@ -93,7 +96,7 @@
         if (result is { Canceled: false }) await _table.ReloadServerData();
     }
 
-    private async Task DeleteCategory(CategoryDto category)
+    private async Task DeleteCategory(AdminCategoryDto category)
     {
         var result = await DialogService.ShowMessageBox(
             "Delete Category",

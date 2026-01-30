@@ -6,7 +6,7 @@ namespace BookStore.Client;
 public interface IGetAllAuthorsAdminEndpoint
 {
     [Get("/api/admin/authors")]
-    Task<PagedListDto<AuthorDto>> GetAllAuthorsAsync(
+    Task<PagedListDto<AdminAuthorDto>> GetAllAuthorsAsync(
         [Query] AuthorSearchRequest request,
         [Header("Accept-Version")] string version,
         [Header("Accept-Language")] string language,
