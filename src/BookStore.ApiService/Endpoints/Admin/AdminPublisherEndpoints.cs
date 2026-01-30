@@ -1,6 +1,7 @@
 using System.Linq;
 using BookStore.ApiService.Infrastructure;
 using BookStore.ApiService.Infrastructure.Extensions;
+using BookStore.ApiService.Infrastructure.Tenant;
 using BookStore.ApiService.Projections;
 using BookStore.Shared.Models;
 using Marten;
@@ -85,44 +86,48 @@ namespace BookStore.ApiService.Endpoints.Admin
         static Task<IResult> CreatePublisher(
             [FromBody] Commands.CreatePublisherRequest request,
             [FromServices] IMessageBus bus,
+            [FromServices] ITenantContext tenantContext,
             CancellationToken cancellationToken)
         {
             var command = new Commands.CreatePublisher(request.Name);
-            return bus.InvokeAsync<IResult>(command, cancellationToken);
+            return bus.InvokeAsync<IResult>(command, new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
         }
 
         static Task<IResult> UpdatePublisher(
             Guid id,
             [FromBody] Commands.UpdatePublisherRequest request,
             [FromServices] IMessageBus bus,
+            [FromServices] ITenantContext tenantContext,
             HttpContext context,
             CancellationToken cancellationToken)
         {
             var etag = context.Request.Headers["If-Match"].FirstOrDefault();
             var command = new Commands.UpdatePublisher(id, request.Name) { ETag = etag };
-            return bus.InvokeAsync<IResult>(command, cancellationToken);
+            return bus.InvokeAsync<IResult>(command, new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
         }
 
         static Task<IResult> SoftDeletePublisher(
             Guid id,
             [FromServices] IMessageBus bus,
+            [FromServices] ITenantContext tenantContext,
             HttpContext context,
             CancellationToken cancellationToken)
         {
             var etag = context.Request.Headers["If-Match"].FirstOrDefault();
             var command = new Commands.SoftDeletePublisher(id) { ETag = etag };
-            return bus.InvokeAsync<IResult>(command, cancellationToken);
+            return bus.InvokeAsync<IResult>(command, new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
         }
 
         static Task<IResult> RestorePublisher(
             Guid id,
             [FromServices] IMessageBus bus,
+            [FromServices] ITenantContext tenantContext,
             HttpContext context,
             CancellationToken cancellationToken)
         {
             var etag = context.Request.Headers["If-Match"].FirstOrDefault();
             var command = new Commands.RestorePublisher(id) { ETag = etag };
-            return bus.InvokeAsync<IResult>(command, cancellationToken);
+            return bus.InvokeAsync<IResult>(command, new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
         }
     }
 }

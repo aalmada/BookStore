@@ -1,3 +1,5 @@
+@using BookStore.Client
+@using BookStore.Shared.Models
 @inject ICategoriesClient CategoriesClient
 @inject ISnackbar Snackbar
 
@@ -29,12 +31,12 @@
                 <MudTextField T="string" Label="@($"Name ({_selectedLanguage})")" @bind-Value="_currentName"
                               Required="true" RequiredError="Name is required for the language!" Variant="Variant.Outlined"/>
 
-                <MudList T="string" Class="mt-2">
+                <MudList T="string" Class="mt-2" Dense="true">
                     @foreach (var translation in _translations)
                     {
                         <MudListItem Icon="@Icons.Material.Filled.Language">
                             <div class="d-flex align-center justify-space-between w-100">
-                                <MudText>
+                                <MudText Typo="Typo.body2">
                                     <b>@translation.Key:</b> @translation.Value
                                 </MudText>
                                 <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(() => RemoveTranslation(translation.Key))" Disabled="@(translation.Key == "en")"/>
@@ -44,7 +46,7 @@
                 </MudList>
                 @if (!_translations.ContainsKey("en"))
                 {
-                    <MudAlert Severity="Severity.Warning" Class="mt-2 text-glow">English translation is required!</MudAlert>
+                    <MudAlert Severity="Severity.Warning" Class="mt-2">English translation is required!</MudAlert>
                 }
             </MudCard>
         </MudForm>
@@ -58,7 +60,7 @@
 @code {
     [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
 
-    [Parameter] public CategoryDto Category { get; set; } = null!;
+    [Parameter] public AdminCategoryDto Category { get; set; } = null!;
 
     private MudForm _form = null!;
     private bool _success;
@@ -69,10 +71,23 @@
 
     protected override void OnInitialized()
     {
-        // Seed with English from DTO
-        _translations["en"] = Category.Name;
-        _currentName = Category.Name;
-        // In a real scenario, we might want to fetch all translations from the API if they are not in CategoryDto
+        if (Category.Translations != null)
+        {
+            foreach (var translation in Category.Translations)
+            {
+                _translations[translation.Key] = translation.Value.Name;
+            }
+
+            if (_translations.TryGetValue("en", out var enName))
+            {
+                _currentName = enName;
+            }
+        }
+        else
+        {
+            _translations["en"] = Category.Name;
+            _currentName = Category.Name;
+        }
     }
 
     private void OnLanguageChanged(string lang)
@@ -100,16 +115,15 @@
 
         try
         {
-            var translations = _translations.ToDictionary(
+            var updatedTranslations = _translations.ToDictionary(
                 kvp => kvp.Key,
-                kvp => new CategoryTranslationDto { Name = kvp.Value }
+                kvp => new BookStore.Client.CategoryTranslationDto { Name = kvp.Value }
             );
 
-            var request = new UpdateCategoryRequest { Translations = translations };
+            var request = new UpdateCategoryRequest { Translations = updatedTranslations };
             await ((IUpdateCategoryEndpoint)CategoriesClient).Execute(Category.Id, request, "1.0", "en-US");
 
-            var englishName = _translations["en"];
-            Snackbar.Add($"Category {englishName} updated successfully.", Severity.Success);
+            Snackbar.Add("Category updated successfully.", Severity.Success);
             MudDialog.Close(DialogResult.Ok(true));
         }
         catch (Exception ex)

@@ -1,3 +1,5 @@
+using BookStore.Shared.Models;
+
 namespace BookStore.ApiService.Commands;
 
 /// <summary>
@@ -8,11 +10,6 @@ public record CreateCategory(
 {
     public Guid Id { get; init; } = Guid.CreateVersion7();
 }
-
-/// <summary>
-/// DTO for localized category names
-/// </summary>
-public record CategoryTranslationDto(string Name);
 
 /// <summary>
 /// Command to update an existing category

@@ -78,7 +78,6 @@ public static partial class Log
             int maxLength,
             int actualLength);
 
-
         // ETag Validation
         [LoggerMessage(
             Level = LogLevel.Warning,

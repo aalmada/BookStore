@@ -19,7 +19,7 @@
         </MudButton>
     </MudStack>
 
-    <MudTable T="AuthorDto" @ref="_table" ServerData="ReloadData" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="0"
+    <MudTable T="AdminAuthorDto" @ref="_table" ServerData="ReloadData" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="0"
               Class="glass-table rounded-xl overflow-hidden">
         <ToolBarContent>
             <MudSpacer/>
@@ -28,7 +28,9 @@
                           Clearable="true" Immediate="true" Variant="Variant.Outlined" Margin="Margin.Dense"/>
         </ToolBarContent>
         <HeaderContent>
-            <MudTh>Name</MudTh>
+            <MudTh>
+                <MudTableSortLabel SortLabel="name" T="AdminAuthorDto">Name</MudTableSortLabel>
+            </MudTh>
             <MudTh>Actions</MudTh>
         </HeaderContent>
         <RowTemplate Context="context">
@@ -40,11 +42,14 @@
                 <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => DeleteAuthor(context))" Size="Size.Small"/>
             </MudTd>
         </RowTemplate>
+        <PagerContent>
+            <MudTablePager/>
+        </PagerContent>
     </MudTable>
 </MudContainer>
 
 @code {
-    private MudTable<AuthorDto> _table = null!;
+    private MudTable<AdminAuthorDto> _table = null!;
 
     private string? _searchString
     {
@@ -64,7 +69,7 @@
         _searchString = null;
     }
 
-    private async Task<TableData<AuthorDto>> ReloadData(TableState state, CancellationToken cancellationToken)
+    private async Task<TableData<AdminAuthorDto>> ReloadData(TableState state, CancellationToken cancellationToken)
     {
         var request = new AuthorSearchRequest
         {
@@ -81,10 +86,10 @@
             "en-US",
             cancellationToken);
 
-        return new TableData<AuthorDto> { Items = paged.Items, TotalItems = (int)paged.TotalItemCount };
+        return new TableData<AdminAuthorDto> { Items = paged.Items, TotalItems = (int)paged.TotalItemCount };
     }
 
-    private async Task EditAuthor(AuthorDto author)
+    private async Task EditAuthor(AdminAuthorDto author)
     {
         var parameters = new DialogParameters<UpdateAuthorDialog> { { x => x.Author, author } };
         var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
@@ -93,7 +98,7 @@
         if (result is { Canceled: false }) await _table.ReloadServerData();
     }
 
-    private async Task DeleteAuthor(AuthorDto author)
+    private async Task DeleteAuthor(AdminAuthorDto author)
     {
         var result = await DialogService.ShowMessageBox(
             "Delete Author",

@@ -176,7 +176,7 @@ namespace BookStore.ApiService.Endpoints.Admin
                 .ToListAsync(cancellationToken);
 #pragma warning restore CS8603
 
-            var bookDtos = books.Select(book => new BookDto(
+            var bookDtos = books.Select(book => new AdminBookDto(
                 book.Id,
                 book.Title,
                 book.Isbn,
@@ -206,7 +206,8 @@ namespace BookStore.ApiService.Endpoints.Admin
                 null,
                 null,
                 book.CurrentPrices,
-                book.Deleted
+                book.Deleted,
+                book.Descriptions.ToDictionary(kvp => kvp.Key, kvp => new BookTranslationDto(kvp.Value))
             )).ToList();
 
             return Results.Ok(bookDtos);

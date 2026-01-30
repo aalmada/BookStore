@@ -19,7 +19,7 @@
         </MudButton>
     </MudStack>
 
-    <MudTable @ref="_table" ServerData="ReloadData" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="0"
+    <MudTable T="AdminBookDto" @ref="_table" ServerData="ReloadData" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="0"
               Class="glass-table rounded-xl overflow-hidden">
         <ToolBarContent>
             <MudSpacer/>
@@ -60,6 +60,7 @@
                     }
                     else
                     {
+                        <MudMenuItem Icon="@Icons.Material.Filled.Edit" OnClick="@(() => EditBook(context))">Edit</MudMenuItem>
                         <MudMenuItem Icon="@Icons.Material.Filled.Delete" OnClick="@(() => DeleteBook(context.Id))">Delete</MudMenuItem>
                     }
                 </MudMenu>
@@ -90,10 +91,10 @@
 </style>
 
 @code {
-    private MudTable<BookDto> _table = null!;
+    private MudTable<AdminBookDto> _table = null!;
     private string _searchString = "";
 
-    private async Task<TableData<BookDto>> ReloadData(TableState state, CancellationToken ct)
+    private async Task<TableData<AdminBookDto>> ReloadData(TableState state, CancellationToken ct)
     {
         try
         {
@@ -104,7 +105,7 @@
                             b.Title.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
                 .ToList();
 
-            return new TableData<BookDto>
+            return new TableData<AdminBookDto>
             {
                 TotalItems = filtered.Count,
                 Items = filtered.Skip(state.Page * state.PageSize).Take(state.PageSize)
@@ -113,7 +114,7 @@
         catch (Exception ex)
         {
             Snackbar.Add($"Failed to load books: {ex.Message}", Severity.Error);
-            return new TableData<BookDto> { TotalItems = 0, Items = Array.Empty<BookDto>() };
+            return new TableData<AdminBookDto> { TotalItems = 0, Items = Array.Empty<AdminBookDto>() };
         }
     }
 
@@ -121,6 +122,44 @@
     {
         var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
         var dialog = await DialogService.ShowAsync<AddBookDialog>("Add New Book", options);
+        var result = await dialog.Result;
+        if (result != null && !result.Canceled)
+        {
+            await _table.ReloadServerData();
+        }
+    }
+
+    private async Task EditBook(AdminBookDto book)
+    {
+        var parameters = new DialogParameters<AddBookDialog>
+        {
+            {
+                x => x.Model, new CreateBookRequest
+                {
+                    Title = book.Title,
+                    Isbn = book.Isbn,
+                    Language = book.Language,
+                    Translations = book.Translations?.ToDictionary(
+                        kvp => kvp.Key,
+                        kvp => new BookStore.Client.BookTranslationDto
+                        {
+                            Description = kvp.Value.Description
+                        }),
+                    PublicationDate = book.PublicationDate ?? new BookStore.Shared.Models.PartialDate(DateTime.Now.Year),
+                    PublisherId = book.Publisher?.Id,
+                    AuthorIds = book.Authors.Select(a => a.Id).ToList(),
+                    CategoryIds = book.Categories.Select(c => c.Id).ToList()
+                }
+            },
+            { x => x.IsEdit, true },
+            { x => x.BookId, book.Id },
+            { x => x.InitialAuthors, book.Authors.ToList() },
+            { x => x.InitialCategories, book.Categories.ToList() },
+            { x => x.InitialPublisher, book.Publisher }
+        };
+
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<AddBookDialog>("Edit Book", parameters, options);
         var result = await dialog.Result;
         if (result != null && !result.Canceled)
         {

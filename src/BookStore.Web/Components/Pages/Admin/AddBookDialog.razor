@@ -80,6 +80,41 @@
                 </MudItem>
 
                 <MudItem xs="12">
+                    <MudCard Elevation="0" Class="p-4 glass">
+                        <MudText Typo="Typo.subtitle1" Class="mb-2 fw-bold">Descriptions (Multi-language)</MudText>
+
+                        <div class="d-flex align-center gap-2 mb-4">
+                            <MudSelect T="string" Label="Language" Value="_selectedLanguage" ValueChanged="OnLanguageChanged" Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense">
+                                <MudSelectItem Value="@("en-US")">English (US)</MudSelectItem>
+                                <MudSelectItem Value="@("pt-PT")">Portuguese (Portugal)</MudSelectItem>
+                                <MudSelectItem Value="@("es-ES")">Spanish (Spain)</MudSelectItem>
+                                <MudSelectItem Value="@("fr-FR")">French (France)</MudSelectItem>
+                            </MudSelect>
+                            <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="AddOrUpdateDescription" StartIcon="@Icons.Material.Filled.Add" Size="Size.Small">
+                                @(_translations.ContainsKey(_selectedLanguage) ? "Update" : "Add")
+                            </MudButton>
+                        </div>
+
+                        <MudTextField T="string" Label="@($"Description ({_selectedLanguage})")" @bind-Value="_currentDescription"
+                                      Lines="3" Variant="Variant.Outlined" Class="mb-2"/>
+
+                        <MudList T="string" Class="mt-2" Dense="true">
+                            @foreach (var translation in _translations)
+                            {
+                                <MudListItem Icon="@Icons.Material.Filled.Language">
+                                    <div class="d-flex align-center justify-space-between w-100">
+                                        <MudText Typo="Typo.body2">
+                                            <b>@translation.Key:</b> @(translation.Value.Length > 50 ? translation.Value.Substring(0, 47) + "..." : translation.Value)
+                                        </MudText>
+                                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(() => RemoveDescription(translation.Key))"/>
+                                    </div>
+                                </MudListItem>
+                            }
+                        </MudList>
+                    </MudCard>
+                </MudItem>
+
+                <MudItem xs="12">
                     <MudText Typo="Typo.subtitle2" Class="mb-2">Prices</MudText>
                     <MudGrid>
                         <MudItem xs="6">
@@ -104,6 +139,10 @@
     [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
     [Parameter] public CreateBookRequest Model { get; set; } = new();
     [Parameter] public bool IsEdit { get; set; }
+    [Parameter] public Guid BookId { get; set; }
+    [Parameter] public List<AuthorDto> InitialAuthors { get; set; } = new();
+    [Parameter] public List<CategoryDto> InitialCategories { get; set; } = new();
+    [Parameter] public PublisherDto? InitialPublisher { get; set; }
 
     private MudForm _form = null!;
     private bool _success;
@@ -118,14 +157,66 @@
     private CategoryDto? _currentCategory;
     private List<CategoryDto> _selectedCategories = new();
 
+    private string _selectedLanguage = "en-US";
+    private string _currentDescription = "";
+    private Dictionary<string, string> _translations = new();
+
     protected override void OnInitialized()
     {
         _model = Model ?? new CreateBookRequest { Language = "en-US" };
         if (IsEdit)
         {
-            // Initialization for edit mode if needed
+            _pubYear = _model.PublicationDate.Year > 0 ? _model.PublicationDate.Year : DateTime.Now.Year;
+            _selectedAuthors = InitialAuthors ?? new();
+            _selectedCategories = InitialCategories ?? new();
+            _selectedPublisher = InitialPublisher;
+
+            if (_model.Translations != null)
+            {
+                foreach (var translation in _model.Translations)
+                {
+                    _translations[translation.Key] = translation.Value.Description;
+                }
+
+                if (_translations.TryGetValue(_selectedLanguage, out var desc))
+                {
+                    _currentDescription = desc;
+                }
+            }
+
+            if (_model.AdditionalProperties.TryGetValue("prices", out var pricesObj))
+            {
+                try
+                {
+                    var pricesStr = System.Text.Json.JsonSerializer.Serialize(pricesObj);
+                    var prices = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, decimal>>(pricesStr);
+                    if (prices != null)
+                    {
+                        if (prices.TryGetValue("USD", out var usd)) _priceUsd = usd;
+                        if (prices.TryGetValue("EUR", out var eur)) _priceEur = eur;
+                    }
+                }
+                catch
+                {
+                }
+            }
         }
     }
+
+    private void OnLanguageChanged(string lang)
+    {
+        _selectedLanguage = lang;
+        _currentDescription = _translations.TryGetValue(lang, out var desc) ? desc : "";
+    }
+
+    private void AddOrUpdateDescription()
+    {
+        if (string.IsNullOrWhiteSpace(_currentDescription)) return;
+        _translations[_selectedLanguage] = _currentDescription;
+        _currentDescription = "";
+    }
+
+    private void RemoveDescription(string lang) => _translations.Remove(lang);
 
     private async Task<IEnumerable<PublisherDto>> SearchPublishers(string value, CancellationToken ct)
     {
@@ -196,10 +287,7 @@
         var options = new DialogOptions { CloseOnEscapeKey = true };
         var dialog = await DialogService.ShowAsync<CreateAuthorDialog>("Add Author", options);
         var result = await dialog.Result;
-        if (result != null && !result.Canceled)
-        {
-            Snackbar.Add("New author created. You can now search for it.", Severity.Info);
-        }
+        if (result != null && !result.Canceled) Snackbar.Add("New author created.", Severity.Info);
     }
 
     private async Task AddNewCategory()
@@ -207,10 +295,7 @@
         var options = new DialogOptions { CloseOnEscapeKey = true };
         var dialog = await DialogService.ShowAsync<CreateCategoryDialog>("Add Category", options);
         var result = await dialog.Result;
-        if (result != null && !result.Canceled)
-        {
-            Snackbar.Add("New category created. You can now search for it.", Severity.Info);
-        }
+        if (result != null && !result.Canceled) Snackbar.Add("New category created.", Severity.Info);
     }
 
     private async Task AddNewPublisher()
@@ -218,10 +303,7 @@
         var options = new DialogOptions { CloseOnEscapeKey = true };
         var dialog = await DialogService.ShowAsync<CreatePublisherDialog>("Add Publisher", options);
         var result = await dialog.Result;
-        if (result != null && !result.Canceled)
-        {
-            Snackbar.Add("New publisher created. You can now search for it.", Severity.Info);
-        }
+        if (result != null && !result.Canceled) Snackbar.Add("New publisher created.", Severity.Info);
     }
 
     private async Task Submit()
@@ -234,7 +316,12 @@
             _model.PublisherId = _selectedPublisher?.Id;
             _model.AuthorIds = _selectedAuthors.Select(a => a.Id).ToList();
             _model.CategoryIds = _selectedCategories.Select(c => c.Id).ToList();
-            _model.PublicationDate = new PartialDate(_pubYear);
+            _model.PublicationDate = new BookStore.Shared.Models.PartialDate(_pubYear);
+
+            _model.Translations = _translations.ToDictionary(
+                kvp => kvp.Key,
+                kvp => new BookStore.Client.BookTranslationDto { Description = kvp.Value }
+            );
 
             _model.AdditionalProperties["prices"] = new Dictionary<string, decimal>
             {
@@ -244,7 +331,21 @@
 
             if (IsEdit)
             {
-                // Logic for update
+                var updateRequest = new UpdateBookRequest
+                {
+                    Title = _model.Title,
+                    Isbn = _model.Isbn,
+                    Language = _model.Language,
+                    Translations = _model.Translations,
+                    PublicationDate = _model.PublicationDate,
+                    PublisherId = _model.PublisherId,
+                    AuthorIds = _model.AuthorIds,
+                    CategoryIds = _model.CategoryIds
+                };
+                updateRequest.AdditionalProperties["prices"] = _model.AdditionalProperties["prices"];
+
+                await BooksClient.UpdateBookAsync(BookId, updateRequest, "1.0", "en-US");
+                Snackbar.Add("Book updated successfully.", Severity.Success);
             }
             else
             {

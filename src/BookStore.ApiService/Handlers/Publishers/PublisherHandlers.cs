@@ -9,7 +9,7 @@ namespace BookStore.ApiService.Handlers.Publishers;
 
 public static class PublisherHandlers
 {
-    public static IResult Handle(CreatePublisher command, IDocumentSession session, ILogger logger)
+    public static async Task<IResult> Handle(CreatePublisher command, IDocumentSession session, ILogger logger)
     {
         Log.Publishers.PublisherCreating(logger, command.Id, command.Name, session.CorrelationId ?? "none");
 
@@ -22,6 +22,9 @@ public static class PublisherHandlers
         _ = session.Events.StartStream<PublisherAggregate>(command.Id, eventResult.Value);
 
         Log.Publishers.PublisherCreated(logger, command.Id, command.Name);
+
+        // Fetch state to ensure flush
+        _ = await session.Events.FetchStreamStateAsync(command.Id);
 
         return Results.Created(
             $"/api/admin/publishers/{command.Id}",

@@ -6,7 +6,7 @@ namespace BookStore.Client;
 public interface IGetAllCategoriesAdminEndpoint
 {
     [Get("/api/admin/categories")]
-    Task<PagedListDto<CategoryDto>> GetAllCategoriesAsync(
+    Task<PagedListDto<AdminCategoryDto>> GetAllCategoriesAsync(
         [Query] CategorySearchRequest request,
         [Header("Accept-Version")] string version,
         [Header("Accept-Language")] string language,
