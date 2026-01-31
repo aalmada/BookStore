@@ -31,8 +31,8 @@
                 <MudTextField T="string" Label="@($"Name ({_selectedLanguage})")" @bind-Value="_currentName"
                               Required="true" RequiredError="Name is required for the language!" Variant="Variant.Outlined"/>
 
-                <MudList T="string" Class="mt-2">
-                    @foreach (var translation in _translations)
+                <MudList T="string" Class="mt-2" Dense="true">
+                    @foreach (var translation in _translations.OrderBy(t => t.Key))
                     {
                         <MudListItem Icon="@Icons.Material.Filled.Language">
                             <div class="d-flex align-center justify-space-between w-100">
