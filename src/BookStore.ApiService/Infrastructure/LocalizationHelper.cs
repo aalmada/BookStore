@@ -25,6 +25,16 @@ public static class LocalizationHelper
         Dictionary<string, string> translations,
         string requestedCulture,
         string defaultCulture,
+        string fallback = "") => GetLocalizedValue(translations, requestedCulture, defaultCulture, v => v, fallback);
+
+    /// <summary>
+    /// Generic version of GetLocalizedValue that accepts a selector to extract the string value.
+    /// </summary>
+    public static string GetLocalizedValue<T>(
+        Dictionary<string, T> translations,
+        string requestedCulture,
+        string defaultCulture,
+        Func<T, string> selector,
         string fallback = "")
     {
         if (translations == null || translations.Count == 0)
@@ -35,7 +45,7 @@ public static class LocalizationHelper
         // 1. Exact user culture match (e.g., "en-US", "pt-PT")
         if (translations.TryGetValue(requestedCulture, out var exact))
         {
-            return exact;
+            return selector(exact);
         }
 
         // 2. Two-letter user culture (e.g., "en" from "en-US")
@@ -44,7 +54,7 @@ public static class LocalizationHelper
             var userNeutral = new CultureInfo(requestedCulture).TwoLetterISOLanguageName;
             if (translations.TryGetValue(userNeutral, out var neutralValue))
             {
-                return neutralValue;
+                return selector(neutralValue);
             }
         }
         catch (CultureNotFoundException)
@@ -55,7 +65,7 @@ public static class LocalizationHelper
         // 3. Default culture (e.g., "en-US")
         if (translations.TryGetValue(defaultCulture, out var def))
         {
-            return def;
+            return selector(def);
         }
 
         // 4. Two-letter default culture (e.g., "en" from "en-US")
@@ -64,7 +74,7 @@ public static class LocalizationHelper
             var defaultNeutral = new CultureInfo(defaultCulture).TwoLetterISOLanguageName;
             if (translations.TryGetValue(defaultNeutral, out var defNeutral))
             {
-                return defNeutral;
+                return selector(defNeutral);
             }
         }
         catch (CultureNotFoundException)

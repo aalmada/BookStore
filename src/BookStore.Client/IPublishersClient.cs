@@ -8,6 +8,7 @@ public interface IPublishersClient :
     ICreatePublisherEndpoint,
     IUpdatePublisherEndpoint,
     ISoftDeletePublisherEndpoint,
-    IRestorePublisherEndpoint
+    IRestorePublisherEndpoint,
+    IGetAllPublishersAdminEndpoint
 {
 }

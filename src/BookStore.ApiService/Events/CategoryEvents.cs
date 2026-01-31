@@ -19,5 +19,5 @@ public record CategoryRestored(
     Guid Id,
     DateTimeOffset Timestamp);
 
-// Localization model for category names and descriptions
-public record CategoryTranslation(string Name, string? Description);
+// Localization model for category names
+public record CategoryTranslation(string Name);

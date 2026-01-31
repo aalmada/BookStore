@@ -1,8 +1,17 @@
 using System.Collections.Immutable;
+using System.Globalization;
+using System.Linq;
 using BookStore.ApiService.Commands;
+using BookStore.ApiService.Infrastructure;
+using BookStore.ApiService.Infrastructure.Extensions;
+using BookStore.ApiService.Infrastructure.Tenant;
+using BookStore.ApiService.Projections;
 using Marten;
 using Marten.Linq.SoftDeletes;
+using Marten.Pagination;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using Wolverine;
 
 namespace BookStore.ApiService.Commands
@@ -45,59 +54,96 @@ namespace BookStore.ApiService.Endpoints.Admin
 
         static async Task<IResult> GetAllCategories(
             [FromServices] IQuerySession session,
+            [FromServices] IOptions<PaginationOptions> paginationOptions,
+            [FromServices] IOptions<LocalizationOptions> localizationOptions,
+            [AsParameters] CategorySearchRequest request,
             CancellationToken cancellationToken)
         {
-            var categories = await session.Query<Projections.CategoryProjection>()
-                .Where(x => x.MaybeDeleted())
-                .OrderBy(x => x.Id) // Categories don't have a single name to sort by easily, ID is safe or we can default sort
-                .ToListAsync(cancellationToken);
+            var paging = request.Normalize(paginationOptions.Value);
+            var culture = CultureInfo.CurrentUICulture.Name;
+            var defaultCulture = localizationOptions.Value.DefaultCulture;
+            var targetCulture = request.Language ?? culture;
 
-            return Results.Ok(categories);
+            var normalizedSortOrder = request.SortOrder?.ToLowerInvariant() == "desc" ? "desc" : "asc";
+            var normalizedSortBy = request.SortBy?.ToLowerInvariant();
+
+            IQueryable<CategoryProjection> query = session.Query<CategoryProjection>();
+
+            if (!string.IsNullOrWhiteSpace(request.Search))
+            {
+                var search = request.Search.ToLower();
+                // Simpler dictionary search, though still might be problematic for Marten 
+                // on projections. We'll try this first.
+                query = query.Where(x => x.Names.Values.Any(v => v.Contains(request.Search, StringComparison.OrdinalIgnoreCase)));
+            }
+
+            query = normalizedSortBy switch
+            {
+                "id" => normalizedSortOrder == "desc" ? query.OrderByDescending(c => c.Id) : query.OrderBy(c => c.Id),
+                "name" => normalizedSortOrder == "desc"
+                    ? query.OrderBySql($"data->'names'->>'{targetCulture}' DESC")
+                    : query.OrderBySql($"data->'names'->>'{targetCulture}' ASC"),
+                _ => query.OrderBy(c => c.Id) // Default to ID asc
+            };
+
+            var pagedList = await query.ToPagedListAsync(paging.Page!.Value, paging.PageSize!.Value, cancellationToken);
+
+            var dtos = pagedList.ToList().Select(x => new AdminCategoryDto(
+                x.Id,
+                LocalizationHelper.GetLocalizedValue(x.Names, culture, defaultCulture, "Unknown"),
+                x.Names.ToDictionary(kvp => kvp.Key, kvp => new CategoryTranslationDto(kvp.Value))
+            )).ToList();
+
+            return Results.Ok(new PagedListDto<AdminCategoryDto>(dtos, pagedList.PageNumber, pagedList.PageSize, pagedList.TotalItemCount));
         }
 
         static Task<IResult> CreateCategory(
             [FromBody] Commands.CreateCategoryRequest request,
             [FromServices] IMessageBus bus,
+            [FromServices] ITenantContext tenantContext,
             CancellationToken cancellationToken)
         {
             var translations = request.Translations ?? (IReadOnlyDictionary<string, CategoryTranslationDto>)ImmutableDictionary<string, CategoryTranslationDto>.Empty;
             var command = new Commands.CreateCategory(translations);
-            return bus.InvokeAsync<IResult>(command, cancellationToken);
+            return bus.InvokeAsync<IResult>(command, new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
         }
 
         static Task<IResult> UpdateCategory(
             Guid id,
             [FromBody] Commands.UpdateCategoryRequest request,
             [FromServices] IMessageBus bus,
+            [FromServices] ITenantContext tenantContext,
             HttpContext context,
             CancellationToken cancellationToken)
         {
             var etag = context.Request.Headers["If-Match"].FirstOrDefault();
             var translations = request.Translations ?? (IReadOnlyDictionary<string, CategoryTranslationDto>)ImmutableDictionary<string, CategoryTranslationDto>.Empty;
             var command = new Commands.UpdateCategory(id, translations) { ETag = etag };
-            return bus.InvokeAsync<IResult>(command, cancellationToken);
+            return bus.InvokeAsync<IResult>(command, new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
         }
 
         static Task<IResult> SoftDeleteCategory(
             Guid id,
             [FromServices] IMessageBus bus,
+            [FromServices] ITenantContext tenantContext,
             HttpContext context,
             CancellationToken cancellationToken)
         {
             var etag = context.Request.Headers["If-Match"].FirstOrDefault();
             var command = new Commands.SoftDeleteCategory(id) { ETag = etag };
-            return bus.InvokeAsync<IResult>(command, cancellationToken);
+            return bus.InvokeAsync<IResult>(command, new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
         }
 
         static Task<IResult> RestoreCategory(
             Guid id,
             [FromServices] IMessageBus bus,
+            [FromServices] ITenantContext tenantContext,
             HttpContext context,
             CancellationToken cancellationToken)
         {
             var etag = context.Request.Headers["If-Match"].FirstOrDefault();
             var command = new Commands.RestoreCategory(id) { ETag = etag };
-            return bus.InvokeAsync<IResult>(command, cancellationToken);
+            return bus.InvokeAsync<IResult>(command, new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
         }
     }
 }

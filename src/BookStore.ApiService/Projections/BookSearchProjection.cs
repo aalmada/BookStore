@@ -103,7 +103,7 @@ public class BookSearchProjection
         RecalculateCurrentPrices();
     }
 
-    private void RecalculateCurrentPrices()
+    void RecalculateCurrentPrices()
     {
         if (Prices == null)
         {

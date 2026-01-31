@@ -34,7 +34,7 @@ public static class PublisherEndpoints
         [FromServices] ITenantContext tenantContext,
         [FromServices] IOptions<PaginationOptions> paginationOptions,
         [FromServices] HybridCache cache,
-        [AsParameters] OrderedPagedRequest request,
+        [AsParameters] PublisherSearchRequest request,
         CancellationToken cancellationToken)
     {
         var paging = request.Normalize(paginationOptions.Value);
@@ -42,8 +42,8 @@ public static class PublisherEndpoints
         var normalizedSortOrder = request.SortOrder?.ToLowerInvariant() == "desc" ? "desc" : "asc";
         var normalizedSortBy = request.SortBy?.ToLowerInvariant();
 
-        // Create cache key based on pagination, sorting, AND Tenant
-        var cacheKey = $"publishers:tenant={tenantContext.TenantId}:page={paging.Page}:size={paging.PageSize}:sort={normalizedSortBy}:{normalizedSortOrder}";
+        // Create cache key based on search, pagination, sorting, AND Tenant
+        var cacheKey = $"publishers:tenant={tenantContext.TenantId}:search={request.Search}:page={paging.Page}:size={paging.PageSize}:sort={normalizedSortBy}:{normalizedSortOrder}";
 
         var response = await cache.GetOrCreateAsync(
             cacheKey,
@@ -53,6 +53,11 @@ public static class PublisherEndpoints
 
                 var query = session.Query<PublisherProjection>()
                     .Where(p => !p.Deleted);
+
+                if (!string.IsNullOrWhiteSpace(request.Search))
+                {
+                    query = query.Where(p => p.Name.Contains(request.Search, StringComparison.OrdinalIgnoreCase));
+                }
 
                 query = (normalizedSortBy, normalizedSortOrder) switch
                 {

@@ -1,3 +1,5 @@
+using BookStore.Shared.Models;
+
 namespace BookStore.ApiService.Commands;
 
 /// <summary>
@@ -9,11 +11,6 @@ public record CreateAuthor(
 {
     public Guid Id { get; init; } = Guid.CreateVersion7();
 }
-
-/// <summary>
-/// DTO for localized author biographies
-/// </summary>
-public record AuthorTranslationDto(string Biography);
 
 /// <summary>
 /// Command to update an existing author

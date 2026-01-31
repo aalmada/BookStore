@@ -340,6 +340,5 @@ public static class BookHandlers
 
         return Results.NoContent();
     }
-
 }
 

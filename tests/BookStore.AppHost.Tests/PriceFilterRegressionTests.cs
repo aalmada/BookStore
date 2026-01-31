@@ -98,7 +98,7 @@ public class PriceFilterRegressionTests
         };
 
         _ = await TestHelpers.ExecuteAndWaitForEventAsync(Guid.Empty, "BookCreated",
-            async () => { _ = await authClient.PostAsJsonAsync("/api/admin/books", createRequest); },
+            async () => _ = await authClient.PostAsJsonAsync("/api/admin/books", createRequest),
             TimeSpan.FromSeconds(5));
 
         // Poll for search projection to update
@@ -157,7 +157,9 @@ public class PriceFilterRegressionTests
         // 1. Apply 50% discount -> Price becomes 50.
         var saleRequest = new
         {
-            Percentage = 50m, Start = DateTimeOffset.UtcNow.AddSeconds(-5), End = DateTimeOffset.UtcNow.AddDays(1)
+            Percentage = 50m,
+            Start = DateTimeOffset.UtcNow.AddSeconds(-5),
+            End = DateTimeOffset.UtcNow.AddDays(1)
         };
 
         _ = await TestHelpers.ExecuteAndWaitForEventAsync(bookId, "BookDiscountUpdated", async () =>

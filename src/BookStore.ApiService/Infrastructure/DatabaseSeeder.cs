@@ -346,14 +346,14 @@ public class DatabaseSeeder(
         Log.Seeding.SeedingCategories(logger);
         var categories = new[]
         {
-            (Key: "Fiction", Event: new CategoryAdded(Guid.CreateVersion7(), new Dictionary<string, CategoryTranslation> { ["en"] = new("Fiction", null) }, DateTimeOffset.UtcNow)),
-            (Key: "Classic", Event: new CategoryAdded(Guid.CreateVersion7(), new Dictionary<string, CategoryTranslation> { ["en"] = new("Classic Literature", null) }, DateTimeOffset.UtcNow)),
-            (Key: "Fantasy", Event: new CategoryAdded(Guid.CreateVersion7(), new Dictionary<string, CategoryTranslation> { ["en"] = new("Fantasy", null) }, DateTimeOffset.UtcNow)),
-            (Key: "Mystery", Event: new CategoryAdded(Guid.CreateVersion7(), new Dictionary<string, CategoryTranslation> { ["en"] = new("Mystery", null) }, DateTimeOffset.UtcNow)),
-            (Key: "SciFi", Event: new CategoryAdded(Guid.CreateVersion7(), new Dictionary<string, CategoryTranslation> { ["en"] = new("Science Fiction", null) }, DateTimeOffset.UtcNow)),
-            (Key: "Romance", Event: new CategoryAdded(Guid.CreateVersion7(), new Dictionary<string, CategoryTranslation> { ["en"] = new("Romance", null) }, DateTimeOffset.UtcNow)),
-            (Key: "Horror", Event: new CategoryAdded(Guid.CreateVersion7(), new Dictionary<string, CategoryTranslation> { ["en"] = new("Horror", null) }, DateTimeOffset.UtcNow)),
-            (Key: "History", Event: new CategoryAdded(Guid.CreateVersion7(), new Dictionary<string, CategoryTranslation> { ["en"] = new("History", null) }, DateTimeOffset.UtcNow)),
+            (Key: "Fiction", Event: new CategoryAdded(Guid.CreateVersion7(), new Dictionary<string, CategoryTranslation> { ["en"] = new("Fiction") }, DateTimeOffset.UtcNow)),
+            (Key: "Classic", Event: new CategoryAdded(Guid.CreateVersion7(), new Dictionary<string, CategoryTranslation> { ["en"] = new("Classic Literature") }, DateTimeOffset.UtcNow)),
+            (Key: "Fantasy", Event: new CategoryAdded(Guid.CreateVersion7(), new Dictionary<string, CategoryTranslation> { ["en"] = new("Fantasy") }, DateTimeOffset.UtcNow)),
+            (Key: "Mystery", Event: new CategoryAdded(Guid.CreateVersion7(), new Dictionary<string, CategoryTranslation> { ["en"] = new("Mystery") }, DateTimeOffset.UtcNow)),
+            (Key: "SciFi", Event: new CategoryAdded(Guid.CreateVersion7(), new Dictionary<string, CategoryTranslation> { ["en"] = new("Science Fiction") }, DateTimeOffset.UtcNow)),
+            (Key: "Romance", Event: new CategoryAdded(Guid.CreateVersion7(), new Dictionary<string, CategoryTranslation> { ["en"] = new("Romance") }, DateTimeOffset.UtcNow)),
+            (Key: "Horror", Event: new CategoryAdded(Guid.CreateVersion7(), new Dictionary<string, CategoryTranslation> { ["en"] = new("Horror") }, DateTimeOffset.UtcNow)),
+            (Key: "History", Event: new CategoryAdded(Guid.CreateVersion7(), new Dictionary<string, CategoryTranslation> { ["en"] = new("History") }, DateTimeOffset.UtcNow)),
         };
 
         var result = new Dictionary<string, CategoryAdded>();

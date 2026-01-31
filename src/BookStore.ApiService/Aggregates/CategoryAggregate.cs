@@ -9,7 +9,6 @@ public class CategoryAggregate : ISoftDeleted
 {
     // Validation constants
     public const int MaxNameLength = 100;
-    public const int MaxDescriptionLength = 500;
 
     public Guid Id { get; private set; }
     public Dictionary<string, CategoryTranslation> Translations { get; private set; } = [];

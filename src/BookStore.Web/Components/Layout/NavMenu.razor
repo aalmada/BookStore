@@ -1,12 +1,16 @@
 ﻿<MudNavMenu>
     <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Books</MudNavLink>
-    <MudNavLink Href="authors" Icon="@Icons.Material.Filled.Person">Authors</MudNavLink>
-    <MudNavLink Href="publishers" Icon="@Icons.Material.Filled.Business">Publishers</MudNavLink>
-    <MudNavLink Href="categories" Icon="@Icons.Material.Filled.Category">Categories</MudNavLink>
+    <AuthorizeView Roles="Admin">
+        <MudNavLink Href="admin/authors" Icon="@Icons.Material.Filled.Person">Authors</MudNavLink>
+        <MudNavLink Href="admin/publishers" Icon="@Icons.Material.Filled.Business">Publishers</MudNavLink>
+        <MudNavLink Href="admin/categories" Icon="@Icons.Material.Filled.Category">Categories</MudNavLink>
+        <MudNavLink Href="admin/sales" Icon="@Icons.Material.Filled.AttachMoney">Sales</MudNavLink>
+    </AuthorizeView>
     <AuthorizeView>
         <MudNavLink Href="cart" Icon="@Icons.Material.Filled.ShoppingCart">Cart</MudNavLink>
     </AuthorizeView>
     <AuthorizeView Roles="Admin">
+        <MudNavLink Href="admin/books" Icon="@Icons.Material.Filled.Book">Books</MudNavLink>
         <MudNavLink Href="admin/users" Icon="@Icons.Material.Filled.Group">Users</MudNavLink>
     </AuthorizeView>
     <AuthorizeView Policy="SystemAdmin">

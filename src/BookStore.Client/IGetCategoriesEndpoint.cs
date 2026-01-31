@@ -20,7 +20,7 @@ namespace BookStore.Client
     {
         [Headers("Accept: application/json")]
         [Get("/api/categories")]
-        Task<PagedListDto<CategoryDto>> GetCategoriesAsync([Query, AliasAs("Page")] int? page, [Query, AliasAs("PageSize")] int? pageSize, [Header("api-version")] string api_version, [Header("Accept-Language")] string accept_Language, [Header("X-Correlation-ID")] string? x_Correlation_ID = null, [Header("X-Causation-ID")] string? x_Causation_ID = null, CancellationToken cancellationToken = default);
+        Task<PagedListDto<CategoryDto>> GetCategoriesAsync([Query, AliasAs("Page")] int? page, [Query, AliasAs("PageSize")] int? pageSize, [Query] string? sortBy, [Query] string? sortOrder, [Header("api-version")] string api_version, [Header("Accept-Language")] string accept_Language, [Header("X-Correlation-ID")] string? x_Correlation_ID = null, [Header("X-Causation-ID")] string? x_Causation_ID = null, CancellationToken cancellationToken = default);
     }
 
 }

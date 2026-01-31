@@ -11,7 +11,7 @@ namespace BookStore.ApiService.Handlers.Categories;
 
 public static class CategoryHandlers
 {
-    public static IResult Handle(CreateCategory command, IDocumentSession session, ILogger<CreateCategory> logger)
+    public static async Task<IResult> Handle(CreateCategory command, IDocumentSession session, ILogger<CreateCategory> logger)
     {
         Log.Categories.CategoryCreating(logger, command.Id, session.CorrelationId ?? "none");
         // Validate language codes in CategoryTranslation
@@ -21,7 +21,7 @@ public static class CategoryHandlers
             return Result.Failure(Error.Validation(ErrorCodes.Categories.TranslationLanguageInvalid, $"The following language codes are not valid: {string.Join(", ", invalidCodes)}")).ToProblemDetails();
         }
 
-        // Validate name and description lengths
+        // Validate name lengths
         foreach (var (languageCode, translation) in command.Translations)
         {
             if (string.IsNullOrWhiteSpace(translation.Name))
@@ -35,18 +35,12 @@ public static class CategoryHandlers
                 Log.Categories.NameTooLong(logger, command.Id, languageCode, CategoryAggregate.MaxNameLength, translation.Name.Length);
                 return Result.Failure(Error.Validation(ErrorCodes.Categories.NameTooLong, $"Category name for language '{languageCode}' cannot exceed {CategoryAggregate.MaxNameLength} characters")).ToProblemDetails();
             }
-
-            if (translation.Description?.Length > CategoryAggregate.MaxDescriptionLength)
-            {
-                Log.Categories.DescriptionTooLong(logger, command.Id, languageCode, CategoryAggregate.MaxDescriptionLength, translation.Description.Length);
-                return Result.Failure(Error.Validation(ErrorCodes.Categories.DefaultTranslationRequired, $"Category description for language '{languageCode}' cannot exceed {CategoryAggregate.MaxDescriptionLength} characters")).ToProblemDetails(); // Using a sensible fallback if DescriptionTooLong not in Categories, but wait, DescriptionTooLong IS in Categories? No, I added NameTooLong. Let's check ErrorCodes.cs.
-            }
         }
 
         // Convert DTOs to domain objects
         var translations = command.Translations.ToDictionary(
             kvp => kvp.Key,
-            kvp => new CategoryTranslation(kvp.Value.Name, kvp.Value.Description));
+            kvp => new CategoryTranslation(kvp.Value.Name));
 
         var eventResult = CategoryAggregate.CreateEvent(
             command.Id,
@@ -58,6 +52,9 @@ public static class CategoryHandlers
         }
 
         _ = session.Events.StartStream<CategoryAggregate>(command.Id, eventResult.Value);
+
+        // Fetch state to ensure flush
+        _ = await session.Events.FetchStreamStateAsync(command.Id);
 
         return Results.Created(
             $"/api/admin/categories/{command.Id}",
@@ -76,7 +73,7 @@ public static class CategoryHandlers
             return Result.Failure(Error.Validation(ErrorCodes.Categories.TranslationLanguageInvalid, $"The following language codes are not valid: {string.Join(", ", invalidCodes)}")).ToProblemDetails();
         }
 
-        // Validate name and description lengths
+        // Validate name lengths
         foreach (var (languageCode, translation) in command.Translations)
         {
             if (string.IsNullOrWhiteSpace(translation.Name))
@@ -87,11 +84,6 @@ public static class CategoryHandlers
             if (translation.Name.Length > CategoryAggregate.MaxNameLength)
             {
                 return Result.Failure(Error.Validation(ErrorCodes.Categories.NameTooLong, $"Category name for language '{languageCode}' cannot exceed {CategoryAggregate.MaxNameLength} characters")).ToProblemDetails();
-            }
-
-            if (translation.Description?.Length > CategoryAggregate.MaxDescriptionLength)
-            {
-                return Result.Failure(Error.Validation(ErrorCodes.Categories.DefaultTranslationRequired, $"Category description for language '{languageCode}' cannot exceed {CategoryAggregate.MaxDescriptionLength} characters")).ToProblemDetails();
             }
         }
 
@@ -122,7 +114,7 @@ public static class CategoryHandlers
 
         var translations = command.Translations.ToDictionary(
             kvp => kvp.Key,
-            kvp => new CategoryTranslation(kvp.Value.Name, kvp.Value.Description));
+            kvp => new CategoryTranslation(kvp.Value.Name));
 
         var eventResult = aggregate.UpdateEvent(translations);
         if (eventResult.IsFailure)
