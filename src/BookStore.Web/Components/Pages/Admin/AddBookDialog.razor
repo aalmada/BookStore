@@ -250,7 +250,7 @@
     {
         try
         {
-            var result = await CategoriesClient.GetCategoriesAsync(1, 20, "1.0", "en-US", cancellationToken: ct);
+            var result = await CategoriesClient.GetCategoriesAsync(1, 20, "name", "asc", "1.0", "en-US", cancellationToken: ct);
             if (string.IsNullOrEmpty(value)) return result.Items;
             return result.Items.Where(x => x.Name.Contains(value, StringComparison.OrdinalIgnoreCase));
         }

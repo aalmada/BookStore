@@ -62,6 +62,7 @@ namespace BookStore.ApiService.Endpoints.Admin
             var paging = request.Normalize(paginationOptions.Value);
             var culture = CultureInfo.CurrentUICulture.Name;
             var defaultCulture = localizationOptions.Value.DefaultCulture;
+            var targetCulture = request.Language ?? culture;
 
             var normalizedSortOrder = request.SortOrder?.ToLowerInvariant() == "desc" ? "desc" : "asc";
             var normalizedSortBy = request.SortBy?.ToLowerInvariant();
@@ -76,10 +77,13 @@ namespace BookStore.ApiService.Endpoints.Admin
                 query = query.Where(x => x.Names.Values.Any(v => v.Contains(request.Search, StringComparison.OrdinalIgnoreCase)));
             }
 
-            query = (normalizedSortBy, normalizedSortOrder) switch
+            query = normalizedSortBy switch
             {
-                ("id", "desc") => query.OrderByDescending(x => x.Id),
-                _ => query.OrderBy(x => x.Id)
+                "id" => normalizedSortOrder == "desc" ? query.OrderByDescending(c => c.Id) : query.OrderBy(c => c.Id),
+                "name" => normalizedSortOrder == "desc"
+                    ? query.OrderBySql($"data->'names'->>'{targetCulture}' DESC")
+                    : query.OrderBySql($"data->'names'->>'{targetCulture}' ASC"),
+                _ => query.OrderBy(c => c.Id) // Default to ID asc
             };
 
             var pagedList = await query.ToPagedListAsync(paging.Page!.Value, paging.PageSize!.Value, cancellationToken);

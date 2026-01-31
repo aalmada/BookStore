@@ -442,7 +442,7 @@
         try
         {
             var authorsTask = AuthorsClient.GetAuthorsAsync(1, 1000, "1.0", "en"); // Fetch more for autocomplete
-            var categoriesTask = CategoriesClient.GetCategoriesAsync(1, 1000, "1.0", "en");
+            var categoriesTask = CategoriesClient.GetCategoriesAsync(1, 1000, "name", "asc", "1.0", "en");
             var publishersTask = PublishersClient.GetPublishersAsync(1, 1000, "1.0", "en");
 
             await Task.WhenAll(authorsTask, categoriesTask, publishersTask);

@@ -46,8 +46,8 @@ public static class CategoryEndpoints
         var normalizedSortOrder = request.SortOrder?.ToLowerInvariant() == "desc" ? "desc" : "asc";
         var normalizedSortBy = request.SortBy?.ToLowerInvariant();
 
-        // Create cache key based on search, pagination, sorting, AND Tenant
-        var cacheKey = $"categories:tenant={tenantContext.TenantId}:search={request.Search}:page={paging.Page}:size={paging.PageSize}:sort={normalizedSortBy}:{normalizedSortOrder}";
+        // Create cache key based on search, pagination, sorting, culture AND Tenant
+        var cacheKey = $"categories:tenant={tenantContext.TenantId}:culture={culture}:search={request.Search}:page={paging.Page}:size={paging.PageSize}:sort={normalizedSortBy}:{normalizedSortOrder}";
 
         var response = await cache.GetOrCreateLocalizedAsync(
             cacheKey,
@@ -66,9 +66,12 @@ public static class CategoryEndpoints
 
                 // Note: Cannot sort by localized name since it's in a dictionary
                 // Sorting by ID only
-                query = (normalizedSortBy, normalizedSortOrder) switch
+                query = normalizedSortBy switch
                 {
-                    ("id", "desc") => query.OrderByDescending(c => c.Id),
+                    "id" => normalizedSortOrder == "desc" ? query.OrderByDescending(c => c.Id) : query.OrderBy(c => c.Id),
+                    "name" => normalizedSortOrder == "desc" 
+                        ? query.OrderBySql($"data->'names'->>'{culture}' DESC") 
+                        : query.OrderBySql($"data->'names'->>'{culture}' ASC"),
                     _ => query.OrderBy(c => c.Id) // Default to ID asc
                 };
 

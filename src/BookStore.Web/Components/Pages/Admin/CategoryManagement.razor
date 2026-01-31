@@ -28,7 +28,9 @@
                           Clearable="true" Immediate="true" Variant="Variant.Outlined" Margin="Margin.Dense"/>
         </ToolBarContent>
         <HeaderContent>
-            <MudTh>Name</MudTh>
+            <MudTh>
+                <MudTableSortLabel SortLabel="name" T="AdminCategoryDto">Name</MudTableSortLabel>
+            </MudTh>
             <MudTh>Actions</MudTh>
         </HeaderContent>
         <RowTemplate Context="context">
