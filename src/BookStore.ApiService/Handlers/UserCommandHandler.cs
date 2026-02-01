@@ -14,10 +14,10 @@ public static class UserCommandHandler
     {
         Instrumentation.FavoritesAdded.Add(1, new System.Diagnostics.TagList { { "tenant_id", session.TenantId } });
 
-        var profile = await session.LoadAsync<UserProfile>(command.UserId);
+        var profile = await session.Events.AggregateStreamAsync<UserProfile>(command.UserId);
 
         // Lazy initialization: If no events exist for this user, initialize the stream
-        if (profile == null || profile.Id == Guid.Empty)
+        if (profile == null)
         {
             _ = session.Events.StartStream<UserProfile>(
                 command.UserId,
@@ -36,7 +36,7 @@ public static class UserCommandHandler
 
     public static async Task Handle(RemoveBookFromFavorites command, IDocumentSession session)
     {
-        var profile = await session.LoadAsync<UserProfile>(command.UserId);
+        var profile = await session.Events.AggregateStreamAsync<UserProfile>(command.UserId);
 
         if (profile != null && profile.FavoriteBookIds.Contains(command.BookId))
         {
@@ -54,10 +54,10 @@ public static class UserCommandHandler
             throw new ArgumentException("Rating must be between 1 and 5", nameof(command.Rating));
         }
 
-        var profile = await session.LoadAsync<UserProfile>(command.UserId);
+        var profile = await session.Events.AggregateStreamAsync<UserProfile>(command.UserId);
 
         // Lazy initialization: If no events exist for this user, initialize the stream
-        if (profile == null || profile.Id == Guid.Empty)
+        if (profile == null)
         {
             _ = session.Events.StartStream<UserProfile>(
                 command.UserId,
@@ -72,7 +72,7 @@ public static class UserCommandHandler
 
     public static async Task Handle(RemoveBookRating command, IDocumentSession session)
     {
-        var profile = await session.LoadAsync<UserProfile>(command.UserId);
+        var profile = await session.Events.AggregateStreamAsync<UserProfile>(command.UserId);
 
         if (profile != null && profile.BookRatings.ContainsKey(command.BookId))
         {
@@ -89,10 +89,10 @@ public static class UserCommandHandler
             throw new ArgumentException("Quantity must be greater than 0", nameof(command.Quantity));
         }
 
-        var profile = await session.LoadAsync<UserProfile>(command.UserId);
+        var profile = await session.Events.AggregateStreamAsync<UserProfile>(command.UserId);
 
         // Lazy initialization: If no events exist for this user, initialize the stream
-        if (profile == null || profile.Id == Guid.Empty)
+        if (profile == null)
         {
             _ = session.Events.StartStream<UserProfile>(
                 command.UserId,
@@ -108,7 +108,7 @@ public static class UserCommandHandler
     {
         Instrumentation.CartRemoved.Add(1, new System.Diagnostics.TagList { { "tenant_id", session.TenantId } });
 
-        var profile = await session.LoadAsync<UserProfile>(command.UserId);
+        var profile = await session.Events.AggregateStreamAsync<UserProfile>(command.UserId);
 
         // Only append event if book is actually in the cart
         if (profile != null && profile.ShoppingCartItems.ContainsKey(command.BookId))
@@ -124,7 +124,7 @@ public static class UserCommandHandler
             throw new ArgumentException("Quantity must be greater than 0", nameof(command.Quantity));
         }
 
-        var profile = await session.LoadAsync<UserProfile>(command.UserId);
+        var profile = await session.Events.AggregateStreamAsync<UserProfile>(command.UserId);
 
         if (profile != null && profile.ShoppingCartItems.ContainsKey(command.BookId))
         {
@@ -134,7 +134,7 @@ public static class UserCommandHandler
 
     public static async Task Handle(ClearShoppingCart command, IDocumentSession session)
     {
-        var profile = await session.LoadAsync<UserProfile>(command.UserId);
+        var profile = await session.Events.AggregateStreamAsync<UserProfile>(command.UserId);
 
         if (profile != null && profile.ShoppingCartItems.Count > 0)
         {

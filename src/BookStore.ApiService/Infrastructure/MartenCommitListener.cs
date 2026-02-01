@@ -101,6 +101,16 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
             case BookStatistics stats:
                 await HandleBookStatisticsChangeAsync(stats, changeType, token);
                 break;
+            case CategoryStatistics stats:
+                await HandleCategoryStatisticsChangeAsync(stats, changeType, token);
+                break;
+            case AuthorStatistics stats:
+                await HandleAuthorStatisticsChangeAsync(stats, changeType, token);
+                break;
+            case PublisherStatistics stats:
+                await HandlePublisherStatisticsChangeAsync(stats, changeType, token);
+                break;
+
         }
     }
 
@@ -208,6 +218,27 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
         IDomainEventNotification notification = new BookUpdatedNotification(Guid.Empty, stats.Id, "Statistics Updated", DateTimeOffset.UtcNow);
 
         await NotifyAsync("Book", notification, token);
+    }
+
+    async Task HandleCategoryStatisticsChangeAsync(CategoryStatistics stats, ChangeType _, CancellationToken token)
+    {
+        await InvalidateCacheTagsAsync(stats.Id, CacheTags.CategoryItemPrefix, CacheTags.CategoryList, token);
+        IDomainEventNotification notification = new CategoryUpdatedNotification(Guid.Empty, stats.Id, DateTimeOffset.UtcNow);
+        await NotifyAsync("Category", notification, token);
+    }
+
+    async Task HandleAuthorStatisticsChangeAsync(AuthorStatistics stats, ChangeType _, CancellationToken token)
+    {
+        await InvalidateCacheTagsAsync(stats.Id, CacheTags.AuthorItemPrefix, CacheTags.AuthorList, token);
+        IDomainEventNotification notification = new AuthorUpdatedNotification(Guid.Empty, stats.Id, "Statistics Updated", DateTimeOffset.UtcNow);
+        await NotifyAsync("Author", notification, token);
+    }
+
+    async Task HandlePublisherStatisticsChangeAsync(PublisherStatistics stats, ChangeType _, CancellationToken token)
+    {
+        await InvalidateCacheTagsAsync(stats.Id, CacheTags.PublisherItemPrefix, CacheTags.PublisherList, token);
+        IDomainEventNotification notification = new PublisherUpdatedNotification(Guid.Empty, stats.Id, "Statistics Updated", DateTimeOffset.UtcNow);
+        await NotifyAsync("Publisher", notification, token);
     }
 
     static ChangeType DetermineEffectiveChangeType(ChangeType changeType, bool isDeleted)

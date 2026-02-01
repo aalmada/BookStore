@@ -168,11 +168,11 @@ public static class MartenConfigurationExtensions
     {
         // Configure projections using SingleStreamProjection pattern
         // Simple projections use Async lifecycle for eventual consistency
-        _ = options.Projections.Snapshot<CategoryProjection>(SnapshotLifecycle.Inline);
-        _ = options.Projections.Snapshot<AuthorProjection>(SnapshotLifecycle.Inline);
-        _ = options.Projections.Snapshot<BookSearchProjection>(SnapshotLifecycle.Inline);
-        _ = options.Projections.Snapshot<PublisherProjection>(SnapshotLifecycle.Inline);
-        _ = options.Projections.Snapshot<UserProfile>(SnapshotLifecycle.Inline);
+        _ = options.Projections.Snapshot<CategoryProjection>(SnapshotLifecycle.Async);
+        _ = options.Projections.Snapshot<AuthorProjection>(SnapshotLifecycle.Async);
+        _ = options.Projections.Snapshot<BookSearchProjection>(SnapshotLifecycle.Async);
+        _ = options.Projections.Snapshot<PublisherProjection>(SnapshotLifecycle.Async);
+        _ = options.Projections.Snapshot<UserProfile>(SnapshotLifecycle.Async);
         options.Projections.Add<BookStatisticsProjection>(ProjectionLifecycle.Async);
         options.Projections.Add<AuthorStatisticsProjectionBuilder>(ProjectionLifecycle.Async);
         options.Projections.Add<CategoryStatisticsProjectionBuilder>(ProjectionLifecycle.Async);

@@ -20,14 +20,6 @@ public class ShoppingCartTests
         // Act - Add item to cart and wait for async projection
         await TestHelpers.AddToCartAsync(httpClient, createdBook.Id, 2);
 
-        // Wait for cart to be populated (projection lag)
-        await TestHelpers.WaitForConditionAsync(async () =>
-        {
-            var cart = await httpClient.GetFromJsonAsync<ShoppingCartResponse>("/api/cart");
-
-            return cart?.TotalItems == 2;
-        }, TimeSpan.FromSeconds(5), "Cart was not populated after AddToCart");
-
         // Assert - Verify cart contains item
         var cart = await httpClient.GetFromJsonAsync<ShoppingCartResponse>("/api/cart");
         _ = await Assert.That(cart).IsNotNull();

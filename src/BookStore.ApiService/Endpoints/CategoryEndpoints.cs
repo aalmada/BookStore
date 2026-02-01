@@ -69,8 +69,8 @@ public static class CategoryEndpoints
                 query = normalizedSortBy switch
                 {
                     "id" => normalizedSortOrder == "desc" ? query.OrderByDescending(c => c.Id) : query.OrderBy(c => c.Id),
-                    "name" => normalizedSortOrder == "desc" 
-                        ? query.OrderBySql($"data->'names'->>'{culture}' DESC") 
+                    "name" => normalizedSortOrder == "desc"
+                        ? query.OrderBySql($"data->'names'->>'{culture}' DESC")
                         : query.OrderBySql($"data->'names'->>'{culture}' ASC"),
                     _ => query.OrderBy(c => c.Id) // Default to ID asc
                 };
