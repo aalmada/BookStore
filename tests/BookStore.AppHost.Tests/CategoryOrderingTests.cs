@@ -66,7 +66,7 @@ public class CategoryOrderingTests
         result = await response.Content.ReadFromJsonAsync<PagedListDto<CategoryDto>>();
 
         // Assert
-        categoryNames = result!.Items.Select(c => c.Name).Where(prefixedNames.Contains).ToList();
+        categoryNames = [.. result!.Items.Select(c => c.Name).Where(prefixedNames.Contains)];
         var expectedDesc = prefixedNames.OrderByDescending(n => n).ToList();
         _ = await Assert.That(categoryNames.Count).IsEqualTo(expectedDesc.Count);
         for (var i = 0; i < expectedDesc.Count; i++)

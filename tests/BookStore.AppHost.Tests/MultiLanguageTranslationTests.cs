@@ -42,10 +42,13 @@ public class MultiLanguageTranslationTests
         _ = await Assert.That(received).IsTrue();
 
         // 2. Verify all translations are returned in Admin API
-        var getResponse = await httpClient.GetAsync("/api/admin/authors");
-        _ = await Assert.That(getResponse.IsSuccessStatusCode).IsTrue();
-        var pagedAuthors = await getResponse.Content.ReadFromJsonAsync<PagedListDto<AdminAuthorDto>>();
-        var authorInList = pagedAuthors!.Items.First(a => a.Name == authorName);
+        var authorInList = await RetryUntilFoundAsync(async () =>
+        {
+            var getResponse = await httpClient.GetAsync("/api/admin/authors");
+            if (!getResponse.IsSuccessStatusCode) return null;
+            var pagedAuthors = await getResponse.Content.ReadFromJsonAsync<PagedListDto<AdminAuthorDto>>();
+            return pagedAuthors!.Items.FirstOrDefault(a => a.Name == authorName);
+        });
 
         _ = await Assert.That(authorInList.Translations).IsNotNull();
         _ = await Assert.That(authorInList.Translations!.Count).IsEqualTo(2);
@@ -98,8 +101,7 @@ public class MultiLanguageTranslationTests
         {
             Translations = new Dictionary<string, object>
             {
-                ["en"] = new { Name = englishName },
-                ["pt"] = new { Name = "Categoria em Português" }
+                ["en"] = new { Name = englishName }, ["pt"] = new { Name = "Categoria em Português" }
             }
         };
 
@@ -121,11 +123,14 @@ public class MultiLanguageTranslationTests
         _ = await Assert.That(received).IsTrue();
 
         // 2. Verify all translations are returned in Admin API
-        var getResponse = await httpClient.GetAsync("/api/admin/categories");
-        var pagedCategories = await getResponse.Content.ReadFromJsonAsync<PagedListDto<AdminCategoryDto>>();
-        // Use Translations["en"] for search to avoid culture-dependency of the main Name property
-        var categoryInList = pagedCategories!.Items.First(c =>
-            c.Translations != null && c.Translations.ContainsKey("en") && c.Translations["en"].Name == englishName);
+        var categoryInList = await RetryUntilFoundAsync(async () =>
+        {
+            var getResponse = await httpClient.GetAsync("/api/admin/categories");
+            if (!getResponse.IsSuccessStatusCode) return null;
+            var pagedCategories = await getResponse.Content.ReadFromJsonAsync<PagedListDto<AdminCategoryDto>>();
+            return pagedCategories!.Items.FirstOrDefault(c =>
+                c.Translations != null && c.Translations.ContainsKey("en") && c.Translations["en"].Name == englishName);
+        });
 
         _ = await Assert.That(categoryInList.Translations).IsNotNull();
         _ = await Assert.That(categoryInList.Translations!.Count).IsEqualTo(2);
@@ -211,9 +216,13 @@ public class MultiLanguageTranslationTests
         _ = await Assert.That(received).IsTrue();
 
         // 2. Verify all translations are returned in Admin API
-        var getResponse = await httpClient.GetAsync("/api/admin/books");
-        var books = await getResponse.Content.ReadFromJsonAsync<List<AdminBookDto>>();
-        var bookInList = books!.First(b => b.Title == bookTitle);
+        var bookInList = await RetryUntilFoundAsync(async () =>
+        {
+            var getResponse = await httpClient.GetAsync("/api/admin/books");
+            if (!getResponse.IsSuccessStatusCode) return null;
+            var books = await getResponse.Content.ReadFromJsonAsync<List<AdminBookDto>>();
+            return books!.FirstOrDefault(b => b.Title == bookTitle);
+        });
 
         _ = await Assert.That(bookInList.Translations).IsNotNull();
         _ = await Assert.That(bookInList.Translations!.Count).IsEqualTo(2);
@@ -263,5 +272,32 @@ public class MultiLanguageTranslationTests
         _ = await Assert.That(finalBook.Translations!.Count).IsEqualTo(2);
         _ = await Assert.That(finalBook.Translations["en"].Description).IsEqualTo("English Description");
         _ = await Assert.That(finalBook.Translations["pt"].Description).IsEqualTo("Descrição em Português");
+    }
+
+    private async Task<T> RetryUntilFoundAsync<T>(Func<Task<T?>> activeSearch)
+    {
+        var cts = new CancellationTokenSource(TestConstants.DefaultEventTimeout);
+        try
+        {
+            while (!cts.IsCancellationRequested)
+            {
+                try
+                {
+                    var result = await activeSearch();
+                    if (result != null) return result;
+                }
+                catch
+                {
+                    // Ignore and retry
+                }
+
+                await Task.Delay(500);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+
+        throw new Exception("Timed out waiting for entity to appear in projection.");
     }
 }
