@@ -66,9 +66,11 @@ public static class AuthorHandlers
         // Fetch state to ensure flush and get version for ETag (optional but good for consistency)
         _ = await session.Events.FetchStreamStateAsync(command.Id);
 
+        var defaultBiography = command.Translations?[localizationOptions.Value.DefaultCulture].Biography;
+
         return Results.Created(
             $"/api/admin/authors/{command.Id}",
-            new { id = command.Id, correlationId = session.CorrelationId });
+            new AuthorDto(command.Id, command.Name, defaultBiography));
     }
 
     public static async Task<IResult> Handle(

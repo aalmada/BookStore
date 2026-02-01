@@ -20,6 +20,9 @@ namespace BookStore.Client
         [Headers("Accept: application/json")]
         [Get("/api/books/{id}")]
         Task<BookDto> GetBookAsync(System.Guid id, CancellationToken cancellationToken = default);
+
+        [Get("/api/books/{id}")]
+        Task<IApiResponse<BookDto>> GetBookWithHeadersAsync(System.Guid id, CancellationToken cancellationToken = default);
     }
 
 }

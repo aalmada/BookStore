@@ -20,7 +20,11 @@ namespace BookStore.Client
     {
         [Headers("Content-Type: application/json")]
         [Post("/api/admin/authors")]
-        Task Execute([Body] CreateAuthorRequest body, CancellationToken cancellationToken = default);
+        Task CreateAuthorAsync([Body] CreateAuthorRequest body, CancellationToken cancellationToken = default);
+
+        [Headers("Content-Type: application/json")]
+        [Post("/api/admin/authors")]
+        Task<ApiResponse<AuthorDto>> CreateAuthorWithResponseAsync([Body] CreateAuthorRequest body, CancellationToken cancellationToken = default);
     }
 
 }

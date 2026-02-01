@@ -20,7 +20,7 @@ namespace BookStore.Client
     {
         [Headers("Content-Type: application/json")]
         [Put("/api/admin/publishers/{id}")]
-        Task Execute(System.Guid id, [Body] UpdatePublisherRequest body, CancellationToken cancellationToken = default);
+        Task UpdatePublisherAsync(System.Guid id, [Body] UpdatePublisherRequest body, CancellationToken cancellationToken = default);
     }
 
 }

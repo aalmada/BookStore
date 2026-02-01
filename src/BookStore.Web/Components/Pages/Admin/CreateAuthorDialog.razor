@@ -120,7 +120,7 @@
                 kvp => new BookStore.Client.AuthorTranslationDto { Biography = kvp.Value }
             );
 
-            await AuthorsClient.Execute(_model);
+            await AuthorsClient.CreateAuthorAsync(_model);
             Snackbar.Add($"Author {_model.Name} created successfully.", Severity.Success);
             MudDialog.Close(DialogResult.Ok(true));
         }

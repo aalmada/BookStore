@@ -19,7 +19,7 @@ namespace BookStore.Client
     public partial interface IRestoreAuthorEndpoint
     {
         [Post("/api/admin/authors/{id}/restore")]
-        Task Execute(System.Guid id, CancellationToken cancellationToken = default);
+        Task RestoreAuthorAsync(System.Guid id, CancellationToken cancellationToken = default);
     }
 
 }

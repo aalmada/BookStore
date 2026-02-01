@@ -20,7 +20,7 @@ namespace BookStore.Client
     {
         [Headers("Accept: application/json")]
         [Get("/api/authors/{id}")]
-        Task<AuthorDto> Execute(System.Guid id, CancellationToken cancellationToken = default);
+        Task<AuthorDto> GetAuthorAsync(System.Guid id, CancellationToken cancellationToken = default);
     }
 
 }

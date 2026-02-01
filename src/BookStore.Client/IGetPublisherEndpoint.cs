@@ -18,9 +18,9 @@ namespace BookStore.Client
     
     public partial interface IGetPublisherEndpoint
     {
-        [Headers("Accept: application/json")]
+        [Headers("Content-Type: application/json")]
         [Get("/api/publishers/{id}")]
-        Task<PublisherDto> Execute(System.Guid id, CancellationToken cancellationToken = default);
+        Task<PublisherDto> GetPublisherAsync(System.Guid id, [Header("If-None-Match")] string? ifNoneMatch = default, CancellationToken cancellationToken = default);
     }
 
 }

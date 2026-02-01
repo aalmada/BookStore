@@ -19,7 +19,7 @@ namespace BookStore.Client
     public partial interface IRestoreCategoryEndpoint
     {
         [Post("/api/admin/categories/{id}/restore")]
-        Task Execute(System.Guid id, CancellationToken cancellationToken = default);
+        Task RestoreCategoryAsync(System.Guid id, CancellationToken cancellationToken = default);
     }
 
 }

@@ -1,5 +1,10 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using BookStore.Client;
+using BookStore.Shared.Models;
+using Refit;
+using TUnit.Core.Interfaces;
 
 namespace BookStore.AppHost.Tests;
 
@@ -10,106 +15,73 @@ public class PublisherCrudTests
     public async Task CreatePublisher_EndToEndFlow_ShouldReturnOk()
     {
         // Arrange
-        var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
+        var client = await TestHelpers.GetAuthenticatedClientAsync<IPublishersClient>();
         var createPublisherRequest = TestHelpers.GenerateFakePublisherRequest();
 
-        // Act - Connect to SSE before creating
-        var received = await TestHelpers.ExecuteAndWaitForEventAsync(
-            Guid.Empty,
-            "PublisherUpdated",
-            async () =>
-            {
-                var createResponse = await httpClient.PostAsJsonAsync("/api/admin/publishers", createPublisherRequest);
-                _ = await Assert.That(createResponse.IsSuccessStatusCode).IsTrue();
-            },
-            TestConstants.DefaultEventTimeout);
+        // Act
+        var publisher = await TestHelpers.CreatePublisherAsync(client, createPublisherRequest);
 
         // Assert
-        _ = await Assert.That(received).IsTrue();
+        _ = await Assert.That(publisher).IsNotNull();
+        _ = await Assert.That(publisher.Id).IsNotEqualTo(Guid.Empty);
     }
 
     [Test]
     public async Task UpdatePublisher_ShouldReturnOk()
     {
         // Arrange
-        var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
-        dynamic createRequest = TestHelpers.GenerateFakePublisherRequest();
-        var createResponse = await httpClient.PostAsJsonAsync("/api/admin/publishers", (object)createRequest);
-        _ = await Assert.That(createResponse.StatusCode).IsEqualTo(HttpStatusCode.Created);
-        var createdPublisher = await createResponse.Content.ReadFromJsonAsync<PublisherDto>();
+        var client = await TestHelpers.GetAuthenticatedClientAsync<IPublishersClient>();
+        var createRequest = TestHelpers.GenerateFakePublisherRequest();
+        var createdPublisher = await TestHelpers.CreatePublisherAsync(client, createRequest);
 
-        dynamic updateRequest = TestHelpers.GenerateFakePublisherRequest(); // New data
+        var updateRequest = new UpdatePublisherRequest { Name = "Updated Publisher Name" };
 
-        // Act - Connect to SSE before updating, then wait for notification
-        var received = await TestHelpers.ExecuteAndWaitForEventAsync(
-            createdPublisher!.Id,
-            "PublisherUpdated",
-            async () =>
-            {
-                var updateResponse = await httpClient.PutAsJsonAsync($"/api/admin/publishers/{createdPublisher.Id}",
-                    (object)updateRequest);
-                _ = await Assert.That(updateResponse.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
-            },
-            TimeSpan.FromSeconds(30));
+        // Act
+        await TestHelpers.UpdatePublisherAsync(client, createdPublisher, updateRequest);
 
-        _ = await Assert.That(received).IsTrue();
+        // Verify update in public API (data should be consistent now)
+        var publicClient = TestHelpers.GetUnauthenticatedClient();
+        var updatedPublisher =
+            await publicClient.GetFromJsonAsync<PublisherDto>($"/api/publishers/{createdPublisher.Id}");
+        _ = await Assert.That(updatedPublisher!.Name).IsEqualTo(updateRequest.Name);
     }
 
     [Test]
     public async Task DeletePublisher_ShouldReturnNoContent()
     {
         // Arrange
-        var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
-        dynamic createRequest = TestHelpers.GenerateFakePublisherRequest();
-        var createResponse = await httpClient.PostAsJsonAsync("/api/admin/publishers", (object)createRequest);
-        _ = await Assert.That(createResponse.StatusCode).IsEqualTo(HttpStatusCode.Created);
-        var createdPublisher = await createResponse.Content.ReadFromJsonAsync<PublisherDto>();
+        var client = await TestHelpers.GetAuthenticatedClientAsync<IPublishersClient>();
+        var createRequest = TestHelpers.GenerateFakePublisherRequest();
+        var createdPublisher = await TestHelpers.CreatePublisherAsync(client, createRequest);
 
-        // Act - Connect to SSE before deleting, then wait for notification
-        var received = await TestHelpers.ExecuteAndWaitForEventAsync(
-            createdPublisher!.Id,
-            "PublisherDeleted",
-            async () =>
-            {
-                var deleteResponse = await httpClient.DeleteAsync($"/api/admin/publishers/{createdPublisher.Id}");
-                _ = await Assert.That(deleteResponse.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
-            },
-            TimeSpan.FromSeconds(30));
+        // Act
+        await TestHelpers.DeletePublisherAsync(client, createdPublisher);
 
-        _ = await Assert.That(received).IsTrue();
+        // Verify it's gone from public API
+        var publicClient = TestHelpers.GetUnauthenticatedClient();
+        var getResponse = await publicClient.GetAsync($"/api/publishers/{createdPublisher.Id}");
+        _ = await Assert.That(getResponse.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
     }
 
     [Test]
     public async Task RestorePublisher_ShouldReturnOk()
     {
         // Arrange
-        var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
+        var client = await TestHelpers.GetAuthenticatedClientAsync<IPublishersClient>();
 
         // 1. Create Publisher
         var createRequest = TestHelpers.GenerateFakePublisherRequest();
-        var createResponse = await httpClient.PostAsJsonAsync("/api/admin/publishers", createRequest);
-        _ = await Assert.That(createResponse.StatusCode).IsEqualTo(HttpStatusCode.Created);
-        var createdPublisher = await createResponse.Content.ReadFromJsonAsync<PublisherDto>();
+        var createdPublisher = await TestHelpers.CreatePublisherAsync(client, createRequest);
 
         // 2. Soft Delete Publisher
-        var deleteResponse = await httpClient.DeleteAsync($"/api/admin/publishers/{createdPublisher!.Id}");
-        _ = await Assert.That(deleteResponse.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
+        await TestHelpers.DeletePublisherAsync(client, createdPublisher);
 
-        // Act - Connect to SSE before restoring, then wait for notification
-        // Note: Projecting a restore is seen as an Update (IsDeleted goes from true -> false)
-        var received = await TestHelpers.ExecuteAndWaitForEventAsync(
-            createdPublisher.Id,
-            "PublisherUpdated",
-            async () =>
-            {
-                var restoreResponse =
-                    await httpClient.PostAsync($"/api/admin/publishers/{createdPublisher.Id}/restore", null);
-                _ = await Assert.That(restoreResponse.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
-            },
-            TimeSpan.FromSeconds(30));
+        // Act - Restore
+        await TestHelpers.RestorePublisherAsync(client, createdPublisher);
 
-        _ = await Assert.That(received).IsTrue();
+        // Verify
+        // Use client to get it (should succeed now if visible to admin, which it is)
+        var restored = await client.GetPublisherAsync(createdPublisher.Id);
+        _ = await Assert.That(restored).IsNotNull();
     }
-
-    record PublisherDto(Guid Id, string Name);
 }

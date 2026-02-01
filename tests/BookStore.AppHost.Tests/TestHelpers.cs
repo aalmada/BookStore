@@ -9,8 +9,15 @@ using BookStore.Client;
 using BookStore.Shared.Models;
 using JasperFx;
 using Marten;
+using Refit;
 using Weasel.Core;
 using Weasel.Postgresql;
+using AuthorTranslationDto = BookStore.Client.AuthorTranslationDto;
+using BookTranslationDto = BookStore.Client.BookTranslationDto;
+using CategoryTranslationDto = BookStore.Client.CategoryTranslationDto;
+// Resolve ambiguities by preferring Client types
+using CreateBookRequest = BookStore.Client.CreateBookRequest;
+using UpdateBookRequest = BookStore.Client.UpdateBookRequest;
 
 namespace BookStore.AppHost.Tests;
 
@@ -18,52 +25,139 @@ public static class TestHelpers
 {
     static readonly Faker _faker = new();
 
-    public static object
+    public static CreateBookRequest
         GenerateFakeBookRequest(Guid? publisherId = null, IEnumerable<Guid>? authorIds = null,
-            IEnumerable<Guid>? categoryIds = null) => new
+            IEnumerable<Guid>? categoryIds = null) => new()
+    {
+        Title = _faker.Commerce.ProductName(),
+        Isbn = _faker.Commerce.Ean13(),
+        Language = "en",
+        Translations =
+            new Dictionary<string, BookTranslationDto>
             {
-                Title = _faker.Commerce.ProductName(),
-                Isbn = _faker.Commerce.Ean13(),
-                Language = "en",
-                Translations = new Dictionary<string, object>
-                {
-                    ["en"] = new { Description = _faker.Lorem.Paragraph() },
-                    ["es"] = new { Description = _faker.Lorem.Paragraph() }
-                },
-#pragma warning disable IDE0037 // Use target-typed 'new'
-                PublicationDate = new
-                {
-                    Year = _faker.Date.Past(10).Year,
-                    Month = _faker.Random.Int(1, 12),
-                    Day = _faker.Random.Int(1, 28)
-                },
-#pragma warning restore IDE0037
-                PublisherId = publisherId,
-                AuthorIds = authorIds ?? [],
-                CategoryIds = categoryIds ?? [],
-                Prices = new Dictionary<string, decimal> { ["USD"] = decimal.Parse(_faker.Commerce.Price(10, 100)) }
-            };
+                ["en"] = new() { Description = _faker.Lorem.Paragraph() },
+                ["es"] = new() { Description = _faker.Lorem.Paragraph() }
+            },
+        PublicationDate = new PartialDate(
+            _faker.Date.Past(10).Year,
+            _faker.Random.Int(1, 12),
+            _faker.Random.Int(1, 28)),
+        PublisherId = publisherId,
+        AuthorIds = (ICollection<Guid>)(authorIds ?? []),
+        CategoryIds = (ICollection<Guid>)(categoryIds ?? []),
+        Prices = new Dictionary<string, decimal> { ["USD"] = decimal.Parse(_faker.Commerce.Price(10, 100)) }
+    };
 
-    public static object GenerateFakeAuthorRequest() => new
+    public static CreateAuthorRequest GenerateFakeAuthorRequest() => new()
     {
         Name = _faker.Name.FullName(),
-        Translations = new Dictionary<string, object>
+        Translations = new Dictionary<string, AuthorTranslationDto>
         {
-            ["en"] = new { Biography = _faker.Lorem.Paragraphs(2) },
-            ["es"] = new { Biography = _faker.Lorem.Paragraphs(2) }
+            ["en"] = new() { Biography = _faker.Lorem.Paragraphs(2) },
+            ["es"] = new() { Biography = _faker.Lorem.Paragraphs(2) }
         }
     };
 
-    public static object GenerateFakeCategoryRequest() => new
+    public static BookStore.Client.UpdateAuthorRequest GenerateFakeUpdateAuthorRequest() => new()
     {
-        Translations = new Dictionary<string, object>
+        Name = _faker.Name.FullName(),
+        Translations = new Dictionary<string, AuthorTranslationDto>
         {
-            ["en"] = new { Name = _faker.Commerce.Department(), Description = _faker.Lorem.Sentence() },
-            ["es"] = new { Name = _faker.Commerce.Department(), Description = _faker.Lorem.Sentence() }
+            ["en"] = new() { Biography = _faker.Lorem.Paragraphs(2) },
+            ["es"] = new() { Biography = _faker.Lorem.Paragraphs(2) }
         }
     };
 
-    public static object GenerateFakePublisherRequest() => new { Name = _faker.Company.CompanyName() };
+    public static CreateCategoryRequest GenerateFakeCategoryRequest() => new()
+    {
+        Translations = new Dictionary<string, CategoryTranslationDto>
+        {
+            ["en"] = new() { Name = _faker.Commerce.Department(), Description = _faker.Lorem.Sentence() },
+            ["es"] = new() { Name = _faker.Commerce.Department(), Description = _faker.Lorem.Sentence() }
+        }
+    };
+
+    public static BookStore.Client.UpdateCategoryRequest GenerateFakeUpdateCategoryRequest() => new()
+    {
+        Translations = new Dictionary<string, CategoryTranslationDto>
+        {
+            ["en"] = new() { Name = _faker.Commerce.Department(), Description = _faker.Lorem.Sentence() },
+            ["es"] = new() { Name = _faker.Commerce.Department(), Description = _faker.Lorem.Sentence() }
+        }
+    };
+
+    public static async Task<CategoryDto> CreateCategoryAsync(ICategoriesClient client, CreateCategoryRequest request)
+    {
+        CategoryDto? createdCategory = null;
+        var received = await ExecuteAndWaitForEventAsync(
+            Guid.Empty,
+            "CategoryUpdated",
+            async () =>
+            {
+                var response = await client.CreateCategoryWithResponseAsync(request);
+                if (response.Error != null)
+                {
+                    throw response.Error;
+                }
+
+                // Read from body directly
+                createdCategory = response.Content;
+            },
+            TestConstants.DefaultEventTimeout);
+
+        if (!received || createdCategory == null)
+        {
+            throw new Exception("Failed to create category or receive event.");
+        }
+
+        return createdCategory!;
+    }
+
+    public static async Task UpdateCategoryAsync(ICategoriesClient client, CategoryDto category,
+        BookStore.Client.UpdateCategoryRequest request)
+    {
+        var received = await ExecuteAndWaitForEventAsync(
+            category.Id,
+            "CategoryUpdated",
+            async () => await client.UpdateCategoryAsync(category.Id, request),
+            TestConstants.DefaultEventTimeout);
+
+        if (!received)
+        {
+            throw new Exception("Failed to receive CategoryUpdated event.");
+        }
+    }
+
+    public static async Task DeleteCategoryAsync(ICategoriesClient client, CategoryDto category)
+    {
+        var received = await ExecuteAndWaitForEventAsync(
+            category.Id,
+            "CategoryDeleted",
+            async () => await client.SoftDeleteCategoryAsync(category.Id),
+            TestConstants.DefaultEventTimeout);
+
+        if (!received)
+        {
+            throw new Exception("Failed to receive CategoryDeleted event.");
+        }
+    }
+
+    public static async Task RestoreCategoryAsync(ICategoriesClient client, CategoryDto category)
+    {
+        var received = await ExecuteAndWaitForEventAsync(
+            category.Id,
+            "CategoryUpdated",
+            async () => await client.RestoreCategoryAsync(category.Id),
+            TestConstants.DefaultEventTimeout);
+
+        if (!received)
+        {
+            throw new Exception("Failed to receive CategoryUpdated event (Restore).");
+        }
+    }
+
+    public static CreatePublisherRequest GenerateFakePublisherRequest()
+        => new() { Name = _faker.Company.CompanyName() };
 
     public static async Task<HttpClient> GetAuthenticatedClientAsync()
     {
@@ -75,12 +169,24 @@ public static class TestHelpers
         return await Task.FromResult(client);
     }
 
+    public static async Task<T> GetAuthenticatedClientAsync<T>()
+    {
+        var httpClient = await GetAuthenticatedClientAsync();
+        return RestService.For<T>(httpClient);
+    }
+
     public static HttpClient GetUnauthenticatedClient()
     {
         var app = GlobalHooks.App!;
         var client = app.CreateHttpClient("apiservice");
         client.DefaultRequestHeaders.Add("X-Tenant-ID", StorageConstants.DefaultTenantId);
         return client;
+    }
+
+    public static T GetUnauthenticatedClient<T>()
+    {
+        var httpClient = GetUnauthenticatedClient();
+        return RestService.For<T>(httpClient);
     }
 
     /// <summary>
@@ -292,11 +398,263 @@ public static class TestHelpers
         return fetchedBook ?? createdBook!;
     }
 
+    public static async Task<AuthorDto> CreateAuthorAsync(IAuthorsClient client,
+        BookStore.Client.CreateAuthorRequest createAuthorRequest)
+    {
+        AuthorDto? createdAuthor = null;
+
+        var received = await ExecuteAndWaitForEventAsync(
+            Guid.Empty,
+            "AuthorUpdated",
+            async () =>
+            {
+                var response = await client.CreateAuthorWithResponseAsync(createAuthorRequest);
+                if (response.Error != null)
+                {
+                    throw response.Error;
+                }
+
+                createdAuthor = response.Content;
+            },
+            TestConstants.DefaultEventTimeout);
+
+        if (!received || createdAuthor == null)
+        {
+            throw new Exception("Failed to create author or receive AuthorUpdated event.");
+        }
+
+        return createdAuthor;
+    }
+
+    public static async Task UpdateAuthorAsync(IAuthorsClient client, AuthorDto author,
+        BookStore.Client.UpdateAuthorRequest updateRequest)
+    {
+        var received = await ExecuteAndWaitForEventAsync(
+            author.Id,
+            "AuthorUpdated",
+            async () => await client.UpdateAuthorAsync(author.Id, updateRequest),
+            TestConstants.DefaultEventTimeout);
+
+        if (!received)
+        {
+            throw new Exception("Failed to receive AuthorUpdated event after UpdateAuthor.");
+        }
+    }
+
+    public static async Task DeleteAuthorAsync(IAuthorsClient client, AuthorDto author)
+    {
+        var received = await ExecuteAndWaitForEventAsync(
+            author.Id,
+            "AuthorDeleted",
+            async () => await client.SoftDeleteAuthorAsync(author.Id),
+            TestConstants.DefaultEventTimeout);
+
+        if (!received)
+        {
+            throw new Exception("Failed to receive AuthorDeleted event after DeleteAuthor.");
+        }
+    }
+
+    public static async Task RestoreAuthorAsync(IAuthorsClient client, AuthorDto author)
+    {
+        var received = await ExecuteAndWaitForEventAsync(
+            author.Id,
+            "AuthorUpdated",
+            async () => await client.RestoreAuthorAsync(author.Id),
+            TestConstants.DefaultEventTimeout);
+
+        if (!received)
+        {
+            throw new Exception("Failed to receive AuthorUpdated event after RestoreAuthor.");
+        }
+    }
+
+    public static async Task<BookDto> CreateBookAsync(IBooksClient client, CreateBookRequest createBookRequest)
+    {
+        Guid? createdId = null;
+
+        var received = await ExecuteAndWaitForEventAsync(
+            Guid.Empty,
+            "BookUpdated",
+            async () =>
+            {
+                var response = await client.CreateBookWithResponseAsync(createBookRequest);
+                if (response.Error != null)
+                {
+                    throw response.Error;
+                }
+
+                // Extract ID from Location header: /api/books/{id}
+                var location = response.Headers.Location;
+                if (location != null)
+                {
+                    var segments = location.ToString().TrimEnd('/').Split('/');
+                    if (Guid.TryParse(segments.Last(), out var id))
+                    {
+                        createdId = id;
+                    }
+                }
+            },
+            TestConstants.DefaultEventTimeout);
+
+        if (!received || createdId == null)
+        {
+            throw new Exception("Failed to create book or receive BookUpdated event, or extract ID.");
+        }
+
+        // Poll with retry to ensure our book is projected.
+        var maxRetries = 10;
+        var retryDelay = TimeSpan.FromMilliseconds(200);
+        BookDto? fetchedBook = null;
+
+        for (var i = 0; i < maxRetries; i++)
+        {
+            try
+            {
+                fetchedBook = await client.GetBookAsync(createdId.Value);
+                break;
+            }
+            catch (ApiException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                // Continue polling
+            }
+
+            if (i < maxRetries - 1)
+            {
+                await Task.Delay(retryDelay);
+            }
+        }
+
+        return fetchedBook!;
+    }
+
+    public static async Task<PublisherDto> CreatePublisherAsync(IPublishersClient client,
+        CreatePublisherRequest request)
+    {
+        PublisherDto? createdPublisher = null;
+        var received = await ExecuteAndWaitForEventAsync(
+            Guid.Empty,
+            "PublisherUpdated",
+            async () =>
+            {
+                var response = await client.CreatePublisherWithResponseAsync(request);
+                if (response.Error != null)
+                {
+                    throw response.Error;
+                }
+
+                // Read from body directly
+                createdPublisher = response.Content;
+            },
+            TestConstants.DefaultEventTimeout);
+
+        if (!received || createdPublisher == null)
+        {
+            throw new Exception("Failed to create publisher or receive event.");
+        }
+
+        return createdPublisher;
+    }
+
+    public static async Task UpdatePublisherAsync(IPublishersClient client, PublisherDto publisher,
+        UpdatePublisherRequest request)
+    {
+        var received = await ExecuteAndWaitForEventAsync(
+            publisher.Id,
+            "PublisherUpdated",
+            async () => await client.UpdatePublisherAsync(publisher.Id, request),
+            TestConstants.DefaultEventTimeout);
+
+        if (!received)
+        {
+            throw new Exception("Failed to receive PublisherUpdated event.");
+        }
+    }
+
+    public static async Task DeletePublisherAsync(IPublishersClient client, PublisherDto publisher)
+    {
+        var received = await ExecuteAndWaitForEventAsync(
+            publisher.Id,
+            "PublisherDeleted",
+            async () => await client.SoftDeletePublisherAsync(publisher.Id),
+            TestConstants.DefaultEventTimeout);
+
+        if (!received)
+        {
+            throw new Exception("Failed to receive PublisherDeleted event.");
+        }
+    }
+
+    public static async Task RestorePublisherAsync(IPublishersClient client, PublisherDto publisher)
+    {
+        var received = await ExecuteAndWaitForEventAsync(
+            publisher.Id,
+            "PublisherUpdated",
+            async () => await client.RestorePublisherAsync(publisher.Id),
+            TestConstants.DefaultEventTimeout);
+
+        if (!received)
+        {
+            throw new Exception("Failed to receive PublisherUpdated event (Restore).");
+        }
+    }
+
     public static async Task<BookDto> CreateBookAsync(HttpClient httpClient, Guid? publisherId = null,
         IEnumerable<Guid>? authorIds = null, IEnumerable<Guid>? categoryIds = null)
     {
+        // Ensure dependencies exist
+        if (publisherId == null)
+        {
+            var pClient = await GetAuthenticatedClientAsync<IPublishersClient>();
+            var pub = await CreatePublisherAsync(pClient, GenerateFakePublisherRequest());
+            publisherId = pub.Id;
+        }
+
+        if (authorIds == null || !authorIds.Any())
+        {
+            var aClient = await GetAuthenticatedClientAsync<IAuthorsClient>();
+            var auth = await CreateAuthorAsync(aClient, GenerateFakeAuthorRequest());
+            authorIds = [auth.Id];
+        }
+
+        if (categoryIds == null || !categoryIds.Any())
+        {
+            var cClient = await GetAuthenticatedClientAsync<ICategoriesClient>();
+            var cat = await CreateCategoryAsync(cClient, GenerateFakeCategoryRequest());
+            categoryIds = [cat.Id];
+        }
+
         var createBookRequest = GenerateFakeBookRequest(publisherId, authorIds, categoryIds);
         return await CreateBookAsync(httpClient, createBookRequest);
+    }
+
+    public static async Task<BookDto> CreateBookAsync(IBooksClient client, Guid? publisherId = null,
+        IEnumerable<Guid>? authorIds = null, IEnumerable<Guid>? categoryIds = null)
+    {
+        // Ensure dependencies exist
+        if (publisherId == null)
+        {
+            var pClient = await GetAuthenticatedClientAsync<IPublishersClient>();
+            var pub = await CreatePublisherAsync(pClient, GenerateFakePublisherRequest());
+            publisherId = pub.Id;
+        }
+
+        if (authorIds == null || !authorIds.Any())
+        {
+            var aClient = await GetAuthenticatedClientAsync<IAuthorsClient>();
+            var auth = await CreateAuthorAsync(aClient, GenerateFakeAuthorRequest());
+            authorIds = [auth.Id];
+        }
+
+        if (categoryIds == null || !categoryIds.Any())
+        {
+            var cClient = await GetAuthenticatedClientAsync<ICategoriesClient>();
+            var cat = await CreateCategoryAsync(cClient, GenerateFakeCategoryRequest());
+            categoryIds = [cat.Id];
+        }
+
+        var createBookRequest = GenerateFakeBookRequest(publisherId, authorIds, categoryIds);
+        return await CreateBookAsync(client, createBookRequest);
     }
 
     public static async Task<HttpClient> GetTenantClientAsync(string tenantId, string accessToken)
@@ -465,6 +823,21 @@ public static class TestHelpers
         }
     }
 
+    public static async Task AddToFavoritesAsync(IBooksClient client, Guid bookId, Guid? expectedEntityId = null,
+        string expectedEvent = "UserUpdated")
+    {
+        var received = await ExecuteAndWaitForEventAsync(
+            expectedEntityId ?? Guid.Empty,
+            expectedEvent,
+            async () => await client.AddBookToFavoritesAsync(bookId),
+            TestConstants.DefaultEventTimeout);
+
+        if (!received)
+        {
+            throw new Exception($"Timed out waiting for {expectedEvent} event after AddToFavorites.");
+        }
+    }
+
     public static async Task RemoveFromFavoritesAsync(HttpClient client, Guid bookId, Guid? expectedEntityId = null,
         string expectedEvent = "UserUpdated")
     {
@@ -476,6 +849,21 @@ public static class TestHelpers
                 var response = await client.DeleteAsync($"/api/books/{bookId}/favorites");
                 _ = await Assert.That(response.IsSuccessStatusCode).IsTrue();
             },
+            TestConstants.DefaultEventTimeout);
+
+        if (!received)
+        {
+            throw new Exception($"Timed out waiting for {expectedEvent} event after RemoveFromFavorites.");
+        }
+    }
+
+    public static async Task RemoveFromFavoritesAsync(IBooksClient client, Guid bookId, Guid? expectedEntityId = null,
+        string expectedEvent = "UserUpdated")
+    {
+        var received = await ExecuteAndWaitForEventAsync(
+            expectedEntityId ?? Guid.Empty,
+            expectedEvent,
+            async () => await client.RemoveBookFromFavoritesAsync(bookId),
             TestConstants.DefaultEventTimeout);
 
         if (!received)
@@ -512,6 +900,40 @@ public static class TestHelpers
         }
     }
 
+    public static async Task UpdateBookAsync(IBooksClient client, Guid bookId, UpdateBookRequest updatePayload,
+        string etag)
+    {
+        var received = await ExecuteAndWaitForEventAsync(
+            bookId,
+            "BookUpdated",
+            async () => await client.UpdateBookAsync(bookId, updatePayload, etag),
+            TestConstants.DefaultEventTimeout);
+
+        if (!received)
+        {
+            throw new Exception("Timed out waiting for BookUpdated event after UpdateBook.");
+        }
+    }
+
+    // Helper to accept generic object and cast if possible or use fake request
+    public static async Task UpdateBookAsync(IBooksClient client, Guid bookId, object updatePayload, string etag)
+    {
+        // If updatePayload is anonymous, we can't easily cast it to UpdateBookRequest used by Refit.
+        // But the tests typically use TestHelpers.GenerateFakeBookRequest which we changed to return strict type CreateBookRequest.
+        // Wait, CreateBookRequest is not UpdateBookRequest.
+        // We might need a converter or just update the tests to use proper request type.
+        // For now, let's assume we will fix the tests to pass UpdateBookRequest or similar.
+        // If we pass an object that JSON serializes to UpdateBookRequest, we'd need to serialize/deserialize.
+        // Usage in BookCrudTests: TestHelpers.GenerateFakeBookRequest() -> Returns CreateBookRequest.
+        // Does CreateBookRequest match UpdateBookRequest? SImilar properties.
+        // I should check if I can map them.
+        // Or just change GenerateFakeBookRequest to be generic?
+        // Refit expects UpdateBookRequest.
+        var json = JsonSerializer.Serialize(updatePayload);
+        var request = JsonSerializer.Deserialize<UpdateBookRequest>(json);
+        await UpdateBookAsync(client, bookId, request!, etag);
+    }
+
     public static async Task DeleteBookAsync(HttpClient client, Guid bookId, string etag)
     {
         var received = await ExecuteAndWaitForEventAsync(
@@ -537,6 +959,20 @@ public static class TestHelpers
         }
     }
 
+    public static async Task DeleteBookAsync(IBooksClient client, Guid bookId, string etag)
+    {
+        var received = await ExecuteAndWaitForEventAsync(
+            bookId,
+            "BookDeleted",
+            async () => await client.SoftDeleteBookAsync(bookId, etag),
+            TestConstants.DefaultEventTimeout);
+
+        if (!received)
+        {
+            throw new Exception("Timed out waiting for BookDeleted event after DeleteBook.");
+        }
+    }
+
     public static async Task RestoreBookAsync(HttpClient client, Guid bookId)
     {
         var received = await ExecuteAndWaitForEventAsync(
@@ -551,6 +987,20 @@ public static class TestHelpers
 
                 _ = await Assert.That(restoreResponse.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
             },
+            TestConstants.DefaultEventTimeout);
+
+        if (!received)
+        {
+            throw new Exception("Timed out waiting for BookUpdated event after RestoreBook.");
+        }
+    }
+
+    public static async Task RestoreBookAsync(IBooksClient client, Guid bookId, string? etag = null)
+    {
+        var received = await ExecuteAndWaitForEventAsync(
+            bookId,
+            "BookUpdated",
+            async () => await client.RestoreBookAsync(bookId, apiVersion: "1.0", etag: etag),
             TestConstants.DefaultEventTimeout);
 
         if (!received)
@@ -715,6 +1165,12 @@ public static class TestHelpers
         authenticatedClient.DefaultRequestHeaders.Add("X-Tenant-ID", actualTenantId);
 
         return authenticatedClient;
+    }
+
+    public static async Task<T> CreateUserAndGetClientAsync<T>(string? tenantId = null)
+    {
+        var httpClient = await CreateUserAndGetClientAsync(tenantId);
+        return RestService.For<T>(httpClient);
     }
 
     public record LoginResponse(string AccessToken, string RefreshToken);
