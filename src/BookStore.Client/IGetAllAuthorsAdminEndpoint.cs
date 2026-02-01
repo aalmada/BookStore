@@ -8,7 +8,5 @@ public interface IGetAllAuthorsAdminEndpoint
     [Get("/api/admin/authors")]
     Task<PagedListDto<AdminAuthorDto>> GetAllAuthorsAsync(
         [Query] AuthorSearchRequest request,
-        [Header("Accept-Version")] string version,
-        [Header("Accept-Language")] string language,
         CancellationToken cancellationToken = default);
 }

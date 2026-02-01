@@ -8,7 +8,5 @@ public interface IGetAllCategoriesAdminEndpoint
     [Get("/api/admin/categories")]
     Task<PagedListDto<AdminCategoryDto>> GetAllCategoriesAsync(
         [Query] CategorySearchRequest request,
-        [Header("Accept-Version")] string version,
-        [Header("Accept-Language")] string language,
         CancellationToken cancellationToken = default);
 }

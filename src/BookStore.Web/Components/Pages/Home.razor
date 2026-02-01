@@ -441,9 +441,9 @@
     {
         try
         {
-            var authorsTask = AuthorsClient.GetAuthorsAsync(1, 1000, "1.0", "en"); // Fetch more for autocomplete
-            var categoriesTask = CategoriesClient.GetCategoriesAsync(1, 1000, "name", "asc", "1.0", "en");
-            var publishersTask = PublishersClient.GetPublishersAsync(1, 1000, "1.0", "en");
+            var authorsTask = AuthorsClient.GetAuthorsAsync(1, 1000); // Fetch more for autocomplete
+            var categoriesTask = CategoriesClient.GetCategoriesAsync(1, 1000, "name", "asc");
+            var publishersTask = PublishersClient.GetPublishersAsync(1, 1000);
 
             await Task.WhenAll(authorsTask, categoriesTask, publishersTask);
 
@@ -542,9 +542,7 @@
         };
 
         return await BooksClient.GetBooksAsync(
-            request,
-            api_version: "1.0",
-            accept_Language: "en");
+            request);
     }
 
     private void HandleNotification(BookStore.Shared.Notifications.IDomainEventNotification notification)

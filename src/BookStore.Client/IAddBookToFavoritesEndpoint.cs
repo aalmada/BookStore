@@ -4,7 +4,6 @@ using Refit;
 
 namespace BookStore.Client;
 
-[System.CodeDom.Compiler.GeneratedCode("Refitter", "1.7.1.0")]
 public partial interface IAddBookToFavoritesEndpoint
 {
     [Headers("Accept: application/json")]

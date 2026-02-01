@@ -45,7 +45,11 @@ public class MultiLanguageTranslationTests
         var authorInList = await RetryUntilFoundAsync(async () =>
         {
             var getResponse = await httpClient.GetAsync("/api/admin/authors");
-            if (!getResponse.IsSuccessStatusCode) return null;
+            if (!getResponse.IsSuccessStatusCode)
+            {
+                return null;
+            }
+
             var pagedAuthors = await getResponse.Content.ReadFromJsonAsync<PagedListDto<AdminAuthorDto>>();
             return pagedAuthors!.Items.FirstOrDefault(a => a.Name == authorName);
         });
@@ -101,7 +105,8 @@ public class MultiLanguageTranslationTests
         {
             Translations = new Dictionary<string, object>
             {
-                ["en"] = new { Name = englishName }, ["pt"] = new { Name = "Categoria em Português" }
+                ["en"] = new { Name = englishName },
+                ["pt"] = new { Name = "Categoria em Português" }
             }
         };
 
@@ -126,7 +131,11 @@ public class MultiLanguageTranslationTests
         var categoryInList = await RetryUntilFoundAsync(async () =>
         {
             var getResponse = await httpClient.GetAsync("/api/admin/categories");
-            if (!getResponse.IsSuccessStatusCode) return null;
+            if (!getResponse.IsSuccessStatusCode)
+            {
+                return null;
+            }
+
             var pagedCategories = await getResponse.Content.ReadFromJsonAsync<PagedListDto<AdminCategoryDto>>();
             return pagedCategories!.Items.FirstOrDefault(c =>
                 c.Translations != null && c.Translations.ContainsKey("en") && c.Translations["en"].Name == englishName);
@@ -219,7 +228,11 @@ public class MultiLanguageTranslationTests
         var bookInList = await RetryUntilFoundAsync(async () =>
         {
             var getResponse = await httpClient.GetAsync("/api/admin/books");
-            if (!getResponse.IsSuccessStatusCode) return null;
+            if (!getResponse.IsSuccessStatusCode)
+            {
+                return null;
+            }
+
             var books = await getResponse.Content.ReadFromJsonAsync<List<AdminBookDto>>();
             return books!.FirstOrDefault(b => b.Title == bookTitle);
         });
@@ -274,7 +287,7 @@ public class MultiLanguageTranslationTests
         _ = await Assert.That(finalBook.Translations["pt"].Description).IsEqualTo("Descrição em Português");
     }
 
-    private async Task<T> RetryUntilFoundAsync<T>(Func<Task<T?>> activeSearch)
+    async Task<T> RetryUntilFoundAsync<T>(Func<Task<T?>> activeSearch)
     {
         var cts = new CancellationTokenSource(TestConstants.DefaultEventTimeout);
         try
@@ -284,7 +297,10 @@ public class MultiLanguageTranslationTests
                 try
                 {
                     var result = await activeSearch();
-                    if (result != null) return result;
+                    if (result != null)
+                    {
+                        return result;
+                    }
                 }
                 catch
                 {

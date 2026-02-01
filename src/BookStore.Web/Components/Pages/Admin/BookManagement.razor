@@ -98,7 +98,7 @@
     {
         try
         {
-            var books = await BooksClient.GetAllBooksAdminAsync("1.0", "en-US", cancellationToken: ct);
+            var books = await BooksClient.GetAllBooksAdminAsync(cancellationToken: ct);
 
             var filtered = books
                 .Where(b => string.IsNullOrEmpty(_searchString) ||
@@ -171,7 +171,7 @@
     {
         try
         {
-            await BooksClient.SoftDeleteBookAsync(id, "1.0", "en-US");
+            await BooksClient.SoftDeleteBookAsync(id);
             Snackbar.Add("Book deleted.", Severity.Success);
             await _table.ReloadServerData();
         }
@@ -185,7 +185,7 @@
     {
         try
         {
-            await BooksClient.RestoreBookAsync(id, apiVersion: "1.0");
+            await BooksClient.RestoreBookAsync(id);
             Snackbar.Add("Book restored.", Severity.Success);
             await _table.ReloadServerData();
         }

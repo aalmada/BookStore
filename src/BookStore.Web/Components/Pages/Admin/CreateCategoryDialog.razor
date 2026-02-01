@@ -97,7 +97,7 @@
             );
 
             var request = new CreateCategoryRequest { Translations = translations };
-            await CategoriesClient.Execute(request, "1.0", "en-US");
+            await CategoriesClient.Execute(request);
 
             var englishName = _translations["en"];
             Snackbar.Add($"Category {englishName} created successfully.", Severity.Success);

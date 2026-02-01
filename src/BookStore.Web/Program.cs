@@ -1,6 +1,7 @@
 using System.Net;
 using Blazored.LocalStorage;
 using BookStore.Client;
+using BookStore.Client.Infrastructure;
 using BookStore.Client.Services;
 using BookStore.Web.Components;
 using BookStore.Web.Infrastructure;
@@ -113,9 +114,11 @@ static void RegisterScopedRefitClients(
         var correlationService = sp.GetRequiredService<ClientContextService>();
         var tenantService = sp.GetRequiredService<TenantService>();
 
-        // Build handler chain: Auth -> Tenant -> Network
+        // Build handler chain: Auth -> Tenant -> Headers -> Network
         var networkHandler = new HttpClientHandler();
-        var tenantHandler = new TenantHeaderHandler(tenantService) { InnerHandler = networkHandler };
+        var headerHandler =
+            new BookStore.Client.Infrastructure.BookStoreHeaderHandler() { InnerHandler = networkHandler };
+        var tenantHandler = new TenantHeaderHandler(tenantService) { InnerHandler = headerHandler };
         var authHandler = new AuthorizationMessageHandler(
             tokenService, tenantService, httpContextAccessor, correlationService)
         { InnerHandler = tenantHandler };

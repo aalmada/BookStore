@@ -15,12 +15,12 @@ using BookStore.Shared.Models;
 
 namespace BookStore.Client
 {
-    [System.CodeDom.Compiler.GeneratedCode("Refitter", "1.7.1.0")]
+    
     public partial interface ICreatePublisherEndpoint
     {
         [Headers("Content-Type: application/json")]
         [Post("/api/admin/publishers")]
-        Task Execute([Body] CreatePublisherRequest body, [Header("api-version")] string api_version, [Header("Accept-Language")] string accept_Language, [Header("X-Correlation-ID")] string? x_Correlation_ID = null, [Header("X-Causation-ID")] string? x_Causation_ID = null, CancellationToken cancellationToken = default);
+        Task Execute([Body] CreatePublisherRequest body, CancellationToken cancellationToken = default);
     }
 
 }
