@@ -127,7 +127,7 @@
             );
 
             var request = new UpdateAuthorRequest { Name = _model.Name, Translations = updatedTranslations };
-            await AuthorsClient.Execute(Author.Id, request);
+            await AuthorsClient.UpdateAuthorAsync(Author.Id, request);
 
             Snackbar.Add($"Author {_model.Name} updated successfully.", Severity.Success);
             MudDialog.Close(DialogResult.Ok(true));

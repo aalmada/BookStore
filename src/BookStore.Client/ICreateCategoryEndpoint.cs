@@ -20,7 +20,11 @@ namespace BookStore.Client
     {
         [Headers("Content-Type: application/json")]
         [Post("/api/admin/categories")]
-        Task Execute([Body] CreateCategoryRequest body, CancellationToken cancellationToken = default);
+        Task CreateCategoryAsync([Body] CreateCategoryRequest body, CancellationToken cancellationToken = default);
+
+        [Headers("Content-Type: application/json")]
+        [Post("/api/admin/categories")]
+        Task<ApiResponse<CategoryDto>> CreateCategoryWithResponseAsync([Body] CreateCategoryRequest body, CancellationToken cancellationToken = default);
     }
 
 }

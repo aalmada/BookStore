@@ -107,7 +107,7 @@
         {
             try
             {
-                await ((ISoftDeleteAuthorEndpoint)AuthorsClient).Execute(author.Id);
+                await ((ISoftDeleteAuthorEndpoint)AuthorsClient).SoftDeleteAuthorAsync(author.Id);
                 Snackbar.Add($"Author {author.Name} deleted successfully.", Severity.Success);
                 await _table.ReloadServerData();
             }

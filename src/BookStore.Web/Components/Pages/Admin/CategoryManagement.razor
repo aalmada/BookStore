@@ -107,7 +107,7 @@
         {
             try
             {
-                await ((ISoftDeleteCategoryEndpoint)CategoriesClient).Execute(category.Id);
+                await CategoriesClient.SoftDeleteCategoryAsync(category.Id);
                 Snackbar.Add($"Category {category.Name} deleted successfully.", Severity.Success);
                 await _table.ReloadServerData();
             }

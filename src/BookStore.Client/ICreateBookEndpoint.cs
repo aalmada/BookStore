@@ -20,6 +20,10 @@ namespace BookStore.Client
         [Headers("Content-Type: application/json")]
         [Post("/api/admin/books")]
         Task CreateBookAsync([Body] CreateBookRequest body, CancellationToken cancellationToken = default);
+
+        [Headers("Content-Type: application/json")]
+        [Post("/api/admin/books")]
+        Task<IApiResponse> CreateBookWithResponseAsync([Body] CreateBookRequest body, CancellationToken cancellationToken = default);
     }
 
 }

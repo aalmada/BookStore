@@ -7,5 +7,5 @@ namespace BookStore.Client;
 public interface IRestoreBookEndpoint
 {
     [Post("/api/admin/books/{id}/restore")]
-    Task RestoreBookAsync(Guid id, [Header("api-version")] string apiVersion = "1.0", CancellationToken cancellationToken = default);
+    Task RestoreBookAsync(Guid id, [Header("api-version")] string apiVersion = "1.0", [Header("If-Match")] string? etag = null, CancellationToken cancellationToken = default);
 }

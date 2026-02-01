@@ -18,9 +18,9 @@ namespace BookStore.Client
     
     public partial interface IGetCategoryEndpoint
     {
-        [Headers("Accept: application/json")]
+        [Headers("Content-Type: application/json")]
         [Get("/api/categories/{id}")]
-        Task<CategoryDto> Execute(System.Guid id, CancellationToken cancellationToken = default);
+        Task<CategoryDto> GetCategoryAsync(System.Guid id, [Header("If-None-Match")] string? ifNoneMatch = default, CancellationToken cancellationToken = default);
     }
 
 }

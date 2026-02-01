@@ -142,6 +142,9 @@ namespace BookStore.Client
         [System.ComponentModel.DataAnnotations.Required]
         public System.Collections.Generic.ICollection<System.Guid> CategoryIds { get; set; } = new System.Collections.ObjectModel.Collection<System.Guid>();
 
+        [System.Text.Json.Serialization.JsonPropertyName("prices")]
+        public System.Collections.Generic.IDictionary<string, decimal> Prices { get; set; } = new System.Collections.Generic.Dictionary<string, decimal>();
+
         private System.Collections.Generic.IDictionary<string, object> _additionalProperties;
 
         [System.Text.Json.Serialization.JsonExtensionData]

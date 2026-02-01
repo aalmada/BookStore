@@ -107,7 +107,7 @@
         {
             try
             {
-                await ((ISoftDeletePublisherEndpoint)PublishersClient).Execute(publisher.Id);
+                await PublishersClient.SoftDeletePublisherAsync(publisher.Id);
                 Snackbar.Add($"Publisher {publisher.Name} deleted successfully.", Severity.Success);
                 await _table.ReloadServerData();
             }
