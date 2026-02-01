@@ -4,6 +4,7 @@ namespace BookStore.Client;
 
 public interface IBooksClient :
     IGetBooksEndpoint,
+    IGetFavoriteBooksEndpoint,
     IGetBookEndpoint,
     IGetAllBooksAdminEndpoint,
     ICreateBookEndpoint,

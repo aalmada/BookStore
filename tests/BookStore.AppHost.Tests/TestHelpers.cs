@@ -28,25 +28,25 @@ public static class TestHelpers
     public static CreateBookRequest
         GenerateFakeBookRequest(Guid? publisherId = null, IEnumerable<Guid>? authorIds = null,
             IEnumerable<Guid>? categoryIds = null) => new()
-    {
-        Title = _faker.Commerce.ProductName(),
-        Isbn = _faker.Commerce.Ean13(),
-        Language = "en",
-        Translations =
+            {
+                Title = _faker.Commerce.ProductName(),
+                Isbn = _faker.Commerce.Ean13(),
+                Language = "en",
+                Translations =
             new Dictionary<string, BookTranslationDto>
             {
                 ["en"] = new() { Description = _faker.Lorem.Paragraph() },
                 ["es"] = new() { Description = _faker.Lorem.Paragraph() }
             },
-        PublicationDate = new PartialDate(
+                PublicationDate = new PartialDate(
             _faker.Date.Past(10).Year,
             _faker.Random.Int(1, 12),
             _faker.Random.Int(1, 28)),
-        PublisherId = publisherId,
-        AuthorIds = (ICollection<Guid>)(authorIds ?? []),
-        CategoryIds = (ICollection<Guid>)(categoryIds ?? []),
-        Prices = new Dictionary<string, decimal> { ["USD"] = decimal.Parse(_faker.Commerce.Price(10, 100)) }
-    };
+                PublisherId = publisherId,
+                AuthorIds = (ICollection<Guid>)(authorIds ?? []),
+                CategoryIds = (ICollection<Guid>)(categoryIds ?? []),
+                Prices = new Dictionary<string, decimal> { ["USD"] = decimal.Parse(_faker.Commerce.Price(10, 100)) }
+            };
 
     public static CreateAuthorRequest GenerateFakeAuthorRequest() => new()
     {
@@ -676,15 +676,23 @@ public static class TestHelpers
             {
                 var response =
                     await client.PostAsJsonAsync("/api/cart/items", new AddToCartClientRequest(bookId, quantity));
-                if (!response.IsSuccessStatusCode)
-                {
-                }
-                else
-                {
-                }
-
                 _ = await Assert.That(response.IsSuccessStatusCode).IsTrue();
             },
+            TestConstants.DefaultEventTimeout);
+
+        if (!received)
+        {
+            throw new Exception("Timed out waiting for UserUpdated event after AddToCart.");
+        }
+    }
+
+    public static async Task AddToCartAsync(IShoppingCartClient client, Guid bookId, int quantity = 1,
+        Guid? expectedEntityId = null)
+    {
+        var received = await ExecuteAndWaitForEventAsync(
+            expectedEntityId ?? Guid.Empty,
+            "UserUpdated",
+            async () => await client.AddToCartAsync(new AddToCartClientRequest(bookId, quantity)),
             TestConstants.DefaultEventTimeout);
 
         if (!received)
@@ -713,6 +721,21 @@ public static class TestHelpers
         }
     }
 
+    public static async Task UpdateCartItemQuantityAsync(IShoppingCartClient client, Guid bookId, int quantity,
+        Guid? expectedEntityId = null)
+    {
+        var received = await ExecuteAndWaitForEventAsync(
+            expectedEntityId ?? Guid.Empty,
+            "UserUpdated",
+            async () => await client.UpdateCartItemAsync(bookId, new UpdateCartItemClientRequest(quantity)),
+            TestConstants.DefaultEventTimeout);
+
+        if (!received)
+        {
+            throw new Exception("Timed out waiting for UserUpdated event after UpdateCartItemQuantity.");
+        }
+    }
+
     public static async Task RemoveFromCartAsync(HttpClient client, Guid bookId, Guid? expectedEntityId = null)
     {
         var received = await ExecuteAndWaitForEventAsync(
@@ -723,6 +746,20 @@ public static class TestHelpers
                 var response = await client.DeleteAsync($"/api/cart/items/{bookId}");
                 _ = await Assert.That(response.IsSuccessStatusCode).IsTrue();
             },
+            TestConstants.DefaultEventTimeout);
+
+        if (!received)
+        {
+            throw new Exception("Timed out waiting for UserUpdated event after RemoveFromCart.");
+        }
+    }
+
+    public static async Task RemoveFromCartAsync(IShoppingCartClient client, Guid bookId, Guid? expectedEntityId = null)
+    {
+        var received = await ExecuteAndWaitForEventAsync(
+            expectedEntityId ?? Guid.Empty,
+            "UserUpdated",
+            async () => await client.RemoveFromCartAsync(bookId),
             TestConstants.DefaultEventTimeout);
 
         if (!received)
@@ -749,6 +786,20 @@ public static class TestHelpers
         }
     }
 
+    public static async Task ClearCartAsync(IShoppingCartClient client, Guid? expectedEntityId = null)
+    {
+        var received = await ExecuteAndWaitForEventAsync(
+            expectedEntityId ?? Guid.Empty,
+            "UserUpdated",
+            async () => await client.ClearCartAsync(),
+            TestConstants.DefaultEventTimeout);
+
+        if (!received)
+        {
+            throw new Exception("Timed out waiting for UserUpdated event after ClearCart.");
+        }
+    }
+
     public static async Task EnsureCartIsEmptyAsync(HttpClient client)
     {
         var cart = await client.GetFromJsonAsync<ShoppingCartResponse>("/api/cart");
@@ -767,12 +818,23 @@ public static class TestHelpers
             async () =>
             {
                 var response = await client.PostAsJsonAsync($"/api/books/{bookId}/rating", new { Rating = rating });
-                if (!response.IsSuccessStatusCode)
-                {
-                }
-
                 _ = await Assert.That(response.IsSuccessStatusCode).IsTrue();
             },
+            TestConstants.DefaultEventTimeout);
+
+        if (!received)
+        {
+            throw new Exception($"Timed out waiting for {expectedEvent} event after RateBook.");
+        }
+    }
+
+    public static async Task RateBookAsync(IBooksClient client, Guid bookId, int rating, Guid? expectedEntityId = null,
+        string expectedEvent = "UserUpdated")
+    {
+        var received = await ExecuteAndWaitForEventAsync(
+            expectedEntityId ?? Guid.Empty,
+            expectedEvent,
+            async () => await client.RateBookAsync(bookId, new RateBookRequest(rating)),
             TestConstants.DefaultEventTimeout);
 
         if (!received)
@@ -790,12 +852,23 @@ public static class TestHelpers
             async () =>
             {
                 var response = await client.DeleteAsync($"/api/books/{bookId}/rating");
-                if (!response.IsSuccessStatusCode)
-                {
-                }
-
                 _ = await Assert.That(response.IsSuccessStatusCode).IsTrue();
             },
+            TestConstants.DefaultEventTimeout);
+
+        if (!received)
+        {
+            throw new Exception($"Timed out waiting for {expectedEvent} event after RemoveRating.");
+        }
+    }
+
+    public static async Task RemoveRatingAsync(IBooksClient client, Guid bookId, Guid? expectedEntityId = null,
+        string expectedEvent = "UserUpdated")
+    {
+        var received = await ExecuteAndWaitForEventAsync(
+            expectedEntityId ?? Guid.Empty,
+            expectedEvent,
+            async () => await client.RemoveBookRatingAsync(bookId),
             TestConstants.DefaultEventTimeout);
 
         if (!received)
@@ -1181,4 +1254,11 @@ public static class TestHelpers
         string Message);
 
     public record MessageResponse(string Message);
+
+    public record ValidationProblemDetails(
+        string? Title = null,
+        int? Status = null,
+        string? Detail = null,
+        [property: System.Text.Json.Serialization.JsonPropertyName("error")]
+        string? Error = null);
 }

@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using BookStore.Client;
 using BookStore.Shared.Models;
+using Refit;
 
 namespace BookStore.AppHost.Tests;
 
@@ -11,19 +12,19 @@ public class ShoppingCartTests
     public async Task AddToCart_ShouldAddItemToCart()
     {
         // Arrange
-        var adminClient = await TestHelpers.GetAuthenticatedClientAsync();
-        var httpClient = await TestHelpers.CreateUserAndGetClientAsync();
+        var adminClient = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
+        var client = await TestHelpers.CreateUserAndGetClientAsync<IShoppingCartClient>();
 
         // Create a book first (cart needs real books to display)
         var createdBook = await TestHelpers.CreateBookAsync(adminClient);
 
         // Act - Add item to cart and wait for async projection
-        await TestHelpers.AddToCartAsync(httpClient, createdBook.Id, 2);
+        await TestHelpers.AddToCartAsync(client, createdBook.Id, 2);
 
         // Assert - Verify cart contains item
-        var cart = await httpClient.GetFromJsonAsync<ShoppingCartResponse>("/api/cart");
+        var cart = await client.GetShoppingCartAsync();
         _ = await Assert.That(cart).IsNotNull();
-        _ = await Assert.That(cart!.TotalItems).IsEqualTo(2);
+        _ = await Assert.That(cart.TotalItems).IsEqualTo(2);
         _ = await Assert.That(cart.Items.Count).IsEqualTo(1);
         _ = await Assert.That(cart.Items[0].BookId).IsEqualTo(createdBook.Id);
         _ = await Assert.That(cart.Items[0].Quantity).IsEqualTo(2);
@@ -33,21 +34,21 @@ public class ShoppingCartTests
     public async Task AddToCart_MultipleTimes_ShouldAccumulateQuantity()
     {
         // Arrange
-        var adminClient = await TestHelpers.GetAuthenticatedClientAsync();
-        var httpClient = await TestHelpers.CreateUserAndGetClientAsync();
+        var adminClient = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
+        var client = await TestHelpers.CreateUserAndGetClientAsync<IShoppingCartClient>();
 
         // Create a book first
         var createdBook = await TestHelpers.CreateBookAsync(adminClient);
 
         // Act - Add same book twice
-        await TestHelpers.AddToCartAsync(httpClient, createdBook.Id, 2);
+        await TestHelpers.AddToCartAsync(client, createdBook.Id, 2);
 
-        await TestHelpers.AddToCartAsync(httpClient, createdBook.Id, 3);
+        await TestHelpers.AddToCartAsync(client, createdBook.Id, 3);
 
         // Assert - Quantity should be accumulated (2 + 3 = 5)
-        var cart = await httpClient.GetFromJsonAsync<ShoppingCartResponse>("/api/cart");
+        var cart = await client.GetShoppingCartAsync();
         _ = await Assert.That(cart).IsNotNull();
-        _ = await Assert.That(cart!.TotalItems).IsEqualTo(5);
+        _ = await Assert.That(cart.TotalItems).IsEqualTo(5);
         _ = await Assert.That(cart.Items.Count).IsEqualTo(1);
         _ = await Assert.That(cart.Items[0].Quantity).IsEqualTo(5);
     }
@@ -56,8 +57,8 @@ public class ShoppingCartTests
     public async Task UpdateCartItemQuantity_ShouldUpdateQuantity()
     {
         // Arrange
-        var adminClient = await TestHelpers.GetAuthenticatedClientAsync();
-        var httpClient = await TestHelpers.CreateUserAndGetClientAsync();
+        var adminClient = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
+        var client = await TestHelpers.CreateUserAndGetClientAsync<IShoppingCartClient>();
 
         // Create a book first
         var createdBook = await TestHelpers.CreateBookAsync(adminClient);
@@ -65,14 +66,14 @@ public class ShoppingCartTests
         var bookId = createdBook.Id;
 
         // Add item first
-        await TestHelpers.AddToCartAsync(httpClient, bookId, 2);
+        await TestHelpers.AddToCartAsync(client, bookId, 2);
 
         // Act - Update quantity
-        await TestHelpers.UpdateCartItemQuantityAsync(httpClient, bookId, 5);
+        await TestHelpers.UpdateCartItemQuantityAsync(client, bookId, 5);
 
         // Assert
-        var cart = await httpClient.GetFromJsonAsync<ShoppingCartResponse>("/api/cart");
-        _ = await Assert.That(cart!.Items[0].Quantity).IsEqualTo(5);
+        var cart = await client.GetShoppingCartAsync();
+        _ = await Assert.That(cart.Items[0].Quantity).IsEqualTo(5);
         _ = await Assert.That(cart.TotalItems).IsEqualTo(5);
     }
 
@@ -80,8 +81,8 @@ public class ShoppingCartTests
     public async Task RemoveFromCart_ShouldRemoveItem()
     {
         // Arrange
-        var adminClient = await TestHelpers.GetAuthenticatedClientAsync();
-        var httpClient = await TestHelpers.CreateUserAndGetClientAsync();
+        var adminClient = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
+        var client = await TestHelpers.CreateUserAndGetClientAsync<IShoppingCartClient>();
 
         // Create a book first
         var createdBook = await TestHelpers.CreateBookAsync(adminClient);
@@ -89,18 +90,18 @@ public class ShoppingCartTests
         var bookId = createdBook.Id;
 
         // Add item first
-        await TestHelpers.AddToCartAsync(httpClient, bookId, 2);
+        await TestHelpers.AddToCartAsync(client, bookId, 2);
 
         // Verify it exists
-        var cartBefore = await httpClient.GetFromJsonAsync<ShoppingCartResponse>("/api/cart");
-        _ = await Assert.That(cartBefore!.Items.Count).IsEqualTo(1);
+        var cartBefore = await client.GetShoppingCartAsync();
+        _ = await Assert.That(cartBefore.Items.Count).IsEqualTo(1);
 
         // Act - Remove item
-        await TestHelpers.RemoveFromCartAsync(httpClient, bookId);
+        await TestHelpers.RemoveFromCartAsync(client, bookId);
 
         // Assert - Cart should be empty
-        var cart = await httpClient.GetFromJsonAsync<ShoppingCartResponse>("/api/cart");
-        _ = await Assert.That(cart!.Items.Count).IsEqualTo(0);
+        var cart = await client.GetShoppingCartAsync();
+        _ = await Assert.That(cart.Items.Count).IsEqualTo(0);
         _ = await Assert.That(cart.TotalItems).IsEqualTo(0);
     }
 
@@ -108,8 +109,8 @@ public class ShoppingCartTests
     public async Task ClearCart_ShouldRemoveAllItems()
     {
         // Arrange
-        var adminClient = await TestHelpers.GetAuthenticatedClientAsync();
-        var httpClient = await TestHelpers.CreateUserAndGetClientAsync();
+        var adminClient = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
+        var client = await TestHelpers.CreateUserAndGetClientAsync<IShoppingCartClient>();
 
         // Create 3 books first
         var book1 = await TestHelpers.CreateBookAsync(adminClient);
@@ -117,20 +118,20 @@ public class ShoppingCartTests
         var book3 = await TestHelpers.CreateBookAsync(adminClient);
 
         // Add multiple items
-        await TestHelpers.AddToCartAsync(httpClient, book1.Id, 2);
-        await TestHelpers.AddToCartAsync(httpClient, book2.Id, 3);
-        await TestHelpers.AddToCartAsync(httpClient, book3.Id);
+        await TestHelpers.AddToCartAsync(client, book1.Id, 2);
+        await TestHelpers.AddToCartAsync(client, book2.Id, 3);
+        await TestHelpers.AddToCartAsync(client, book3.Id);
 
         // Verify items exist
-        var cartBefore = await httpClient.GetFromJsonAsync<ShoppingCartResponse>("/api/cart");
-        _ = await Assert.That(cartBefore!.Items.Count).IsEqualTo(3);
+        var cartBefore = await client.GetShoppingCartAsync();
+        _ = await Assert.That(cartBefore.Items.Count).IsEqualTo(3);
 
         //Act - Clear cart
-        await TestHelpers.ClearCartAsync(httpClient);
+        await TestHelpers.ClearCartAsync(client);
 
         // Assert - Cart should be empty
-        var cart = await httpClient.GetFromJsonAsync<ShoppingCartResponse>("/api/cart");
-        _ = await Assert.That(cart!.Items.Count).IsEqualTo(0);
+        var cart = await client.GetShoppingCartAsync();
+        _ = await Assert.That(cart.Items.Count).IsEqualTo(0);
         _ = await Assert.That(cart.TotalItems).IsEqualTo(0);
     }
 
@@ -138,14 +139,14 @@ public class ShoppingCartTests
     public async Task GetCart_WhenEmpty_ShouldReturnEmptyCart()
     {
         // Arrange
-        var httpClient = await TestHelpers.CreateUserAndGetClientAsync();
+        var client = await TestHelpers.CreateUserAndGetClientAsync<IShoppingCartClient>();
 
         // Act
-        var cart = await httpClient.GetFromJsonAsync<ShoppingCartResponse>("/api/cart");
+        var cart = await client.GetShoppingCartAsync();
 
         // Assert
         _ = await Assert.That(cart).IsNotNull();
-        _ = await Assert.That(cart!.Items.Count).IsEqualTo(0);
+        _ = await Assert.That(cart.Items.Count).IsEqualTo(0);
         _ = await Assert.That(cart.TotalItems).IsEqualTo(0);
     }
 
@@ -153,27 +154,40 @@ public class ShoppingCartTests
     public async Task AddToCart_WithInvalidQuantity_ShouldReturnBadRequest()
     {
         // Arrange
-        var httpClient = await TestHelpers.CreateUserAndGetClientAsync();
+        var client = await TestHelpers.CreateUserAndGetClientAsync<IShoppingCartClient>();
 
         // Act & Assert - Zero quantity
-        var request1 = new AddToCartClientRequest(Guid.NewGuid(), 0);
-        var response1 = await httpClient.PostAsJsonAsync("/api/cart/items", request1);
-        _ = await Assert.That(response1.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
-        var error1 = await response1.Content.ReadFromJsonAsync<TestHelpers.ErrorResponse>();
-        _ = await Assert.That(error1?.Error).IsEqualTo(ErrorCodes.Cart.InvalidQuantity);
+        try
+        {
+            await client.AddToCartAsync(new AddToCartClientRequest(Guid.NewGuid(), 0));
+            Assert.Fail("Should have thrown ApiException");
+        }
+        catch (ApiException ex)
+        {
+            _ = await Assert.That(ex.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+            var error = await ex.GetContentAsAsync<TestHelpers.ErrorResponse>();
+            _ = await Assert.That(error?.Error).IsEqualTo(ErrorCodes.Cart.InvalidQuantity);
+        }
 
         // Act & Assert - Negative quantity
-        var request2 = new AddToCartClientRequest(Guid.NewGuid(), -1);
-        var response2 = await httpClient.PostAsJsonAsync("/api/cart/items", request2);
-        _ = await Assert.That(response2.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
-        var error2 = await response2.Content.ReadFromJsonAsync<TestHelpers.ErrorResponse>();
-        _ = await Assert.That(error2?.Error).IsEqualTo(ErrorCodes.Cart.InvalidQuantity);
+        try
+        {
+            await client.AddToCartAsync(new AddToCartClientRequest(Guid.NewGuid(), -1));
+            Assert.Fail("Should have thrown ApiException");
+        }
+        catch (ApiException ex)
+        {
+            _ = await Assert.That(ex.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+            var error = await ex.GetContentAsAsync<TestHelpers.ErrorResponse>();
+            _ = await Assert.That(error?.Error).IsEqualTo(ErrorCodes.Cart.InvalidQuantity);
+        }
     }
 
     [Test]
     public async Task CartOperations_WhenUnauthenticated_ShouldReturnUnauthorized()
     {
         // Arrange
+        // Using HttpClient here is simpler as we can't easily interface-proxy unauth requests unless we explicitly create a client without auth header
         var unauthenticatedClient = TestHelpers.GetUnauthenticatedClient();
 
         // Act & Assert - Get cart
