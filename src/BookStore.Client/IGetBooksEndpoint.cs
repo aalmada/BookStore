@@ -15,17 +15,17 @@ using BookStore.Shared.Models;
 
 namespace BookStore.Client
 {
-    [System.CodeDom.Compiler.GeneratedCode("Refitter", "1.7.1.0")]
+    
     public partial interface IGetBooksEndpoint
     {
         [Headers("Accept: application/json")]
         [Get("/api/books")]
         Task<PagedListDto<BookDto>> GetBooksAsync(
             [Query] BookSearchRequest request,
-            [Header("api-version")] string api_version, 
-            [Header("Accept-Language")] string accept_Language, 
-            [Header("X-Correlation-ID")] string? x_Correlation_ID = null, 
-            [Header("X-Causation-ID")] string? x_Causation_ID = null, 
+            
+            
+            
+            
             CancellationToken cancellationToken = default);
     }
 

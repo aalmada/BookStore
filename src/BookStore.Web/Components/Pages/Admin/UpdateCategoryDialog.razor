@@ -121,7 +121,7 @@
             );
 
             var request = new UpdateCategoryRequest { Translations = updatedTranslations };
-            await ((IUpdateCategoryEndpoint)CategoriesClient).Execute(Category.Id, request, "1.0", "en-US");
+            await ((IUpdateCategoryEndpoint)CategoriesClient).Execute(Category.Id, request);
 
             Snackbar.Add("Category updated successfully.", Severity.Success);
             MudDialog.Close(DialogResult.Ok(true));

@@ -372,9 +372,7 @@
                 try
                 {
                     return await BooksClient.GetBookAsync(
-                        id: Id,
-                        api_version: "1.0",
-                        accept_Language: "en");
+                        id: Id);
                 }
                 catch (Refit.ApiException apiEx) when (apiEx.StatusCode == System.Net.HttpStatusCode.NotFound)
                 {
@@ -397,9 +395,7 @@
         try
         {
             return await BooksClient.GetBookAsync(
-                id: Id,
-                api_version: "1.0",
-                accept_Language: "en");
+                id: Id);
         }
         catch (Refit.ApiException apiEx) when (apiEx.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
@@ -552,7 +548,7 @@
 
         try
         {
-            await BooksClient.SoftDeleteBookAsync(currentBook.Id, "1.0", "en");
+            await BooksClient.SoftDeleteBookAsync(currentBook.Id);
             Snackbar.Add("Book deleted", Severity.Success);
             if (bookQuery != null) await bookQuery.LoadAsync();
         }

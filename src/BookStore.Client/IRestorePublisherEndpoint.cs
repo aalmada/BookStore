@@ -15,11 +15,11 @@ using BookStore.Shared.Models;
 
 namespace BookStore.Client
 {
-    [System.CodeDom.Compiler.GeneratedCode("Refitter", "1.7.1.0")]
+    
     public partial interface IRestorePublisherEndpoint
     {
         [Post("/api/admin/publishers/{id}/restore")]
-        Task Execute(System.Guid id, [Header("api-version")] string api_version, [Header("Accept-Language")] string accept_Language, [Header("X-Correlation-ID")] string? x_Correlation_ID = null, [Header("X-Causation-ID")] string? x_Causation_ID = null, CancellationToken cancellationToken = default);
+        Task Execute(System.Guid id, CancellationToken cancellationToken = default);
     }
 
 }

@@ -82,8 +82,6 @@
 
         var paged = await AuthorsClient.GetAllAuthorsAsync(
             request,
-            "1.0",
-            "en-US",
             cancellationToken);
 
         return new TableData<AdminAuthorDto> { Items = paged.Items, TotalItems = (int)paged.TotalItemCount };
@@ -109,7 +107,7 @@
         {
             try
             {
-                await ((ISoftDeleteAuthorEndpoint)AuthorsClient).Execute(author.Id, "1.0", "en-US");
+                await ((ISoftDeleteAuthorEndpoint)AuthorsClient).Execute(author.Id);
                 Snackbar.Add($"Author {author.Name} deleted successfully.", Severity.Success);
                 await _table.ReloadServerData();
             }

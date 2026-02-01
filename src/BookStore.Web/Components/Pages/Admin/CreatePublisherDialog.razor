@@ -34,7 +34,7 @@
 
         try
         {
-            await PublishersClient.Execute(_model, "1.0", "en-US");
+            await PublishersClient.Execute(_model);
             Snackbar.Add($"Publisher {_model.Name} created successfully.", Severity.Success);
             MudDialog.Close(DialogResult.Ok(true));
         }

@@ -24,11 +24,15 @@ public static class BookStoreClientExtensions
         IHttpClientBuilder AddClient<T>() where T : class
         {
             var builder = services.AddRefitClient<T>()
-                .ConfigureHttpClient(c => c.BaseAddress = baseAddress);
+                .ConfigureHttpClient(c => c.BaseAddress = baseAddress)
+                .AddHttpMessageHandler<BookStore.Client.Infrastructure.BookStoreHeaderHandler>();
 
             configureClient?.Invoke(builder);
             return builder;
         }
+
+        // Register the handler
+        _ = services.AddTransient<BookStore.Client.Infrastructure.BookStoreHeaderHandler>();
 
         // Aggregated clients
         _ = AddClient<IBooksClient>();

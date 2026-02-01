@@ -82,8 +82,6 @@
 
         var paged = await PublishersClient.GetAllPublishersAsync(
             request,
-            "1.0",
-            "en-US",
             cancellationToken);
 
         return new TableData<PublisherDto> { Items = paged.Items, TotalItems = (int)paged.TotalItemCount };
@@ -109,7 +107,7 @@
         {
             try
             {
-                await ((ISoftDeletePublisherEndpoint)PublishersClient).Execute(publisher.Id, "1.0", "en-US");
+                await ((ISoftDeletePublisherEndpoint)PublishersClient).Execute(publisher.Id);
                 Snackbar.Add($"Publisher {publisher.Name} deleted successfully.", Severity.Success);
                 await _table.ReloadServerData();
             }

@@ -222,7 +222,7 @@
     {
         try
         {
-            var result = await PublishersClient.GetPublishersAsync(1, 20, "1.0", "en-US", cancellationToken: ct);
+            var result = await PublishersClient.GetPublishersAsync(1, 20, cancellationToken: ct);
             if (string.IsNullOrEmpty(value)) return result.Items;
             return result.Items.Where(x => x.Name.Contains(value, StringComparison.OrdinalIgnoreCase));
         }
@@ -236,7 +236,7 @@
     {
         try
         {
-            var result = await AuthorsClient.GetAuthorsAsync(1, 20, "1.0", "en-US", cancellationToken: ct);
+            var result = await AuthorsClient.GetAuthorsAsync(1, 20, cancellationToken: ct);
             if (string.IsNullOrEmpty(value)) return result.Items;
             return result.Items.Where(x => x.Name.Contains(value, StringComparison.OrdinalIgnoreCase));
         }
@@ -250,7 +250,7 @@
     {
         try
         {
-            var result = await CategoriesClient.GetCategoriesAsync(1, 20, "name", "asc", "1.0", "en-US", cancellationToken: ct);
+            var result = await CategoriesClient.GetCategoriesAsync(1, 20, "name", "asc", cancellationToken: ct);
             if (string.IsNullOrEmpty(value)) return result.Items;
             return result.Items.Where(x => x.Name.Contains(value, StringComparison.OrdinalIgnoreCase));
         }
@@ -344,12 +344,12 @@
                 };
                 updateRequest.AdditionalProperties["prices"] = _model.AdditionalProperties["prices"];
 
-                await BooksClient.UpdateBookAsync(BookId, updateRequest, "1.0", "en-US");
+                await BooksClient.UpdateBookAsync(BookId, updateRequest);
                 Snackbar.Add("Book updated successfully.", Severity.Success);
             }
             else
             {
-                await BooksClient.CreateBookAsync(_model, "1.0", "en-US");
+                await BooksClient.CreateBookAsync(_model);
                 Snackbar.Add("Book created successfully.", Severity.Success);
             }
 

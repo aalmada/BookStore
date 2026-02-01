@@ -82,8 +82,6 @@
 
         var paged = await CategoriesClient.GetAllCategoriesAsync(
             request,
-            "1.0",
-            "en-US",
             cancellationToken);
 
         return new TableData<AdminCategoryDto> { Items = paged.Items, TotalItems = (int)paged.TotalItemCount };
@@ -109,7 +107,7 @@
         {
             try
             {
-                await ((ISoftDeleteCategoryEndpoint)CategoriesClient).Execute(category.Id, "1.0", "en-US");
+                await ((ISoftDeleteCategoryEndpoint)CategoriesClient).Execute(category.Id);
                 Snackbar.Add($"Category {category.Name} deleted successfully.", Severity.Success);
                 await _table.ReloadServerData();
             }
