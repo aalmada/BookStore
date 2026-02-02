@@ -1,21 +1,24 @@
-using System.Net.Http.Json;
+using System.Net;
 using Bogus;
 using BookStore.ApiService.Models;
+using BookStore.Client;
 using BookStore.Shared.Models;
 using JasperFx;
 using Marten;
+using Refit;
 using Weasel.Core;
 
 namespace BookStore.AppHost.Tests;
 
 public class EmailVerificationTests
 {
-    readonly HttpClient _client;
+    readonly IIdentityClient _client;
     readonly Faker _faker;
 
     public EmailVerificationTests()
     {
-        _client = TestHelpers.GetUnauthenticatedClient();
+        var httpClient = TestHelpers.GetUnauthenticatedClient();
+        _client = RestService.For<IIdentityClient>(httpClient);
         _faker = new Faker();
     }
 
@@ -25,52 +28,41 @@ public class EmailVerificationTests
         // 1. Register a new user
         var email = _faker.Internet.Email();
         var password = _faker.Internet.Password(8, false, "\\w", "Aa1!");
+        var registerRequest = new RegisterRequest(email, password);
 
-        var registerResponse =
-            await _client.PostAsJsonAsync("/account/register", new { Email = email, Password = password });
-        _ = await Assert.That(registerResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        _ = await _client.RegisterAsync(registerRequest);
 
         // Manually unconfirm email to simulate verification requirement (since tests use DeliveryMethod=None)
         await ManuallySetEmailConfirmedAsync(email, false);
 
         // 2. Attempt login - should fail with Requires verification
-        var loginResponse = await _client.PostAsJsonAsync("/account/login", new { Email = email, Password = password });
-        _ = await Assert.That(loginResponse.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
-
-        var loginError = await loginResponse.Content.ReadFromJsonAsync<TestHelpers.ErrorResponse>();
-        _ = await Assert.That(loginError?.Error).IsEqualTo(ErrorCodes.Auth.EmailUnconfirmed);
+        try
+        {
+            _ = await _client.LoginAsync(new LoginRequest(email, password));
+            Assert.Fail("Should have thrown ApiException");
+        }
+        catch (ApiException ex)
+        {
+            _ = await Assert.That((int)ex.StatusCode).IsEqualTo((int)HttpStatusCode.Unauthorized);
+            var problem = await ex.GetContentAsAsync<TestHelpers.ValidationProblemDetails>();
+            _ = await Assert.That(problem?.Error).IsEqualTo(ErrorCodes.Auth.EmailUnconfirmed);
+        }
 
         // 3. Resend verification
-        var resendResponse = await _client.PostAsJsonAsync("/account/resend-verification", new { Email = email });
-        _ = await Assert.That(resendResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
-
-        var resendResult = await resendResponse.Content.ReadFromJsonAsync<TestHelpers.MessageResponse>();
-        _ = await Assert.That(resendResult?.Message).Contains("a new verification link has been sent");
+        await _client.ResendVerificationAsync(new ResendVerificationRequest(email));
 
         // 4. Manually confirm email via DB (simulating clicking the link)
         await ManuallySetEmailConfirmedAsync(email, true);
 
         // 5. Attempt login again - should succeed
-        var loginResponse2 =
-            await _client.PostAsJsonAsync("/account/login", new { Email = email, Password = password });
-        _ = await Assert.That(loginResponse2.StatusCode).IsEqualTo(HttpStatusCode.OK);
-
-        var loginResult = await loginResponse2.Content.ReadFromJsonAsync<TestHelpers.LoginResponse>();
-        _ = await Assert.That(loginResult?.AccessToken).IsNotNull().And.IsNotEmpty();
+        var loginResult = await _client.LoginAsync(new LoginRequest(email, password));
+        _ = await Assert.That(loginResult.AccessToken).IsNotNull().And.IsNotEmpty();
     }
 
     [Test]
     public async Task ResendVerification_ForNonExistentUser_ShouldReturnGenericSuccess()
-    {
-        // Act
-        var response =
-            await _client.PostAsJsonAsync("/account/resend-verification", new { Email = "nonexistent@example.com" });
-
-        // Assert
-        _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-        var result = await response.Content.ReadFromJsonAsync<TestHelpers.MessageResponse>();
-        _ = await Assert.That(result?.Message).Contains("If an account exists");
-    }
+        // Act - Identity API returns 200 OK even for non-existent users to prevent enumeration
+        => await _client.ResendVerificationAsync(new ResendVerificationRequest("nonexistent@example.com"));
 
     [Test]
     public async Task ResendVerification_ForAlreadyConfirmedUser_ShouldReturnGenericSuccess()
@@ -80,18 +72,13 @@ public class EmailVerificationTests
         var password = _faker.Internet.Password(8, false, "\\w", "Aa1!");
 
         // Register
-        _ = await _client.PostAsJsonAsync("/account/register", new { Email = email, Password = password });
+        _ = await _client.RegisterAsync(new RegisterRequest(email, password));
 
         // Confirm (it's already true by default in tests, but let's be explicit)
         await ManuallySetEmailConfirmedAsync(email, true);
 
         // Act
-        var response = await _client.PostAsJsonAsync("/account/resend-verification", new { Email = email });
-
-        // Assert
-        _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-        var result = await response.Content.ReadFromJsonAsync<TestHelpers.MessageResponse>();
-        _ = await Assert.That(result?.Message).Contains("If an account exists");
+        await _client.ResendVerificationAsync(new ResendVerificationRequest(email));
     }
 
     [Test]
@@ -102,13 +89,12 @@ public class EmailVerificationTests
         var password = _faker.Internet.Password(8, false, "\\w", "Aa1!");
 
         // Register
-        _ = await _client.PostAsJsonAsync("/account/register", new { Email = email, Password = password });
+        _ = await _client.RegisterAsync(new RegisterRequest(email, password));
 
         await ManuallySetEmailConfirmedAsync(email, false);
 
         // Act 1: First resend
-        var response1 = await _client.PostAsJsonAsync("/account/resend-verification", new { Email = email });
-        _ = await Assert.That(response1.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await _client.ResendVerificationAsync(new ResendVerificationRequest(email));
 
         // Check timestamp was set
         var userAfterFirst = await GetUserAsync(email);
@@ -116,25 +102,28 @@ public class EmailVerificationTests
         var timestamp1 = userAfterFirst!.LastVerificationEmailSent;
 
         // Act 2: Immediate second resend
-        var response2 = await _client.PostAsJsonAsync("/account/resend-verification", new { Email = email });
-        _ = await Assert.That(response2.StatusCode).IsEqualTo(HttpStatusCode.OK); // Should still be OK
+        await _client.ResendVerificationAsync(new ResendVerificationRequest(email));
 
         // Check timestamp was NOT updated (cooldown strictly enforced)
         var userAfterSecond = await GetUserAsync(email);
         _ = await Assert.That(userAfterSecond?.LastVerificationEmailSent).IsEqualTo(timestamp1);
     }
 
-    async Task<ApplicationUser?> GetUserAsync(string email)
+    async Task<IDocumentStore> GetStoreAsync()
     {
         var connectionString = await GlobalHooks.App!.GetConnectionStringAsync("bookstore");
-        using var store = DocumentStore.For(opts =>
+        return DocumentStore.For(opts =>
         {
             opts.UseSystemTextJsonForSerialization(EnumStorage.AsString, Casing.CamelCase);
             opts.Connection(connectionString!);
             _ = opts.Policies.AllDocumentsAreMultiTenanted();
             opts.Events.TenancyStyle = Marten.Storage.TenancyStyle.Conjoined;
         });
+    }
 
+    async Task<ApplicationUser?> GetUserAsync(string email)
+    {
+        using var store = await GetStoreAsync();
         await using var session = store.LightweightSession(StorageConstants.DefaultTenantId);
         var normalizedEmail = email.ToUpperInvariant();
         return await session.Query<ApplicationUser>()
@@ -144,15 +133,7 @@ public class EmailVerificationTests
 
     async Task ManuallySetEmailConfirmedAsync(string email, bool confirmed)
     {
-        var connectionString = await GlobalHooks.App!.GetConnectionStringAsync("bookstore");
-        using var store = DocumentStore.For(opts =>
-        {
-            opts.UseSystemTextJsonForSerialization(EnumStorage.AsString, Casing.CamelCase);
-            opts.Connection(connectionString!);
-            _ = opts.Policies.AllDocumentsAreMultiTenanted();
-            opts.Events.TenancyStyle = Marten.Storage.TenancyStyle.Conjoined;
-        });
-
+        using var store = await GetStoreAsync();
         await using var session = store.LightweightSession(StorageConstants.DefaultTenantId);
 
         var normalizedEmail = email.ToUpperInvariant();

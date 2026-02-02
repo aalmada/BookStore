@@ -1,8 +1,9 @@
-using System.Net.Http.Headers;
-using System.Net.Http.Json;
+using System.Net;
 using BookStore.ApiService.Models;
+using BookStore.Client;
 using BookStore.Shared.Models;
 using Marten;
+using Refit;
 using Weasel.Core;
 
 namespace BookStore.AppHost.Tests;
@@ -18,7 +19,8 @@ public class AdminTenantTests
             throw new InvalidOperationException("App is not initialized");
         }
 
-        using var client = GlobalHooks.App.CreateHttpClient("apiservice");
+        var client =
+            RestService.For<IAdminTenantClient>(TestHelpers.GetAuthenticatedClient(GlobalHooks.AdminAccessToken!));
 
         // Arrange
         var command = new CreateTenantCommand(
@@ -31,18 +33,11 @@ public class AdminTenantTests
             AdminPassword: "short" // Invalid password
         );
 
-        var request = new HttpRequestMessage(HttpMethod.Post, "/api/admin/tenants")
-        {
-            Content = JsonContent.Create(command)
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", GlobalHooks.AdminAccessToken);
+        // Act & Assert
+        var exception = await Assert.That(async () => await client.CreateTenantAsync(command)).Throws<ApiException>();
+        _ = await Assert.That(exception!.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
 
-        // Act
-        var response = await client.SendAsync(request);
-
-        // Assert
-        _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
-        var error = await response.Content.ReadFromJsonAsync<TestHelpers.ErrorResponse>();
+        var error = await exception.GetContentAsAsync<TestHelpers.ErrorResponse>();
         _ = await Assert.That(error?.Error).IsEqualTo(ErrorCodes.Tenancy.InvalidAdminPassword);
     }
 
@@ -54,7 +49,8 @@ public class AdminTenantTests
             throw new InvalidOperationException("App is not initialized");
         }
 
-        using var client = GlobalHooks.App.CreateHttpClient("apiservice");
+        var client =
+            RestService.For<IAdminTenantClient>(TestHelpers.GetAuthenticatedClient(GlobalHooks.AdminAccessToken!));
 
         // Arrange
         var command = new CreateTenantCommand(
@@ -67,18 +63,11 @@ public class AdminTenantTests
             AdminPassword: "Password123!"
         );
 
-        var request = new HttpRequestMessage(HttpMethod.Post, "/api/admin/tenants")
-        {
-            Content = JsonContent.Create(command)
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", GlobalHooks.AdminAccessToken);
+        // Act & Assert
+        var exception = await Assert.That(async () => await client.CreateTenantAsync(command)).Throws<ApiException>();
+        _ = await Assert.That(exception!.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
 
-        // Act
-        var response = await client.SendAsync(request);
-
-        // Assert
-        _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
-        var error = await response.Content.ReadFromJsonAsync<TestHelpers.ErrorResponse>();
+        var error = await exception.GetContentAsAsync<TestHelpers.ErrorResponse>();
         _ = await Assert.That(error?.Error).IsEqualTo(ErrorCodes.Tenancy.InvalidAdminEmail);
     }
 
@@ -90,7 +79,8 @@ public class AdminTenantTests
             throw new InvalidOperationException("App is not initialized");
         }
 
-        using var client = GlobalHooks.App.CreateHttpClient("apiservice");
+        var client =
+            RestService.For<IAdminTenantClient>(TestHelpers.GetAuthenticatedClient(GlobalHooks.AdminAccessToken!));
 
         // Arrange
         var tenantId = $"valid-tenant-{Guid.NewGuid():N}";
@@ -104,17 +94,8 @@ public class AdminTenantTests
             AdminPassword: "Password123!" // Valid password
         );
 
-        var request = new HttpRequestMessage(HttpMethod.Post, "/api/admin/tenants")
-        {
-            Content = JsonContent.Create(command)
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", GlobalHooks.AdminAccessToken);
-
         // Act
-        var response = await client.SendAsync(request);
-
-        // Assert
-        _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Created);
+        await client.CreateTenantAsync(command);
     }
 
     [Test]
@@ -125,7 +106,8 @@ public class AdminTenantTests
             throw new InvalidOperationException("App is not initialized");
         }
 
-        using var client = GlobalHooks.App.CreateHttpClient("apiservice");
+        var client =
+            RestService.For<IAdminTenantClient>(TestHelpers.GetAuthenticatedClient(GlobalHooks.AdminAccessToken!));
 
         // Arrange
         var tenantId = $"verify-tenant-{Guid.NewGuid():N}";
@@ -140,22 +122,12 @@ public class AdminTenantTests
             AdminPassword: "Password123!"
         );
 
-        var request = new HttpRequestMessage(HttpMethod.Post, "/api/admin/tenants")
-        {
-            Content = JsonContent.Create(command)
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", GlobalHooks.AdminAccessToken);
-
         // Act & Assert - Connect to SSE before creating, then wait for notification
         // Creation triggers UserUpdated via UserProfile projection
         var received = await TestHelpers.ExecuteAndWaitForEventAsync(
             Guid.Empty,
             "UserUpdated",
-            async () =>
-            {
-                var response = await client.SendAsync(request);
-                _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Created);
-            },
+            async () => await client.CreateTenantAsync(command),
             TimeSpan.FromSeconds(10));
 
         _ = await Assert.That(received).IsTrue();

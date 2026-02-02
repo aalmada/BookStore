@@ -1,5 +1,7 @@
 using System.Net;
-using System.Net.Http.Json;
+using BookStore.Client;
+using BookStore.Shared.Models;
+using Refit;
 
 namespace BookStore.AppHost.Tests;
 
@@ -9,55 +11,52 @@ public class ErrorScenarioTests
     public async Task CreateBook_WithoutAuth_ShouldReturnUnauthorized()
     {
         // Arrange
-        var httpClient = TestHelpers.GetUnauthenticatedClient();
+        var client = RestService.For<IBooksClient>(TestHelpers.GetUnauthenticatedClient());
         var createBookRequest = TestHelpers.GenerateFakeBookRequest();
 
-        // Act
-        var createResponse = await httpClient.PostAsJsonAsync("/api/admin/books", createBookRequest);
-
-        // Assert
-        _ = await Assert.That(createResponse.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+        // Act & Assert
+        var exception = await Assert.That(async () => await client.CreateBookAsync(createBookRequest))
+            .Throws<ApiException>();
+        _ = await Assert.That(exception!.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
     [Test]
     public async Task CreateBook_WithInvalidData_ShouldReturnBadRequest()
     {
         // Arrange
-        var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
+        var client = RestService.For<IBooksClient>(await TestHelpers.GetAuthenticatedClientAsync());
 
-        var createBookRequest = new
+        var createBookRequest = new CreateBookRequest
         {
             Title = "", // Invalid: empty title
-            Isbn = "invalid-isbn", // Invalid: bad ISBN format
+            Isbn = "invalid-isbn", // Invalid: bad ISBN format (handled by validation?)
             Language = "en",
-            Translations = new Dictionary<string, object>
-            {
-                ["en"] = new { Description = "Test description" }
-            },
-            PublicationDate = new { Year = 2026, Month = 1, Day = 1 },
-            PublisherId = (Guid?)null,
-            AuthorIds = new Guid[] { },
-            CategoryIds = new Guid[] { }
+            Translations =
+                new Dictionary<string, BookStore.Client.BookTranslationDto>
+                {
+                    ["en"] = new BookStore.Client.BookTranslationDto { Description = "Test description" }
+                },
+            PublicationDate = new PartialDate(2026, 1, 1),
+            PublisherId = null,
+            AuthorIds = [],
+            CategoryIds = []
         };
 
-        // Act
-        var createResponse = await httpClient.PostAsJsonAsync("/api/admin/books", createBookRequest);
-
-        // Assert
-        _ = await Assert.That(createResponse.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+        // Act & Assert
+        var exception = await Assert.That(async () => await client.CreateBookAsync(createBookRequest))
+            .Throws<ApiException>();
+        _ = await Assert.That(exception!.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
     }
 
     [Test]
     public async Task GetBook_NotFound_ShouldReturn404()
     {
         // Arrange
-        var httpClient = TestHelpers.GetUnauthenticatedClient();
+        var client = RestService.For<IBooksClient>(TestHelpers.GetUnauthenticatedClient());
         var nonExistentId = Guid.NewGuid();
 
-        // Act
-        var getResponse = await httpClient.GetAsync($"/api/books/{nonExistentId}");
-
-        // Assert
-        _ = await Assert.That(getResponse.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
+        // Act & Assert
+        var exception = await Assert.That(async () => await client.GetBookAsync(nonExistentId)).Throws<ApiException>();
+        _ = await Assert.That(exception!.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
     }
 }
