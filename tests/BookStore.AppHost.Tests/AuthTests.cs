@@ -23,8 +23,8 @@ public class AuthTests
     {
         // Arrange
         var request = new RegisterRequest(
-            _faker.Internet.Email(),
-            _faker.Internet.Password(8, false, "\\w", "Aa1!")
+            TestHelpers.GenerateFakeEmail(),
+            TestHelpers.GenerateFakePassword()
         );
 
         // Act
@@ -40,7 +40,7 @@ public class AuthTests
     {
         // Arrange
         var email = _faker.Internet.Email();
-        var password = _faker.Internet.Password(8, false, "\\w", "Aa1!");
+        var password = TestHelpers.GenerateFakePassword();
         var request = new RegisterRequest(email, password);
 
         // Register once
@@ -58,7 +58,7 @@ public class AuthTests
     {
         // Arrange
         var email = _faker.Internet.Email();
-        var password = _faker.Internet.Password(8, false, "\\w", "Aa1!");
+        var password = TestHelpers.GenerateFakePassword();
 
         // Register first
         _ = await _client.RegisterAsync(new RegisterRequest(email, password));
@@ -129,8 +129,8 @@ public class AuthTests
     public async Task Refresh_WithValidToken_ShouldReturnNewToken()
     {
         // Arrange
-        var email = _faker.Internet.Email();
-        var password = _faker.Internet.Password(8, false, "\\w", "Aa1!");
+        var email = TestHelpers.GenerateFakeEmail();
+        var password = TestHelpers.GenerateFakePassword();
 
         // Register and Login
         _ = await _client.RegisterAsync(new RegisterRequest(email, password));
@@ -149,8 +149,8 @@ public class AuthTests
     public async Task Logout_WithValidRefreshToken_ShouldInvalidateToken()
     {
         // Arrange - Register and login
-        var email = _faker.Internet.Email();
-        var password = _faker.Internet.Password(8, false, "\\w", "Aa1!");
+        var email = TestHelpers.GenerateFakeEmail();
+        var password = TestHelpers.GenerateFakePassword();
 
         _ = await _client.RegisterAsync(new RegisterRequest(email, password));
         var loginResult = await _client.LoginAsync(new LoginRequest(email, password));
@@ -177,8 +177,8 @@ public class AuthTests
     public async Task Logout_WithoutRefreshToken_ShouldInvalidateAllTokens()
     {
         // Arrange - Register, login twice to get two refresh tokens
-        var email = _faker.Internet.Email();
-        var password = _faker.Internet.Password(8, false, "\\w", "Aa1!");
+        var email = TestHelpers.GenerateFakeEmail();
+        var password = TestHelpers.GenerateFakePassword();
 
         _ = await _client.RegisterAsync(new RegisterRequest(email, password));
 

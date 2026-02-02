@@ -4,8 +4,8 @@ using Marten;
 using Refit;
 using Weasel.Core;
 using BookTranslationDto = BookStore.Client.BookTranslationDto;
-using CreateBookRequest = BookStore.Client.CreateBookRequest;
 using CreateAuthorRequest = BookStore.Client.CreateAuthorRequest;
+using CreateBookRequest = BookStore.Client.CreateBookRequest;
 
 namespace BookStore.AppHost.Tests;
 
@@ -50,14 +50,16 @@ public class RefitMartenRegressionTests
             PublicationDate = new PartialDate(2024, 1, 1),
             Prices = new Dictionary<string, decimal> { ["USD"] = 10.0m }
         };
-        await TestHelpers.CreateBookAsync(authClient, createRequest);
+        _ = await TestHelpers.CreateBookAsync(authClient, createRequest);
 
         // Act
         // This query caused Marten.Exceptions.BadLinqExpressionException before the fix
         // because it was trying to query the Dictionary directly.
         var response = await publicClient.GetBooksAsync(new BookSearchRequest
         {
-            Search = uniqueTitle, MinPrice = 5, MaxPrice = 15
+            Search = uniqueTitle,
+            MinPrice = 5,
+            MaxPrice = 15
         });
 
         // Assert
@@ -87,12 +89,14 @@ public class RefitMartenRegressionTests
             PublicationDate = new PartialDate(2024, 1, 1),
             Prices = new Dictionary<string, decimal> { ["USD"] = 20.0m }
         };
-        await TestHelpers.CreateBookAsync(authClient, createRequest);
+        _ = await TestHelpers.CreateBookAsync(authClient, createRequest);
 
         // Act
         var response = await publicClient.GetBooksAsync(new BookSearchRequest
         {
-            Search = uniqueTitle, MinPrice = 5, MaxPrice = 15
+            Search = uniqueTitle,
+            MinPrice = 5,
+            MaxPrice = 15
         });
 
         // Assert
@@ -107,7 +111,7 @@ public class RefitMartenRegressionTests
         // Create a book to ensure data exists with the new PublicationDateString field populated
         var authClient = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
         var uniqueTitle = $"DateSort-{Guid.NewGuid()}";
-        await TestHelpers.CreateBookAsync(authClient,
+        _ = await TestHelpers.CreateBookAsync(authClient,
             new CreateBookRequest
             {
                 Title = uniqueTitle,
@@ -163,14 +167,16 @@ public class RefitMartenRegressionTests
                 ["EUR"] = 10.0m // Cheap in EUR
             }
         };
-        await TestHelpers.CreateBookAsync(authClient, createRequest);
+        _ = await TestHelpers.CreateBookAsync(authClient, createRequest);
 
         // Act
         // Filter: MaxPrice 15 AND Currency=USD.
         // The system should now verify p.Currency == "USD" && p.Value <= maxPrice.
         var response = await publicClient.GetBooksAsync(new BookSearchRequest
         {
-            Search = uniqueTitle, MaxPrice = 15, Currency = "USD"
+            Search = uniqueTitle,
+            MaxPrice = 15,
+            Currency = "USD"
         });
 
         // Assert
@@ -290,7 +296,7 @@ public class RefitMartenRegressionTests
         // 1. Get Authors from Tenant A. Should contain Author A.
         var publicClientA = RestService.For<IAuthorsClient>(TestHelpers.GetUnauthenticatedClient(tenantA));
 
-        string nameA = authorReqA.Name;
+        var nameA = authorReqA.Name;
 
         // Poll for consistency
         var foundA = false;
@@ -311,7 +317,7 @@ public class RefitMartenRegressionTests
         // 2. Get Authors from Tenant B. Should contain Author B, AND NOT Author A.
         var publicClientB = RestService.For<IAuthorsClient>(TestHelpers.GetUnauthenticatedClient(tenantB));
 
-        string nameB = authorReqB.Name;
+        var nameB = authorReqB.Name;
 
         // Poll for Author B presence (wait for consistency)
         var foundB = false;

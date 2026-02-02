@@ -43,8 +43,8 @@ public class AccountIsolationTests
     public async Task User_RegisteredOnContoso_CannotLoginOnAcme()
     {
         // Arrange: Create a unique user email for this test
-        var userEmail = $"isolation-test-{Guid.NewGuid()}@example.com";
-        const string password = "Password123!";
+        var userEmail = TestHelpers.GenerateFakeEmail();
+        var password = TestHelpers.GenerateFakePassword();
 
         var contosoClient = RestService.For<IIdentityClient>(TestHelpers.GetUnauthenticatedClient("contoso"));
         var acmeClient = RestService.For<IIdentityClient>(TestHelpers.GetUnauthenticatedClient("acme"));
@@ -64,8 +64,8 @@ public class AccountIsolationTests
     public async Task User_RegisteredOnContoso_CanLoginOnContoso()
     {
         // Arrange: Create a unique user email for this test
-        var userEmail = $"isolation-test-{Guid.NewGuid()}@example.com";
-        const string password = "Password123!";
+        var userEmail = TestHelpers.GenerateFakeEmail();
+        var password = TestHelpers.GenerateFakePassword();
 
         var contosoClient = RestService.For<IIdentityClient>(TestHelpers.GetUnauthenticatedClient("contoso"));
 
@@ -84,8 +84,8 @@ public class AccountIsolationTests
     public async Task User_RegisteredOnAcme_CannotLoginOnContoso()
     {
         // Arrange: Create a unique user email for this test
-        var userEmail = $"isolation-test-{Guid.NewGuid()}@example.com";
-        const string password = "Password123!";
+        var userEmail = TestHelpers.GenerateFakeEmail();
+        var password = TestHelpers.GenerateFakePassword();
 
         var acmeClient = RestService.For<IIdentityClient>(TestHelpers.GetUnauthenticatedClient("acme"));
         var contosoClient = RestService.For<IIdentityClient>(TestHelpers.GetUnauthenticatedClient("contoso"));
@@ -105,8 +105,8 @@ public class AccountIsolationTests
     public async Task User_RegisteredOnDefault_CannotLoginOnAcme()
     {
         // Arrange: Create a unique user email for this test
-        var userEmail = $"isolation-test-{Guid.NewGuid()}@example.com";
-        const string password = "Password123!";
+        var userEmail = TestHelpers.GenerateFakeEmail();
+        var password = TestHelpers.GenerateFakePassword();
 
         var defaultClient = RestService.For<IIdentityClient>(TestHelpers.GetUnauthenticatedClient());
         var acmeClient = RestService.For<IIdentityClient>(TestHelpers.GetUnauthenticatedClient("acme"));

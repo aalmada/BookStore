@@ -41,9 +41,9 @@ public class PasswordManagementTests
     public async Task ChangePassword_WithValidCredentials_ShouldSucceed()
     {
         // Arrange
-        var email = _faker.Internet.Email();
-        var oldPassword = "OldPassword123!";
-        var newPassword = "NewPassword123!";
+        var email = TestHelpers.GenerateFakeEmail();
+        var oldPassword = TestHelpers.GenerateFakePassword();
+        var newPassword = TestHelpers.GenerateFakePassword();
 
         // Register
         _ = await _client.RegisterAsync(new RegisterRequest(email, oldPassword));
@@ -68,9 +68,9 @@ public class PasswordManagementTests
     public async Task AddPassword_WhenManualClearance_ShouldSucceed()
     {
         // Arrange
-        var email = _faker.Internet.Email();
-        var tempPassword = "TempPassword123!";
-        var newPassword = "AddedPassword123!";
+        var email = TestHelpers.GenerateFakeEmail();
+        var tempPassword = TestHelpers.GenerateFakePassword();
+        var newPassword = TestHelpers.GenerateFakePassword();
 
         // Register normally
         _ = await _client.RegisterAsync(new RegisterRequest(email, tempPassword));
@@ -111,8 +111,8 @@ public class PasswordManagementTests
     public async Task ChangePassword_WithSamePassword_ShouldReturnBadRequest()
     {
         // Arrange
-        var email = _faker.Internet.Email();
-        var password = "SamePassword123!";
+        var email = TestHelpers.GenerateFakeEmail();
+        var password = TestHelpers.GenerateFakePassword();
 
         // Register
         _ = await _client.RegisterAsync(new RegisterRequest(email, password));
@@ -141,8 +141,8 @@ public class PasswordManagementTests
     public async Task RemovePassword_Fails_WhenUserHasNoPasskey()
     {
         // Arrange
-        var email = _faker.Internet.Email();
-        var password = "Password123!";
+        var email = TestHelpers.GenerateFakeEmail();
+        var password = TestHelpers.GenerateFakePassword();
 
         // Register
         _ = await _client.RegisterAsync(new RegisterRequest(email, password));
@@ -171,8 +171,8 @@ public class PasswordManagementTests
     public async Task RemovePassword_Succeeds_WhenUserHasPasskey()
     {
         // Arrange
-        var email = _faker.Internet.Email();
-        var password = "Password123!";
+        var email = TestHelpers.GenerateFakeEmail();
+        var password = TestHelpers.GenerateFakePassword();
 
         // Register
         _ = await _client.RegisterAsync(new RegisterRequest(email, password));
