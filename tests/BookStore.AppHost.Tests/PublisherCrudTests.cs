@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using BookStore.Client;
 using BookStore.Shared.Models;
+using JasperFx;
 using Refit;
 using TUnit.Core.Interfaces;
 
@@ -40,9 +41,10 @@ public class PublisherCrudTests
         await TestHelpers.UpdatePublisherAsync(client, createdPublisher, updateRequest);
 
         // Verify update in public API (data should be consistent now)
-        var publicClient = TestHelpers.GetUnauthenticatedClient();
-        var updatedPublisher =
-            await publicClient.GetFromJsonAsync<PublisherDto>($"/api/publishers/{createdPublisher.Id}");
+        var publicClient =
+            RestService.For<IGetPublisherEndpoint>(
+                TestHelpers.GetUnauthenticatedClient(StorageConstants.DefaultTenantId));
+        var updatedPublisher = await publicClient.GetPublisherAsync(createdPublisher.Id);
         _ = await Assert.That(updatedPublisher!.Name).IsEqualTo(updateRequest.Name);
     }
 
@@ -58,9 +60,19 @@ public class PublisherCrudTests
         await TestHelpers.DeletePublisherAsync(client, createdPublisher);
 
         // Verify it's gone from public API
-        var publicClient = TestHelpers.GetUnauthenticatedClient();
-        var getResponse = await publicClient.GetAsync($"/api/publishers/{createdPublisher.Id}");
-        _ = await Assert.That(getResponse.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
+        // Verify it's gone from public API
+        var publicClient =
+            Refit.RestService.For<IGetPublisherEndpoint>(
+                TestHelpers.GetUnauthenticatedClient(StorageConstants.DefaultTenantId));
+        try
+        {
+            _ = await publicClient.GetPublisherAsync(createdPublisher.Id);
+            Assert.Fail("Publisher should have been deleted");
+        }
+        catch (ApiException ex)
+        {
+            _ = await Assert.That(ex.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
+        }
     }
 
     [Test]
