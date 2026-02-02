@@ -1,8 +1,8 @@
-using System.Net.Http.Headers;
-using System.Net.Http.Json;
+using System.Net;
 using BookStore.Client;
 using BookStore.Shared.Models;
 using Marten;
+using Refit;
 
 namespace BookStore.AppHost.Tests;
 
@@ -37,63 +37,58 @@ public class MultiTenancyTests
     public async Task EntitiesAreIsolatedByTenant()
     {
         // 1. Setup Clients
-        var app = GlobalHooks.App!;
-
         // Login as Acme Admin
-        using var acmeHttp = app.CreateHttpClient("apiservice");
-        var acmeLogin = await TestHelpers.LoginAsAdminAsync(acmeHttp, "acme");
+        var acmeLogin = await TestHelpers.LoginAsAdminAsync("acme");
         _ = await Assert.That(acmeLogin).IsNotNull();
-
-        using var acmeClient = await TestHelpers.GetTenantClientAsync("acme", acmeLogin!.AccessToken);
+        var acmeClient =
+            RestService.For<IBooksClient>(TestHelpers.GetAuthenticatedClient(acmeLogin!.AccessToken, "acme"));
 
         // Login as Contoso Admin
-        using var contosoHttp = app.CreateHttpClient("apiservice");
-        var contosoLogin = await TestHelpers.LoginAsAdminAsync(contosoHttp, "contoso");
+        var contosoLogin = await TestHelpers.LoginAsAdminAsync("contoso");
         _ = await Assert.That(contosoLogin).IsNotNull();
-
-        using var contosoClient = await TestHelpers.GetTenantClientAsync("contoso", contosoLogin!.AccessToken);
+        var contosoClient =
+            RestService.For<IBooksClient>(TestHelpers.GetAuthenticatedClient(contosoLogin!.AccessToken, "contoso"));
 
         // 2. Create Book in ACME
         var createRequest = TestHelpers.GenerateFakeBookRequest();
-        var createResponse = await acmeClient.PostAsJsonAsync("/api/admin/books", createRequest);
-        _ = await Assert.That(createResponse.IsSuccessStatusCode).IsTrue();
-
-        var createdBook = await createResponse.Content.ReadFromJsonAsync<BookDto>();
+        // Use CreateBookAsync helper that handles dependencies and SSE waiting
+        // Wait, TestHelpers.CreateBookAsync takes IBooksClient and CreateBookRequest.
+        // It should handle it.
+        var createdBook = await TestHelpers.CreateBookAsync(acmeClient, createRequest);
         _ = await Assert.That(createdBook).IsNotNull();
-        var bookId = createdBook!.Id;
+        var bookId = createdBook.Id;
 
-        // 3. Verify visible in ACME (wait for eventual consistency/projections)
-        await TestHelpers.WaitForConditionAsync(async () =>
-        {
-            var response = await acmeClient.GetAsync($"/api/books/{bookId}");
-            return response.IsSuccessStatusCode;
-        }, TimeSpan.FromSeconds(10), "Book not found in ACME tenant");
-
-        var acmeGet = await acmeClient.GetAsync($"/api/books/{bookId}");
-        _ = await Assert.That(acmeGet.IsSuccessStatusCode).IsTrue();
+        // 3. Verify visible in ACME
+        var acmeBook = await acmeClient.GetBookAsync(bookId);
+        _ = await Assert.That(acmeBook).IsNotNull();
+        _ = await Assert.That(acmeBook.Id).IsEqualTo(bookId);
 
         // 4. Verify NOT visible in CONTOSO
-        var contosoGet = await contosoClient.GetAsync($"/api/books/{bookId}");
-        _ = await Assert.That(contosoGet.StatusCode).IsEqualTo(System.Net.HttpStatusCode.NotFound);
+        var exception = await Assert.That(async () => await contosoClient.GetBookAsync(bookId)).Throws<ApiException>();
+        _ = await Assert.That(exception!.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
 
         // 5. Verify Search Isolation
-        var acmeSearch = await acmeClient.GetFromJsonAsync<PagedListDto<BookDto>>($"/api/books?query={createdBook.Title}");
+        var acmeSearch = await acmeClient.GetBooksAsync(new BookSearchRequest { Search = createdBook.Title });
         _ = await Assert.That(acmeSearch).IsNotNull();
-        _ = await Assert.That(acmeSearch!.Items.Any(b => b.Id == bookId)).IsTrue();
+        _ = await Assert.That(acmeSearch.Items.Any(b => b.Id == bookId)).IsTrue();
 
-        var contosoSearch = await contosoClient.GetFromJsonAsync<PagedListDto<BookDto>>($"/api/books?query={createdBook.Title}");
+        var contosoSearch = await contosoClient.GetBooksAsync(new BookSearchRequest { Search = createdBook.Title });
         _ = await Assert.That(contosoSearch).IsNotNull();
-        _ = await Assert.That(contosoSearch!.Items.Any(b => b.Id == bookId)).IsFalse();
+        _ = await Assert.That(contosoSearch.Items.Any(b => b.Id == bookId)).IsFalse();
     }
 
     [Test]
     public async Task InvalidTenantReturns400()
     {
-        var app = GlobalHooks.App!;
-        using var client = app.CreateHttpClient("apiservice");
-        client.DefaultRequestHeaders.Add("X-Tenant-ID", "garbage-tenant-id");
+        // For invalid tenant, we can stick to HttpClient or simpler check.
+        // Or create a client with bad tenant ID and expect failure on all calls?
+        // But the middleware validates tenant existence or format.
+        // If we use IBooksClient with bad tenant, standard Refit call handles it.
 
-        var response = await client.GetAsync("/api/books");
-        _ = await Assert.That(response.StatusCode).IsEqualTo(System.Net.HttpStatusCode.BadRequest);
+        var client = RestService.For<IBooksClient>(TestHelpers.GetUnauthenticatedClient("garbage-tenant-id"));
+
+        var exception = await Assert.That(async () => await client.GetBooksAsync(new BookSearchRequest()))
+            .Throws<ApiException>();
+        _ = await Assert.That(exception!.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
     }
 }

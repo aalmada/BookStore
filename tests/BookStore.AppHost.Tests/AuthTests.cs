@@ -1,17 +1,20 @@
 using System.Net;
-using System.Net.Http.Json;
 using Bogus;
+using BookStore.Client;
+using BookStore.Shared.Models;
+using Refit;
 
 namespace BookStore.AppHost.Tests;
 
 public class AuthTests
 {
-    readonly HttpClient _client;
+    readonly IIdentityClient _client;
     readonly Faker _faker;
 
     public AuthTests()
     {
-        _client = TestHelpers.GetUnauthenticatedClient();
+        var httpClient = TestHelpers.GetUnauthenticatedClient();
+        _client = RestService.For<IIdentityClient>(httpClient);
         _faker = new Faker();
     }
 
@@ -19,17 +22,17 @@ public class AuthTests
     public async Task Register_WithValidData_ShouldReturnOk()
     {
         // Arrange
-        var setupRequest = new
-        {
-            Email = _faker.Internet.Email(),
-            Password = _faker.Internet.Password(8, false, "\\w", "Aa1!") // Ensure complexity
-        };
+        var request = new RegisterRequest(
+            _faker.Internet.Email(),
+            _faker.Internet.Password(8, false, "\\w", "Aa1!")
+        );
 
         // Act
-        var response = await _client.PostAsJsonAsync("/account/register", setupRequest);
+        var response = await _client.RegisterAsync(request);
 
         // Assert
-        _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        _ = await Assert.That(response).IsNotNull();
+        _ = await Assert.That(response.AccessToken).IsNotNull().And.IsNotEmpty();
     }
 
     [Test]
@@ -38,22 +41,16 @@ public class AuthTests
         // Arrange
         var email = _faker.Internet.Email();
         var password = _faker.Internet.Password(8, false, "\\w", "Aa1!");
+        var request = new RegisterRequest(email, password);
 
         // Register once
-        var initialResponse =
-            await _client.PostAsJsonAsync("/account/register", new { Email = email, Password = password });
-        _ = await Assert.That(initialResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        _ = await _client.RegisterAsync(request);
 
         // Act - Register again with same email
-        var duplicateResponse =
-            await _client.PostAsJsonAsync("/account/register", new { Email = email, Password = password });
+        var response = await _client.RegisterAsync(request);
 
-        // Assert - Should return OK to prevent enumeration
-        _ = await Assert.That(duplicateResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
-
-        // Optional: Check message is generic
-        // var result = await duplicateResponse.Content.ReadFromJsonAsync<dynamic>();
-        // Assert.That(result.message).Contains("Registration successful");
+        // Assert - Should return OK to prevent enumeration (mapped to successful response in Refit)
+        _ = await Assert.That(response).IsNotNull();
     }
 
     [Test]
@@ -64,17 +61,14 @@ public class AuthTests
         var password = _faker.Internet.Password(8, false, "\\w", "Aa1!");
 
         // Register first
-        _ = await _client.PostAsJsonAsync("/account/register", new { Email = email, Password = password });
+        _ = await _client.RegisterAsync(new RegisterRequest(email, password));
 
         // Act
-        var loginResponse = await _client.PostAsJsonAsync("/account/login", new { Email = email, Password = password });
+        var loginResult = await _client.LoginAsync(new LoginRequest(email, password));
 
         // Assert
-        _ = await Assert.That(loginResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
-
-        var loginResult = await loginResponse.Content.ReadFromJsonAsync<LoginResponse>();
         _ = await Assert.That(loginResult).IsNotNull();
-        _ = await Assert.That(loginResult!.AccessToken).IsNotNull().And.IsNotEmpty();
+        _ = await Assert.That(loginResult.AccessToken).IsNotNull().And.IsNotEmpty();
         _ = await Assert.That(loginResult.RefreshToken).IsNotNull().And.IsNotEmpty();
     }
 
@@ -85,40 +79,32 @@ public class AuthTests
     [Arguments("", "Password123!")]
     public async Task Login_WithInvalidData_ShouldReturnUnauthorized(string email, string password)
     {
-        // Arrange
-        var loginRequest = new { Email = email, Password = password };
-
-        // Act
-        var response = await _client.PostAsJsonAsync("/account/login", loginRequest);
-
-        // Assert
-        _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+        // Act & Assert
+        try
+        {
+            _ = await _client.LoginAsync(new LoginRequest(email, password));
+            Assert.Fail("Should have thrown ApiException");
+        }
+        catch (ApiException ex)
+        {
+            _ = await Assert.That((int)ex.StatusCode).IsEqualTo((int)HttpStatusCode.Unauthorized);
+        }
     }
 
     [Test]
     public async Task RawLoginError_ShouldContainStandardizedCode()
     {
-        // Arrange
-        var loginRequest = new { Email = "nonexistent@example.com", Password = "password" };
-
-        // Act
-        var response = await _client.PostAsJsonAsync("/account/login", loginRequest);
-
-        // Assert - Verify raw JSON structure for standardized 'code' extension
-        var json = await response.Content.ReadAsStringAsync();
-        using var doc = System.Text.Json.JsonDocument.Parse(json);
-
-        string? code = null;
-        if (doc.RootElement.TryGetProperty("extensions", out var extensions))
+        // Act & Assert
+        try
         {
-            code = extensions.GetProperty("error").GetString();
+            _ = await _client.LoginAsync(new LoginRequest("nonexistent@example.com", "password"));
+            Assert.Fail("Should have thrown ApiException");
         }
-        else
+        catch (ApiException ex)
         {
-            code = doc.RootElement.GetProperty("error").GetString();
+            var problem = await ex.GetContentAsAsync<TestHelpers.ValidationProblemDetails>();
+            _ = await Assert.That(problem?.Error).IsEqualTo("ERR_AUTH_INVALID_CREDENTIALS");
         }
-
-        _ = await Assert.That(code).IsEqualTo("ERR_AUTH_INVALID_CREDENTIALS");
     }
 
     [Test]
@@ -129,18 +115,14 @@ public class AuthTests
         var email = $"admin@{tenantId}.com";
         var password = "Admin123!";
 
-        var client = GlobalHooks.App!.CreateHttpClient("apiservice");
-        client.DefaultRequestHeaders.Add("X-Tenant-ID", tenantId);
+        var client = RestService.For<IIdentityClient>(TestHelpers.GetUnauthenticatedClient(tenantId));
 
         // Act
-        var response = await client.PostAsJsonAsync("/account/login", new { Email = email, Password = password });
+        var loginResult = await client.LoginAsync(new LoginRequest(email, password));
 
         // Assert
-        _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-
-        var loginResult = await response.Content.ReadFromJsonAsync<LoginResponse>();
         _ = await Assert.That(loginResult).IsNotNull();
-        _ = await Assert.That(loginResult!.AccessToken).IsNotNull().And.IsNotEmpty();
+        _ = await Assert.That(loginResult.AccessToken).IsNotNull().And.IsNotEmpty();
     }
 
     [Test]
@@ -151,26 +133,15 @@ public class AuthTests
         var password = _faker.Internet.Password(8, false, "\\w", "Aa1!");
 
         // Register and Login
-        var registerResponse =
-            await _client.PostAsJsonAsync("/account/register", new { Email = email, Password = password });
-        _ = await Assert.That(registerResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
-
-        var loginResponse = await _client.PostAsJsonAsync("/account/login", new { Email = email, Password = password });
-        _ = await Assert.That(loginResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
-
-        var loginResult = await loginResponse.Content.ReadFromJsonAsync<LoginResponse>();
-
-        var refreshRequest = new { loginResult!.RefreshToken };
+        _ = await _client.RegisterAsync(new RegisterRequest(email, password));
+        var loginResult = await _client.LoginAsync(new LoginRequest(email, password));
 
         // Act
-        var refreshResponse = await _client.PostAsJsonAsync("/account/refresh-token", refreshRequest);
+        var refreshResult = await _client.RefreshTokenAsync(new RefreshRequest(loginResult.RefreshToken));
 
         // Assert
-        _ = await Assert.That(refreshResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
-
-        var refreshResult = await refreshResponse.Content.ReadFromJsonAsync<LoginResponse>();
         _ = await Assert.That(refreshResult).IsNotNull();
-        _ = await Assert.That(refreshResult!.AccessToken).IsNotNull().And.IsNotEmpty();
+        _ = await Assert.That(refreshResult.AccessToken).IsNotNull().And.IsNotEmpty();
         _ = await Assert.That(refreshResult.AccessToken).IsNotEqualTo(loginResult.AccessToken);
     }
 
@@ -181,24 +152,25 @@ public class AuthTests
         var email = _faker.Internet.Email();
         var password = _faker.Internet.Password(8, false, "\\w", "Aa1!");
 
-        _ = await _client.PostAsJsonAsync("/account/register", new { Email = email, Password = password });
-        var loginResponse = await _client.PostAsJsonAsync("/account/login", new { Email = email, Password = password });
-        var loginResult = await loginResponse.Content.ReadFromJsonAsync<LoginResponse>();
+        _ = await _client.RegisterAsync(new RegisterRequest(email, password));
+        var loginResult = await _client.LoginAsync(new LoginRequest(email, password));
 
         // Create an authenticated client with the user's token
-        var authClient = GlobalHooks.App!.CreateHttpClient("apiservice");
-        authClient.DefaultRequestHeaders.Authorization =
-            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", loginResult!.AccessToken);
+        var authClient = RestService.For<IIdentityClient>(TestHelpers.GetAuthenticatedClient(loginResult.AccessToken));
 
         // Act - Logout
-        var logoutResponse = await authClient.PostAsJsonAsync("/account/logout", new { loginResult.RefreshToken });
-
-        // Assert - Logout succeeded
-        _ = await Assert.That(logoutResponse.StatusCode).IsEqualTo(System.Net.HttpStatusCode.OK);
+        await authClient.LogoutAsync(new LogoutRequest(loginResult.RefreshToken));
 
         // Assert - Refresh token is now invalid
-        var refreshResponse = await _client.PostAsJsonAsync("/account/refresh-token", new { loginResult.RefreshToken });
-        _ = await Assert.That(refreshResponse.StatusCode).IsEqualTo(System.Net.HttpStatusCode.Unauthorized);
+        try
+        {
+            _ = await _client.RefreshTokenAsync(new RefreshRequest(loginResult.RefreshToken));
+            Assert.Fail("Should have thrown ApiException");
+        }
+        catch (ApiException ex)
+        {
+            _ = await Assert.That((int)ex.StatusCode).IsEqualTo((int)HttpStatusCode.Unauthorized);
+        }
     }
 
     [Test]
@@ -208,32 +180,36 @@ public class AuthTests
         var email = _faker.Internet.Email();
         var password = _faker.Internet.Password(8, false, "\\w", "Aa1!");
 
-        _ = await _client.PostAsJsonAsync("/account/register", new { Email = email, Password = password });
+        _ = await _client.RegisterAsync(new RegisterRequest(email, password));
 
-        var loginResponse1 =
-            await _client.PostAsJsonAsync("/account/login", new { Email = email, Password = password });
-        var loginResult1 = await loginResponse1.Content.ReadFromJsonAsync<LoginResponse>();
-
-        var loginResponse2 =
-            await _client.PostAsJsonAsync("/account/login", new { Email = email, Password = password });
-        var loginResult2 = await loginResponse2.Content.ReadFromJsonAsync<LoginResponse>();
+        var loginResult1 = await _client.LoginAsync(new LoginRequest(email, password));
+        var loginResult2 = await _client.LoginAsync(new LoginRequest(email, password));
 
         // Create an authenticated client with the user's token
-        var authClient = GlobalHooks.App!.CreateHttpClient("apiservice");
-        authClient.DefaultRequestHeaders.Authorization =
-            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", loginResult2!.AccessToken);
+        var authClient = RestService.For<IIdentityClient>(TestHelpers.GetAuthenticatedClient(loginResult2.AccessToken));
 
         // Act - Logout without specifying refresh token (should clear all)
-        var logoutResponse = await authClient.PostAsJsonAsync("/account/logout", new { RefreshToken = (string?)null });
-        _ = await Assert.That(logoutResponse.StatusCode).IsEqualTo(System.Net.HttpStatusCode.OK);
+        await authClient.LogoutAsync(new LogoutRequest(null));
 
         // Assert - Both refresh tokens should be invalid
-        var refresh1 = await _client.PostAsJsonAsync("/account/refresh-token", new { loginResult1!.RefreshToken });
-        var refresh2 = await _client.PostAsJsonAsync("/account/refresh-token", new { loginResult2.RefreshToken });
+        try
+        {
+            _ = await _client.RefreshTokenAsync(new RefreshRequest(loginResult1.RefreshToken));
+            Assert.Fail("First refresh token should be invalidated");
+        }
+        catch (ApiException ex)
+        {
+            _ = await Assert.That((int)ex.StatusCode).IsEqualTo((int)HttpStatusCode.Unauthorized);
+        }
 
-        _ = await Assert.That(refresh1.StatusCode).IsEqualTo(System.Net.HttpStatusCode.Unauthorized);
-        _ = await Assert.That(refresh2.StatusCode).IsEqualTo(System.Net.HttpStatusCode.Unauthorized);
+        try
+        {
+            _ = await _client.RefreshTokenAsync(new RefreshRequest(loginResult2.RefreshToken));
+            Assert.Fail("Second refresh token should be invalidated");
+        }
+        catch (ApiException ex)
+        {
+            _ = await Assert.That((int)ex.StatusCode).IsEqualTo((int)HttpStatusCode.Unauthorized);
+        }
     }
-
-    record LoginResponse(string AccessToken, string RefreshToken);
 }

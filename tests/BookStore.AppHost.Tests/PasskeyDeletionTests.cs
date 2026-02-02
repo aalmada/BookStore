@@ -1,28 +1,27 @@
-using System.Net;
-using System.Net.Http.Json;
 using Bogus;
 using BookStore.ApiService.Models;
+using BookStore.Client;
 using BookStore.Shared.Models;
 using JasperFx;
 using JasperFx.Core;
 using Marten;
 using Microsoft.AspNetCore.Identity;
-using TUnit.Core.Interfaces;
+using Refit;
 using Weasel.Core;
 
 namespace BookStore.AppHost.Tests;
 
 public class PasskeyDeletionTests
 {
-    // Define local record to match API response
-    record PasskeyInfo(string Id, string Name, DateTimeOffset? CreatedAt);
-
-    readonly HttpClient _client;
+    readonly IIdentityClient _client;
+    readonly IPasskeyClient _passkeyClient;
     readonly Faker _faker;
 
     public PasskeyDeletionTests()
     {
-        _client = TestHelpers.GetUnauthenticatedClient();
+        var httpClient = TestHelpers.GetUnauthenticatedClient();
+        _client = RestService.For<IIdentityClient>(httpClient);
+        _passkeyClient = RestService.For<IPasskeyClient>(httpClient);
         _faker = new Faker();
     }
 
@@ -34,14 +33,11 @@ public class PasskeyDeletionTests
         var password = "Password123!";
 
         // 1. Register and login to get token
-        _ = await _client.PostAsJsonAsync("/account/register", new { Email = email, Password = password });
-        var loginResponse = await _client.PostAsJsonAsync("/account/login", new { Email = email, Password = password });
-        var loginResult = await loginResponse.Content.ReadFromJsonAsync<TestHelpers.LoginResponse>();
+        _ = await _client.RegisterAsync(new RegisterRequest(email, password));
+        var loginResult = await _client.LoginAsync(new LoginRequest(email, password));
 
-        var authClient = GlobalHooks.App!.CreateHttpClient("apiservice");
-        authClient.DefaultRequestHeaders.Authorization =
-            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", loginResult!.AccessToken);
-        authClient.DefaultRequestHeaders.Add("X-Tenant-ID", StorageConstants.DefaultTenantId);
+        var authClient = TestHelpers.GetAuthenticatedClient(loginResult.AccessToken);
+        var authenticatedPasskeyClient = RestService.For<IPasskeyClient>(authClient);
 
         // 2. Manually seed a passkey with an ID that is NOT URL-safe in standard Base64
         // Base64 of [62, 62, 62, 63, 63, 63] is "+++/////"
@@ -144,9 +140,7 @@ public class PasskeyDeletionTests
         }
 
         // 3. List passkeys to get the encoded ID
-        var listResponse = await authClient.GetAsync("/account/passkeys");
-        _ = await Assert.That(listResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
-        var passkeys = await listResponse.Content.ReadFromJsonAsync<List<PasskeyInfo>>();
+        var passkeys = await authenticatedPasskeyClient.ListPasskeysAsync();
 
         _ = await Assert.That(passkeys).IsNotNull();
         var targetPasskey = passkeys!.FirstOrDefault(p => p.Name == "Unsafe Passkey");
@@ -158,10 +152,9 @@ public class PasskeyDeletionTests
         _ = await Assert.That(encodedId).DoesNotContain("+");
 
         // 4. Act - Delete the passkey
-        var deleteResponse = await authClient.DeleteAsync($"/account/passkeys/{encodedId}");
+        await authenticatedPasskeyClient.DeletePasskeyAsync(encodedId);
 
         // 5. Assert
-        _ = await Assert.That(deleteResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
         // Verify it's gone from DB
         await using (var session = store.LightweightSession(StorageConstants.DefaultTenantId))

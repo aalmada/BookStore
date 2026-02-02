@@ -1,7 +1,9 @@
 using System.Net;
-using System.Net.Http.Json;
+using BookStore.Client;
+using BookStore.Shared.Models;
 using JasperFx;
 using Marten;
+using Refit;
 
 namespace BookStore.AppHost.Tests;
 
@@ -9,10 +11,8 @@ namespace BookStore.AppHost.Tests;
 /// Tests to verify that user accounts are properly isolated between tenants.
 /// CRITICAL: These tests expose a security vulnerability where users can authenticate across tenants.
 /// </summary>
-public class AccountIsolationTests : IDisposable
+public class AccountIsolationTests
 {
-    HttpClient? _client;
-
     [Before(Class)]
     public static async Task ClassSetup()
     {
@@ -39,26 +39,6 @@ public class AccountIsolationTests : IDisposable
         await TestHelpers.SeedTenantAsync(store, "contoso");
     }
 
-    [Before(Test)]
-    public void Setup()
-    {
-        if (GlobalHooks.App == null)
-        {
-            throw new InvalidOperationException("App is not initialized");
-        }
-
-        _client = GlobalHooks.App.CreateHttpClient("apiservice");
-    }
-
-    [After(Test)]
-    public void Cleanup() => _client?.Dispose();
-
-    public void Dispose()
-    {
-        Cleanup();
-        GC.SuppressFinalize(this);
-    }
-
     [Test]
     public async Task User_RegisteredOnContoso_CannotLoginOnAcme()
     {
@@ -66,32 +46,18 @@ public class AccountIsolationTests : IDisposable
         var userEmail = $"isolation-test-{Guid.NewGuid()}@example.com";
         const string password = "Password123!";
 
+        var contosoClient = RestService.For<IIdentityClient>(TestHelpers.GetUnauthenticatedClient("contoso"));
+        var acmeClient = RestService.For<IIdentityClient>(TestHelpers.GetUnauthenticatedClient("acme"));
+
         // Act 1: Register user on Contoso tenant
-        var registerRequest = new HttpRequestMessage(HttpMethod.Post, "/account/register")
-        {
-            Content = JsonContent.Create(new { email = userEmail, password })
-        };
-        registerRequest.Headers.Add("X-Tenant-ID", "contoso");
-
-        var registerResponse = await _client!.SendAsync(registerRequest);
-
-        // Assert: Registration should succeed
-        _ = await Assert.That(registerResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        _ = await contosoClient.RegisterAsync(new RegisterRequest(userEmail, password));
 
         // Act 2: Attempt to login with the same credentials on Acme tenant
-        var loginRequest = new HttpRequestMessage(HttpMethod.Post, "/account/login")
-        {
-            Content = JsonContent.Create(new { email = userEmail, password })
-        };
-        loginRequest.Headers.Add("X-Tenant-ID", "acme");
-
-        var loginResponse = await _client!.SendAsync(loginRequest);
+        var loginTask = acmeClient.LoginAsync(new LoginRequest(userEmail, password));
 
         // Assert: Login should FAIL because user is registered on Contoso, not Acme
-        // EXPECTED: 401 Unauthorized
-        // CURRENT (BUG): May return 200 OK, which is the security vulnerability
-        _ = await Assert.That(loginResponse.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized)
-            ;
+        var exception = await Assert.That(async () => await loginTask).Throws<ApiException>();
+        _ = await Assert.That(exception!.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
     [Test]
@@ -101,33 +67,17 @@ public class AccountIsolationTests : IDisposable
         var userEmail = $"isolation-test-{Guid.NewGuid()}@example.com";
         const string password = "Password123!";
 
+        var contosoClient = RestService.For<IIdentityClient>(TestHelpers.GetUnauthenticatedClient("contoso"));
+
         // Act 1: Register user on Contoso tenant
-        var registerRequest = new HttpRequestMessage(HttpMethod.Post, "/account/register")
-        {
-            Content = JsonContent.Create(new { email = userEmail, password })
-        };
-        registerRequest.Headers.Add("X-Tenant-ID", "contoso");
-
-        var registerResponse = await _client!.SendAsync(registerRequest);
-
-        // Assert: Registration should succeed
-        _ = await Assert.That(registerResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        _ = await contosoClient.RegisterAsync(new RegisterRequest(userEmail, password));
 
         // Act 2: Login with the same credentials on Contoso tenant (correct tenant)
-        var loginRequest = new HttpRequestMessage(HttpMethod.Post, "/account/login")
-        {
-            Content = JsonContent.Create(new { email = userEmail, password })
-        };
-        loginRequest.Headers.Add("X-Tenant-ID", "contoso");
-
-        var loginResponse = await _client!.SendAsync(loginRequest);
+        var loginResult = await contosoClient.LoginAsync(new LoginRequest(userEmail, password));
 
         // Assert: Login should succeed on the correct tenant
-        _ = await Assert.That(loginResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
-
-        var loginResult = await loginResponse.Content.ReadFromJsonAsync<TestHelpers.LoginResponse>();
         _ = await Assert.That(loginResult).IsNotNull();
-        _ = await Assert.That(loginResult!.AccessToken).IsNotEmpty();
+        _ = await Assert.That(loginResult.AccessToken).IsNotEmpty();
     }
 
     [Test]
@@ -137,30 +87,18 @@ public class AccountIsolationTests : IDisposable
         var userEmail = $"isolation-test-{Guid.NewGuid()}@example.com";
         const string password = "Password123!";
 
+        var acmeClient = RestService.For<IIdentityClient>(TestHelpers.GetUnauthenticatedClient("acme"));
+        var contosoClient = RestService.For<IIdentityClient>(TestHelpers.GetUnauthenticatedClient("contoso"));
+
         // Act 1: Register user on Acme tenant
-        var registerRequest = new HttpRequestMessage(HttpMethod.Post, "/account/register")
-        {
-            Content = JsonContent.Create(new { email = userEmail, password })
-        };
-        registerRequest.Headers.Add("X-Tenant-ID", "acme");
-
-        var registerResponse = await _client!.SendAsync(registerRequest);
-
-        // Assert: Registration should succeed
-        _ = await Assert.That(registerResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        _ = await acmeClient.RegisterAsync(new RegisterRequest(userEmail, password));
 
         // Act 2: Attempt to login with the same credentials on Contoso tenant
-        var loginRequest = new HttpRequestMessage(HttpMethod.Post, "/account/login")
-        {
-            Content = JsonContent.Create(new { email = userEmail, password })
-        };
-        loginRequest.Headers.Add("X-Tenant-ID", "contoso");
-
-        var loginResponse = await _client!.SendAsync(loginRequest);
+        var loginTask = contosoClient.LoginAsync(new LoginRequest(userEmail, password));
 
         // Assert: Login should FAIL because user is registered on Acme, not Contoso
-        _ = await Assert.That(loginResponse.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized)
-            ;
+        var exception = await Assert.That(async () => await loginTask).Throws<ApiException>();
+        _ = await Assert.That(exception!.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
     [Test]
@@ -170,29 +108,17 @@ public class AccountIsolationTests : IDisposable
         var userEmail = $"isolation-test-{Guid.NewGuid()}@example.com";
         const string password = "Password123!";
 
+        var defaultClient = RestService.For<IIdentityClient>(TestHelpers.GetUnauthenticatedClient());
+        var acmeClient = RestService.For<IIdentityClient>(TestHelpers.GetUnauthenticatedClient("acme"));
+
         // Act 1: Register user on Default tenant (no X-Tenant-ID header)
-        var registerRequest = new HttpRequestMessage(HttpMethod.Post, "/account/register")
-        {
-            Content = JsonContent.Create(new { email = userEmail, password })
-        };
-        // No X-Tenant-ID header = defaults to StorageConstants.DefaultTenantId
-
-        var registerResponse = await _client!.SendAsync(registerRequest);
-
-        // Assert: Registration should succeed
-        _ = await Assert.That(registerResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        _ = await defaultClient.RegisterAsync(new RegisterRequest(userEmail, password));
 
         // Act 2: Attempt to login with the same credentials on Acme tenant
-        var loginRequest = new HttpRequestMessage(HttpMethod.Post, "/account/login")
-        {
-            Content = JsonContent.Create(new { email = userEmail, password })
-        };
-        loginRequest.Headers.Add("X-Tenant-ID", "acme");
-
-        var loginResponse = await _client!.SendAsync(loginRequest);
+        var loginTask = acmeClient.LoginAsync(new LoginRequest(userEmail, password));
 
         // Assert: Login should FAIL because user is registered on Default, not Acme
-        _ = await Assert.That(loginResponse.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized)
-            ;
+        var exception = await Assert.That(async () => await loginTask).Throws<ApiException>();
+        _ = await Assert.That(exception!.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 }

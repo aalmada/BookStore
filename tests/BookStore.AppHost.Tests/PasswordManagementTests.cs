@@ -1,24 +1,25 @@
 using System.Net;
-using System.Net.Http.Json;
 using Bogus;
 using BookStore.ApiService.Models;
+using BookStore.Client;
 using BookStore.Shared.Models;
 using JasperFx;
-using JasperFx.Core;
 using Marten;
 using Microsoft.AspNetCore.Identity;
+using Refit;
 using Weasel.Core;
 
 namespace BookStore.AppHost.Tests;
 
 public class PasswordManagementTests
 {
-    readonly HttpClient _client;
+    readonly IIdentityClient _client;
     readonly Faker _faker;
 
     public PasswordManagementTests()
     {
-        _client = TestHelpers.GetUnauthenticatedClient();
+        var httpClient = TestHelpers.GetUnauthenticatedClient();
+        _client = RestService.For<IIdentityClient>(httpClient);
         _faker = new Faker();
     }
 
@@ -26,16 +27,14 @@ public class PasswordManagementTests
     public async Task GetPasswordStatus_WhenUserHasPassword_ShouldReturnTrue()
     {
         // Arrange
-        var authenticatedClient = await TestHelpers.CreateUserAndGetClientAsync();
+        var identityClient = await TestHelpers.CreateUserAndGetClientAsync<IIdentityClient>();
 
         // Act
-        var response = await authenticatedClient.GetAsync("/account/password-status");
+        var status = await identityClient.GetPasswordStatusAsync();
 
         // Assert
-        _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-        var status = await response.Content.ReadFromJsonAsync<PasswordStatusResponse>();
         _ = await Assert.That(status).IsNotNull();
-        _ = await Assert.That(status!.HasPassword).IsTrue();
+        _ = await Assert.That(status.HasPassword).IsTrue();
     }
 
     [Test]
@@ -47,31 +46,25 @@ public class PasswordManagementTests
         var newPassword = "NewPassword123!";
 
         // Register
-        _ = await _client.PostAsJsonAsync("/account/register", new { Email = email, Password = oldPassword });
+        _ = await _client.RegisterAsync(new RegisterRequest(email, oldPassword));
 
         // Login to get token
-        var loginResponse =
-            await _client.PostAsJsonAsync("/account/login", new { Email = email, Password = oldPassword });
-        var loginResult = await loginResponse.Content.ReadFromJsonAsync<TestHelpers.LoginResponse>();
+        var loginResult = await _client.LoginAsync(new LoginRequest(email, oldPassword));
 
-        var authClient = GlobalHooks.App!.CreateHttpClient("apiservice");
-        authClient.DefaultRequestHeaders.Authorization =
-            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", loginResult!.AccessToken);
-        authClient.DefaultRequestHeaders.Add("X-Tenant-ID", StorageConstants.DefaultTenantId);
+        var httpClient = GlobalHooks.App!.CreateHttpClient("apiservice");
+        httpClient.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", loginResult.AccessToken);
+        httpClient.DefaultRequestHeaders.Add("X-Tenant-ID", StorageConstants.DefaultTenantId);
+        var authClient = RestService.For<IIdentityClient>(httpClient);
 
         // Act
-        var changeResponse = await authClient.PostAsJsonAsync("/account/change-password",
-            new ChangePasswordRequest(oldPassword, newPassword));
-
-        // Assert
-        _ = await Assert.That(changeResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await authClient.ChangePasswordAsync(new ChangePasswordRequest(oldPassword, newPassword));
 
         // Act - Try login with new password
-        var nextLoginResponse =
-            await _client.PostAsJsonAsync("/account/login", new { Email = email, Password = newPassword });
+        var nextLoginResult = await _client.LoginAsync(new LoginRequest(email, newPassword));
 
         // Assert
-        _ = await Assert.That(nextLoginResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        _ = await Assert.That(nextLoginResult.AccessToken).IsNotNull().And.IsNotEmpty();
     }
 
     [Test]
@@ -83,31 +76,17 @@ public class PasswordManagementTests
         var newPassword = "AddedPassword123!";
 
         // Register normally
-        var regResponse =
-            await _client.PostAsJsonAsync("/account/register", new { Email = email, Password = tempPassword });
-        _ = await Assert.That(regResponse.IsSuccessStatusCode).IsTrue();
+        _ = await _client.RegisterAsync(new RegisterRequest(email, tempPassword));
+        var loginResult = await _client.LoginAsync(new LoginRequest(email, tempPassword));
 
-        var loginResponse =
-            await _client.PostAsJsonAsync("/account/login", new { Email = email, Password = tempPassword });
-        _ = await Assert.That(loginResponse.IsSuccessStatusCode).IsTrue();
-
-        var loginResult = await loginResponse.Content.ReadFromJsonAsync<TestHelpers.LoginResponse>();
-
-        var authClient = GlobalHooks.App!.CreateHttpClient("apiservice");
-        authClient.DefaultRequestHeaders.Authorization =
-            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", loginResult!.AccessToken);
-        authClient.DefaultRequestHeaders.Add("X-Tenant-ID", StorageConstants.DefaultTenantId);
+        var httpClient = GlobalHooks.App!.CreateHttpClient("apiservice");
+        httpClient.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", loginResult.AccessToken);
+        httpClient.DefaultRequestHeaders.Add("X-Tenant-ID", StorageConstants.DefaultTenantId);
+        var authClient = RestService.For<IIdentityClient>(httpClient);
 
         // Manually clear password hash in DB
-        var connectionString = await GlobalHooks.App!.GetConnectionStringAsync("bookstore");
-        using var store = DocumentStore.For(opts =>
-        {
-            opts.UseSystemTextJsonForSerialization(EnumStorage.AsString, Casing.CamelCase);
-            opts.Connection(connectionString!);
-            _ = opts.Policies.AllDocumentsAreMultiTenanted();
-            opts.Events.TenancyStyle = Marten.Storage.TenancyStyle.Conjoined;
-        });
-
+        using var store = await GetStoreAsync();
         await using (var session = store.LightweightSession(StorageConstants.DefaultTenantId))
         {
             var user = await session.Query<ApplicationUser>()
@@ -121,23 +100,17 @@ public class PasswordManagementTests
         }
 
         // Verify it reports no password
-        var statusResponse = await authClient.GetAsync("/account/password-status");
-        var status = await statusResponse.Content.ReadFromJsonAsync<PasswordStatusResponse>();
-        _ = await Assert.That(status!.HasPassword).IsFalse();
+        var status = await authClient.GetPasswordStatusAsync();
+        _ = await Assert.That(status.HasPassword).IsFalse();
 
         // Act
-        var addResponse =
-            await authClient.PostAsJsonAsync("/account/add-password", new AddPasswordRequest(newPassword));
-
-        // Assert
-        _ = await Assert.That(addResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await authClient.AddPasswordAsync(new AddPasswordRequest(newPassword));
 
         // Act - Try login with added password
-        var finalLoginResponse =
-            await _client.PostAsJsonAsync("/account/login", new { Email = email, Password = newPassword });
+        var finalLoginResult = await _client.LoginAsync(new LoginRequest(email, newPassword));
 
         // Assert
-        _ = await Assert.That(finalLoginResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        _ = await Assert.That(finalLoginResult.AccessToken).IsNotNull().And.IsNotEmpty();
     }
 
     [Test]
@@ -148,27 +121,29 @@ public class PasswordManagementTests
         var password = "SamePassword123!";
 
         // Register
-        _ = await _client.PostAsJsonAsync("/account/register", new { Email = email, Password = password });
+        _ = await _client.RegisterAsync(new RegisterRequest(email, password));
 
         // Login to get token
-        var loginResponse =
-            await _client.PostAsJsonAsync("/account/login", new { Email = email, Password = password });
-        var loginResult = await loginResponse.Content.ReadFromJsonAsync<TestHelpers.LoginResponse>();
+        var loginResult = await _client.LoginAsync(new LoginRequest(email, password));
 
-        var authClient = GlobalHooks.App!.CreateHttpClient("apiservice");
-        authClient.DefaultRequestHeaders.Authorization =
-            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", loginResult!.AccessToken);
-        authClient.DefaultRequestHeaders.Add("X-Tenant-ID", StorageConstants.DefaultTenantId);
+        var httpClient = GlobalHooks.App!.CreateHttpClient("apiservice");
+        httpClient.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", loginResult.AccessToken);
+        httpClient.DefaultRequestHeaders.Add("X-Tenant-ID", StorageConstants.DefaultTenantId);
+        var authClient = RestService.For<IIdentityClient>(httpClient);
 
-        // Act
-        var changeResponse =
-            await authClient.PostAsJsonAsync("/account/change-password",
-                new ChangePasswordRequest(password, password));
-
-        // Assert
-        _ = await Assert.That(changeResponse.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
-        var error = await changeResponse.Content.ReadFromJsonAsync<TestHelpers.ErrorResponse>();
-        _ = await Assert.That(error?.Error).IsEqualTo(ErrorCodes.Auth.PasswordReuse);
+        // Act & Assert
+        try
+        {
+            await authClient.ChangePasswordAsync(new ChangePasswordRequest(password, password));
+            Assert.Fail("Should have thrown ApiException");
+        }
+        catch (ApiException ex)
+        {
+            _ = await Assert.That((int)ex.StatusCode).IsEqualTo((int)HttpStatusCode.BadRequest);
+            var problem = await ex.GetContentAsAsync<TestHelpers.ValidationProblemDetails>();
+            _ = await Assert.That(problem?.Error).IsEqualTo(ErrorCodes.Auth.PasswordReuse);
+        }
     }
 
     [Test]
@@ -179,25 +154,29 @@ public class PasswordManagementTests
         var password = "Password123!";
 
         // Register
-        _ = await _client.PostAsJsonAsync("/account/register", new { Email = email, Password = password });
+        _ = await _client.RegisterAsync(new RegisterRequest(email, password));
 
         // Login
-        var loginResponse =
-            await _client.PostAsJsonAsync("/account/login", new { Email = email, Password = password });
-        var loginResult = await loginResponse.Content.ReadFromJsonAsync<TestHelpers.LoginResponse>();
+        var loginResult = await _client.LoginAsync(new LoginRequest(email, password));
 
-        var authClient = GlobalHooks.App!.CreateHttpClient("apiservice");
-        authClient.DefaultRequestHeaders.Authorization =
-            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", loginResult!.AccessToken);
-        authClient.DefaultRequestHeaders.Add("X-Tenant-ID", StorageConstants.DefaultTenantId);
+        var httpClient = GlobalHooks.App!.CreateHttpClient("apiservice");
+        httpClient.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", loginResult.AccessToken);
+        httpClient.DefaultRequestHeaders.Add("X-Tenant-ID", StorageConstants.DefaultTenantId);
+        var authClient = RestService.For<IIdentityClient>(httpClient);
 
-        // Act
-        var removeResponse = await authClient.PostAsJsonAsync("/account/remove-password", new RemovePasswordRequest());
-
-        // Assert
-        _ = await Assert.That(removeResponse.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
-        var error = await removeResponse.Content.ReadFromJsonAsync<BookStore.AppHost.Tests.TestHelpers.ErrorResponse>();
-        _ = await Assert.That(error?.Error).IsEqualTo(ErrorCodes.Auth.InvalidRequest);
+        // Act & Assert
+        try
+        {
+            await authClient.RemovePasswordAsync(new RemovePasswordRequest());
+            Assert.Fail("Should have thrown ApiException");
+        }
+        catch (ApiException ex)
+        {
+            _ = await Assert.That((int)ex.StatusCode).IsEqualTo((int)HttpStatusCode.BadRequest);
+            var problem = await ex.GetContentAsAsync<TestHelpers.ValidationProblemDetails>();
+            _ = await Assert.That(problem?.Error).IsEqualTo(ErrorCodes.Auth.InvalidRequest);
+        }
     }
 
     [Test]
@@ -208,28 +187,19 @@ public class PasswordManagementTests
         var password = "Password123!";
 
         // Register
-        _ = await _client.PostAsJsonAsync("/account/register", new { Email = email, Password = password });
+        _ = await _client.RegisterAsync(new RegisterRequest(email, password));
 
         // Login
-        var loginResponse =
-            await _client.PostAsJsonAsync("/account/login", new { Email = email, Password = password });
-        var loginResult = await loginResponse.Content.ReadFromJsonAsync<TestHelpers.LoginResponse>();
+        var loginResult = await _client.LoginAsync(new LoginRequest(email, password));
 
-        var authClient = GlobalHooks.App!.CreateHttpClient("apiservice");
-        authClient.DefaultRequestHeaders.Authorization =
-            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", loginResult!.AccessToken);
-        authClient.DefaultRequestHeaders.Add("X-Tenant-ID", StorageConstants.DefaultTenantId);
+        var httpClient = GlobalHooks.App!.CreateHttpClient("apiservice");
+        httpClient.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", loginResult.AccessToken);
+        httpClient.DefaultRequestHeaders.Add("X-Tenant-ID", StorageConstants.DefaultTenantId);
+        var authClient = RestService.For<IIdentityClient>(httpClient);
 
         // Manually add a passkey
-        var connectionString = await GlobalHooks.App!.GetConnectionStringAsync("bookstore");
-        using var store = DocumentStore.For(opts =>
-        {
-            opts.UseSystemTextJsonForSerialization(EnumStorage.AsString, Casing.CamelCase);
-            opts.Connection(connectionString!);
-            _ = opts.Policies.AllDocumentsAreMultiTenanted();
-            opts.Events.TenancyStyle = Marten.Storage.TenancyStyle.Conjoined;
-        });
-
+        using var store = await GetStoreAsync();
         await using (var session = store.LightweightSession(StorageConstants.DefaultTenantId))
         {
             var user = await session.Query<ApplicationUser>()
@@ -256,14 +226,22 @@ public class PasswordManagementTests
         }
 
         // Act
-        var removeResponse = await authClient.PostAsJsonAsync("/account/remove-password", new RemovePasswordRequest());
-
-        // Assert
-        _ = await Assert.That(removeResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await authClient.RemovePasswordAsync(new RemovePasswordRequest());
 
         // Verify password hash is null using API
-        var statusResponse = await authClient.GetAsync("/account/password-status");
-        var status = await statusResponse.Content.ReadFromJsonAsync<PasswordStatusResponse>();
-        _ = await Assert.That(status!.HasPassword).IsFalse();
+        var status = await authClient.GetPasswordStatusAsync();
+        _ = await Assert.That(status.HasPassword).IsFalse();
+    }
+
+    async Task<IDocumentStore> GetStoreAsync()
+    {
+        var connectionString = await GlobalHooks.App!.GetConnectionStringAsync("bookstore");
+        return DocumentStore.For(opts =>
+        {
+            opts.UseSystemTextJsonForSerialization(EnumStorage.AsString, Casing.CamelCase);
+            opts.Connection(connectionString!);
+            _ = opts.Policies.AllDocumentsAreMultiTenanted();
+            opts.Events.TenancyStyle = Marten.Storage.TenancyStyle.Conjoined;
+        });
     }
 }

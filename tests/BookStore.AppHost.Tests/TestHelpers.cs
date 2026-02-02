@@ -159,6 +159,20 @@ public static class TestHelpers
     public static CreatePublisherRequest GenerateFakePublisherRequest()
         => new() { Name = _faker.Company.CompanyName() };
 
+    public static HttpClient GetAuthenticatedClient(string accessToken)
+    {
+        var client = GetUnauthenticatedClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        return client;
+    }
+
+    public static HttpClient GetAuthenticatedClient(string accessToken, string tenantId)
+    {
+        var client = GetUnauthenticatedClient(tenantId);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        return client;
+    }
+
     public static async Task<HttpClient> GetAuthenticatedClientAsync()
     {
         var app = GlobalHooks.App!;
@@ -176,10 +190,13 @@ public static class TestHelpers
     }
 
     public static HttpClient GetUnauthenticatedClient()
+        => GetUnauthenticatedClient(StorageConstants.DefaultTenantId);
+
+    public static HttpClient GetUnauthenticatedClient(string tenantId)
     {
         var app = GlobalHooks.App!;
         var client = app.CreateHttpClient("apiservice");
-        client.DefaultRequestHeaders.Add("X-Tenant-ID", StorageConstants.DefaultTenantId);
+        client.DefaultRequestHeaders.Add("X-Tenant-ID", tenantId);
         return client;
     }
 
@@ -1160,6 +1177,13 @@ public static class TestHelpers
             session.Store(adminUser);
             await session.SaveChangesAsync();
         }
+    }
+
+    public static async Task<LoginResponse?> LoginAsAdminAsync(string tenantId)
+    {
+        var app = GlobalHooks.App!;
+        using var client = app.CreateHttpClient("apiservice");
+        return await LoginAsAdminAsync(client, tenantId);
     }
 
     public static async Task<LoginResponse?> LoginAsAdminAsync(HttpClient client, string tenantId)

@@ -64,7 +64,7 @@ public class FavoriteBooksTests
         // Act & Assert
         try
         {
-            await client.GetFavoriteBooksAsync(new OrderedPagedRequest());
+            _ = await client.GetFavoriteBooksAsync(new OrderedPagedRequest());
             Assert.Fail("Should have thrown ApiException");
         }
         catch (ApiException ex)

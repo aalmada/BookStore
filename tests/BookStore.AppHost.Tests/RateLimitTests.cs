@@ -12,10 +12,10 @@ public class RateLimitTests
     public async Task GetFromAuthEndpoint_RepeatedRequests_ShouldConsumeQuota()
     {
         // Arrange
-        var app = GlobalHooks.App!;
-        var notificationService = GlobalHooks.NotificationService!;
-        var httpClient = app.CreateHttpClient("apiservice");
+        // Use unauthenticated client for login attempt
+        var httpClient = TestHelpers.GetUnauthenticatedClient();
 
+        var notificationService = GlobalHooks.NotificationService!;
         _ = await notificationService.WaitForResourceHealthyAsync("apiservice", CancellationToken.None)
             .WaitAsync(TestConstants.DefaultTimeout);
 
