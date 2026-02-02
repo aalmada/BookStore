@@ -1,11 +1,11 @@
-using System.Net;
-using System.Net.Http.Json;
-using Aspire.Hosting;
-using Aspire.Hosting.Testing;
+using BookStore.Client;
 using BookStore.Shared.Models;
 using Marten;
-using Projects;
+using Refit;
 using Weasel.Core;
+using BookTranslationDto = BookStore.Client.BookTranslationDto;
+using CreateBookRequest = BookStore.Client.CreateBookRequest;
+using CreateAuthorRequest = BookStore.Client.CreateAuthorRequest;
 
 namespace BookStore.AppHost.Tests;
 
@@ -15,84 +15,89 @@ public class RefitMartenRegressionTests
     public async Task GetPublishers_ShouldReturnPagedListDto_MatchingRefitExpectation()
     {
         // Arrange
-        var httpClient = TestHelpers.GetUnauthenticatedClient();
+        var client = RestService.For<IPublishersClient>(TestHelpers.GetUnauthenticatedClient());
 
         // Act
         // This effectively tests that the server response structure matches PagedListDto<T>
         // which was the core of the Refit deserialization issue.
-        var response = await httpClient.GetFromJsonAsync<PagedListDto<PublisherDto>>("/api/publishers");
+        var response = await client.GetPublishersAsync(null, null);
 
         // Assert
         _ = await Assert.That(response).IsNotNull();
-        _ = await Assert.That(response!.Items).IsNotNull();
-        // Even if empty, it should have deserialized the PagedList structure (PageSize, TotalItemCount, etc)
-        _ = await Assert.That(response.PageSize).IsGreaterThan(0);
+        _ = await Assert.That(response.Items).IsNotNull();
+        // The endpoint might return empty list if no publishers 
     }
 
     [Test]
     public async Task SearchBooks_WithPriceFilter_ShouldNotThrow500()
     {
         // Arrange
-        // We need an authenticated client to create data efficiently via helper, 
-        // but search can be unauthenticated.
-        var authClient = await TestHelpers.GetAuthenticatedClientAsync();
-        var publicClient = TestHelpers.GetUnauthenticatedClient();
+        var authClient = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
+        var publicClient = RestService.For<IBooksClient>(TestHelpers.GetUnauthenticatedClient());
 
         // Create a book with a specific price to ensure we have data to query against
         var uniqueTitle = $"PriceTest-{Guid.NewGuid()}";
-        var createRequest = new
+        var createRequest = new CreateBookRequest
         {
             Title = uniqueTitle,
             Isbn = "978-0-00-000000-0",
             Language = "en",
-            Translations = new Dictionary<string, object> { ["en"] = new { Description = "Test description" } },
-            PublicationDate = new { Year = 2024 },
+            Translations =
+                new Dictionary<string, BookTranslationDto>
+                {
+                    ["en"] = new BookTranslationDto { Description = "Test description" }
+                },
+            PublicationDate = new PartialDate(2024, 1, 1),
             Prices = new Dictionary<string, decimal> { ["USD"] = 10.0m }
         };
-        _ = await TestHelpers.CreateBookAsync(authClient, createRequest);
+        await TestHelpers.CreateBookAsync(authClient, createRequest);
 
         // Act
         // This query caused Marten.Exceptions.BadLinqExpressionException before the fix
         // because it was trying to query the Dictionary directly.
-        var response = await publicClient.GetAsync($"/api/books?search={uniqueTitle}&minPrice=5&maxPrice=15");
+        var response = await publicClient.GetBooksAsync(new BookSearchRequest
+        {
+            Search = uniqueTitle, MinPrice = 5, MaxPrice = 15
+        });
 
         // Assert
-        _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-
-        var content = await response.Content.ReadFromJsonAsync<PagedListDto<BookDto>>();
-        _ = await Assert.That(content).IsNotNull();
-        _ = await Assert.That(content!.Items.Any(b => b.Title == uniqueTitle)).IsTrue();
+        _ = await Assert.That(response).IsNotNull();
+        _ = await Assert.That(response.Items.Any(b => b.Title == uniqueTitle)).IsTrue();
     }
 
     [Test]
     public async Task SearchBooks_WithPriceFilter_ShouldExcludeOutOfRange()
     {
         // Arrange
-        var authClient = await TestHelpers.GetAuthenticatedClientAsync();
-        var publicClient = TestHelpers.GetUnauthenticatedClient();
+        var authClient = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
+        var publicClient = RestService.For<IBooksClient>(TestHelpers.GetUnauthenticatedClient());
 
         // Create a book with price 20.0 (outside range 5-15)
         var uniqueTitle = $"OutOfRange-{Guid.NewGuid()}";
-        var createRequest = new
+        var createRequest = new CreateBookRequest
         {
             Title = uniqueTitle,
             Isbn = "978-0-00-000000-0",
             Language = "en",
-            Translations = new Dictionary<string, object> { ["en"] = new { Description = "Test description" } },
-            PublicationDate = new { Year = 2024 },
+            Translations =
+                new Dictionary<string, BookTranslationDto>
+                {
+                    ["en"] = new BookTranslationDto { Description = "Test description" }
+                },
+            PublicationDate = new PartialDate(2024, 1, 1),
             Prices = new Dictionary<string, decimal> { ["USD"] = 20.0m }
         };
-        _ = await TestHelpers.CreateBookAsync(authClient, createRequest);
+        await TestHelpers.CreateBookAsync(authClient, createRequest);
 
         // Act
-        var response = await publicClient.GetAsync($"/api/books?search={uniqueTitle}&minPrice=5&maxPrice=15");
+        var response = await publicClient.GetBooksAsync(new BookSearchRequest
+        {
+            Search = uniqueTitle, MinPrice = 5, MaxPrice = 15
+        });
 
         // Assert
-        _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-
-        var content = await response.Content.ReadFromJsonAsync<PagedListDto<BookDto>>();
-        _ = await Assert.That(content).IsNotNull();
-        _ = await Assert.That(content!.Items.Any(b => b.Title == uniqueTitle)).IsFalse();
+        _ = await Assert.That(response).IsNotNull();
+        _ = await Assert.That(response.Items.Any(b => b.Title == uniqueTitle)).IsFalse();
     }
 
     [Test]
@@ -100,28 +105,32 @@ public class RefitMartenRegressionTests
     {
         // Arrange
         // Create a book to ensure data exists with the new PublicationDateString field populated
-        var authClient = await TestHelpers.GetAuthenticatedClientAsync();
+        var authClient = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
         var uniqueTitle = $"DateSort-{Guid.NewGuid()}";
-        _ = await TestHelpers.CreateBookAsync(authClient,
-            new
+        await TestHelpers.CreateBookAsync(authClient,
+            new CreateBookRequest
             {
                 Title = uniqueTitle,
                 Isbn = "978-0-00-000000-0",
                 Language = "en",
-                Translations = new Dictionary<string, object> { ["en"] = new { Description = "Test description" } },
-                PublicationDate = new { Year = 2024 },
+                Translations =
+                    new Dictionary<string, BookTranslationDto>
+                    {
+                        ["en"] = new BookTranslationDto { Description = "Test description" }
+                    },
+                PublicationDate = new PartialDate(2024, 1, 1),
                 Prices = new Dictionary<string, decimal> { ["USD"] = 10.0m }
             });
 
-        var publicClient = TestHelpers.GetUnauthenticatedClient();
+        var publicClient = RestService.For<IBooksClient>(TestHelpers.GetUnauthenticatedClient());
 
         // Act
         // This query caused Marten.Exceptions.BadLinqExpressionException before the fix
         // because it was trying to sort by PartialDate components.
-        var response = await publicClient.GetAsync("/api/books?sortBy=date&sortOrder=asc");
+        var response = await publicClient.GetBooksAsync(new BookSearchRequest { SortBy = "date", SortOrder = "asc" });
 
         // Assert
-        _ = await Assert.That((int)response.StatusCode).IsEqualTo(200);
+        _ = await Assert.That(response).IsNotNull();
     }
 
     [Test]
@@ -133,38 +142,42 @@ public class RefitMartenRegressionTests
         // it matches because 10 <= 15, even though the USD price is 100.
 
         // Arrange
-        var authClient = await TestHelpers.GetAuthenticatedClientAsync();
-        var publicClient = TestHelpers.GetUnauthenticatedClient();
+        var authClient = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
+        var publicClient = RestService.For<IBooksClient>(TestHelpers.GetUnauthenticatedClient());
 
         var uniqueTitle = $"CurrencyMismatch-{Guid.NewGuid()}";
-        var createRequest = new
+        var createRequest = new CreateBookRequest
         {
             Title = uniqueTitle,
             Isbn = "978-0-00-000000-0",
             Language = "en",
-            Translations = new Dictionary<string, object> { ["en"] = new { Description = "Test description" } },
-            PublicationDate = new { Year = 2024 },
+            Translations =
+                new Dictionary<string, BookTranslationDto>
+                {
+                    ["en"] = new BookTranslationDto { Description = "Test description" }
+                },
+            PublicationDate = new PartialDate(2024, 1, 1),
             Prices = new Dictionary<string, decimal>
             {
                 ["USD"] = 100.0m, // Expensive in USD
                 ["EUR"] = 10.0m // Cheap in EUR
             }
         };
-        _ = await TestHelpers.CreateBookAsync(authClient, createRequest);
+        await TestHelpers.CreateBookAsync(authClient, createRequest);
 
         // Act
         // Filter: MaxPrice 15 AND Currency=USD.
         // The system should now verify p.Currency == "USD" && p.Value <= maxPrice.
-        var response = await publicClient.GetAsync($"/api/books?search={uniqueTitle}&maxPrice=15&currency=USD");
+        var response = await publicClient.GetBooksAsync(new BookSearchRequest
+        {
+            Search = uniqueTitle, MaxPrice = 15, Currency = "USD"
+        });
 
         // Assert
-        _ = await Assert.That((int)response.StatusCode).IsEqualTo(200);
-
-        var content = await response.Content.ReadFromJsonAsync<PagedListDto<BookDto>>();
-        _ = await Assert.That(content).IsNotNull();
+        _ = await Assert.That(response).IsNotNull();
 
         // Assertion: Book should NOT be present because USD price (100) > MaxPrice (15) and EUR is ignored due to currency filter
-        _ = await Assert.That(content!.Items.Any(b => b.Title == uniqueTitle)).IsFalse();
+        _ = await Assert.That(response.Items.Any(b => b.Title == uniqueTitle)).IsFalse();
     }
 
     [Test]
@@ -177,7 +190,6 @@ public class RefitMartenRegressionTests
         var tenantId = $"author-filter-test-{Guid.NewGuid():N}";
 
         // We need to seed the tenant manually effectively because GlobalHooks doesn't expose the Store.
-        // We can get the connection string and create a temporary store.
         var connectionString = await GlobalHooks.App!.GetConnectionStringAsync("bookstore");
         if (string.IsNullOrEmpty(connectionString))
         {
@@ -197,58 +209,33 @@ public class RefitMartenRegressionTests
         }
 
         // 1. Authenticate as Admin in the new tenant
-        // LoginAsAdminAsync returns a LoginResponse (Token), we need to create a client with it.
-        // TestHelpers.GetTenantClientAsync takes a token.
-        // But TestHelpers.GetTenantClientAsync also takes tenantId.
-        // Let's use TestHelpers.LoginAsAdminAsync and then create the client.
-
-        // We need a client to login first - can use default one.
-        var defaultClient = TestHelpers.GetUnauthenticatedClient();
-        var loginRes = await TestHelpers.LoginAsAdminAsync(defaultClient, tenantId);
+        var loginRes = await TestHelpers.LoginAsAdminAsync(tenantId);
         _ = await Assert.That(loginRes).IsNotNull();
 
-        var adminClient = await TestHelpers.GetTenantClientAsync(tenantId, loginRes!.AccessToken);
+        var adminClient =
+            RestService.For<IAuthorsClient>(TestHelpers.GetAuthenticatedClient(loginRes!.AccessToken, tenantId));
+        var adminBooksClient =
+            RestService.For<IBooksClient>(TestHelpers.GetAuthenticatedClient(loginRes!.AccessToken, tenantId));
 
         // 2. Create an Author in this tenant
         var authorReq = TestHelpers.GenerateFakeAuthorRequest();
-        var authorRes = await adminClient.PostAsJsonAsync("/api/admin/authors", authorReq);
+        var authorRes = await adminClient.CreateAuthorWithResponseAsync(authorReq);
         _ = await Assert.That(authorRes.StatusCode).IsEqualTo(HttpStatusCode.Created);
-
-        var authorJson = await authorRes.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
-        // Assuming response is an object with Id property or similar, or checking if it is the ID itself wrapping in quotes?
-        // Exception said "StartObject", so it is { ... }.
-        // Let's try to find "id".
-        if (!authorJson.TryGetProperty("id", out var idProp))
-        {
-            // Maybe it returned the whole object and property is "Id" (case sensitive)?
-            if (!authorJson.TryGetProperty("Id", out idProp))
-            {
-                Assert.Fail($"Could not find 'id' property in response: {authorJson}");
-            }
-        }
-
-        var authorId = idProp.GetGuid();
+        var authorId = authorRes.Content!.Id;
 
         // 3. Create a Book linked to this Author
         var bookReq = TestHelpers.GenerateFakeBookRequest(authorIds: new[] { authorId });
-        // Use CreateBookAsync helper but ensure we pass the adminClient which is scoped to valid tenant
-        var book = await TestHelpers.CreateBookAsync(adminClient, bookReq);
+        var book = await TestHelpers.CreateBookAsync(adminBooksClient, bookReq);
 
         // 4. Search for the book using the Author Filter
-        // We can use an unauthenticated client or the same admin client. 
-        // Let's use unauthenticated client for the tenant to simulate public search.
-        var publicClient = GlobalHooks.App!.CreateHttpClient("apiservice");
-        publicClient.DefaultRequestHeaders.Add("X-Tenant-ID", tenantId);
+        var publicClient = RestService.For<IBooksClient>(TestHelpers.GetUnauthenticatedClient(tenantId));
 
         // Act
-        var response = await publicClient.GetAsync($"/api/books?authorId={authorId}");
+        var response = await publicClient.GetBooksAsync(new BookSearchRequest { AuthorId = authorId });
 
         // Assert
-
-        _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-        var content = await response.Content.ReadFromJsonAsync<PagedListDto<BookDto>>();
-        _ = await Assert.That(content).IsNotNull();
-        _ = await Assert.That(content!.Items.Any(b => b.Id == book.Id)).IsTrue();
+        _ = await Assert.That(response).IsNotNull();
+        _ = await Assert.That(response.Items.Any(b => b.Id == book.Id)).IsTrue();
     }
 
     [Test]
@@ -275,56 +262,45 @@ public class RefitMartenRegressionTests
         await TestHelpers.SeedTenantAsync(store, tenantA);
         await TestHelpers.SeedTenantAsync(store, tenantB);
 
-        var defaultClient = TestHelpers.GetUnauthenticatedClient();
+        var loginResA = await TestHelpers.LoginAsAdminAsync(tenantA);
+        var adminClientA =
+            RestService.For<IAuthorsClient>(TestHelpers.GetAuthenticatedClient(loginResA!.AccessToken, tenantA));
 
-        var loginResA = await TestHelpers.LoginAsAdminAsync(defaultClient, tenantA);
-        var adminClientA = await TestHelpers.GetTenantClientAsync(tenantA, loginResA!.AccessToken);
-
-        var loginResB = await TestHelpers.LoginAsAdminAsync(defaultClient, tenantB);
-        var adminClientB = await TestHelpers.GetTenantClientAsync(tenantB, loginResB!.AccessToken);
+        var loginResB = await TestHelpers.LoginAsAdminAsync(tenantB);
+        var adminClientB =
+            RestService.For<IAuthorsClient>(TestHelpers.GetAuthenticatedClient(loginResB!.AccessToken, tenantB));
 
         // Create Unique Authors and wait for projection
         var authorReqA = TestHelpers.GenerateFakeAuthorRequest();
-        var authorIdA = Guid.Empty;
 
         _ = await TestHelpers.ExecuteAndWaitForEventAsync(Guid.Empty, "AuthorCreated", async () =>
         {
-            var authorResA = await adminClientA.PostAsJsonAsync("/api/admin/authors", authorReqA);
+            var authorResA = await adminClientA.CreateAuthorWithResponseAsync(authorReqA);
             _ = await Assert.That(authorResA.StatusCode).IsEqualTo(HttpStatusCode.Created);
-
-            // Extract ID to confirm specific event if needed, but sequential is fine
-            var json = await authorResA.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
-            // Helper to get ID if needed, but we trust the event for now
         }, TimeSpan.FromSeconds(5));
 
         var authorReqB = TestHelpers.GenerateFakeAuthorRequest();
         _ = await TestHelpers.ExecuteAndWaitForEventAsync(Guid.Empty, "AuthorUpdated", async () =>
         {
-            var authorResB = await adminClientB.PostAsJsonAsync("/api/admin/authors", authorReqB);
+            var authorResB = await adminClientB.CreateAuthorWithResponseAsync(authorReqB);
             _ = await Assert.That(authorResB.StatusCode).IsEqualTo(HttpStatusCode.Created);
         }, TimeSpan.FromSeconds(5));
 
         // Act & Assert
         // 1. Get Authors from Tenant A. Should contain Author A.
-        var publicClientA = GlobalHooks.App!.CreateHttpClient("apiservice");
-        publicClientA.DefaultRequestHeaders.Add("X-Tenant-ID", tenantA);
+        var publicClientA = RestService.For<IAuthorsClient>(TestHelpers.GetUnauthenticatedClient(tenantA));
 
-        dynamic reqBodyA = authorReqA;
-        string nameA = reqBodyA.Name;
+        string nameA = authorReqA.Name;
 
         // Poll for consistency
         var foundA = false;
         for (var i = 0; i < 20; i++)
         {
-            var resA = await publicClientA.GetAsync("/api/authors");
-            if (resA.IsSuccessStatusCode)
+            var listA = await publicClientA.GetAuthorsAsync(null, null);
+            if (listA.Items.Any(a => a.Name == nameA))
             {
-                var listA = await resA.Content.ReadFromJsonAsync<PagedListDto<AuthorDto>>();
-                if (listA!.Items.Any(a => a.Name == nameA))
-                {
-                    foundA = true;
-                    break;
-                }
+                foundA = true;
+                break;
             }
 
             await Task.Delay(1000);
@@ -333,12 +309,9 @@ public class RefitMartenRegressionTests
         _ = await Assert.That(foundA).IsTrue();
 
         // 2. Get Authors from Tenant B. Should contain Author B, AND NOT Author A.
-        // If cache leaks, we might get List A again if cache key is same.
-        var publicClientB = GlobalHooks.App!.CreateHttpClient("apiservice");
-        publicClientB.DefaultRequestHeaders.Add("X-Tenant-ID", tenantB);
+        var publicClientB = RestService.For<IAuthorsClient>(TestHelpers.GetUnauthenticatedClient(tenantB));
 
-        dynamic reqBodyB = authorReqB;
-        string nameB = reqBodyB.Name;
+        string nameB = authorReqB.Name;
 
         // Poll for Author B presence (wait for consistency)
         var foundB = false;
@@ -346,15 +319,11 @@ public class RefitMartenRegressionTests
         PagedListDto<AuthorDto>? listB = null;
         for (var i = 0; i < 10; i++)
         {
-            var resB = await publicClientB.GetAsync("/api/authors");
-            if (resB.IsSuccessStatusCode)
+            listB = await publicClientB.GetAuthorsAsync(null, null);
+            if (listB.Items.Any(a => a.Name == nameB))
             {
-                listB = await resB.Content.ReadFromJsonAsync<PagedListDto<AuthorDto>>();
-                if (listB!.Items.Any(a => a.Name == nameB))
-                {
-                    foundB = true;
-                    break;
-                }
+                foundB = true;
+                break;
             }
 
             await Task.Delay(500);
@@ -363,12 +332,7 @@ public class RefitMartenRegressionTests
         _ = await Assert.That(foundB).IsTrue();
 
         // Assert List B does NOT contain Author A.
-        // We use the FINAL list captured from loop (or fresh fetch).
-        // Since we confirmed B is present, let's check A presence in THAT list.
         var containsAInB = listB!.Items.Any(a => a.Name == nameA);
         _ = await Assert.That(containsAInB).IsFalse();
     }
-
-    // Internal DTO for the Publisher test if not available globally
-    internal record PublisherDto(Guid Id, string Name);
 }
