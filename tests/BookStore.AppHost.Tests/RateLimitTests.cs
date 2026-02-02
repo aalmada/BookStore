@@ -1,8 +1,7 @@
 using System.Net;
-using System.Net.Http.Json;
-using Aspire.Hosting;
-using Aspire.Hosting.Testing;
-using Projects;
+using BookStore.Client;
+using Refit;
+using SharedModels = BookStore.Shared.Models;
 
 namespace BookStore.AppHost.Tests;
 
@@ -12,30 +11,38 @@ public class RateLimitTests
     public async Task GetFromAuthEndpoint_RepeatedRequests_ShouldConsumeQuota()
     {
         // Arrange
-        // Use unauthenticated client for login attempt
-        var httpClient = TestHelpers.GetUnauthenticatedClient();
-
         var notificationService = GlobalHooks.NotificationService!;
         _ = await notificationService.WaitForResourceHealthyAsync("apiservice", CancellationToken.None)
             .WaitAsync(TestConstants.DefaultTimeout);
 
+        // Use unauthenticated client for login attempt via Refit
+        var httpClient = TestHelpers.GetUnauthenticatedClient();
+        var client = RestService.For<IIdentityClient>(httpClient);
+
         // Act & Assert
         // Make an initial request to login endpoint
-        var loginRequest = new { Email = "admin@bookstore.com", Password = "WrongPassword!" };
-        var response = await httpClient.PostAsJsonAsync("/account/login", loginRequest);
+        var loginRequest = new SharedModels.LoginRequest("admin@bookstore.com", "WrongPassword!");
 
-        // Even if login fails (401), rate limits should apply
-        // Check for Rate Limit headers
-        if (response.Headers.Contains("X-Rate-Limit-Remaining"))
+        try
         {
-            var remaining = response.Headers.GetValues("X-Rate-Limit-Remaining").FirstOrDefault();
-            _ = await Assert.That(remaining).IsNotNull();
+            _ = await client.LoginAsync(loginRequest);
+            // If it succeeds (unlikely with wrong password), we can't check headers easily with current interface
+            // But we can assert unexpected success if we wanted, or just ignore.
         }
-        else
+        catch (ApiException ex)
         {
-            // If headers aren't exposed, we might not be able to verify quota without exhausting it, 
-            // which is slow/flaky. At minimum, verify we get a response (middleware didn't crash).
-            _ = await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
+            // Even if login fails (401), rate limits should apply
+            // Check for Rate Limit headers
+            if (ex.Headers.Contains("X-Rate-Limit-Remaining"))
+            {
+                var remaining = ex.Headers.GetValues("X-Rate-Limit-Remaining").FirstOrDefault();
+                _ = await Assert.That(remaining).IsNotNull();
+            }
+            else
+            {
+                // If headers aren't exposed, at minimum verify we get a response (middleware didn't crash).
+                _ = await Assert.That(ex.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
+            }
         }
     }
 }

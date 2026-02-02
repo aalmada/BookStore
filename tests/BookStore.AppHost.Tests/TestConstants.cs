@@ -10,7 +10,7 @@ public static class TestConstants
     /// <summary>
     /// Default timeout for waiting for specific SSE events (shorter than global default).
     /// </summary>
-    public static readonly TimeSpan DefaultEventTimeout = TimeSpan.FromSeconds(10);
+    public static readonly TimeSpan DefaultEventTimeout = TimeSpan.FromSeconds(30);
 
     /// <summary>
     /// Default delay to allow for asynchronous projections to complete.

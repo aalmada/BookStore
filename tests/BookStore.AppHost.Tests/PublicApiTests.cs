@@ -1,4 +1,6 @@
 using System.Net;
+using BookStore.Client;
+using Refit;
 
 namespace BookStore.AppHost.Tests;
 
@@ -10,16 +12,19 @@ public class PublicApiTests
         // Arrange
         var app = GlobalHooks.App!;
         var notificationService = GlobalHooks.NotificationService!;
-        var httpClient = app.CreateHttpClient("apiservice");
 
         _ = await notificationService.WaitForResourceHealthyAsync("apiservice", CancellationToken.None)
             .WaitAsync(TestConstants.DefaultTimeout);
 
+        var httpClient = TestHelpers.GetUnauthenticatedClient();
+        var client = RestService.For<IBooksClient>(httpClient);
+
         // Act
-        var response = await httpClient.GetAsync("/api/books");
+        // GetBooksAsync requires page and pageSize (nullable)
+        var response = await client.GetBooksAsync(new BookStore.Shared.Models.BookSearchRequest());
 
         // Assert
-        _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        _ = await Assert.That(response).IsNotNull();
     }
 
     [Test]
@@ -28,16 +33,19 @@ public class PublicApiTests
         // Arrange
         var app = GlobalHooks.App!;
         var notificationService = GlobalHooks.NotificationService!;
-        var httpClient = app.CreateHttpClient("apiservice");
 
         _ = await notificationService.WaitForResourceHealthyAsync("apiservice", CancellationToken.None)
             .WaitAsync(TestConstants.DefaultTimeout);
 
+        var httpClient = TestHelpers.GetUnauthenticatedClient();
+        var client = RestService.For<IAuthorsClient>(httpClient);
+
         // Act
-        var response = await httpClient.GetAsync("/api/authors");
+        // Public API does not support search request object, only page/pageSize
+        var response = await client.GetAuthorsAsync(null, null);
 
         // Assert
-        _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        _ = await Assert.That(response).IsNotNull();
     }
 
     [Test]
@@ -46,16 +54,19 @@ public class PublicApiTests
         // Arrange
         var app = GlobalHooks.App!;
         var notificationService = GlobalHooks.NotificationService!;
-        var httpClient = app.CreateHttpClient("apiservice");
 
         _ = await notificationService.WaitForResourceHealthyAsync("apiservice", CancellationToken.None)
             .WaitAsync(TestConstants.DefaultTimeout);
 
+        var httpClient = TestHelpers.GetUnauthenticatedClient();
+        var client = RestService.For<ICategoriesClient>(httpClient);
+
         // Act
-        var response = await httpClient.GetAsync("/api/categories");
+        // GetCategoriesAsync takes page, pageSize, sortBy, sortOrder
+        var response = await client.GetCategoriesAsync(null, null, null, null);
 
         // Assert
-        _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        _ = await Assert.That(response).IsNotNull();
     }
 
     [Test]
@@ -64,19 +75,17 @@ public class PublicApiTests
         // Arrange
         var app = GlobalHooks.App!;
         var notificationService = GlobalHooks.NotificationService!;
-        var httpClient = app.CreateHttpClient("apiservice");
 
         _ = await notificationService.WaitForResourceHealthyAsync("apiservice", CancellationToken.None)
             .WaitAsync(TestConstants.DefaultTimeout);
 
-        // Act
-        var response = await httpClient.GetAsync("/api/publishers");
+        var httpClient = TestHelpers.GetUnauthenticatedClient();
+        var client = RestService.For<IPublishersClient>(httpClient);
 
-        if (response.StatusCode != HttpStatusCode.OK)
-        {
-        }
+        // Act
+        var response = await client.GetPublishersAsync(null, null);
 
         // Assert
-        _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        _ = await Assert.That(response).IsNotNull();
     }
 }

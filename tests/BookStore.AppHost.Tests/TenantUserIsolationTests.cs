@@ -1,6 +1,7 @@
-using System.Net.Http.Json;
+using System.Net;
 using BookStore.Client;
-using BookStore.Shared.Models;
+using Refit;
+using SharedModels = BookStore.Shared.Models;
 
 namespace BookStore.AppHost.Tests;
 
@@ -20,15 +21,40 @@ public class TenantUserIsolationTests
         _ = await Assert.That(loginRes).IsNotNull();
 
         var tenantAdminClient = await TestHelpers.GetTenantClientAsync(tenantId, loginRes!.AccessToken);
-        var book = await TestHelpers.CreateBookAsync(tenantAdminClient);
-        var userClient = await TestHelpers.CreateUserAndGetClientAsync(tenantId);
+        var tenantAdminBooksClient = Refit.RestService.For<IBooksClient>(tenantAdminClient);
+
+        // Use Refit to create book
+        var createRequest = new CreateBookRequest
+        {
+            Title = $"TenantBook-{Guid.NewGuid()}",
+            Isbn = "1234567890",
+            Language = "en",
+            Translations =
+                new Dictionary<string, BookTranslationDto> { ["en"] = new() { Description = "Tenant Book" } },
+            PublicationDate = new SharedModels.PartialDate(2024),
+            Prices = new Dictionary<string, decimal> { ["USD"] = 10.99m },
+            AuthorIds = [],
+            CategoryIds = []
+        };
+
+        SharedModels.BookDto book = null!;
+        _ = await TestHelpers.ExecuteAndWaitForEventAsync(Guid.Empty, ["BookCreated", "BookUpdated"],
+            async () => book = await tenantAdminBooksClient.CreateBookAsync(createRequest),
+            TestConstants.DefaultEventTimeout);
+
+        var userHttpClient = await TestHelpers.CreateUserAndGetClientAsync(tenantId);
+        var userBooksClient = Refit.RestService.For<IBooksClient>(userHttpClient);
 
         // Act - Rate the book
         var rating = 5;
-        await TestHelpers.RateBookAsync(userClient, book.Id, rating, book.Id, "BookUpdated");
+        // Verify method name in IBooksClient. IRateBookEndpoint.RateBookAsync?
+        // Using wait for event
+        _ = await TestHelpers.ExecuteAndWaitForEventAsync(book.Id, "BookUpdated",
+            async () => await userBooksClient.RateBookAsync(book.Id, new RateBookRequest(rating)),
+            TestConstants.DefaultEventTimeout);
 
         // Assert - Verify User Rating
-        var bookDto = await userClient.GetFromJsonAsync<BookDto>($"/api/books/{book.Id}");
+        var bookDto = await userBooksClient.GetBookAsync(book.Id);
         _ = await Assert.That(bookDto!.UserRating).IsEqualTo(rating);
         _ = await Assert.That(bookDto.AverageRating).IsEqualTo((float)rating);
     }
@@ -43,19 +69,43 @@ public class TenantUserIsolationTests
         _ = await Assert.That(loginRes).IsNotNull();
 
         var tenantAdminClient = await TestHelpers.GetTenantClientAsync(tenantId, loginRes!.AccessToken);
-        var book = await TestHelpers.CreateBookAsync(tenantAdminClient);
-        var userClient = await TestHelpers.CreateUserAndGetClientAsync(tenantId);
+        var tenantAdminBooksClient = Refit.RestService.For<IBooksClient>(tenantAdminClient);
+
+        var createRequest = new CreateBookRequest
+        {
+            Title = $"FavBook-{Guid.NewGuid()}",
+            Isbn = "1234567890",
+            Language = "en",
+            Translations =
+                new Dictionary<string, BookTranslationDto> { ["en"] = new() { Description = "Fav Book" } },
+            PublicationDate = new SharedModels.PartialDate(2024),
+            Prices = new Dictionary<string, decimal> { ["USD"] = 10.99m },
+            AuthorIds = [],
+            CategoryIds = []
+        };
+
+        SharedModels.BookDto book = null!;
+        _ = await TestHelpers.ExecuteAndWaitForEventAsync(Guid.Empty, ["BookCreated", "BookUpdated"],
+            async () => book = await tenantAdminBooksClient.CreateBookAsync(createRequest),
+            TestConstants.DefaultEventTimeout);
+
+        var userHttpClient = await TestHelpers.CreateUserAndGetClientAsync(tenantId);
+        var userBooksClient = Refit.RestService.For<IBooksClient>(userHttpClient);
 
         // Act
-        await TestHelpers.AddToFavoritesAsync(userClient, book.Id);
+        // Act
+        // AddBookToFavoritesAsync ?
+        _ = await TestHelpers.ExecuteAndWaitForEventAsync(Guid.Empty, "UserUpdated",
+            async () => await userBooksClient.AddBookToFavoritesAsync(book.Id),
+            TestConstants.DefaultEventTimeout);
 
         // Assert - Verify via Get Favorites endpoint
-        var favorites = await userClient.GetFromJsonAsync<PagedListDto<BookDto>>("/api/books/favorites");
+        var favorites = await userBooksClient.GetFavoriteBooksAsync(new SharedModels.BookSearchRequest());
         _ = await Assert.That(favorites).IsNotNull();
         _ = await Assert.That(favorites!.Items.Any(b => b.Id == book.Id)).IsTrue();
 
         // Verify IsFavorite flag on book details
-        var bookDetails = await userClient.GetFromJsonAsync<BookDto>($"/api/books/{book.Id}");
+        var bookDetails = await userBooksClient.GetBookAsync(book.Id);
         _ = await Assert.That(bookDetails!.IsFavorite).IsTrue();
     }
 
@@ -69,20 +119,48 @@ public class TenantUserIsolationTests
         _ = await Assert.That(loginRes).IsNotNull();
 
         var tenantAdminClient = await TestHelpers.GetTenantClientAsync(tenantId, loginRes!.AccessToken);
-        var book = await TestHelpers.CreateBookAsync(tenantAdminClient);
-        var userClient = await TestHelpers.CreateUserAndGetClientAsync(tenantId);
+        var tenantAdminBooksClient = Refit.RestService.For<IBooksClient>(tenantAdminClient);
+
+        var createRequest = new CreateBookRequest
+        {
+            Title = $"CartBook-{Guid.NewGuid()}",
+            Isbn = "1234567890",
+            Language = "en",
+            Translations =
+                new Dictionary<string, BookTranslationDto> { ["en"] = new() { Description = "Cart Book" } },
+            PublicationDate = new SharedModels.PartialDate(2024),
+            Prices = new Dictionary<string, decimal> { ["USD"] = 10.99m },
+            AuthorIds = [],
+            CategoryIds = []
+        };
+
+        SharedModels.BookDto book = null!;
+        _ = await TestHelpers.ExecuteAndWaitForEventAsync(Guid.Empty, ["BookCreated", "BookUpdated"],
+            async () => book = await tenantAdminBooksClient.CreateBookAsync(createRequest),
+            TestConstants.DefaultEventTimeout);
+
+        var userHttpClient = await TestHelpers.CreateUserAndGetClientAsync(tenantId);
+        // Need Cart Client
+        var userCartClient = Refit.RestService.For<IShoppingCartClient>(userHttpClient);
 
         // Act - Add to cart
-        await TestHelpers.AddToCartAsync(userClient, book.Id, 2);
+        await userCartClient.AddToCartAsync(new AddToCartClientRequest(book.Id, 2));
 
         // Assert - Cart should contain the item
         await TestHelpers.WaitForConditionAsync(async () =>
         {
-            var cart = await userClient.GetFromJsonAsync<ShoppingCartResponse>("/api/cart");
-            return cart?.TotalItems == 2;
+            try
+            {
+                var cart = await userCartClient.GetShoppingCartAsync();
+                return cart?.TotalItems == 2;
+            }
+            catch
+            {
+                return false;
+            }
         }, TimeSpan.FromSeconds(5), "Cart was not populated after AddToCart");
 
-        var finalCart = await userClient.GetFromJsonAsync<ShoppingCartResponse>("/api/cart");
+        var finalCart = await userCartClient.GetShoppingCartAsync();
         _ = await Assert.That(finalCart).IsNotNull();
         _ = await Assert.That(finalCart!.TotalItems).IsEqualTo(2);
         _ = await Assert.That(finalCart.Items.Any(i => i.BookId == book.Id)).IsTrue();
@@ -97,37 +175,78 @@ public class TenantUserIsolationTests
 
         var adminClient = await TestHelpers.GetAuthenticatedClientAsync();
 
-        // Tenant 1 setup
-        var login1 = await TestHelpers.LoginAsAdminAsync(adminClient, tenant1);
-        _ = await Assert.That(login1).IsNotNull();
-        var admin1Client = await TestHelpers.GetTenantClientAsync(tenant1, login1!.AccessToken);
-        var book1 = await TestHelpers.CreateBookAsync(admin1Client);
-        var user1Client = await TestHelpers.CreateUserAndGetClientAsync(tenant1);
+        // Helper to setup tenant and create book
+        async Task<(SharedModels.BookDto book, HttpClient userClient)> SetupTenantAsync(string tid)
+        {
+            var login = await TestHelpers.LoginAsAdminAsync(adminClient, tid);
+            var tClient = await TestHelpers.GetTenantClientAsync(tid, login!.AccessToken);
+            var tBooksClient = Refit.RestService.For<IBooksClient>(tClient);
 
-        // Tenant 2 setup
-        var login2 = await TestHelpers.LoginAsAdminAsync(adminClient, tenant2);
-        _ = await Assert.That(login2).IsNotNull();
-        var admin2Client = await TestHelpers.GetTenantClientAsync(tenant2, login2!.AccessToken);
-        var book2 = await TestHelpers.CreateBookAsync(admin2Client);
-        var user2Client = await TestHelpers.CreateUserAndGetClientAsync(tenant2);
+            var createRequest = new CreateBookRequest
+            {
+                Title = $"IsoBook-{tid}-{Guid.NewGuid()}",
+                Isbn = "1234567890",
+                Language = "en",
+                Translations =
+                    new Dictionary<string, BookTranslationDto> { ["en"] = new() { Description = "Iso Book" } },
+                PublicationDate = new SharedModels.PartialDate(2024),
+                Prices = new Dictionary<string, decimal> { ["USD"] = 10.99m },
+                AuthorIds = [],
+                CategoryIds = []
+            };
+
+            SharedModels.BookDto createdBook = null!;
+            _ = await TestHelpers.ExecuteAndWaitForEventAsync(Guid.Empty, ["BookCreated", "BookUpdated"],
+                async () => createdBook = await tBooksClient.CreateBookAsync(createRequest),
+                TestConstants.DefaultEventTimeout);
+
+            var uClient = await TestHelpers.CreateUserAndGetClientAsync(tid);
+            return (createdBook, uClient);
+        }
+
+        var (book1, user1HttpClient) = await SetupTenantAsync(tenant1);
+        var (book2, user2HttpClient) = await SetupTenantAsync(tenant2);
+
+        var user1Client = Refit.RestService.For<IBooksClient>(user1HttpClient);
+        var user2Client = Refit.RestService.For<IBooksClient>(user2HttpClient);
 
         // Act - User1 rates book1, User2 rates book2
-        await TestHelpers.RateBookAsync(user1Client, book1.Id, 5, book1.Id, "BookUpdated");
-        await TestHelpers.RateBookAsync(user2Client, book2.Id, 3, book2.Id, "BookUpdated");
+        _ = await TestHelpers.ExecuteAndWaitForEventAsync(book1.Id, "BookUpdated",
+            async () => await user1Client.RateBookAsync(book1.Id, new RateBookRequest(5)),
+            TestConstants.DefaultEventTimeout);
+
+        _ = await TestHelpers.ExecuteAndWaitForEventAsync(book2.Id, "BookUpdated",
+            async () => await user2Client.RateBookAsync(book2.Id, new RateBookRequest(3)),
+            TestConstants.DefaultEventTimeout);
 
         // Assert - Each user sees only their own tenant's data
-        var user1Book = await user1Client.GetFromJsonAsync<BookDto>($"/api/books/{book1.Id}");
+        var user1Book = await user1Client.GetBookAsync(book1.Id);
         _ = await Assert.That(user1Book!.UserRating).IsEqualTo(5);
 
-        var user2Book = await user2Client.GetFromJsonAsync<BookDto>($"/api/books/{book2.Id}");
+        var user2Book = await user2Client.GetBookAsync(book2.Id);
         _ = await Assert.That(user2Book!.UserRating).IsEqualTo(3);
 
         // User1 should not see book2 (different tenant)
-        var user1SeesBook2 = await user1Client.GetAsync($"/api/books/{book2.Id}");
-        _ = await Assert.That(user1SeesBook2.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
+        try
+        {
+            _ = await user1Client.GetBookAsync(book2.Id);
+            Assert.Fail("User1 should not see Book2");
+        }
+        catch (ApiException ex)
+        {
+            // Expect 404 or 403 (NotFound usually)
+            _ = await Assert.That(ex.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
+        }
 
         // User2 should not see book1 (different tenant)
-        var user2SeesBook1 = await user2Client.GetAsync($"/api/books/{book1.Id}");
-        _ = await Assert.That(user2SeesBook1.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
+        try
+        {
+            _ = await user2Client.GetBookAsync(book1.Id);
+            Assert.Fail("User2 should not see Book1");
+        }
+        catch (ApiException ex)
+        {
+            _ = await Assert.That(ex.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
+        }
     }
 }

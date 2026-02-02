@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Net.ServerSentEvents;
@@ -17,6 +18,7 @@ using BookTranslationDto = BookStore.Client.BookTranslationDto;
 using CategoryTranslationDto = BookStore.Client.CategoryTranslationDto;
 // Resolve ambiguities by preferring Client types
 using CreateBookRequest = BookStore.Client.CreateBookRequest;
+using SharedModels = BookStore.Shared.Models;
 using UpdateBookRequest = BookStore.Client.UpdateBookRequest;
 
 namespace BookStore.AppHost.Tests;
@@ -95,7 +97,7 @@ public static class TestHelpers
         CategoryDto? createdCategory = null;
         var received = await ExecuteAndWaitForEventAsync(
             Guid.Empty,
-            "CategoryUpdated",
+            ["CategoryCreated", "CategoryUpdated"],
             async () =>
             {
                 var response = await client.CreateCategoryWithResponseAsync(request);
@@ -104,7 +106,6 @@ public static class TestHelpers
                     throw response.Error;
                 }
 
-                // Read from body directly
                 createdCategory = response.Content;
             },
             TestConstants.DefaultEventTimeout);
@@ -114,11 +115,26 @@ public static class TestHelpers
             throw new Exception("Failed to create category or receive event.");
         }
 
-        return createdCategory!;
+        // Poll until available in read side
+        CategoryDto? finalCategory = null;
+        await WaitForConditionAsync(async () =>
+        {
+            try
+            {
+                finalCategory = await client.GetCategoryAsync(createdCategory.Id);
+                return finalCategory != null;
+            }
+            catch
+            {
+                return false;
+            }
+        }, TestConstants.DefaultEventTimeout, "Category was not available in read side after creation");
+
+        return finalCategory!;
     }
 
     public static async Task UpdateCategoryAsync(ICategoriesClient client, CategoryDto category,
-        BookStore.Client.UpdateCategoryRequest request)
+        UpdateCategoryRequest request)
     {
         var received = await ExecuteAndWaitForEventAsync(
             category.Id,
@@ -223,9 +239,16 @@ public static class TestHelpers
         Guid entityId,
         string eventType,
         Func<Task> action,
+        TimeSpan timeout) => await ExecuteAndWaitForEventAsync(entityId, [eventType], action, timeout);
+
+    public static async Task<bool> ExecuteAndWaitForEventAsync(
+        Guid entityId,
+        string[] eventTypes,
+        Func<Task> action,
         TimeSpan timeout)
     {
         var matchAnyId = entityId == Guid.Empty;
+        var receivedEvents = new List<string>();
 
         var app = GlobalHooks.App!;
         using var client = app.CreateHttpClient("apiservice");
@@ -262,7 +285,9 @@ public static class TestHelpers
                         continue;
                     }
 
-                    if (item.EventType == eventType)
+                    receivedEvents.Add($"Type: {item.EventType}, Data: {item.Data}");
+
+                    if (eventTypes.Contains(item.EventType))
                     {
                         using var doc = JsonDocument.Parse(item.Data);
                         if (doc.RootElement.TryGetProperty("entityId", out var idProp))
@@ -295,12 +320,19 @@ public static class TestHelpers
         }
 
         // Execute the action that should trigger the event
-
         await action();
 
         // Wait for either the event or timeout
-        var result = await tcs.Task;
-        cts.Cancel(); // Stop listening
+        _ = await Task.WhenAny(tcs.Task, Task.Delay(timeout));
+
+        if (tcs.Task.IsCompleted && tcs.Task.Result)
+        {
+            // Already done
+        }
+        else
+        {
+            cts.Cancel(); // Stop listening
+        }
 
         try
         {
@@ -317,7 +349,14 @@ public static class TestHelpers
         }
 #pragma warning restore RCS1075
 
-        return result;
+        if (tcs.Task.IsCompletedSuccessfully && tcs.Task.Result)
+        {
+            return true;
+        }
+
+        // Throw with debug info
+        throw new Exception(
+            $"Timed out waiting for {string.Join(" OR ", eventTypes)} (EntityId: {entityId}). Received {receivedEvents.Count} events: {string.Join(", ", receivedEvents.Take(5))}");
     }
 
     /// <summary>
@@ -373,7 +412,9 @@ public static class TestHelpers
 
         var received = await ExecuteAndWaitForEventAsync(
             Guid.Empty,
-            "BookUpdated", // Async projections may report as Update regardless of Insert/Update
+            [
+                "BookCreated", "BookUpdated"
+            ], // Async projections may report as Update regardless of Insert/Update
             async () =>
             {
                 var createResponse = await httpClient.PostAsJsonAsync("/api/admin/books", createBookRequest);
@@ -420,13 +461,13 @@ public static class TestHelpers
     }
 
     public static async Task<AuthorDto> CreateAuthorAsync(IAuthorsClient client,
-        BookStore.Client.CreateAuthorRequest createAuthorRequest)
+        CreateAuthorRequest createAuthorRequest)
     {
         AuthorDto? createdAuthor = null;
 
         var received = await ExecuteAndWaitForEventAsync(
             Guid.Empty,
-            "AuthorUpdated",
+            ["AuthorCreated", "AuthorUpdated"],
             async () =>
             {
                 var response = await client.CreateAuthorWithResponseAsync(createAuthorRequest);
@@ -441,14 +482,29 @@ public static class TestHelpers
 
         if (!received || createdAuthor == null)
         {
-            throw new Exception("Failed to create author or receive AuthorUpdated event.");
+            throw new Exception("Failed to create author or receive AuthorCreated event.");
         }
 
-        return createdAuthor;
+        // Poll until available in read side
+        AuthorDto? finalAuthor = null;
+        await WaitForConditionAsync(async () =>
+        {
+            try
+            {
+                finalAuthor = await client.GetAuthorAsync(createdAuthor.Id);
+                return finalAuthor != null;
+            }
+            catch
+            {
+                return false;
+            }
+        }, TestConstants.DefaultEventTimeout, "Author was not available in read side after creation");
+
+        return finalAuthor!;
     }
 
     public static async Task UpdateAuthorAsync(IAuthorsClient client, AuthorDto author,
-        BookStore.Client.UpdateAuthorRequest updateRequest)
+        UpdateAuthorRequest updateRequest)
     {
         var received = await ExecuteAndWaitForEventAsync(
             author.Id,
@@ -496,7 +552,7 @@ public static class TestHelpers
 
         var received = await ExecuteAndWaitForEventAsync(
             Guid.Empty,
-            "BookUpdated",
+            ["BookCreated", "BookUpdated"],
             async () =>
             {
                 var response = await client.CreateBookWithResponseAsync(createBookRequest);
@@ -520,33 +576,25 @@ public static class TestHelpers
 
         if (!received || createdId == null)
         {
-            throw new Exception("Failed to create book or receive BookUpdated event, or extract ID.");
+            throw new Exception("Failed to create book or receive BookCreated event, or extract ID.");
         }
 
-        // Poll with retry to ensure our book is projected.
-        var maxRetries = 10;
-        var retryDelay = TimeSpan.FromMilliseconds(200);
-        BookDto? fetchedBook = null;
-
-        for (var i = 0; i < maxRetries; i++)
+        // Poll until available in read side
+        BookDto? finalBook = null;
+        await WaitForConditionAsync(async () =>
         {
             try
             {
-                fetchedBook = await client.GetBookAsync(createdId.Value);
-                break;
+                finalBook = await client.GetBookAsync(createdId.Value);
+                return finalBook != null;
             }
-            catch (ApiException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            catch
             {
-                // Continue polling
+                return false;
             }
+        }, TestConstants.DefaultEventTimeout, "Book was not available in read side after creation");
 
-            if (i < maxRetries - 1)
-            {
-                await Task.Delay(retryDelay);
-            }
-        }
-
-        return fetchedBook!;
+        return finalBook!;
     }
 
     public static async Task<PublisherDto> CreatePublisherAsync(IPublishersClient client,
@@ -555,7 +603,7 @@ public static class TestHelpers
         PublisherDto? createdPublisher = null;
         var received = await ExecuteAndWaitForEventAsync(
             Guid.Empty,
-            "PublisherUpdated",
+            ["PublisherCreated", "PublisherUpdated"],
             async () =>
             {
                 var response = await client.CreatePublisherWithResponseAsync(request);
@@ -564,7 +612,6 @@ public static class TestHelpers
                     throw response.Error;
                 }
 
-                // Read from body directly
                 createdPublisher = response.Content;
             },
             TestConstants.DefaultEventTimeout);
@@ -574,7 +621,25 @@ public static class TestHelpers
             throw new Exception("Failed to create publisher or receive event.");
         }
 
-        return createdPublisher;
+        // Poll until available in read side
+        PublisherDto? finalPublisher = null;
+        await WaitForConditionAsync(async () =>
+        {
+            try
+            {
+                var publishers =
+                    await client.GetAllPublishersAsync(
+                        new PublisherSearchRequest { Search = request.Name });
+                finalPublisher = publishers?.Items.FirstOrDefault(p => p.Id == createdPublisher.Id);
+                return finalPublisher != null;
+            }
+            catch
+            {
+                return false;
+            }
+        }, TestConstants.DefaultEventTimeout, "Publisher was not available in read side after creation");
+
+        return finalPublisher!;
     }
 
     public static async Task UpdatePublisherAsync(IPublishersClient client, PublisherDto publisher,
