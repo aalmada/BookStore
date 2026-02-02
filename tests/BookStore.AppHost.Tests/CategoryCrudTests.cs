@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using BookStore.Client;
 using BookStore.Shared.Models;
+using JasperFx;
 using Refit;
 using TUnit.Core.Interfaces;
 
@@ -43,14 +44,12 @@ public class CategoryCrudTests
         // We use public unauthenticated client to verify
         // But need to set Accept-Language headers to verify specific translations
 
-        var publicClient = TestHelpers.GetUnauthenticatedClient(); // HttpClient
+        var publicClient =
+            RestService.For<IGetCategoryEndpoint>(
+                TestHelpers.GetUnauthenticatedClient(StorageConstants.DefaultTenantId));
         var expectedName = updateRequest.Translations["en"].Name;
 
-        publicClient.DefaultRequestHeaders.AcceptLanguage.Clear();
-        publicClient.DefaultRequestHeaders.AcceptLanguage.Add(new StringWithQualityHeaderValue("en"));
-
-        var updatedCategory =
-            await publicClient.GetFromJsonAsync<CategoryDto>($"/api/categories/{createdCategory!.Id}");
+        var updatedCategory = await publicClient.GetCategoryAsync(createdCategory!.Id, acceptLanguage: "en");
         _ = await Assert.That(updatedCategory!.Name).IsEqualTo(expectedName);
     }
 
@@ -66,9 +65,19 @@ public class CategoryCrudTests
         await TestHelpers.DeleteCategoryAsync(client, createdCategory!);
 
         // Verify it's gone from public API
-        var publicClient = TestHelpers.GetUnauthenticatedClient();
-        var getResponse = await publicClient.GetAsync($"/api/categories/{createdCategory!.Id}");
-        _ = await Assert.That(getResponse.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
+        // Verify it's gone from public API
+        var publicClient =
+            RestService.For<IGetCategoryEndpoint>(
+                TestHelpers.GetUnauthenticatedClient(StorageConstants.DefaultTenantId));
+        try
+        {
+            _ = await publicClient.GetCategoryAsync(createdCategory!.Id);
+            Assert.Fail("Category should have been deleted");
+        }
+        catch (ApiException ex)
+        {
+            _ = await Assert.That(ex.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
+        }
     }
 
     [Test]
@@ -131,20 +140,22 @@ public class CategoryCrudTests
         _ = await Assert.That(createdCategory).IsNotNull();
 
         // Retry policy for the GET check (eventual consistency)
-        var publicClient = TestHelpers.GetUnauthenticatedClient();
+        var publicClient =
+            RestService.For<IGetCategoryEndpoint>(
+                TestHelpers.GetUnauthenticatedClient(StorageConstants.DefaultTenantId));
         var retries = 5;
         CategoryDto? categoryDto = null;
 
-        publicClient.DefaultRequestHeaders.AcceptLanguage.Clear();
-        publicClient.DefaultRequestHeaders.AcceptLanguage.Add(new StringWithQualityHeaderValue(acceptLanguage));
-
         while (retries-- > 0)
         {
-            var response = await publicClient.GetAsync($"/api/categories/{createdCategory!.Id}");
-            if (response.StatusCode == HttpStatusCode.OK)
+            try
             {
-                categoryDto = await response.Content.ReadFromJsonAsync<CategoryDto>();
+                categoryDto = await publicClient.GetCategoryAsync(createdCategory!.Id, acceptLanguage: acceptLanguage);
                 break;
+            }
+            catch (ApiException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+            {
+                // Wait for projection
             }
 
             await Task.Delay(500);
