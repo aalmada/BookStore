@@ -60,7 +60,7 @@ public class AdminTenantTests
             ThemePrimaryColor: "#ff0000",
             IsEnabled: true,
             AdminEmail: "invalid-email", // Invalid email
-            AdminPassword: "Password123!"
+            AdminPassword: TestHelpers.GenerateFakePassword()
         );
 
         // Act & Assert
@@ -90,8 +90,8 @@ public class AdminTenantTests
             Tagline: "Testing valid creation",
             ThemePrimaryColor: "#00ff00",
             IsEnabled: true,
-            AdminEmail: "admin@valid.com",
-            AdminPassword: "Password123!" // Valid password
+            AdminEmail: TestHelpers.GenerateFakeEmail(),
+            AdminPassword: TestHelpers.GenerateFakePassword() // Valid password
         );
 
         // Act
@@ -111,7 +111,7 @@ public class AdminTenantTests
 
         // Arrange
         var tenantId = $"verify-tenant-{Guid.NewGuid():N}";
-        var adminEmail = "admin@verify.com";
+        var adminEmail = TestHelpers.GenerateFakeEmail();
         var command = new CreateTenantCommand(
             Id: tenantId,
             Name: "Verify Tenant",
@@ -119,7 +119,7 @@ public class AdminTenantTests
             ThemePrimaryColor: "#0000ff",
             IsEnabled: true,
             AdminEmail: adminEmail,
-            AdminPassword: "Password123!"
+            AdminPassword: TestHelpers.GenerateFakePassword()
         );
 
         // Act & Assert - Connect to SSE before creating, then wait for notification

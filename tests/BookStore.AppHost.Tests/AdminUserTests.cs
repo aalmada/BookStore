@@ -48,8 +48,8 @@ public class AdminUserTests
             RestService.For<IIdentityClient>(TestHelpers.GetUnauthenticatedClient(StorageConstants.DefaultTenantId));
 
         // Create a regular user
-        var userEmail = $"test_{Guid.NewGuid()}@example.com";
-        _ = await identityClient.RegisterAsync(new RegisterRequest(userEmail, "Password123!"));
+        var userEmail = TestHelpers.GenerateFakeEmail();
+        _ = await identityClient.RegisterAsync(new RegisterRequest(userEmail, TestHelpers.GenerateFakePassword()));
 
         var result = await client.GetUsersAsync(search: userEmail);
         var users = result.Items;
@@ -114,8 +114,8 @@ public class AdminUserTests
             RestService.For<IIdentityClient>(TestHelpers.GetUnauthenticatedClient(StorageConstants.DefaultTenantId));
 
         // Create and promote a user
-        var userEmail = $"test_{Guid.NewGuid()}@example.com";
-        _ = await identityClient.RegisterAsync(new RegisterRequest(userEmail, "Password123!"));
+        var userEmail = TestHelpers.GenerateFakeEmail();
+        _ = await identityClient.RegisterAsync(new RegisterRequest(userEmail, TestHelpers.GenerateFakePassword()));
 
         var result = await client.GetUsersAsync(search: userEmail);
         var users = result.Items;
@@ -142,8 +142,8 @@ public class AdminUserTests
             RestService.For<IIdentityClient>(TestHelpers.GetUnauthenticatedClient(StorageConstants.DefaultTenantId));
 
         // Create and promote a user
-        var userEmail = $"test_{Guid.NewGuid()}@example.com";
-        _ = await identityClient.RegisterAsync(new RegisterRequest(userEmail, "Password123!"));
+        var userEmail = TestHelpers.GenerateFakeEmail();
+        _ = await identityClient.RegisterAsync(new RegisterRequest(userEmail, TestHelpers.GenerateFakePassword()));
 
         var result = await client.GetUsersAsync(search: userEmail);
         var users = result.Items;
@@ -165,8 +165,8 @@ public class AdminUserTests
             RestService.For<IIdentityClient>(TestHelpers.GetUnauthenticatedClient(StorageConstants.DefaultTenantId));
 
         // Create a regular user
-        var userEmail = $"test_{Guid.NewGuid()}@example.com";
-        _ = await identityClient.RegisterAsync(new RegisterRequest(userEmail, "Password123!"));
+        var userEmail = TestHelpers.GenerateFakeEmail();
+        _ = await identityClient.RegisterAsync(new RegisterRequest(userEmail, TestHelpers.GenerateFakePassword()));
 
         var result = await client.GetUsersAsync(search: userEmail);
         var users = result.Items;
@@ -182,8 +182,8 @@ public class AdminUserTests
     public async Task RegularUser_CannotAccessAdminUserEndpoints()
     {
         // Arrange
-        var userEmail = $"user_{Guid.NewGuid()}@example.com";
-        var password = "Password123!";
+        var userEmail = TestHelpers.GenerateFakeEmail();
+        var password = TestHelpers.GenerateFakePassword();
         var identityClient =
             RestService.For<IIdentityClient>(TestHelpers.GetUnauthenticatedClient(StorageConstants.DefaultTenantId));
         _ = await identityClient.RegisterAsync(new RegisterRequest(userEmail, password));
@@ -207,8 +207,8 @@ public class AdminUserTests
             RestService.For<IIdentityClient>(TestHelpers.GetUnauthenticatedClient(StorageConstants.DefaultTenantId));
 
         // Create a regular user
-        var userEmail = $"test_{Guid.NewGuid()}@example.com";
-        _ = await identityClient.RegisterAsync(new RegisterRequest(userEmail, "Password123!"));
+        var userEmail = TestHelpers.GenerateFakeEmail();
+        _ = await identityClient.RegisterAsync(new RegisterRequest(userEmail, TestHelpers.GenerateFakePassword()));
 
         var result = await client.GetUsersAsync(search: userEmail);
         var users = result.Items;

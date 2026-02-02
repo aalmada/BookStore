@@ -5,8 +5,8 @@ using Marten;
 using Refit;
 using Weasel.Core;
 using BookTranslationDto = BookStore.Client.BookTranslationDto;
-using CreateBookRequest = BookStore.Client.CreateBookRequest;
 using CreateAuthorRequest = BookStore.Client.CreateAuthorRequest;
+using CreateBookRequest = BookStore.Client.CreateBookRequest;
 
 namespace BookStore.AppHost.Tests;
 
@@ -119,7 +119,7 @@ public class BookFilterRegressionTests
 
         // Wait for projection
         _ = await TestHelpers.ExecuteAndWaitForEventAsync(Guid.Empty, "BookCreated",
-            async () => { await authClient.CreateBookAsync(createRequest); }, TimeSpan.FromSeconds(5));
+            async () => _ = await authClient.CreateBookAsync(createRequest), TimeSpan.FromSeconds(5));
 
         // Poll wait for search index/projection availability
         var ready = false;
@@ -140,7 +140,10 @@ public class BookFilterRegressionTests
         // Execute Search
         var request = new BookSearchRequest
         {
-            Search = uniqueTitle, Currency = currency, MinPrice = (decimal?)minPrice, MaxPrice = (decimal?)maxPrice
+            Search = uniqueTitle,
+            Currency = currency,
+            MinPrice = (decimal?)minPrice,
+            MaxPrice = (decimal?)maxPrice
         };
 
         var content = await publicClient.GetBooksAsync(request);
@@ -191,7 +194,9 @@ public class BookFilterRegressionTests
         // Verify initially NOT found with MaxPrice=40 (Price is 50)
         var preSaleList = await publicClient.GetBooksAsync(new BookSearchRequest
         {
-            Search = uniqueTitle, MaxPrice = 40, Currency = "USD"
+            Search = uniqueTitle,
+            MaxPrice = 40,
+            Currency = "USD"
         });
         _ = await Assert.That(preSaleList!.Items.Any(b => b.Title == uniqueTitle)).IsFalse();
 
@@ -201,7 +206,7 @@ public class BookFilterRegressionTests
             new ScheduleSaleRequest(50m, DateTimeOffset.UtcNow.AddSeconds(-5), DateTimeOffset.UtcNow.AddDays(1));
 
         _ = await TestHelpers.ExecuteAndWaitForEventAsync(bookId, "BookSaleScheduled",
-            async () => { await authClient.ScheduleBookSaleAsync(bookId, saleRequest); }, TimeSpan.FromSeconds(5));
+            async () => await authClient.ScheduleBookSaleAsync(bookId, saleRequest), TimeSpan.FromSeconds(5));
 
         // Poll for search projection to update with Sale
         var foundOnSale = false;
@@ -210,7 +215,9 @@ public class BookFilterRegressionTests
             // Search with MaxPrice=40. Desired price is 25.
             var list = await publicClient.GetBooksAsync(new BookSearchRequest
             {
-                Search = uniqueTitle, MaxPrice = 40, Currency = "USD"
+                Search = uniqueTitle,
+                MaxPrice = 40,
+                Currency = "USD"
             });
 
             if (list != null && list.Items.Any(b => b.Id == bookId))
