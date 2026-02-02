@@ -1,8 +1,12 @@
-
-using System.Net.Http.Json;
+using System.Net;
+using BookStore.Client;
 using BookStore.Shared.Models;
 using Marten;
+using Refit;
 using Weasel.Core;
+using BookTranslationDto = BookStore.Client.BookTranslationDto;
+using CreateBookRequest = BookStore.Client.CreateBookRequest;
+using CreateAuthorRequest = BookStore.Client.CreateAuthorRequest;
 
 namespace BookStore.AppHost.Tests;
 
@@ -28,9 +32,11 @@ public class BookFilterRegressionTests
         }
 
         // Authenticate as Admin in the new tenant
-        var defaultClient = TestHelpers.GetUnauthenticatedClient();
-        var loginRes = await TestHelpers.LoginAsAdminAsync(defaultClient, tenantId);
-        var adminClient = await TestHelpers.GetTenantClientAsync(tenantId, loginRes!.AccessToken);
+        var loginRes = await TestHelpers.LoginAsAdminAsync(tenantId);
+        var adminClient =
+            RestService.For<IAuthorsClient>(TestHelpers.GetAuthenticatedClient(loginRes!.AccessToken, tenantId));
+        var adminBooksClient =
+            RestService.For<IBooksClient>(TestHelpers.GetAuthenticatedClient(loginRes!.AccessToken, tenantId));
 
         // Create Author in this tenant
         var authorReq = TestHelpers.GenerateFakeAuthorRequest();
@@ -39,41 +45,27 @@ public class BookFilterRegressionTests
         // Use ExecuteAndWaitForEventAsync to ensure projection consistency
         _ = await TestHelpers.ExecuteAndWaitForEventAsync(Guid.Empty, "AuthorUpdated", async () =>
         {
-            var authorRes = await adminClient.PostAsJsonAsync("/api/admin/authors", authorReq);
+            var authorRes = await adminClient.CreateAuthorWithResponseAsync(authorReq);
             _ = await Assert.That(authorRes.StatusCode).IsEqualTo(HttpStatusCode.Created);
-
-            var authorJson = await authorRes.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
-            if (authorJson.TryGetProperty("id", out var idProp) || authorJson.TryGetProperty("Id", out idProp))
-            {
-                authorId = idProp.GetGuid();
-            }
-            else
-            {
-                Assert.Fail("Could not retrieve Author ID");
-            }
+            authorId = authorRes.Content!.Id;
         }, TimeSpan.FromSeconds(5));
 
         // Create Book linked to this Author
         var bookReq = TestHelpers.GenerateFakeBookRequest(authorIds: new[] { authorId });
-        var book = await TestHelpers.CreateBookAsync(adminClient, bookReq);
+        var book = await TestHelpers.CreateBookAsync(adminBooksClient, bookReq);
 
         // Search in correct tenant
-        var tenantClient = GlobalHooks.App!.CreateHttpClient("apiservice");
-        tenantClient.DefaultRequestHeaders.Add("X-Tenant-ID", tenantId);
+        var tenantClient = RestService.For<IBooksClient>(TestHelpers.GetUnauthenticatedClient(tenantId));
 
         // Poll for consistency (Book projection)
         var foundInTenant = false;
         for (var i = 0; i < 10; i++)
         {
-            var res = await tenantClient.GetAsync($"/api/books?authorId={authorId}");
-            if (res.IsSuccessStatusCode)
+            var list = await tenantClient.GetBooksAsync(new BookSearchRequest { AuthorId = authorId });
+            if (list != null && list.Items.Any(b => b.Id == book.Id))
             {
-                var list = await res.Content.ReadFromJsonAsync<PagedListDto<BookDto>>();
-                if (list != null && list.Items.Any(b => b.Id == book.Id))
-                {
-                    foundInTenant = true;
-                    break;
-                }
+                foundInTenant = true;
+                break;
             }
 
             await Task.Delay(500);
@@ -82,15 +74,11 @@ public class BookFilterRegressionTests
         _ = await Assert.That(foundInTenant).IsTrue();
 
         // Search in WRONG tenant (Default)
-        var defaultTenantClient = GlobalHooks.App!.CreateHttpClient("apiservice");
+        var defaultTenantClient = RestService.For<IBooksClient>(TestHelpers.GetUnauthenticatedClient());
         // No X-Tenant-ID header implies default tenant
 
-        var resDefault = await defaultTenantClient.GetAsync($"/api/books?authorId={authorId}");
+        var listDefault = await defaultTenantClient.GetBooksAsync(new BookSearchRequest { AuthorId = authorId });
         // Should be 200 OK but empty result, because Author doesn't exist in default tenant context
-        // OR it might ignore the author filter if author not found? Ideally it respects the filter and returns 0.
-
-        _ = await Assert.That(resDefault.StatusCode).IsEqualTo(HttpStatusCode.OK);
-        var listDefault = await resDefault.Content.ReadFromJsonAsync<PagedListDto<BookDto>>();
 
         // Should NOT find the book because it belongs to another tenant
         _ = await Assert.That(listDefault!.Items.Any(b => b.Id == book.Id)).IsFalse();
@@ -110,44 +98,38 @@ public class BookFilterRegressionTests
         double? maxPrice, bool expectedFound)
     {
         // Debugging Multi-Currency Price Filter
-        // We reuse an authenticated client and public client
-        var authClient = await TestHelpers.GetAuthenticatedClientAsync();
-        var publicClient = TestHelpers.GetUnauthenticatedClient();
+        var authClient = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
+        var publicClient = RestService.For<IBooksClient>(TestHelpers.GetUnauthenticatedClient());
 
         var uniqueTitle = $"MultiCurrency-{Guid.NewGuid()}";
         // Create book with: USD=10, EUR=50
-        var createRequest = new
+        var createRequest = new CreateBookRequest
         {
             Title = uniqueTitle,
             Isbn = "978-0-00-000000-0",
             Language = "en",
-            Translations = new Dictionary<string, object> { ["en"] = new { Description = "Test description" } },
-            PublicationDate = new { Year = 2024 },
+            Translations =
+                new Dictionary<string, BookTranslationDto>
+                {
+                    ["en"] = new BookTranslationDto { Description = "Test description" }
+                },
+            PublicationDate = new PartialDate(2024, 1, 1),
             Prices = new Dictionary<string, decimal> { ["USD"] = 10.0m, ["EUR"] = 50.0m }
         };
 
         // Wait for projection
-        _ = await TestHelpers.ExecuteAndWaitForEventAsync(Guid.Empty, "BookCreated", async () =>
-        {
-            var res = await authClient.PostAsJsonAsync("/api/admin/books", createRequest);
-            _ = await Assert.That(res.StatusCode).IsEqualTo(HttpStatusCode.Created);
-        }, TimeSpan.FromSeconds(5));
+        _ = await TestHelpers.ExecuteAndWaitForEventAsync(Guid.Empty, "BookCreated",
+            async () => { await authClient.CreateBookAsync(createRequest); }, TimeSpan.FromSeconds(5));
 
         // Poll wait for search index/projection availability
-        // Only need to do this once per test ideally, but for parameterized tests each run is independent.
-        // We can check if ANY variant of the book is visible (e.g. searching by title without filters)
         var ready = false;
         for (var i = 0; i < 10; i++)
         {
-            var r = await publicClient.GetAsync($"/api/books?search={uniqueTitle}");
-            if (r.IsSuccessStatusCode)
+            var c = await publicClient.GetBooksAsync(new BookSearchRequest { Search = uniqueTitle });
+            if (c != null && c.Items.Any(b => b.Title == uniqueTitle))
             {
-                var c = await r.Content.ReadFromJsonAsync<PagedListDto<BookDto>>();
-                if (c != null && c.Items.Any(b => b.Title == uniqueTitle))
-                {
-                    ready = true;
-                    break;
-                }
+                ready = true;
+                break;
             }
 
             await Task.Delay(500);
@@ -155,23 +137,13 @@ public class BookFilterRegressionTests
 
         _ = await Assert.That(ready).IsTrue();
 
-        // Build Query String
-        var queryString = $"/api/books?search={uniqueTitle}&currency={currency}";
-        if (minPrice.HasValue)
-        {
-            queryString += $"&minPrice={minPrice.Value}";
-        }
-
-        if (maxPrice.HasValue)
-        {
-            queryString += $"&maxPrice={maxPrice.Value}";
-        }
-
         // Execute Search
-        var resFilter = await publicClient.GetAsync(queryString);
-        _ = await Assert.That(resFilter.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        var request = new BookSearchRequest
+        {
+            Search = uniqueTitle, Currency = currency, MinPrice = (decimal?)minPrice, MaxPrice = (decimal?)maxPrice
+        };
 
-        var content = await resFilter.Content.ReadFromJsonAsync<PagedListDto<BookDto>>();
+        var content = await publicClient.GetBooksAsync(request);
 
         // Assert
         var actuallyFound = content!.Items.Any(b => b.Title == uniqueTitle);
@@ -189,66 +161,62 @@ public class BookFilterRegressionTests
     public async Task SearchBooks_WithActiveSale_ShouldFilterByDiscountedPrice()
     {
         // Debugging Price Filter taking Sale into account
-        var authClient = await TestHelpers.GetAuthenticatedClientAsync();
-        var publicClient = TestHelpers.GetUnauthenticatedClient();
+        var authClient = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
+        var publicClient = RestService.For<IBooksClient>(TestHelpers.GetUnauthenticatedClient());
 
         var uniqueTitle = $"SaleBook-{Guid.NewGuid()}";
         // Create book with Price=50 USD
-        var createRequest = new
+        var createRequest = new CreateBookRequest
         {
             Title = uniqueTitle,
             Isbn = "978-0-00-000000-0",
             Language = "en",
-            Translations = new Dictionary<string, object> { ["en"] = new { Description = "Sales test" } },
-            PublicationDate = new { Year = 2024 },
+            Translations =
+                new Dictionary<string, BookTranslationDto>
+                {
+                    ["en"] = new BookTranslationDto { Description = "Sales test" }
+                },
+            PublicationDate = new PartialDate(2024, 1, 1),
             Prices = new Dictionary<string, decimal> { ["USD"] = 50.0m }
         };
 
         var bookId = Guid.Empty;
         _ = await TestHelpers.ExecuteAndWaitForEventAsync(Guid.Empty, "BookUpdated", async () =>
         {
-            var res = await authClient.PostAsJsonAsync("/api/admin/books", createRequest);
-            var content = await res.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
-            bookId = content.GetProperty("id").GetGuid();
+            var res = await authClient.CreateBookWithResponseAsync(createRequest);
             _ = await Assert.That(res.StatusCode).IsEqualTo(HttpStatusCode.Created);
+            bookId = res.Content!.Id;
         }, TimeSpan.FromSeconds(5));
 
         // Verify initially NOT found with MaxPrice=40 (Price is 50)
-        var preSaleRes = await publicClient.GetAsync($"/api/books?search={uniqueTitle}&maxPrice=40&currency=USD");
-        var preSaleList = await preSaleRes.Content.ReadFromJsonAsync<PagedListDto<BookDto>>();
+        var preSaleList = await publicClient.GetBooksAsync(new BookSearchRequest
+        {
+            Search = uniqueTitle, MaxPrice = 40, Currency = "USD"
+        });
         _ = await Assert.That(preSaleList!.Items.Any(b => b.Title == uniqueTitle)).IsFalse();
 
         // Schedule 50% Sale
         // 50 * 0.5 = 25. Should be found with MaxPrice=40.
-        var saleRequest = new
-        {
-            Percentage = 50m,
-            Start = DateTimeOffset.UtcNow.AddSeconds(-5),
-            End = DateTimeOffset.UtcNow.AddDays(1)
-        };
+        var saleRequest =
+            new ScheduleSaleRequest(50m, DateTimeOffset.UtcNow.AddSeconds(-5), DateTimeOffset.UtcNow.AddDays(1));
 
-        _ = await TestHelpers.ExecuteAndWaitForEventAsync(bookId, "BookSaleScheduled", async () =>
-        {
-            var res = await authClient.PostAsJsonAsync($"/api/books/{bookId}/sales", saleRequest);
-            _ = await Assert.That(res.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
-        }, TimeSpan.FromSeconds(5));
+        _ = await TestHelpers.ExecuteAndWaitForEventAsync(bookId, "BookSaleScheduled",
+            async () => { await authClient.ScheduleBookSaleAsync(bookId, saleRequest); }, TimeSpan.FromSeconds(5));
 
         // Poll for search projection to update with Sale
-        // Note: Sale application usually triggers re-indexing or at least projection update.
-        // BookSearchProjection handles BookSaleScheduled.
         var foundOnSale = false;
         for (var i = 0; i < 30; i++)
         {
             // Search with MaxPrice=40. Desired price is 25.
-            var res = await publicClient.GetAsync($"/api/books?search={uniqueTitle}&maxPrice=40&currency=USD");
-            if (res.IsSuccessStatusCode && res.StatusCode == HttpStatusCode.OK)
+            var list = await publicClient.GetBooksAsync(new BookSearchRequest
             {
-                var list = await res.Content.ReadFromJsonAsync<PagedListDto<BookDto>>();
-                if (list != null && list.Items.Any(b => b.Id == bookId))
-                {
-                    foundOnSale = true;
-                    break;
-                }
+                Search = uniqueTitle, MaxPrice = 40, Currency = "USD"
+            });
+
+            if (list != null && list.Items.Any(b => b.Id == bookId))
+            {
+                foundOnSale = true;
+                break;
             }
 
             await Task.Delay(1000);

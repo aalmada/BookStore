@@ -1,6 +1,7 @@
 using System.Net;
-using System.Net.Http.Json;
+using BookStore.Client;
 using BookStore.Shared.Models;
+using Refit;
 
 namespace BookStore.AppHost.Tests;
 
@@ -9,35 +10,28 @@ public class TenantInfoTests
     [Test]
     public async Task GetTenantInfo_ReturnsCorrectName()
     {
-        var app = GlobalHooks.App!;
-        using var client = app.CreateHttpClient("apiservice");
+        var client = RestService.For<ITenantClient>(TestHelpers.GetUnauthenticatedClient());
 
         // 1. Get info for "acme"
-        var acmeResponse = await client.GetAsync("/api/tenants/acme");
-        _ = await Assert.That(acmeResponse.IsSuccessStatusCode).IsTrue();
-
-        var acmeInfo = await acmeResponse.Content.ReadFromJsonAsync<TenantInfoDto>();
+        var acmeInfo = await client.GetTenantAsync("acme");
         _ = await Assert.That(acmeInfo).IsNotNull();
-        _ = await Assert.That(acmeInfo!.Id).IsEqualTo("acme");
-        _ = await Assert.That(acmeInfo!.Name).IsEqualTo("Acme Corp");
+        _ = await Assert.That(acmeInfo.Id).IsEqualTo("acme");
+        _ = await Assert.That(acmeInfo.Name).IsEqualTo("Acme Corp");
 
         // 2. Get info for "contoso"
-        var contosoResponse = await client.GetAsync("/api/tenants/contoso");
-        _ = await Assert.That(contosoResponse.IsSuccessStatusCode).IsTrue();
-
-        var contosoInfo = await contosoResponse.Content.ReadFromJsonAsync<TenantInfoDto>();
+        var contosoInfo = await client.GetTenantAsync("contoso");
         _ = await Assert.That(contosoInfo).IsNotNull();
-        _ = await Assert.That(contosoInfo!.Id).IsEqualTo("contoso");
-        _ = await Assert.That(contosoInfo!.Name).IsEqualTo("Contoso Ltd");
+        _ = await Assert.That(contosoInfo.Id).IsEqualTo("contoso");
+        _ = await Assert.That(contosoInfo.Name).IsEqualTo("Contoso Ltd");
     }
 
     [Test]
     public async Task GetTenantInfo_InvalidId_ReturnsNotFound()
     {
-        var app = GlobalHooks.App!;
-        using var client = app.CreateHttpClient("apiservice");
+        var client = RestService.For<ITenantClient>(TestHelpers.GetUnauthenticatedClient());
 
-        var response = await client.GetAsync("/api/tenants/invalid-tenant-id");
-        _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
+        var exception = await Assert.That(async () => await client.GetTenantAsync("invalid-tenant-id"))
+            .Throws<ApiException>();
+        _ = await Assert.That(exception!.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
     }
 }

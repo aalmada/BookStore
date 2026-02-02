@@ -1,8 +1,10 @@
 using System.Net;
 using System.Net.Http.Headers;
-using System.Net.Http.Json;
+using BookStore.Client;
 using BookStore.Shared.Models;
+using Refit;
 using TUnit.Core.Interfaces;
+using CategoryTranslationDto = BookStore.Client.CategoryTranslationDto;
 
 namespace BookStore.AppHost.Tests;
 
@@ -18,8 +20,7 @@ public class CategoryOrderingTests
     public async Task GetCategories_OrderedByName_ShouldReturnInCorrectOrder()
     {
         // Arrange
-        var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
-        var publicClient = GlobalHooks.App!.CreateHttpClient("apiservice");
+        var adminClient = await TestHelpers.GetAuthenticatedClientAsync<ICategoriesClient>();
 
         // Create categories with specific names to test ordering
         var names = (string[])["Z-Category", "A-Category", "M-Category"];
@@ -27,27 +28,26 @@ public class CategoryOrderingTests
 
         foreach (var name in prefixedNames)
         {
-            var createRequest = new
+            var createRequest = new CreateCategoryRequest
             {
-                Translations = new Dictionary<string, object>
+                Translations = new Dictionary<string, CategoryTranslationDto>
                 {
-                    ["en"] = new { Name = name, Description = $"Description for {name}" }
+                    ["en"] = new CategoryTranslationDto { Name = name, Description = $"Description for {name}" }
                 }
             };
-            var createResponse = await httpClient.PostAsJsonAsync("/api/admin/categories", createRequest);
-            _ = await Assert.That(createResponse.StatusCode).IsEqualTo(HttpStatusCode.Created);
+            await adminClient.CreateCategoryAsync(createRequest);
         }
 
         // Wait for projections to catch up
         await Task.Delay(2000);
 
         // Act - Request public categories ordered by name asc
-        publicClient.DefaultRequestHeaders.AcceptLanguage.Clear();
-        publicClient.DefaultRequestHeaders.AcceptLanguage.Add(new StringWithQualityHeaderValue("en"));
+        var publicHttpClient = TestHelpers.GetUnauthenticatedClient();
+        publicHttpClient.DefaultRequestHeaders.AcceptLanguage.Clear();
+        publicHttpClient.DefaultRequestHeaders.AcceptLanguage.Add(new StringWithQualityHeaderValue("en"));
+        var publicClient = RestService.For<ICategoriesClient>(publicHttpClient);
 
-        var response = await publicClient.GetAsync("/api/categories?sortBy=name&sortOrder=asc&pageSize=100");
-        _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-        var result = await response.Content.ReadFromJsonAsync<PagedListDto<CategoryDto>>();
+        var result = await publicClient.GetCategoriesAsync(null, 100, "name", "asc");
 
         // Assert
         _ = await Assert.That(result).IsNotNull();
@@ -61,9 +61,7 @@ public class CategoryOrderingTests
         }
 
         // Act - Request public categories ordered by name desc
-        response = await publicClient.GetAsync("/api/categories?sortBy=name&sortOrder=desc&pageSize=100");
-        _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-        result = await response.Content.ReadFromJsonAsync<PagedListDto<CategoryDto>>();
+        result = await publicClient.GetCategoriesAsync(null, 100, "name", "desc");
 
         // Assert
         categoryNames = [.. result!.Items.Select(c => c.Name).Where(prefixedNames.Contains)];
@@ -79,7 +77,7 @@ public class CategoryOrderingTests
     public async Task AdminGetAllCategories_OrderedByNameWithLanguage_ShouldReturnInCorrectOrder()
     {
         // Arrange
-        var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
+        var adminClient = await TestHelpers.GetAuthenticatedClientAsync<ICategoriesClient>();
 
         // Create categories with Portuguese and English names
         // Cat 1: EN: "C", PT: "A"
@@ -92,26 +90,25 @@ public class CategoryOrderingTests
 
         foreach (var cat in categories)
         {
-            var createRequest = new
+            var createRequest = new CreateCategoryRequest
             {
-                Translations = new Dictionary<string, object>
+                Translations = new Dictionary<string, CategoryTranslationDto>
                 {
-                    ["en"] = new { Name = cat.EN, Description = "Desc" },
-                    ["pt-PT"] = new { Name = cat.PT, Description = "Desc" }
+                    ["en"] = new CategoryTranslationDto { Name = cat.EN, Description = "Desc" },
+                    ["pt-PT"] = new CategoryTranslationDto { Name = cat.PT, Description = "Desc" }
                 }
             };
-            var createResponse = await httpClient.PostAsJsonAsync("/api/admin/categories", createRequest);
-            _ = await Assert.That(createResponse.StatusCode).IsEqualTo(HttpStatusCode.Created);
+            await adminClient.CreateCategoryAsync(createRequest);
         }
 
         // Wait for projections
         await Task.Delay(2000);
 
         // Act - Request admin categories ordered by name in English
-        var response =
-            await httpClient.GetAsync("/api/admin/categories?sortBy=name&sortOrder=asc&language=en&pageSize=100");
-        _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-        var result = await response.Content.ReadFromJsonAsync<PagedListDto<AdminCategoryDto>>();
+        var result = await adminClient.GetAllCategoriesAsync(new CategorySearchRequest
+        {
+            SortBy = "name", SortOrder = "asc", Language = "en", PageSize = 100
+        });
 
         // Assert - Should be A-Category followed by C-Category
         var enNames = result!.Items.Select(c => c.Name)
@@ -124,10 +121,10 @@ public class CategoryOrderingTests
         }
 
         // Act - Request admin categories ordered by name in Portuguese
-        response = await httpClient.GetAsync(
-            $"/api/admin/categories?sortBy=name&sortOrder=asc&language=pt-PT&pageSize=100");
-        _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-        result = await response.Content.ReadFromJsonAsync<PagedListDto<AdminCategoryDto>>();
+        result = await adminClient.GetAllCategoriesAsync(new CategorySearchRequest
+        {
+            SortBy = "name", SortOrder = "asc", Language = "pt-PT", PageSize = 100
+        });
 
         // Assert - Should be A-Portuguese (which is Cat 1) followed by C-Portuguese (which is Cat 2)
         var ptItems = result!.Items

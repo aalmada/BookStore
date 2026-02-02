@@ -51,11 +51,8 @@ public class PasswordManagementTests
         // Login to get token
         var loginResult = await _client.LoginAsync(new LoginRequest(email, oldPassword));
 
-        var httpClient = GlobalHooks.App!.CreateHttpClient("apiservice");
-        httpClient.DefaultRequestHeaders.Authorization =
-            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", loginResult.AccessToken);
-        httpClient.DefaultRequestHeaders.Add("X-Tenant-ID", StorageConstants.DefaultTenantId);
-        var authClient = RestService.For<IIdentityClient>(httpClient);
+        var authClient = RestService.For<IIdentityClient>(
+            TestHelpers.GetAuthenticatedClient(loginResult.AccessToken, StorageConstants.DefaultTenantId));
 
         // Act
         await authClient.ChangePasswordAsync(new ChangePasswordRequest(oldPassword, newPassword));
@@ -79,11 +76,8 @@ public class PasswordManagementTests
         _ = await _client.RegisterAsync(new RegisterRequest(email, tempPassword));
         var loginResult = await _client.LoginAsync(new LoginRequest(email, tempPassword));
 
-        var httpClient = GlobalHooks.App!.CreateHttpClient("apiservice");
-        httpClient.DefaultRequestHeaders.Authorization =
-            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", loginResult.AccessToken);
-        httpClient.DefaultRequestHeaders.Add("X-Tenant-ID", StorageConstants.DefaultTenantId);
-        var authClient = RestService.For<IIdentityClient>(httpClient);
+        var authClient = RestService.For<IIdentityClient>(
+            TestHelpers.GetAuthenticatedClient(loginResult.AccessToken, StorageConstants.DefaultTenantId));
 
         // Manually clear password hash in DB
         using var store = await GetStoreAsync();
@@ -126,11 +120,8 @@ public class PasswordManagementTests
         // Login to get token
         var loginResult = await _client.LoginAsync(new LoginRequest(email, password));
 
-        var httpClient = GlobalHooks.App!.CreateHttpClient("apiservice");
-        httpClient.DefaultRequestHeaders.Authorization =
-            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", loginResult.AccessToken);
-        httpClient.DefaultRequestHeaders.Add("X-Tenant-ID", StorageConstants.DefaultTenantId);
-        var authClient = RestService.For<IIdentityClient>(httpClient);
+        var authClient = RestService.For<IIdentityClient>(
+            TestHelpers.GetAuthenticatedClient(loginResult.AccessToken, StorageConstants.DefaultTenantId));
 
         // Act & Assert
         try
@@ -159,11 +150,8 @@ public class PasswordManagementTests
         // Login
         var loginResult = await _client.LoginAsync(new LoginRequest(email, password));
 
-        var httpClient = GlobalHooks.App!.CreateHttpClient("apiservice");
-        httpClient.DefaultRequestHeaders.Authorization =
-            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", loginResult.AccessToken);
-        httpClient.DefaultRequestHeaders.Add("X-Tenant-ID", StorageConstants.DefaultTenantId);
-        var authClient = RestService.For<IIdentityClient>(httpClient);
+        var authClient = RestService.For<IIdentityClient>(
+            TestHelpers.GetAuthenticatedClient(loginResult.AccessToken, StorageConstants.DefaultTenantId));
 
         // Act & Assert
         try
@@ -192,11 +180,8 @@ public class PasswordManagementTests
         // Login
         var loginResult = await _client.LoginAsync(new LoginRequest(email, password));
 
-        var httpClient = GlobalHooks.App!.CreateHttpClient("apiservice");
-        httpClient.DefaultRequestHeaders.Authorization =
-            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", loginResult.AccessToken);
-        httpClient.DefaultRequestHeaders.Add("X-Tenant-ID", StorageConstants.DefaultTenantId);
-        var authClient = RestService.For<IIdentityClient>(httpClient);
+        var authClient = RestService.For<IIdentityClient>(
+            TestHelpers.GetAuthenticatedClient(loginResult.AccessToken, StorageConstants.DefaultTenantId));
 
         // Manually add a passkey
         using var store = await GetStoreAsync();
