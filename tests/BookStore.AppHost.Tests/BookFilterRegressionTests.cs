@@ -40,15 +40,8 @@ public class BookFilterRegressionTests
 
         // Create Author in this tenant
         var authorReq = TestHelpers.GenerateFakeAuthorRequest();
-        var authorId = Guid.Empty;
-
-        // Use ExecuteAndWaitForEventAsync to ensure projection consistency
-        _ = await TestHelpers.ExecuteAndWaitForEventAsync(Guid.Empty, "AuthorUpdated", async () =>
-        {
-            var authorRes = await adminClient.CreateAuthorWithResponseAsync(authorReq);
-            _ = await Assert.That(authorRes.StatusCode).IsEqualTo(HttpStatusCode.Created);
-            authorId = authorRes.Content!.Id;
-        }, TimeSpan.FromSeconds(5));
+        var author = await TestHelpers.CreateAuthorAsync(adminClient, authorReq);
+        var authorId = author.Id;
 
         // Create Book linked to this Author
         var bookReq = TestHelpers.GenerateFakeBookRequest(authorIds: new[] { authorId });
@@ -118,8 +111,7 @@ public class BookFilterRegressionTests
         };
 
         // Wait for projection
-        _ = await TestHelpers.ExecuteAndWaitForEventAsync(Guid.Empty, "BookCreated",
-            async () => _ = await authClient.CreateBookAsync(createRequest), TimeSpan.FromSeconds(5));
+        _ = await TestHelpers.CreateBookAsync(authClient, createRequest);
 
         // Poll wait for search index/projection availability
         var ready = false;
@@ -183,13 +175,8 @@ public class BookFilterRegressionTests
             Prices = new Dictionary<string, decimal> { ["USD"] = 50.0m }
         };
 
-        var bookId = Guid.Empty;
-        _ = await TestHelpers.ExecuteAndWaitForEventAsync(Guid.Empty, "BookUpdated", async () =>
-        {
-            var res = await authClient.CreateBookWithResponseAsync(createRequest);
-            _ = await Assert.That(res.StatusCode).IsEqualTo(HttpStatusCode.Created);
-            bookId = res.Content!.Id;
-        }, TimeSpan.FromSeconds(5));
+        var book = await TestHelpers.CreateBookAsync(authClient, createRequest);
+        var bookId = book.Id;
 
         // Verify initially NOT found with MaxPrice=40 (Price is 50)
         var preSaleList = await publicClient.GetBooksAsync(new BookSearchRequest
@@ -205,7 +192,7 @@ public class BookFilterRegressionTests
         var saleRequest =
             new ScheduleSaleRequest(50m, DateTimeOffset.UtcNow.AddSeconds(-5), DateTimeOffset.UtcNow.AddDays(1));
 
-        _ = await TestHelpers.ExecuteAndWaitForEventAsync(bookId, "BookSaleScheduled",
+        _ = await TestHelpers.ExecuteAndWaitForEventAsync(bookId, "BookUpdated",
             async () => await authClient.ScheduleBookSaleAsync(bookId, saleRequest), TimeSpan.FromSeconds(5));
 
         // Poll for search projection to update with Sale

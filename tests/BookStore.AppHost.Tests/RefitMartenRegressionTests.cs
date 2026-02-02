@@ -279,11 +279,12 @@ public class RefitMartenRegressionTests
         // Create Unique Authors and wait for projection
         var authorReqA = TestHelpers.GenerateFakeAuthorRequest();
 
-        _ = await TestHelpers.ExecuteAndWaitForEventAsync(Guid.Empty, "AuthorCreated", async () =>
-        {
-            var authorResA = await adminClientA.CreateAuthorWithResponseAsync(authorReqA);
-            _ = await Assert.That(authorResA.StatusCode).IsEqualTo(HttpStatusCode.Created);
-        }, TimeSpan.FromSeconds(5));
+        _ = await TestHelpers.ExecuteAndWaitForEventAsync(Guid.Empty, ["AuthorCreated", "AuthorUpdated"],
+            async () =>
+            {
+                var authorResA = await adminClientA.CreateAuthorWithResponseAsync(authorReqA);
+                _ = await Assert.That(authorResA.StatusCode).IsEqualTo(HttpStatusCode.Created);
+            }, TimeSpan.FromSeconds(5));
 
         var authorReqB = TestHelpers.GenerateFakeAuthorRequest();
         _ = await TestHelpers.ExecuteAndWaitForEventAsync(Guid.Empty, "AuthorUpdated", async () =>
