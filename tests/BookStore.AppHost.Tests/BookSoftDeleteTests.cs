@@ -14,7 +14,7 @@ public class BookSoftDeleteTests
         // Arrange
         var adminClient = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
         // We also need a raw client to fetch ETag, as Refit IBooksClient returns DTOs without headers
-        var rawAdminClient = await TestHelpers.GetAuthenticatedClientAsync();
+        // var rawAdminClient = await TestHelpers.GetAuthenticatedClientAsync();
         var publicClient = Refit.RestService.For<IBooksClient>(TestHelpers.GetUnauthenticatedClient());
 
         // 1. Create a book
@@ -27,7 +27,8 @@ public class BookSoftDeleteTests
 
         // 2. Soft Delete via Admin API
         // Fetch ETag via raw client to handle concurrency
-        var getResponse = await rawAdminClient.GetAsync($"/api/books/{bookId}");
+        // Fetch ETag via raw client to handle concurrency
+        var getResponse = await publicClient.GetBookWithHeadersAsync(bookId);
         var etag = getResponse.Headers.ETag?.Tag;
         _ = await Assert.That(etag).IsNotNull();
 
@@ -93,14 +94,14 @@ public class BookSoftDeleteTests
     {
         // Arrange
         var adminClient = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
-        var rawAdminClient = await TestHelpers.GetAuthenticatedClientAsync(); // For ETag
+        // var rawAdminClient = await TestHelpers.GetAuthenticatedClientAsync(); // For ETag
         var publicClient = Refit.RestService.For<IBooksClient>(TestHelpers.GetUnauthenticatedClient());
 
         var createdBook = await TestHelpers.CreateBookAsync(adminClient);
         var bookId = createdBook!.Id;
 
         // Soft Delete
-        var getResponse = await rawAdminClient.GetAsync($"/api/books/{bookId}");
+        var getResponse = await publicClient.GetBookWithHeadersAsync(bookId);
         var etag = getResponse.Headers.ETag?.Tag;
 
         await adminClient.SoftDeleteBookAsync(bookId, etag);

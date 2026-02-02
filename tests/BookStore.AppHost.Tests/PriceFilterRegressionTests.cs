@@ -210,11 +210,9 @@ public class PriceFilterRegressionTests
         _ = await Assert.That(foundBeforeUpdate).IsTrue();
 
         // 3. Update book - MUST include Prices to avoid Validation Failure
-        var httpRequest = new HttpRequestMessage(HttpMethod.Get, $"/api/books/{bookId}");
-        var response = await adminClient.SendAsync(httpRequest);
-        var etag = response.Headers.ETag?.Tag ?? string.Empty;
-        var fetchedBook = await response.Content.ReadFromJsonAsync<SharedModels.BookDto>();
-        var etagValue = etag;
+        var response = await authClient.GetBookWithHeadersAsync(bookId);
+        var fetchedBook = response.Content;
+        var etagValue = response.Headers.ETag?.Tag ?? string.Empty;
 
         var updateRequest = new UpdateBookRequest
         {

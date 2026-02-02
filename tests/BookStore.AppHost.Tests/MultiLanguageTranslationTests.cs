@@ -162,11 +162,10 @@ public class MultiLanguageTranslationTests
         _ = await TestHelpers.ExecuteAndWaitForEventAsync(Guid.Empty, ["BookCreated", "BookUpdated"],
             async () => book = await client.CreateBookAsync(createRequest), TestConstants.DefaultEventTimeout);
 
-        // 2. Fetch using raw client to get ETag 
-        var httpRequest = new HttpRequestMessage(HttpMethod.Get, $"/api/books/{book.Id}");
-        var response = await httpClient.SendAsync(httpRequest);
+        // 2. Fetch using Refit client to get ETag
+        var response = await client.GetBookWithHeadersAsync(book.Id);
         var etag = response.Headers.ETag?.Tag;
-        var fetchedBook = await response.Content.ReadFromJsonAsync<SharedModels.BookDto>();
+        var fetchedBook = response.Content;
 
         // 3. Update Book
         var translations = new Dictionary<string, BookTranslationDto>
