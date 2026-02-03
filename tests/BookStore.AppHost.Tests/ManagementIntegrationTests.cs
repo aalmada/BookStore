@@ -121,9 +121,23 @@ public class ManagementIntegrationTests
                 Translations = new Dictionary<string, AuthorTranslationDto> { ["en"] = new() { Biography = "Bio" } }
             });
 
-        // Act - Delete
-        // Placeholder affirmation
-        _ = await Assert.That(author).IsNotNull();
+        // Verify initially accessible
+        var initialAuthor = await authorsClient.GetAuthorAsync(author.Id);
+        _ = await Assert.That(initialAuthor).IsNotNull();
+
+        // Act - Soft delete
+        await ((ISoftDeleteAuthorEndpoint)authorsClient).SoftDeleteAuthorAsync(author.Id);
+
+        // Note: AuthorDto doesn't expose IsDeleted property like BookDto does,
+        // so we can't verify the deleted state through the API.
+        // The soft delete operation should succeed without throwing.
+
+        // Act - Restore
+        await ((IRestoreAuthorEndpoint)authorsClient).RestoreAuthorAsync(author.Id);
+
+        // Assert - Verify still accessible after restore
+        var afterRestore = await authorsClient.GetAuthorAsync(author.Id);
+        _ = await Assert.That(afterRestore).IsNotNull();
     }
 
     // Verification helpers
