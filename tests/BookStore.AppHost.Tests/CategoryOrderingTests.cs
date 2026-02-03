@@ -39,7 +39,7 @@ public class CategoryOrderingTests
         }
 
         // Wait for projections to catch up
-        await Task.Delay(2000);
+        await Task.Delay(TestConstants.DefaultProjectionDelay);
 
         // Act - Request public categories ordered by name asc
         var publicHttpClient = TestHelpers.GetUnauthenticatedClient();
@@ -107,10 +107,7 @@ public class CategoryOrderingTests
         // Act - Request admin categories ordered by name in English
         var result = await adminClient.GetAllCategoriesAsync(new CategorySearchRequest
         {
-            SortBy = "name",
-            SortOrder = "asc",
-            Language = "en",
-            PageSize = 100
+            SortBy = "name", SortOrder = "asc", Language = "en", PageSize = 100
         });
 
         // Assert - Should be A-Category followed by C-Category
@@ -126,10 +123,7 @@ public class CategoryOrderingTests
         // Act - Request admin categories ordered by name in Portuguese
         result = await adminClient.GetAllCategoriesAsync(new CategorySearchRequest
         {
-            SortBy = "name",
-            SortOrder = "asc",
-            Language = "pt-PT",
-            PageSize = 100
+            SortBy = "name", SortOrder = "asc", Language = "pt-PT", PageSize = 100
         });
 
         // Assert - Should be A-Portuguese (which is Cat 1) followed by C-Portuguese (which is Cat 2)

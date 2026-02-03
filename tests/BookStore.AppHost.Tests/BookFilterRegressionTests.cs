@@ -52,7 +52,7 @@ public class BookFilterRegressionTests
 
         // Poll for consistency (Book projection)
         var foundInTenant = false;
-        for (var i = 0; i < 10; i++)
+        for (var i = 0; i < TestConstants.DefaultMaxRetries; i++)
         {
             var list = await tenantClient.GetBooksAsync(new BookSearchRequest { AuthorId = authorId });
             if (list != null && list.Items.Any(b => b.Id == book.Id))
@@ -115,7 +115,7 @@ public class BookFilterRegressionTests
 
         // Poll wait for search index/projection availability
         var ready = false;
-        for (var i = 0; i < 10; i++)
+        for (var i = 0; i < TestConstants.DefaultMaxRetries; i++)
         {
             var c = await publicClient.GetBooksAsync(new BookSearchRequest { Search = uniqueTitle });
             if (c != null && c.Items.Any(b => b.Title == uniqueTitle))
@@ -132,10 +132,7 @@ public class BookFilterRegressionTests
         // Execute Search
         var request = new BookSearchRequest
         {
-            Search = uniqueTitle,
-            Currency = currency,
-            MinPrice = (decimal?)minPrice,
-            MaxPrice = (decimal?)maxPrice
+            Search = uniqueTitle, Currency = currency, MinPrice = (decimal?)minPrice, MaxPrice = (decimal?)maxPrice
         };
 
         var content = await publicClient.GetBooksAsync(request);
@@ -181,9 +178,7 @@ public class BookFilterRegressionTests
         // Verify initially NOT found with MaxPrice=40 (Price is 50)
         var preSaleList = await publicClient.GetBooksAsync(new BookSearchRequest
         {
-            Search = uniqueTitle,
-            MaxPrice = 40,
-            Currency = "USD"
+            Search = uniqueTitle, MaxPrice = 40, Currency = "USD"
         });
         _ = await Assert.That(preSaleList!.Items.Any(b => b.Title == uniqueTitle)).IsFalse();
 
@@ -197,14 +192,12 @@ public class BookFilterRegressionTests
 
         // Poll for search projection to update with Sale
         var foundOnSale = false;
-        for (var i = 0; i < 30; i++)
+        for (var i = 0; i < TestConstants.LongRetryCount * 1.5; i++)
         {
             // Search with MaxPrice=40. Desired price is 25.
             var list = await publicClient.GetBooksAsync(new BookSearchRequest
             {
-                Search = uniqueTitle,
-                MaxPrice = 40,
-                Currency = "USD"
+                Search = uniqueTitle, MaxPrice = 40, Currency = "USD"
             });
 
             if (list != null && list.Items.Any(b => b.Id == bookId))
@@ -213,7 +206,7 @@ public class BookFilterRegressionTests
                 break;
             }
 
-            await Task.Delay(1000);
+            await Task.Delay((int)TestConstants.DefaultRetryDelay.TotalMilliseconds);
         }
 
         _ = await Assert.That(foundOnSale).IsTrue();

@@ -63,7 +63,7 @@ public class PriceFilterRegressionTests
 
         // Wait for consistency and check
         var matched = false;
-        for (var i = 0; i < 20; i++)
+        for (var i = 0; i < TestConstants.LongRetryCount; i++)
         {
             try
             {
@@ -122,7 +122,7 @@ public class PriceFilterRegressionTests
 
         // Poll for search projection to update
         var ready = false;
-        for (var i = 0; i < 10; i++)
+        for (var i = 0; i < TestConstants.DefaultMaxRetries; i++)
         {
             try
             {
@@ -196,7 +196,7 @@ public class PriceFilterRegressionTests
 
         // 2. Verify it's found in range [40, 60]
         var foundBeforeUpdate = false;
-        for (var i = 0; i < 10; i++)
+        for (var i = 0; i < TestConstants.DefaultMaxRetries; i++)
         {
             try
             {
@@ -257,7 +257,7 @@ public class PriceFilterRegressionTests
         }
 
         var foundAfterUpdate = false;
-        for (var i = 0; i < 20; i++)
+        for (var i = 0; i < TestConstants.LongRetryCount; i++)
         {
             try
             {
