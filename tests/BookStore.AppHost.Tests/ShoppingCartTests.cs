@@ -151,36 +151,21 @@ public class ShoppingCartTests
     }
 
     [Test]
-    public async Task AddToCart_WithInvalidQuantity_ShouldReturnBadRequest()
+    [Arguments(0)]
+    [Arguments(-1)]
+    [Arguments(-100)]
+    public async Task AddToCart_WithInvalidQuantity_ShouldReturnBadRequest(int quantity)
     {
         // Arrange
         var client = await TestHelpers.CreateUserAndGetClientAsync<IShoppingCartClient>();
 
-        // Act & Assert - Zero quantity
-        try
-        {
-            await client.AddToCartAsync(new AddToCartClientRequest(Guid.NewGuid(), 0));
-            Assert.Fail("Should have thrown ApiException");
-        }
-        catch (ApiException ex)
-        {
-            _ = await Assert.That(ex.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
-            var error = await ex.GetContentAsAsync<TestHelpers.ErrorResponse>();
-            _ = await Assert.That(error?.Error).IsEqualTo(ErrorCodes.Cart.InvalidQuantity);
-        }
-
-        // Act & Assert - Negative quantity
-        try
-        {
-            await client.AddToCartAsync(new AddToCartClientRequest(Guid.NewGuid(), -1));
-            Assert.Fail("Should have thrown ApiException");
-        }
-        catch (ApiException ex)
-        {
-            _ = await Assert.That(ex.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
-            var error = await ex.GetContentAsAsync<TestHelpers.ErrorResponse>();
-            _ = await Assert.That(error?.Error).IsEqualTo(ErrorCodes.Cart.InvalidQuantity);
-        }
+        // Act & Assert
+        var exception = await Assert
+            .That(() => client.AddToCartAsync(new AddToCartClientRequest(Guid.NewGuid(), quantity)))
+            .Throws<ApiException>();
+        _ = await Assert.That(exception!.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+        var error = await exception.GetContentAsAsync<TestHelpers.ErrorResponse>();
+        _ = await Assert.That(error?.Error).IsEqualTo(ErrorCodes.Cart.InvalidQuantity);
     }
 
     [Test]

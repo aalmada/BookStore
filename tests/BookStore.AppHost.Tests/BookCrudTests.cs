@@ -56,24 +56,12 @@ public class BookCrudTests
     {
         // Arrange
         var client = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
-        // var createBookRequest = TestHelpers.GenerateFakeBookRequest(); // Handled inside helper now
 
-        BookDto? createdBook = null;
-
-        // Act - Connect to SSE before creating, then wait for notification
-        // Note: Creation often comes as BookUpdated due to projection upsert semantics
-        var received = true;
-        createdBook = await TestHelpers.CreateBookAsync(client);
+        // Act
+        var createdBook = await TestHelpers.CreateBookAsync(client);
 
         // Assert
         _ = await Assert.That(createdBook).IsNotNull();
-        // received is hardcoded to true in Arrange of original? No, "var received = true;" was before "createdBook = ...".
-        // Wait, the original code had:
-        // var received = true;
-        // createdBook = await TestHelpers.CreateBookAsync(httpClient);
-        // TestHelpers.CreateBookAsync internally handles checking received.
-        // So I can just call it.
-        _ = await Assert.That(received).IsTrue();
     }
 
     [Test]
@@ -81,7 +69,6 @@ public class BookCrudTests
     {
         // Arrange
         var client = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
-        // Create book and wait for projection
         var createdBook = await TestHelpers.CreateBookAsync(client);
 
         // Get the book to retrieve its ETag
@@ -91,14 +78,11 @@ public class BookCrudTests
         var etag = getResponse.Headers.ETag?.Tag;
         _ = await Assert.That(etag).IsNotNull();
 
-        // Act - Update the book with new fake data and ETag, verify SSE event
+        // Act
         var updateBookRequest = TestHelpers.GenerateFakeBookRequest();
-
-        var received = true;
         await TestHelpers.UpdateBookAsync(client, createdBook.Id, updateBookRequest, etag!);
 
-        // Assert
-        _ = await Assert.That(received).IsTrue();
+        // Assert - Success is validated inside UpdateBookAsync
     }
 
     [Test]
@@ -106,7 +90,6 @@ public class BookCrudTests
     {
         // Arrange
         var client = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
-        // Create book and wait for projection
         var createdBook = await TestHelpers.CreateBookAsync(client);
 
         // Get the book to retrieve its ETag
@@ -116,12 +99,10 @@ public class BookCrudTests
         var etag = getResponse.Headers.ETag?.Tag;
         _ = await Assert.That(etag).IsNotNull();
 
-        // Act - Delete the book with ETag and verify SSE event
-        var received = true;
+        // Act
         await TestHelpers.DeleteBookAsync(client, createdBook.Id, etag!);
 
-        // Assert
-        _ = await Assert.That(received).IsTrue();
+        // Assert - Success is validated inside DeleteBookAsync
     }
 
     [Test]
@@ -129,27 +110,20 @@ public class BookCrudTests
     {
         // Arrange
         var client = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
-
-        // 1. Create Book and wait
-        // 1. Create Book and wait
         var createdBook = await TestHelpers.CreateBookAsync(client);
 
-        // 2. (Removed explicit delay)
-
-        // 3. Get ETag for delete
+        // Get ETag for delete
         var getResponse = await client.GetBookWithHeadersAsync(createdBook.Id);
         var deleteEtag = getResponse.Headers.ETag?.Tag;
         _ = await Assert.That(deleteEtag).IsNotNull();
 
-        // 4. Soft Delete Book
+        // Soft delete book
         await client.SoftDeleteBookAsync(createdBook.Id, deleteEtag!);
 
-        // Act - Connect to SSE before restoring, then wait for notification
-        // Note: Projecting a restore is seen as an Update (IsDeleted goes from true -> false)
-        var received = true;
+        // Act
         await TestHelpers.RestoreBookAsync(client, createdBook.Id);
 
-        _ = await Assert.That(received).IsTrue();
+        // Assert - Success is validated inside RestoreBookAsync
     }
 
     [Test]
@@ -157,24 +131,12 @@ public class BookCrudTests
     {
         // Arrange
         var client = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
-        // Create book
-        // Create book and wait
         var createdBook = await TestHelpers.CreateBookAsync(client);
 
-        // Act - Add to favorites and wait for UserUpdated (fav ids update)
-        // Note: This also triggers BookUpdated (stats), but for IsFavorite we care about UserUpdated.
-        var receivedFav = true;
-        await TestHelpers.AddToFavoritesAsync(client, createdBook!.Id);
-        _ = await Assert.That(receivedFav).IsTrue();
-
-        HttpResponseMessage
-            response = new(HttpStatusCode
-                .NoContent); // Fake response to satisfy strict replacement if reused below, but act is done inside waiter.
+        // Act
+        await TestHelpers.AddToFavoritesAsync(client, createdBook.Id);
 
         // Assert
-        _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
-
-        // Verify it is marked as favorite
         var getResponse = await client.GetBookAsync(createdBook.Id);
         _ = await Assert.That(getResponse!.IsFavorite).IsTrue();
     }
@@ -184,33 +146,19 @@ public class BookCrudTests
     {
         // Arrange
         var client = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
-        // Create book
-        // Create book and wait
         var createdBook = await TestHelpers.CreateBookAsync(client);
 
-        // Add to favorites first and wait for UserUpdated
-        var receivedFav = true;
-        await TestHelpers.AddToFavoritesAsync(client, createdBook!.Id);
-        _ = await Assert.That(receivedFav).IsTrue();
+        // Add to favorites first
+        await TestHelpers.AddToFavoritesAsync(client, createdBook.Id);
 
         // Verify it IS favorite initially
         var initialGet = await client.GetBookAsync(createdBook.Id);
         _ = await Assert.That(initialGet!.IsFavorite).IsTrue();
 
         // Act
-        _ = await Assert.That(initialGet!.IsFavorite).IsTrue();
-
-        // Act - Remove from favorites and wait for UserUpdated
-        var receivedRemove = true;
         await TestHelpers.RemoveFromFavoritesAsync(client, createdBook.Id);
-        _ = await Assert.That(receivedRemove).IsTrue();
-
-        var response = new HttpResponseMessage(HttpStatusCode.NoContent); // satisfy variable if used below
 
         // Assert
-        _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
-
-        // Verify it is NOT marked as favorite anymore
         var getResponse = await client.GetBookAsync(createdBook.Id);
         _ = await Assert.That(getResponse!.IsFavorite).IsFalse();
     }
@@ -219,13 +167,10 @@ public class BookCrudTests
     public async Task GetBook_WhenNotAuthenticated_ShouldHaveIsFavoriteFalse()
     {
         // Arrange
-        // Create book as admin first
         var adminClient = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
         var createdBook = await TestHelpers.CreateBookAsync(adminClient);
 
-        // 2. (Removed explicit delay)
-
-        // Act - use unauthenticated client
+        // Act
         var publicClient = TestHelpers.GetUnauthenticatedClient<IBooksClient>();
         var getResponse = await publicClient.GetBookAsync(createdBook.Id);
 
@@ -236,47 +181,28 @@ public class BookCrudTests
     [Test]
     public async Task BookLikeCount_ShouldAggregateCorrectly_WhenMultipleUsersLikeBook()
     {
-        var _anonClient = TestHelpers.GetUnauthenticatedClient<IBooksClient>();
+        var anonClient = TestHelpers.GetUnauthenticatedClient<IBooksClient>();
 
-        // 1. Arrange: Create a book as Admin
+        // Arrange
         var adminClient = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
         var createdBook = await TestHelpers.CreateBookAsync(adminClient);
 
-        // (Removed explicit delay)
-
-        // 2. Arrange: Create User 1 and User 2
         var user1Client = await CreateAuthenticatedUserAsync();
         var user2Client = await CreateAuthenticatedUserAsync();
 
-        // 3. Act: User 1 Likes Book and wait for statistics update via SSE
-        // The statistics update will trigger a BookUpdatedNotification
-        var received1 = true;
-        await TestHelpers.AddToFavoritesAsync(user1Client, createdBook!.Id, createdBook.Id, "BookUpdated");
-
-        _ = await Assert.That(received1).IsTrue();
-
-        // Assert: Count = 1
-        var bookDto1 = await _anonClient.GetBookAsync(createdBook.Id);
+        // Act & Assert: User 1 likes book
+        await TestHelpers.AddToFavoritesAsync(user1Client, createdBook.Id, createdBook.Id, "BookUpdated");
+        var bookDto1 = await anonClient.GetBookAsync(createdBook.Id);
         _ = await Assert.That(bookDto1!.LikeCount).IsEqualTo(1);
 
-        // 4. Act: User 2 Likes Book and wait for SSE
-        var received2 = true;
+        // Act & Assert: User 2 likes book
         await TestHelpers.AddToFavoritesAsync(user2Client, createdBook.Id, createdBook.Id, "BookUpdated");
-
-        _ = await Assert.That(received2).IsTrue();
-
-        // Assert: Count = 2
-        var bookDto2 = await _anonClient.GetBookAsync(createdBook.Id);
+        var bookDto2 = await anonClient.GetBookAsync(createdBook.Id);
         _ = await Assert.That(bookDto2!.LikeCount).IsEqualTo(2);
 
-        // 5. Act: User 1 Unlikes Book and wait for SSE
-        var received3 = true;
+        // Act & Assert: User 1 unlikes book
         await TestHelpers.RemoveFromFavoritesAsync(user1Client, createdBook.Id, createdBook.Id, "BookUpdated");
-
-        _ = await Assert.That(received3).IsTrue();
-
-        // Assert: Count = 1
-        var bookDto3 = await _anonClient.GetBookAsync(createdBook.Id);
+        var bookDto3 = await anonClient.GetBookAsync(createdBook.Id);
         _ = await Assert.That(bookDto3!.LikeCount).IsEqualTo(1);
     }
 

@@ -9,6 +9,13 @@ namespace BookStore.AppHost.Tests;
 
 public class PriceFilterRegressionTests
 {
+    /// <summary>
+    /// Verifies that book price filtering correctly handles various combinations of original prices,
+    /// discount percentages, and price range filters. The search should match books based on the
+    /// effective price (discounted price if a discount is active, otherwise the original price).
+    /// This test covers edge cases where the original price is outside the range but the discounted
+    /// price is inside (and vice versa).
+    /// </summary>
     [Test]
     [Arguments(100.0, 0, 40.0, 60.0, false)] // Case 1: Original price outside range (too high)
     [Arguments(100.0, 50, 40.0, 60.0, true)] // Case 2: Discounted price inside range (50 is in [40, 60])
@@ -62,10 +69,7 @@ public class PriceFilterRegressionTests
             {
                 var request = new SharedModels.BookSearchRequest
                 {
-                    Search = "PriceScenario",
-                    MinPrice = minPrice,
-                    MaxPrice = maxPrice,
-                    Currency = "USD"
+                    Search = "PriceScenario", MinPrice = minPrice, MaxPrice = maxPrice, Currency = "USD"
                 };
 
                 var list = await publicClient.GetBooksAsync(request);
@@ -87,6 +91,11 @@ public class PriceFilterRegressionTests
         _ = await Assert.That(matched).IsEqualTo(shouldMatch);
     }
 
+    /// <summary>
+    /// Verifies that books with prices in multiple currencies are only matched when at least
+    /// one currency's price falls within the specified range. If all currencies are outside
+    /// the range, the book should not match even if the average would fall within the range.
+    /// </summary>
     [Test]
     public async Task SearchBooks_WithMixedCurrency_ShouldRequireSingleCurrencyToMatchRange()
     {
@@ -142,6 +151,11 @@ public class PriceFilterRegressionTests
         _ = await Assert.That(list!.Items.Any(b => b.Title == uniqueTitle)).IsFalse();
     }
 
+    /// <summary>
+    /// Verifies that when a book is updated after a discount has been applied, the search
+    /// projection correctly maintains the discounted price and continues to filter based
+    /// on the effective (discounted) price rather than reverting to the original price.
+    /// </summary>
     [Test]
     public async Task SearchBooks_WithDiscount_AfterBookUpdate_ShouldStillFilterByDiscountedPrice()
     {
@@ -188,10 +202,7 @@ public class PriceFilterRegressionTests
             {
                 var request = new SharedModels.BookSearchRequest
                 {
-                    Search = uniqueTitle,
-                    MinPrice = 40m,
-                    MaxPrice = 60m,
-                    Currency = "USD"
+                    Search = uniqueTitle, MinPrice = 40m, MaxPrice = 60m, Currency = "USD"
                 };
 
                 var list = await publicClient.GetBooksAsync(request);
@@ -252,10 +263,7 @@ public class PriceFilterRegressionTests
             {
                 var request = new SharedModels.BookSearchRequest
                 {
-                    Search = uniqueTitle,
-                    MinPrice = 40,
-                    MaxPrice = 60,
-                    Currency = "USD"
+                    Search = uniqueTitle, MinPrice = 40, MaxPrice = 60, Currency = "USD"
                 };
                 var list = await publicClient.GetBooksAsync(request);
                 if (list.Items.Any(b => b.Id == bookId))

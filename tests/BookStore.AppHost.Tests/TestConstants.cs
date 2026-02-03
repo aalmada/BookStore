@@ -31,4 +31,19 @@ public static class TestConstants
     /// Default timeout for SSE streams to prevent premature closure.
     /// </summary>
     public static readonly TimeSpan DefaultStreamTimeout = TimeSpan.FromMinutes(5);
+
+    /// <summary>
+    /// Default maximum number of retries for polling operations.
+    /// </summary>
+    public const int DefaultMaxRetries = 10;
+
+    /// <summary>
+    /// Short retry count for quick operations.
+    /// </summary>
+    public const int ShortRetryCount = 5;
+
+    /// <summary>
+    /// Long retry count for operations that may take more time.
+    /// </summary>
+    public const int LongRetryCount = 20;
 }

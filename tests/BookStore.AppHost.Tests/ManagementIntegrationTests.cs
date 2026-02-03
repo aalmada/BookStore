@@ -126,72 +126,10 @@ public class ManagementIntegrationTests
         _ = await Assert.That(author).IsNotNull();
     }
 
-    // Helpers
-    async Task<SharedModels.BookDto> CreateBookAsync(IBooksClient client, CreateBookRequest request)
-    {
-        SharedModels.BookDto? res = null;
-        var received = await TestHelpers.ExecuteAndWaitForEventAsync(
-            Guid.Empty,
-            ["BookCreated", "BookUpdated"],
-            async () => res = await client.CreateBookAsync(request),
-            TestConstants.DefaultEventTimeout);
-        _ = await Assert.That(received).IsTrue();
-
-        return res!;
-    }
-
-    async Task<SharedModels.AdminAuthorDto> CreateAuthorAsync(IAuthorsClient client, CreateAuthorRequest request)
-    {
-        var received = await TestHelpers.ExecuteAndWaitForEventAsync(
-            Guid.Empty,
-            ["AuthorCreated", "AuthorUpdated"],
-            async () => await client.CreateAuthorAsync(request),
-            TestConstants.DefaultEventTimeout);
-
-        _ = await Assert.That(received).IsTrue();
-
-        var paged = await client.GetAllAuthorsAsync(new SharedModels.AuthorSearchRequest { Search = request.Name });
-        return paged!.Items.First(a => a.Name == request.Name);
-    }
-
-    async Task<SharedModels.AdminCategoryDto> CreateCategoryAsync(ICategoriesClient client,
-        CreateCategoryRequest request)
-    {
-        var englishName = request.Translations["en"].Name;
-        var received = await TestHelpers.ExecuteAndWaitForEventAsync(
-            Guid.Empty,
-            ["CategoryCreated", "CategoryUpdated"],
-            async () => await client.CreateCategoryAsync(request),
-            TestConstants.DefaultEventTimeout);
-        _ = await Assert.That(received).IsTrue();
-
-        var paged = await client.GetAllCategoriesAsync(new SharedModels.CategorySearchRequest { Search = englishName });
-        var cat = paged!.Items.FirstOrDefault(c => c.Translations["en"].Name == englishName);
-        if (cat == null)
-        {
-            throw new Exception("Category not found after creation");
-        }
-
-        return cat;
-    }
-
-    async Task<SharedModels.PublisherDto> CreatePublisherAsync(IPublishersClient client, CreatePublisherRequest request)
-    {
-        var received = await TestHelpers.ExecuteAndWaitForEventAsync(
-            Guid.Empty,
-            ["PublisherCreated", "PublisherUpdated"],
-            async () => await client.CreatePublisherAsync(request),
-            TestConstants.DefaultEventTimeout);
-        _ = await Assert.That(received).IsTrue();
-
-        var paged = await client.GetAllPublishersAsync(
-            new SharedModels.PublisherSearchRequest { Search = request.Name });
-        return paged!.Items.First(p => p.Name == request.Name);
-    }
-
+    // Verification helpers
     async Task<bool> VerifyInAdminAuthorsAsync(IAuthorsClient client, string search, bool expected)
     {
-        for (var i = 0; i < 5; i++)
+        for (var i = 0; i < TestConstants.ShortRetryCount; i++)
         {
             try
             {
@@ -205,7 +143,7 @@ public class ManagementIntegrationTests
             }
             catch
             {
-                /* Ignore */
+                // Ignore exceptions during retry - expected during eventual consistency delay
             }
 
             await Task.Delay(500);
@@ -216,7 +154,7 @@ public class ManagementIntegrationTests
 
     async Task<bool> VerifyInAdminCategoriesAsync(ICategoriesClient client, string search, bool expected)
     {
-        for (var i = 0; i < 5; i++)
+        for (var i = 0; i < TestConstants.ShortRetryCount; i++)
         {
             try
             {
@@ -230,6 +168,7 @@ public class ManagementIntegrationTests
             }
             catch
             {
+                // Ignore exceptions during retry - expected during eventual consistency delay
             }
 
             await Task.Delay(500);
@@ -240,7 +179,7 @@ public class ManagementIntegrationTests
 
     async Task<bool> VerifyInAdminPublishersAsync(IPublishersClient client, string search, bool expected)
     {
-        for (var i = 0; i < 5; i++)
+        for (var i = 0; i < TestConstants.ShortRetryCount; i++)
         {
             try
             {
@@ -254,6 +193,7 @@ public class ManagementIntegrationTests
             }
             catch
             {
+                // Ignore exceptions during retry - expected during eventual consistency delay
             }
 
             await Task.Delay(500);
