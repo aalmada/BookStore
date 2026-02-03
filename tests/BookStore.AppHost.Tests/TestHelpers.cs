@@ -27,10 +27,25 @@ public static class TestHelpers
 {
     static readonly Faker _faker = new();
 
+    /// <summary>
+    /// Generates a random password that meets common password requirements.
+    /// </summary>
+    /// <returns>A password with at least 12 characters including uppercase, lowercase, numbers, and special characters.</returns>
     public static string GenerateFakePassword() => _faker.Internet.Password(12, false, "", "Aa1!");
 
+    /// <summary>
+    /// Generates a random email address for testing.
+    /// </summary>
+    /// <returns>A valid email address.</returns>
     public static string GenerateFakeEmail() => _faker.Internet.Email();
 
+    /// <summary>
+    /// Generates a fake book creation request with random data using Bogus.
+    /// </summary>
+    /// <param name="publisherId">Optional publisher ID. If null, the book will have no publisher.</param>
+    /// <param name="authorIds">Optional collection of author IDs. If null or empty, the book will have no authors.</param>
+    /// <param name="categoryIds">Optional collection of category IDs. If null or empty, the book will have no categories.</param>
+    /// <returns>A CreateBookRequest with randomized title, ISBN, translations, and prices.</returns>
     public static CreateBookRequest
         GenerateFakeBookRequest(Guid? publisherId = null, IEnumerable<Guid>? authorIds = null,
             IEnumerable<Guid>? categoryIds = null) => new()
@@ -54,6 +69,10 @@ public static class TestHelpers
                 Prices = new Dictionary<string, decimal> { ["USD"] = decimal.Parse(_faker.Commerce.Price(10, 100)) }
             };
 
+    /// <summary>
+    /// Generates a fake author creation request with random data using Bogus.
+    /// </summary>
+    /// <returns>A CreateAuthorRequest with randomized name and biography in English and Spanish.</returns>
     public static CreateAuthorRequest GenerateFakeAuthorRequest() => new()
     {
         Name = _faker.Name.FullName(),
@@ -74,6 +93,10 @@ public static class TestHelpers
         }
     };
 
+    /// <summary>
+    /// Generates a fake category creation request with random data using Bogus.
+    /// </summary>
+    /// <returns>A CreateCategoryRequest with randomized name and description in English and Spanish.</returns>
     public static CreateCategoryRequest GenerateFakeCategoryRequest() => new()
     {
         Translations = new Dictionary<string, CategoryTranslationDto>
@@ -83,6 +106,10 @@ public static class TestHelpers
         }
     };
 
+    /// <summary>
+    /// Generates a fake category update request with random data using Bogus.
+    /// </summary>
+    /// <returns>An UpdateCategoryRequest with randomized name and description in English and Spanish.</returns>
     public static BookStore.Client.UpdateCategoryRequest GenerateFakeUpdateCategoryRequest() => new()
     {
         Translations = new Dictionary<string, CategoryTranslationDto>
@@ -176,6 +203,10 @@ public static class TestHelpers
         }
     }
 
+    /// <summary>
+    /// Generates a fake publisher creation request with random data using Bogus.
+    /// </summary>
+    /// <returns>A CreatePublisherRequest with a randomized company name.</returns>
     public static CreatePublisherRequest GenerateFakePublisherRequest()
         => new() { Name = _faker.Company.CompanyName() };
 
@@ -203,6 +234,11 @@ public static class TestHelpers
         return await Task.FromResult(client);
     }
 
+    /// <summary>
+    /// Gets an authenticated HTTP client for the API service using the global admin token.
+    /// </summary>
+    /// <typeparam name="T">The Refit interface type to create a client for.</typeparam>
+    /// <returns>A Refit client instance configured with admin authentication.</returns>
     public static async Task<T> GetAuthenticatedClientAsync<T>()
     {
         var httpClient = await GetAuthenticatedClientAsync();
