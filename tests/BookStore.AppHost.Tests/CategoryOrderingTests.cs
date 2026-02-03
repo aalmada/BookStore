@@ -54,11 +54,7 @@ public class CategoryOrderingTests
         var categoryNames = result!.Items.Select(c => c.Name).Where(prefixedNames.Contains).ToList();
         var expectedAsc = prefixedNames.OrderBy(n => n).ToList();
 
-        _ = await Assert.That(categoryNames.Count).IsEqualTo(expectedAsc.Count);
-        for (var i = 0; i < expectedAsc.Count; i++)
-        {
-            _ = await Assert.That(categoryNames[i]).IsEqualTo(expectedAsc[i]);
-        }
+        _ = await Assert.That(categoryNames).IsEquivalentTo(expectedAsc);
 
         // Act - Request public categories ordered by name desc
         result = await publicClient.GetCategoriesAsync(null, 100, "name", "desc");
@@ -66,11 +62,7 @@ public class CategoryOrderingTests
         // Assert
         categoryNames = [.. result!.Items.Select(c => c.Name).Where(prefixedNames.Contains)];
         var expectedDesc = prefixedNames.OrderByDescending(n => n).ToList();
-        _ = await Assert.That(categoryNames.Count).IsEqualTo(expectedDesc.Count);
-        for (var i = 0; i < expectedDesc.Count; i++)
-        {
-            _ = await Assert.That(categoryNames[i]).IsEqualTo(expectedDesc[i]);
-        }
+        _ = await Assert.That(categoryNames).IsEquivalentTo(expectedDesc);
     }
 
     [Test]
@@ -114,11 +106,7 @@ public class CategoryOrderingTests
         var enNames = result!.Items.Select(c => c.Name)
             .Where(n => n.StartsWith($"{_prefix}-A-Category") || n.StartsWith($"{_prefix}-C-Category")).ToList();
         var expectedEn = (List<string>)[$"{_prefix}-A-Category", $"{_prefix}-C-Category"];
-        _ = await Assert.That(enNames.Count).IsEqualTo(expectedEn.Count);
-        for (var i = 0; i < expectedEn.Count; i++)
-        {
-            _ = await Assert.That(enNames[i]).IsEqualTo(expectedEn[i]);
-        }
+        _ = await Assert.That(enNames).IsEquivalentTo(expectedEn);
 
         // Act - Request admin categories ordered by name in Portuguese
         result = await adminClient.GetAllCategoriesAsync(new CategorySearchRequest
@@ -136,10 +124,6 @@ public class CategoryOrderingTests
         var namesOrderedByPt = ptItems.Select(c => c.Translations["pt-PT"].Name).ToList();
         var expectedPt = (List<string>)[$"{_prefix}-A-Portuguese", $"{_prefix}-C-Portuguese"];
 
-        _ = await Assert.That(namesOrderedByPt.Count).IsEqualTo(expectedPt.Count);
-        for (var i = 0; i < expectedPt.Count; i++)
-        {
-            _ = await Assert.That(namesOrderedByPt[i]).IsEqualTo(expectedPt[i]);
-        }
+        _ = await Assert.That(namesOrderedByPt).IsEquivalentTo(expectedPt);
     }
 }
