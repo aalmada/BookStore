@@ -26,12 +26,7 @@
                 </MudItem>
 
                 <MudItem xs="12" sm="6">
-                    <MudSelect T="string" Label="Language" @bind-Value="_model.Language" Required="true" Variant="Variant.Outlined">
-                        <MudSelectItem Value="@("en-US")">English (US)</MudSelectItem>
-                        <MudSelectItem Value="@("pt-PT")">Portuguese (Portugal)</MudSelectItem>
-                        <MudSelectItem Value="@("es-ES")">Spanish (Spain)</MudSelectItem>
-                        <MudSelectItem Value="@("fr-FR")">French (France)</MudSelectItem>
-                    </MudSelect>
+                    <LanguageSelector Value="_model.Language" ValueChanged="(value) => _model.Language = value" Required="true"/>
                 </MudItem>
 
                 <MudItem xs="12" sm="6">
@@ -84,12 +79,7 @@
                         <MudText Typo="Typo.subtitle1" Class="mb-2 fw-bold">Descriptions (Multi-language)</MudText>
 
                         <div class="d-flex align-center gap-2 mb-4">
-                            <MudSelect T="string" Label="Language" Value="_selectedLanguage" ValueChanged="OnLanguageChanged" Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense">
-                                <MudSelectItem Value="@("en-US")">English (US)</MudSelectItem>
-                                <MudSelectItem Value="@("pt-PT")">Portuguese (Portugal)</MudSelectItem>
-                                <MudSelectItem Value="@("es-ES")">Spanish (Spain)</MudSelectItem>
-                                <MudSelectItem Value="@("fr-FR")">French (France)</MudSelectItem>
-                            </MudSelect>
+                            <LanguageSelector Value="_selectedLanguage" ValueChanged="OnLanguageChanged" Margin="Margin.Dense"/>
                             <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="AddOrUpdateDescription" StartIcon="@Icons.Material.Filled.Add" Size="Size.Small">
                                 @(_translations.ContainsKey(_selectedLanguage) ? "Update" : "Add")
                             </MudButton>

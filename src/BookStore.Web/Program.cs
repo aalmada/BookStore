@@ -105,6 +105,13 @@ static void RegisterScopedRefitClients(
         return RestService.For<ITenantClient>(httpClient);
     });
 
+    // Register IConfigurationClient separately (No auth required for public config endpoints)
+    _ = services.AddScoped<IConfigurationClient>(_ =>
+    {
+        var httpClient = new HttpClient { BaseAddress = baseAddress };
+        return RestService.For<IConfigurationClient>(httpClient);
+    });
+
     // Register aggregated clients with Polly resilience
     // Handler chain: Resilience (Polly) -> Auth -> Tenant -> Network
     void AddScopedClient<T>() where T : class => _ = services.AddScoped<T>(sp =>
@@ -120,8 +127,7 @@ static void RegisterScopedRefitClients(
             new BookStore.Client.Infrastructure.BookStoreHeaderHandler() { InnerHandler = networkHandler };
         var tenantHandler = new TenantHeaderHandler(tenantService) { InnerHandler = headerHandler };
         var authHandler = new AuthorizationMessageHandler(
-            tokenService, tenantService, httpContextAccessor, correlationService)
-        { InnerHandler = tenantHandler };
+            tokenService, tenantService, httpContextAccessor, correlationService) { InnerHandler = tenantHandler };
 
         // Wrap with resilience handler: Resilience -> Auth -> Tenant -> Network
         var resilienceHandler = new ResilienceHandler(resiliencePipeline) { InnerHandler = authHandler };
@@ -148,7 +154,9 @@ builder.Services.AddAuthentication(options => options.DefaultScheme = "Cookies")
     .AddCookie("Cookies");
 builder.Services.AddAuthorization();
 builder.Services.AddScoped<ClientContextService>();
+builder.Services.AddScoped<TenantService>();
 builder.Services.AddScoped<TokenService>();
+builder.Services.AddScoped<LanguageService>();
 builder.Services.AddScoped<PasskeyService>();
 builder.Services.AddScoped<AuthenticationService>();
 builder.Services.AddScoped<JwtAuthenticationStateProvider>();
@@ -199,9 +207,29 @@ app.UseForwardedHeaders();
 app.UseAuthentication();
 app.UseAuthorization();
 
-var supportedCultures = new[] { "en-US" };
+// Fetch localization configuration from backend
+string[] supportedCultures;
+string defaultCulture;
+try
+{
+    using var scope = app.Services.CreateScope();
+    var configClient = scope.ServiceProvider.GetRequiredService<IConfigurationClient>();
+    var localizationConfig = await configClient.GetLocalizationConfigAsync();
+    supportedCultures = localizationConfig.SupportedCultures.ToArray();
+    defaultCulture = localizationConfig.DefaultCulture;
+}
+catch (Exception ex)
+{
+    // Fallback to default if backend is not available
+#pragma warning disable CA1848 // For improved performance, use the LoggerMessage delegates
+    app.Logger.LogWarning(ex, "Failed to fetch localization configuration from backend. Using default configuration.");
+#pragma warning restore CA1848
+    supportedCultures = ["en"];
+    defaultCulture = "en";
+}
+
 var localizationOptions = new RequestLocalizationOptions()
-    .SetDefaultCulture(supportedCultures[0])
+    .SetDefaultCulture(defaultCulture)
     .AddSupportedCultures(supportedCultures)
     .AddSupportedUICultures(supportedCultures);
 
@@ -224,3 +252,4 @@ app.MapRazorComponents<App>()
 app.MapDefaultEndpoints();
 
 app.Run();
+
