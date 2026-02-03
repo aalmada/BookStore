@@ -51,9 +51,12 @@ public class CorrelationTests
                 _ = await Assert.That(response.IsSuccessStatusCode).IsTrue();
 
                 // USER REQUIREMENT: Response must have the same correlation ID as the request
-                _ = await Assert.That(response.Headers.Contains("X-Correlation-ID")).IsTrue();
-                var responseId = response.Headers.GetValues("X-Correlation-ID").FirstOrDefault();
-                _ = await Assert.That(responseId).IsEqualTo(correlationId);
+                using (Assert.Multiple())
+                {
+                    _ = await Assert.That(response.Headers.Contains("X-Correlation-ID")).IsTrue();
+                    var responseId = response.Headers.GetValues("X-Correlation-ID").FirstOrDefault();
+                    _ = await Assert.That(responseId).IsEqualTo(correlationId);
+                }
             },
             TestConstants.DefaultEventTimeout);
 
@@ -80,15 +83,18 @@ public class CorrelationTests
             var dbCausationId = reader["causation_id"] as string;
             var dbHeadersJson = reader["headers"] as string;
 
-            _ = await Assert.That(dbCorrelationId).IsEqualTo(correlationId);
-            _ = await Assert.That(dbCausationId).IsNotNull();
-            _ = await Assert.That(dbHeadersJson).IsNotNull();
+            using (Assert.Multiple())
+            {
+                _ = await Assert.That(dbCorrelationId).IsEqualTo(correlationId);
+                _ = await Assert.That(dbCausationId).IsNotNull();
+                _ = await Assert.That(dbHeadersJson).IsNotNull();
 
-            // Verify technical headers in JSON
-            _ = await Assert.That(dbHeadersJson).Contains("\"user-id\"");
-            _ = await Assert.That(dbHeadersJson).Contains("\"remote-ip\"");
-            _ = await Assert.That(dbHeadersJson).Contains("\"user-agent\"");
-            _ = await Assert.That(dbHeadersJson).Contains("TUnit-Test-Agent");
+                // Verify technical headers in JSON
+                _ = await Assert.That(dbHeadersJson).Contains("\"user-id\"");
+                _ = await Assert.That(dbHeadersJson).Contains("\"remote-ip\"");
+                _ = await Assert.That(dbHeadersJson).Contains("\"user-agent\"");
+                _ = await Assert.That(dbHeadersJson).Contains("TUnit-Test-Agent");
+            }
         }
         else
         {
@@ -135,10 +141,13 @@ public class CorrelationTests
                 _ = await Assert.That(response.IsSuccessStatusCode).IsTrue();
 
                 // USER REQUIREMENT: Case missing id, a new one must be created and returned.
-                _ = await Assert.That(response.Headers.Contains("X-Correlation-ID")).IsTrue();
-                responseCorrelationId = response.Headers.GetValues("X-Correlation-ID").FirstOrDefault();
-                _ = await Assert.That(responseCorrelationId).IsNotNull();
-                _ = await Assert.That(Guid.TryParse(responseCorrelationId, out _)).IsTrue();
+                using (Assert.Multiple())
+                {
+                    _ = await Assert.That(response.Headers.Contains("X-Correlation-ID")).IsTrue();
+                    responseCorrelationId = response.Headers.GetValues("X-Correlation-ID").FirstOrDefault();
+                    _ = await Assert.That(responseCorrelationId).IsNotNull();
+                    _ = await Assert.That(Guid.TryParse(responseCorrelationId, out _)).IsTrue();
+                }
             },
             TestConstants.DefaultEventTimeout);
 
@@ -154,13 +163,16 @@ public class CorrelationTests
         _ = cmd.Parameters.AddWithValue("cid", responseCorrelationId!);
 
         using var reader = await cmd.ExecuteReaderAsync();
-        _ = await Assert.That(await reader.ReadAsync()).IsTrue();
-        _ = await Assert.That(reader["correlation_id"] as string).IsEqualTo(responseCorrelationId);
+        using (Assert.Multiple())
+        {
+            _ = await Assert.That(await reader.ReadAsync()).IsTrue();
+            _ = await Assert.That(reader["correlation_id"] as string).IsEqualTo(responseCorrelationId);
 
-        var dbHeadersJson = reader["headers"] as string;
-        _ = await Assert.That(dbHeadersJson).IsNotNull();
-        _ = await Assert.That(dbHeadersJson).Contains("\"user-id\"");
-        _ = await Assert.That(dbHeadersJson).Contains("\"remote-ip\"");
-        _ = await Assert.That(dbHeadersJson).Contains("\"user-agent\"");
+            var dbHeadersJson = reader["headers"] as string;
+            _ = await Assert.That(dbHeadersJson).IsNotNull();
+            _ = await Assert.That(dbHeadersJson).Contains("\"user-id\"");
+            _ = await Assert.That(dbHeadersJson).Contains("\"remote-ip\"");
+            _ = await Assert.That(dbHeadersJson).Contains("\"user-agent\"");
+        }
     }
 }

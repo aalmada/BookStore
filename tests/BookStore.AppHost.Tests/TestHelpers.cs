@@ -34,25 +34,25 @@ public static class TestHelpers
     public static CreateBookRequest
         GenerateFakeBookRequest(Guid? publisherId = null, IEnumerable<Guid>? authorIds = null,
             IEnumerable<Guid>? categoryIds = null) => new()
-    {
-        Title = _faker.Commerce.ProductName(),
-        Isbn = _faker.Commerce.Ean13(),
-        Language = "en",
-        Translations =
+            {
+                Title = _faker.Commerce.ProductName(),
+                Isbn = _faker.Commerce.Ean13(),
+                Language = "en",
+                Translations =
             new Dictionary<string, BookTranslationDto>
             {
                 ["en"] = new() { Description = _faker.Lorem.Paragraph() },
                 ["es"] = new() { Description = _faker.Lorem.Paragraph() }
             },
-        PublicationDate = new PartialDate(
+                PublicationDate = new PartialDate(
             _faker.Date.Past(10).Year,
             _faker.Random.Int(1, 12),
             _faker.Random.Int(1, 28)),
-        PublisherId = publisherId,
-        AuthorIds = (ICollection<Guid>)(authorIds ?? []),
-        CategoryIds = (ICollection<Guid>)(categoryIds ?? []),
-        Prices = new Dictionary<string, decimal> { ["USD"] = decimal.Parse(_faker.Commerce.Price(10, 100)) }
-    };
+                PublisherId = publisherId,
+                AuthorIds = (ICollection<Guid>)(authorIds ?? []),
+                CategoryIds = (ICollection<Guid>)(categoryIds ?? []),
+                Prices = new Dictionary<string, decimal> { ["USD"] = decimal.Parse(_faker.Commerce.Price(10, 100)) }
+            };
 
     public static CreateAuthorRequest GenerateFakeAuthorRequest() => new()
     {
