@@ -187,31 +187,63 @@ public class ShoppingCartTests
     public async Task CartOperations_WhenUnauthenticated_ShouldReturnUnauthorized()
     {
         // Arrange
-        // Using HttpClient here is simpler as we can't easily interface-proxy unauth requests unless we explicitly create a client without auth header
-        var unauthenticatedClient = TestHelpers.GetUnauthenticatedClient();
+        var unauthenticatedHttpClient = TestHelpers.GetUnauthenticatedClient();
+        var client = RestService.For<IShoppingCartClient>(unauthenticatedHttpClient);
 
         // Act & Assert - Get cart
-        var getResponse = await unauthenticatedClient.GetAsync("/api/cart");
-        _ = await Assert.That(getResponse.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+        try
+        {
+            _ = await client.GetShoppingCartAsync();
+            Assert.Fail("Should have thrown ApiException");
+        }
+        catch (ApiException ex)
+        {
+            _ = await Assert.That(ex.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+        }
 
         // Act & Assert - Add to cart
-        var addResponse =
-            await unauthenticatedClient.PostAsJsonAsync("/api/cart/items",
-                new AddToCartClientRequest(Guid.NewGuid(), 1));
-        _ = await Assert.That(addResponse.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+        try
+        {
+            await client.AddToCartAsync(new AddToCartClientRequest(Guid.NewGuid(), 1));
+            Assert.Fail("Should have thrown ApiException");
+        }
+        catch (ApiException ex)
+        {
+            _ = await Assert.That(ex.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+        }
 
         // Act & Assert - Update cart item
-        var updateResponse = await unauthenticatedClient.PutAsJsonAsync($"/api/cart/items/{Guid.NewGuid()}",
-            new UpdateCartItemClientRequest(5));
-        _ = await Assert.That(updateResponse.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+        try
+        {
+            await client.UpdateCartItemAsync(Guid.NewGuid(), new UpdateCartItemClientRequest(5));
+            Assert.Fail("Should have thrown ApiException");
+        }
+        catch (ApiException ex)
+        {
+            _ = await Assert.That(ex.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+        }
 
         // Act & Assert - Remove from cart
-        var removeResponse = await unauthenticatedClient.DeleteAsync($"/api/cart/items/{Guid.NewGuid()}");
-        _ = await Assert.That(removeResponse.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+        try
+        {
+            await client.RemoveFromCartAsync(Guid.NewGuid());
+            Assert.Fail("Should have thrown ApiException");
+        }
+        catch (ApiException ex)
+        {
+            _ = await Assert.That(ex.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+        }
 
         // Act & Assert - Clear cart
-        var clearResponse = await unauthenticatedClient.DeleteAsync("/api/cart");
-        _ = await Assert.That(clearResponse.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+        try
+        {
+            await client.ClearCartAsync();
+            Assert.Fail("Should have thrown ApiException");
+        }
+        catch (ApiException ex)
+        {
+            _ = await Assert.That(ex.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+        }
     }
 }
 

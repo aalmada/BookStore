@@ -7,6 +7,7 @@ using BookStore.ApiService.Infrastructure.Logging;
 using BookStore.Shared.Models;
 using Marten;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Options;
 
 namespace BookStore.ApiService.Handlers.Books;
@@ -22,11 +23,12 @@ public static class BookHandlers
     /// Wolverine automatically manages the Marten session and commits the transaction
     /// Returns a notification that will be published to SignalR
     /// </summary>
-    public static IResult Handle(
+    public static async Task<IResult> Handle(
         CreateBook command,
         IDocumentSession session,
         IOptions<LocalizationOptions> localizationOptions,
         IOptions<CurrencyOptions> currencyOptions,
+        HybridCache cache,
         ILogger logger)
     {
         Log.Books.BookCreating(logger, command.Id, command.Title, session.CorrelationId ?? "none");
@@ -105,9 +107,9 @@ public static class BookHandlers
 
         _ = session.Events.StartStream<BookAggregate>(command.Id, eventResult.Value);
 
-        Log.Books.BookCreated(logger, command.Id, command.Title);
+        // Invalidate cache
+        await cache.RemoveByTagAsync([CacheTags.BookList], default);
 
-        // Wolverine automatically calls SaveChangesAsync and publishes the event to the stream
         return Results.Created(
             $"/api/admin/books/{command.Id}",
             new { id = command.Id, correlationId = session.CorrelationId });
@@ -122,6 +124,7 @@ public static class BookHandlers
         IHttpContextAccessor contextAccessor,
         IOptions<LocalizationOptions> localizationOptions,
         IOptions<CurrencyOptions> currencyOptions,
+        HybridCache cache,
         ILogger logger)
     {
         var context = contextAccessor.HttpContext!;
@@ -221,12 +224,8 @@ public static class BookHandlers
 
         _ = session.Events.Append(command.Id, eventResult.Value);
 
-        Log.Books.BookUpdated(logger, command.Id);
-
-        // Get new stream state and return new ETag
-        var newStreamState = await session.Events.FetchStreamStateAsync(command.Id);
-        var newETag = ETagHelper.GenerateETag(newStreamState!.Version);
-        ETagHelper.AddETagHeader(context, newETag);
+        // Invalidate cache
+        await cache.RemoveByTagAsync([CacheTags.BookList, CacheTags.ForItem(CacheTags.BookItemPrefix, command.Id)], context.RequestAborted);
 
         return Results.NoContent();
     }
@@ -238,6 +237,7 @@ public static class BookHandlers
         SoftDeleteBook command,
         IDocumentSession session,
         IHttpContextAccessor contextAccessor,
+        HybridCache cache,
         ILogger logger)
     {
         var context = contextAccessor.HttpContext!;
@@ -276,12 +276,8 @@ public static class BookHandlers
 
         _ = session.Events.Append(command.Id, eventResult.Value);
 
-        Log.Books.BookSoftDeleted(logger, command.Id);
-
-        // Get new stream state and return new ETag
-        var newStreamState = await session.Events.FetchStreamStateAsync(command.Id);
-        var newETag = ETagHelper.GenerateETag(newStreamState!.Version);
-        ETagHelper.AddETagHeader(context, newETag);
+        // Invalidate cache
+        await cache.RemoveByTagAsync([CacheTags.BookList, CacheTags.ForItem(CacheTags.BookItemPrefix, command.Id)], context.RequestAborted);
 
         return Results.NoContent();
     }
@@ -293,6 +289,7 @@ public static class BookHandlers
         RestoreBook command,
         IDocumentSession session,
         IHttpContextAccessor contextAccessor,
+        HybridCache cache,
         ILogger logger)
     {
         var context = contextAccessor.HttpContext!;
@@ -331,12 +328,8 @@ public static class BookHandlers
 
         _ = session.Events.Append(command.Id, eventResult.Value);
 
-        Log.Books.BookRestored(logger, command.Id);
-
-        // Get new stream state and return new ETag
-        var newStreamState = await session.Events.FetchStreamStateAsync(command.Id);
-        var newETag = ETagHelper.GenerateETag(newStreamState!.Version);
-        ETagHelper.AddETagHeader(context, newETag);
+        // Invalidate cache
+        await cache.RemoveByTagAsync([CacheTags.BookList, CacheTags.ForItem(CacheTags.BookItemPrefix, command.Id)], context.RequestAborted);
 
         return Results.NoContent();
     }

@@ -22,7 +22,7 @@ public class CategoryHandlerTests
         var command = new CreateCategory(
             new Dictionary<string, CategoryTranslationDto>
             {
-                ["en"] = new CategoryTranslationDto("Technology", "Books about tech")
+                ["en"] = new CategoryTranslationDto("Technology")
             }
         );
 
@@ -30,7 +30,7 @@ public class CategoryHandlerTests
         _ = session.CorrelationId.Returns("test-correlation-id");
 
         // Act
-        var result = CategoryHandlers.Handle(command, session, Substitute.For<ILogger<CreateCategory>>());
+        var result = await CategoryHandlers.Handle(command, session, Substitute.For<ILogger<CreateCategory>>());
 
         // Assert
         _ = await Assert.That(result).IsNotNull();
@@ -44,19 +44,17 @@ public class CategoryHandlerTests
 
     [Test]
     [Category("Unit")]
-    [Arguments("invalid-culture", 10, 10)]
-    [Arguments("en", 101, 10)]
-    [Arguments("en", 10, 501)]
-    public async Task CreateCategoryHandler_WithInvalidData_ShouldReturnBadRequest(string culture, int nameLength, int descLength)
+    [Arguments("invalid-culture", 10)]
+    [Arguments("en", 101)]
+    public async Task CreateCategoryHandler_WithInvalidData_ShouldReturnBadRequest(string culture, int nameLength)
     {
         // Arrange
         var name = new string('a', nameLength);
-        var description = new string('a', descLength);
 
         var command = new CreateCategory(
             new Dictionary<string, CategoryTranslationDto>
             {
-                [culture] = new CategoryTranslationDto(name, description)
+                [culture] = new CategoryTranslationDto(name)
             }
         );
 
@@ -64,7 +62,7 @@ public class CategoryHandlerTests
 
         // Act
         // Act
-        var result = CategoryHandlers.Handle(command, session, Substitute.For<ILogger<CreateCategory>>());
+        var result = await CategoryHandlers.Handle(command, session, Substitute.For<ILogger<CreateCategory>>());
 
         // Assert
         _ = await Assert.That(result).IsAssignableTo<Microsoft.AspNetCore.Http.IStatusCodeHttpResult>();
@@ -81,7 +79,7 @@ public class CategoryHandlerTests
             Guid.CreateVersion7(),
             new Dictionary<string, CategoryTranslationDto>
             {
-                ["en"] = new CategoryTranslationDto("Technology Updated", "Updated desc")
+                ["en"] = new CategoryTranslationDto("Technology Updated")
             }
         )
         {
@@ -180,7 +178,7 @@ public class CategoryHandlerTests
         typeof(CategoryAggregate).GetProperty(nameof(CategoryAggregate.Deleted))!.SetValue(aggregate, isDeleted);
         typeof(CategoryAggregate).GetProperty(nameof(CategoryAggregate.Translations))!.SetValue(aggregate, new Dictionary<string, CategoryTranslation>
         {
-            ["en"] = new(defaultName, "Description")
+            ["en"] = new(defaultName)
         });
 
         return aggregate;

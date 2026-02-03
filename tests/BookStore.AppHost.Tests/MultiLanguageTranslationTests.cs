@@ -1,5 +1,3 @@
-using System.Net.Http.Headers;
-using System.Net.Http.Json;
 using BookStore.Client;
 using Refit;
 using SharedModels = BookStore.Shared.Models;
@@ -35,15 +33,14 @@ public class MultiLanguageTranslationTests
         _ = await Assert.That(received).IsTrue();
 
         // 2. Verify all translations are returned in Admin API
-        var authorInList = await RetryUntilFoundAsync<SharedModels.AdminAuthorDto>(async () =>
+        var authorInList = await RetryUntilFoundAsync(async () =>
         {
             var pagedAuthors =
                 await client.GetAllAuthorsAsync(new SharedModels.AuthorSearchRequest { Search = authorName });
-            return pagedAuthors!.Items.FirstOrDefault(a => a.Name == authorName);
+            return pagedAuthors.Items.FirstOrDefault(a => a.Name == authorName);
         });
 
-        _ = await Assert.That(authorInList.Translations).IsNotNull();
-        _ = await Assert.That(authorInList.Translations!.Count).IsEqualTo(2);
+        _ = await Assert.That(authorInList.Translations.Count).IsEqualTo(2);
 
         // 3. Update Author
         var translations = authorInList.Translations.ToDictionary(
@@ -64,11 +61,10 @@ public class MultiLanguageTranslationTests
         // 4. Verify translations are still there
         var finalPagedAuthors =
             await client.GetAllAuthorsAsync(new SharedModels.AuthorSearchRequest { Search = authorName });
-        var finalAuthor = finalPagedAuthors!.Items.First(a => a.Id == authorInList.Id);
+        var finalAuthor = finalPagedAuthors.Items.First(a => a.Id == authorInList.Id);
 
         _ = await Assert.That(finalAuthor.Name).IsEqualTo(authorName + " Updated");
-        _ = await Assert.That(finalAuthor.Translations).IsNotNull();
-        _ = await Assert.That(finalAuthor.Translations!.Count).IsEqualTo(2);
+        _ = await Assert.That(finalAuthor.Translations.Count).IsEqualTo(2);
     }
 
     [Test]
@@ -95,17 +91,16 @@ public class MultiLanguageTranslationTests
 
         _ = await Assert.That(received).IsTrue();
 
-        var categoryInList = await RetryUntilFoundAsync<SharedModels.AdminCategoryDto>(async () =>
+        var categoryInList = await RetryUntilFoundAsync(async () =>
         {
             var pagedCategories =
                 await client.GetAllCategoriesAsync(
                     new SharedModels.CategorySearchRequest { Search = englishName });
-            return pagedCategories!.Items.FirstOrDefault(c =>
-                c.Translations != null && c.Translations.ContainsKey("en") && c.Translations["en"].Name == englishName);
+            return pagedCategories.Items.FirstOrDefault(c =>
+                c.Translations.ContainsKey("en") && c.Translations["en"].Name == englishName);
         });
 
-        _ = await Assert.That(categoryInList.Translations).IsNotNull();
-        _ = await Assert.That(categoryInList.Translations!.Count).IsEqualTo(2);
+        _ = await Assert.That(categoryInList.Translations.Count).IsEqualTo(2);
 
         // Update
         var translations = categoryInList.Translations.ToDictionary(
@@ -126,10 +121,9 @@ public class MultiLanguageTranslationTests
 
         var finalPagedCategories =
             await client.GetAllCategoriesAsync(new SharedModels.CategorySearchRequest { Search = englishName });
-        var finalCategory = finalPagedCategories!.Items.First(c => c.Id == categoryInList.Id);
+        var finalCategory = finalPagedCategories.Items.First(c => c.Id == categoryInList.Id);
 
-        _ = await Assert.That(finalCategory.Translations).IsNotNull();
-        _ = await Assert.That(finalCategory.Translations!.Count).IsEqualTo(2);
+        _ = await Assert.That(finalCategory.Translations.Count).IsEqualTo(2);
     }
 
     [Test]
@@ -137,7 +131,6 @@ public class MultiLanguageTranslationTests
     {
         // 1. Create Book with Translations
         var client = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
-        var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
 
         var uniqueTitle = "TransBook " + Guid.NewGuid().ToString()[..8];
 
@@ -158,12 +151,12 @@ public class MultiLanguageTranslationTests
             Prices = new Dictionary<string, decimal> { ["USD"] = 10.99m }
         };
 
-        SharedModels.BookDto book = null!;
-        _ = await TestHelpers.ExecuteAndWaitForEventAsync(Guid.Empty, ["BookCreated", "BookUpdated"],
-            async () => book = await client.CreateBookAsync(createRequest), TestConstants.DefaultEventTimeout);
+        var book = await TestHelpers.CreateBookAsync(client, createRequest);
 
         // 2. Fetch using Refit client to get ETag
         var response = await client.GetBookWithHeadersAsync(book.Id);
+        _ = await Assert.That(response.IsSuccessStatusCode).IsTrue();
+        _ = await Assert.That(response.Content).IsNotNull();
         var etag = response.Headers.ETag?.Tag;
         var fetchedBook = response.Content;
 
@@ -193,18 +186,18 @@ public class MultiLanguageTranslationTests
 
         // 4. Verify using Accept-Language
         // English
-        var reqEn = new HttpRequestMessage(HttpMethod.Get, $"/api/books/{book.Id}");
-        reqEn.Headers.AcceptLanguage.ParseAdd("en");
-        var resEn = await httpClient.SendAsync(reqEn);
-        var bookEn = await resEn.Content.ReadFromJsonAsync<SharedModels.BookDto>();
-        _ = await Assert.That(bookEn!.Description).IsEqualTo("English Updated");
+        var clientEn = TestHelpers.GetUnauthenticatedClient();
+        clientEn.DefaultRequestHeaders.AcceptLanguage.ParseAdd("en");
+        var publicClientEn = RestService.For<IBooksClient>(clientEn);
+        var bookEn = await publicClientEn.GetBookAsync(book.Id);
+        _ = await Assert.That(bookEn.Description).IsEqualTo("English Updated");
 
         // Spanish
-        var reqEs = new HttpRequestMessage(HttpMethod.Get, $"/api/books/{book.Id}");
-        reqEs.Headers.AcceptLanguage.ParseAdd("es");
-        var resEs = await httpClient.SendAsync(reqEs);
-        var bookEs = await resEs.Content.ReadFromJsonAsync<SharedModels.BookDto>();
-        _ = await Assert.That(bookEs!.Description).IsEqualTo("Descripción Original");
+        var clientEs = TestHelpers.GetUnauthenticatedClient();
+        clientEs.DefaultRequestHeaders.AcceptLanguage.ParseAdd("es");
+        var publicClientEs = RestService.For<IBooksClient>(clientEs);
+        var bookEs = await publicClientEs.GetBookAsync(book.Id);
+        _ = await Assert.That(bookEs.Description).IsEqualTo("Descripción Original");
     }
 
     async Task<T> RetryUntilFoundAsync<T>(Func<Task<T?>> func, int maxRetries = 10)

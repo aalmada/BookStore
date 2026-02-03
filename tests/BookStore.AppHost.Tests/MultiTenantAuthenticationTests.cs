@@ -1,8 +1,11 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using BookStore.Client;
+using BookStore.Shared.Models;
 using JasperFx;
 using Marten;
+using Refit;
 
 namespace BookStore.AppHost.Tests;
 
@@ -61,7 +64,7 @@ public class MultiTenantAuthenticationTests : IDisposable
     /// <summary>
     /// Helper to login as admin for aspecific tenant
     /// </summary>
-    // LoginAsAdminAsync moved to TestHelpers
+// LoginAsAdminAsync moved to TestHelpers
     [Test]
     public async Task SeedAsync_CreatesAdminForEachTenant()
     {
@@ -173,22 +176,36 @@ public class MultiTenantAuthenticationTests : IDisposable
         };
 
         // Act: Try to create a book
-        var request = new HttpRequestMessage(HttpMethod.Post, "/api/admin/books")
+        var acmeClientHttpClient = GlobalHooks.App!.CreateHttpClient("apiservice");
+        acmeClientHttpClient.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", acmeLogin!.AccessToken);
+        acmeClientHttpClient.DefaultRequestHeaders.Add("X-Tenant-ID", "acme");
+        var acmeBooksClient = RestService.For<IBooksClient>(acmeClientHttpClient);
+
+        var request = new CreateBookRequest
         {
-            Content = JsonContent.Create(bookData)
+            Title = bookData.title,
+            Isbn = bookData.isbn,
+            Language = bookData.originalLanguage,
+            PublisherId = bookData.publisherId,
+            AuthorIds = bookData.authorIds,
+            CategoryIds = bookData.categoryIds,
+            Prices = new Dictionary<string, decimal> { ["USD"] = bookData.prices.USD },
+            PublicationDate = new PartialDate(2024),
+            Translations = new Dictionary<string, BookStore.Client.BookTranslationDto>()
         };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", acmeLogin!.AccessToken);
-        request.Headers.Add("X-Tenant-ID", "acme");
 
-        var response = await _client!.SendAsync(request);
-
-        // Assert: Should either succeed (201) or fail with validation error (400)
-        // but NOT with authorization error (401/403)
-        var isAuthorized = response.StatusCode is HttpStatusCode.Created or
-            HttpStatusCode.BadRequest;
-
-        _ = await Assert.That(isAuthorized).IsTrue()
-            ;
+        try
+        {
+            _ = await acmeBooksClient.CreateBookAsync(request);
+            return;
+        }
+        catch (ApiException ex) when (ex.StatusCode == HttpStatusCode.BadRequest)
+        {
+            // If Bad Request (validation failure), it means Authorization worked.
+            // (If it was Unauthorized/Forbidden, we would fail)
+            return;
+        }
     }
 
     [Test]

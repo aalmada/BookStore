@@ -25,7 +25,7 @@ public class PublisherHandlerTests
         _ = session.CorrelationId.Returns("test-correlation-id");
 
         // Act
-        var result = PublisherHandlers.Handle(command, session, Substitute.For<ILogger<CreatePublisher>>());
+        var result = await PublisherHandlers.Handle(command, session, Substitute.For<ILogger<CreatePublisher>>());
 
         // Assert
         _ = await Assert.That(result).IsNotNull();

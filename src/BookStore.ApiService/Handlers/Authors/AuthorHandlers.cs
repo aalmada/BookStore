@@ -6,13 +6,19 @@ using BookStore.ApiService.Infrastructure.Extensions;
 using BookStore.ApiService.Infrastructure.Logging;
 using BookStore.Shared.Models;
 using Marten;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Options;
 
 namespace BookStore.ApiService.Handlers.Authors;
 
 public static class AuthorHandlers
 {
-    public static async Task<IResult> Handle(CreateAuthor command, IDocumentSession session, IOptions<LocalizationOptions> localizationOptions, ILogger logger)
+    public static async Task<IResult> Handle(
+        CreateAuthor command,
+        IDocumentSession session,
+        IOptions<LocalizationOptions> localizationOptions,
+        HybridCache cache,
+        ILogger logger)
     {
         Log.Authors.AuthorCreating(logger, command.Id, command.Name, session.CorrelationId ?? "none");
 
@@ -63,8 +69,8 @@ public static class AuthorHandlers
 
         Log.Authors.AuthorCreated(logger, command.Id, command.Name);
 
-        // Fetch state to ensure flush and get version for ETag (optional but good for consistency)
-        _ = await session.Events.FetchStreamStateAsync(command.Id);
+        // Invalidate cache
+        await cache.RemoveByTagAsync([CacheTags.AuthorList], default);
 
         var defaultBiography = command.Translations?[localizationOptions.Value.DefaultCulture].Biography;
 
@@ -78,7 +84,8 @@ public static class AuthorHandlers
         IDocumentSession session,
         IHttpContextAccessor httpContextAccessor,
         IOptions<LocalizationOptions> localizationOptions,
-        ILogger logger)
+        HybridCache cache,
+        ILogger _)
     {
         // Validate language codes in biographies if provided
         if (command.Translations?.Count > 0)
@@ -136,13 +143,10 @@ public static class AuthorHandlers
             return eventResult.ToProblemDetails();
         }
 
-        _ = session.Events.Append(command.Id, eventResult.Value);
+        var streamAction = session.Events.Append(command.Id, eventResult.Value);
 
-        Log.Authors.AuthorUpdated(logger, command.Id);
-
-        var newStreamState = await session.Events.FetchStreamStateAsync(command.Id);
-        var newETag = ETagHelper.GenerateETag(newStreamState!.Version);
-        ETagHelper.AddETagHeader(context, newETag);
+        // Invalidate cache
+        await cache.RemoveByTagAsync([CacheTags.AuthorList, CacheTags.ForItem(CacheTags.AuthorItemPrefix, command.Id)], context.RequestAborted);
 
         return Results.NoContent();
     }
@@ -151,6 +155,7 @@ public static class AuthorHandlers
         SoftDeleteAuthor command,
         IDocumentSession session,
         IHttpContextAccessor httpContextAccessor,
+        HybridCache cache,
         ILogger logger)
     {
         Log.Authors.AuthorSoftDeleting(logger, command.Id);
@@ -185,11 +190,8 @@ public static class AuthorHandlers
 
         _ = session.Events.Append(command.Id, eventResult.Value);
 
-        Log.Authors.AuthorSoftDeleted(logger, command.Id);
-
-        var newStreamState = await session.Events.FetchStreamStateAsync(command.Id);
-        var newETag = ETagHelper.GenerateETag(newStreamState!.Version);
-        ETagHelper.AddETagHeader(context, newETag);
+        // Invalidate cache
+        await cache.RemoveByTagAsync([CacheTags.AuthorList, CacheTags.ForItem(CacheTags.AuthorItemPrefix, command.Id)], context.RequestAborted);
 
         return Results.NoContent();
     }
@@ -198,6 +200,7 @@ public static class AuthorHandlers
         RestoreAuthor command,
         IDocumentSession session,
         IHttpContextAccessor httpContextAccessor,
+        HybridCache cache,
         ILogger logger)
     {
         Log.Authors.AuthorRestoring(logger, command.Id);
@@ -232,11 +235,8 @@ public static class AuthorHandlers
 
         _ = session.Events.Append(command.Id, eventResult.Value);
 
-        Log.Authors.AuthorRestored(logger, command.Id);
-
-        var newStreamState = await session.Events.FetchStreamStateAsync(command.Id);
-        var newETag = ETagHelper.GenerateETag(newStreamState!.Version);
-        ETagHelper.AddETagHeader(context, newETag);
+        // Invalidate cache
+        await cache.RemoveByTagAsync([CacheTags.AuthorList, CacheTags.ForItem(CacheTags.AuthorItemPrefix, command.Id)], context.RequestAborted);
 
         return Results.NoContent();
     }

@@ -4,12 +4,17 @@ using BookStore.ApiService.Infrastructure;
 using BookStore.ApiService.Infrastructure.Extensions;
 using BookStore.ApiService.Infrastructure.Logging;
 using Marten;
+using Microsoft.Extensions.Caching.Hybrid;
 
 namespace BookStore.ApiService.Handlers.Publishers;
 
 public static class PublisherHandlers
 {
-    public static async Task<IResult> Handle(CreatePublisher command, IDocumentSession session, ILogger logger)
+    public static async Task<IResult> Handle(
+        CreatePublisher command,
+        IDocumentSession session,
+        HybridCache cache,
+        ILogger logger)
     {
         Log.Publishers.PublisherCreating(logger, command.Id, command.Name, session.CorrelationId ?? "none");
 
@@ -23,8 +28,8 @@ public static class PublisherHandlers
 
         Log.Publishers.PublisherCreated(logger, command.Id, command.Name);
 
-        // Fetch state to ensure flush
-        _ = await session.Events.FetchStreamStateAsync(command.Id);
+        // Invalidate cache
+        await cache.RemoveByTagAsync([CacheTags.PublisherList], default);
 
         return Results.Created(
             $"/api/admin/publishers/{command.Id}",
@@ -35,6 +40,7 @@ public static class PublisherHandlers
         UpdatePublisher command,
         IDocumentSession session,
         IHttpContextAccessor httpContextAccessor,
+        HybridCache cache,
         ILogger logger)
     {
         var streamState = await session.Events.FetchStreamStateAsync(command.Id);
@@ -70,11 +76,8 @@ public static class PublisherHandlers
 
         _ = session.Events.Append(command.Id, eventResult.Value);
 
-        Log.Publishers.PublisherUpdated(logger, command.Id);
-
-        var newStreamState = await session.Events.FetchStreamStateAsync(command.Id);
-        var newETag = ETagHelper.GenerateETag(newStreamState!.Version);
-        ETagHelper.AddETagHeader(context, newETag);
+        // Invalidate cache
+        await cache.RemoveByTagAsync([CacheTags.PublisherList, CacheTags.ForItem(CacheTags.PublisherItemPrefix, command.Id)], context.RequestAborted);
 
         return Results.NoContent();
     }
@@ -83,6 +86,7 @@ public static class PublisherHandlers
         SoftDeletePublisher command,
         IDocumentSession session,
         IHttpContextAccessor httpContextAccessor,
+        HybridCache cache,
         ILogger logger)
     {
         Log.Publishers.PublisherSoftDeleting(logger, command.Id);
@@ -117,11 +121,8 @@ public static class PublisherHandlers
 
         _ = session.Events.Append(command.Id, eventResult.Value);
 
-        Log.Publishers.PublisherSoftDeleted(logger, command.Id);
-
-        var newStreamState = await session.Events.FetchStreamStateAsync(command.Id);
-        var newETag = ETagHelper.GenerateETag(newStreamState!.Version);
-        ETagHelper.AddETagHeader(context, newETag);
+        // Invalidate cache
+        await cache.RemoveByTagAsync([CacheTags.PublisherList, CacheTags.ForItem(CacheTags.PublisherItemPrefix, command.Id)], context.RequestAborted);
 
         return Results.NoContent();
     }
@@ -130,6 +131,7 @@ public static class PublisherHandlers
         RestorePublisher command,
         IDocumentSession session,
         IHttpContextAccessor httpContextAccessor,
+        HybridCache cache,
         ILogger logger)
     {
         Log.Publishers.PublisherRestoring(logger, command.Id);
@@ -164,11 +166,8 @@ public static class PublisherHandlers
 
         _ = session.Events.Append(command.Id, eventResult.Value);
 
-        Log.Publishers.PublisherRestored(logger, command.Id);
-
-        var newStreamState = await session.Events.FetchStreamStateAsync(command.Id);
-        var newETag = ETagHelper.GenerateETag(newStreamState!.Version);
-        ETagHelper.AddETagHeader(context, newETag);
+        // Invalidate cache
+        await cache.RemoveByTagAsync([CacheTags.PublisherList, CacheTags.ForItem(CacheTags.PublisherItemPrefix, command.Id)], context.RequestAborted);
 
         return Results.NoContent();
     }
