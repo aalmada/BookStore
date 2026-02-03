@@ -101,7 +101,7 @@ public class ShoppingCartTests
 
         // Assert - Cart should be empty
         var cart = await client.GetShoppingCartAsync();
-        _ = await Assert.That(cart.Items.Count).IsEqualTo(0);
+        _ = await Assert.That(cart.Items).IsEmpty();
         _ = await Assert.That(cart.TotalItems).IsEqualTo(0);
     }
 
@@ -131,7 +131,7 @@ public class ShoppingCartTests
 
         // Assert - Cart should be empty
         var cart = await client.GetShoppingCartAsync();
-        _ = await Assert.That(cart.Items.Count).IsEqualTo(0);
+        _ = await Assert.That(cart.Items).IsEmpty();
         _ = await Assert.That(cart.TotalItems).IsEqualTo(0);
     }
 
@@ -146,7 +146,7 @@ public class ShoppingCartTests
 
         // Assert
         _ = await Assert.That(cart).IsNotNull();
-        _ = await Assert.That(cart.Items.Count).IsEqualTo(0);
+        _ = await Assert.That(cart.Items).IsEmpty();
         _ = await Assert.That(cart.TotalItems).IsEqualTo(0);
     }
 
