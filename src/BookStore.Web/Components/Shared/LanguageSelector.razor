@@ -1,0 +1,154 @@
+@using BookStore.Web.Services
+@using MudBlazor
+@inject LanguageService LanguageService
+
+@if (_languages != null && _languages.Any())
+{
+    <MudSelect T="string"
+               Label="@Label"
+               @bind-Value="@_internalValue"
+               ToStringFunc="@(value => GetDisplayText(value))"
+               Variant="@Variant"
+               Dense="@Dense"
+               Margin="@Margin"
+               Style="@Style"
+               Required="@Required"
+               Disabled="@Disabled">
+        @foreach (var lang in _languages.OrderBy(l => l.Value))
+        {
+            var displayText = lang.Value;
+            if (lang.Key == _defaultCulture)
+            {
+                displayText += " (Default)";
+            }
+
+            <MudSelectItem Value="@lang.Key">@displayText</MudSelectItem>
+        }
+    </MudSelect>
+}
+else
+{
+    <MudSelect T="string"
+               Label="@Label"
+               Variant="@Variant"
+               Dense="@Dense"
+               Margin="@Margin"
+               Style="@Style"
+               Disabled="true">
+    </MudSelect>
+}
+
+@code {
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+    [Parameter] public string Label { get; set; } = "Language";
+    [Parameter] public Variant Variant { get; set; } = Variant.Outlined;
+    [Parameter] public bool Dense { get; set; } = true;
+    [Parameter] public Margin Margin { get; set; } = Margin.None;
+    [Parameter] public string? Style { get; set; }
+    [Parameter] public bool Required { get; set; } = false;
+    [Parameter] public bool Disabled { get; set; } = false;
+
+    private Dictionary<string, string>? _languages;
+    private string? _defaultCulture;
+
+    private string? _internalValue
+    {
+        get => Value;
+        set
+        {
+            if (Value != value)
+            {
+                Value = value;
+                ValueChanged.InvokeAsync(value);
+            }
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadLanguagesAsync();
+        await LoadDefaultCultureAsync();
+    }
+
+    private async Task LoadLanguagesAsync()
+    {
+        try
+        {
+            Console.WriteLine("[LanguageSelector] Starting to load languages...");
+            _languages = await LanguageService.GetLanguagesWithDisplayNamesAsync();
+            Console.WriteLine($"[LanguageSelector] Loaded {_languages.Count} languages");
+            StateHasChanged(); // Force re-render after loading
+        }
+        catch (Exception ex)
+        {
+            // Log the full error for debugging
+            Console.WriteLine($"[LanguageSelector] Error loading languages: {ex.GetType().Name}: {ex.Message}");
+            Console.WriteLine($"[LanguageSelector] Stack trace: {ex.StackTrace}");
+
+            // Use fallback languages instead of empty dictionary
+            _languages = new Dictionary<string, string>
+            {
+                { "en", "English" },
+                { "pt", "Portuguese" },
+                { "pt-PT", "Portuguese (Portugal)" },
+                { "es", "Spanish" },
+                { "fr", "French" },
+                { "de", "German" }
+            };
+            Console.WriteLine($"[LanguageSelector] Using fallback: {_languages.Count} languages");
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadDefaultCultureAsync()
+    {
+        try
+        {
+            _defaultCulture = await LanguageService.GetDefaultCultureAsync();
+            Console.WriteLine($"[LanguageSelector] Default culture: {_defaultCulture}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[LanguageSelector] Error loading default culture: {ex.Message}");
+            _defaultCulture = "en";
+        }
+    }
+
+    /// <summary>
+    /// Get the display name for the current value
+    /// </summary>
+    public string GetDisplayName()
+    {
+        if (string.IsNullOrEmpty(Value) || _languages == null)
+        {
+            return string.Empty;
+        }
+
+        return _languages.TryGetValue(Value, out var displayName) ? displayName : Value;
+    }
+
+    /// <summary>
+    /// Get the display text for a language code (includes default indicator)
+    /// </summary>
+    private string GetDisplayText(string? languageCode)
+    {
+        if (string.IsNullOrEmpty(languageCode) || _languages == null)
+        {
+            return string.Empty;
+        }
+
+        if (!_languages.TryGetValue(languageCode, out var displayName))
+        {
+            return languageCode;
+        }
+
+        if (languageCode == _defaultCulture)
+        {
+            return $"{displayName} (Default)";
+        }
+
+        return displayName;
+    }
+
+}

@@ -20,12 +20,7 @@
 
             <div class="d-flex flex-column gap-3">
                 <div class="d-flex align-end gap-2">
-                    <MudSelect T="string" Label="Language" Value="_selectedLanguage" ValueChanged="OnLanguageChanged" Variant="Variant.Outlined" Dense="true" Style="max-width: 150px;">
-                        @foreach (var lang in _supportedLanguages)
-                        {
-                            <MudSelectItem Value="@lang.Key">@lang.Value</MudSelectItem>
-                        }
-                    </MudSelect>
+                    <LanguageSelector Value="_selectedLanguage" ValueChanged="OnLanguageChanged" Style="max-width: 150px;"/>
                     <MudButton StartIcon="@Icons.Material.Filled.Add" Color="Color.Secondary" Variant="Variant.Filled" OnClick="AddTranslation" Disabled="@(string.IsNullOrWhiteSpace(_currentBiography))">
                         Add
                     </MudButton>
@@ -41,7 +36,7 @@
                             {
                                 <MudListItem Icon="@Icons.Material.Filled.Language">
                                     <div class="d-flex justify-space-between align-center" style="width: 100%;">
-                                        <MudText>@($"{_supportedLanguages.GetValueOrDefault(translation.Key, translation.Key)}: {Truncate(translation.Value, 50)}")</MudText>
+                                        <MudText>@($"{BookStore.Web.Services.LanguageService.GetDisplayName(translation.Key)}: {Truncate(translation.Value, 50)}")</MudText>
                                         <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(() => RemoveTranslation(translation.Key))" Disabled="@(translation.Key == "en")"/>
                                     </div>
                                 </MudListItem>
@@ -72,15 +67,6 @@
     private string _currentBiography = "";
     private Dictionary<string, string> _translations = new();
 
-    private readonly Dictionary<string, string> _supportedLanguages = new()
-    {
-        { "en", "English" },
-        { "pt", "Portuguese" },
-        { "pt-PT", "Portuguese (Portugal)" },
-        { "fr", "French" },
-        { "de", "German" },
-        { "es", "Spanish" }
-    };
 
     private void OnLanguageChanged(string lang)
     {

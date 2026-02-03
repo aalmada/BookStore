@@ -16,13 +16,7 @@
                 <MudText Typo="Typo.subtitle1" Class="mb-2 fw-bold">Translations (Multi-language)</MudText>
 
                 <div class="d-flex align-center gap-2 mb-4">
-                    <MudSelect T="string" Label="Language" Value="_selectedLanguage" ValueChanged="OnLanguageChanged" Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense">
-                        <MudSelectItem Value="@("en")">English</MudSelectItem>
-                        <MudSelectItem Value="@("pt")">Portuguese</MudSelectItem>
-                        <MudSelectItem Value="@("es")">Spanish</MudSelectItem>
-                        <MudSelectItem Value="@("fr")">French</MudSelectItem>
-                        <MudSelectItem Value="@("de")">German</MudSelectItem>
-                    </MudSelect>
+                    <LanguageSelector Value="_selectedLanguage" ValueChanged="OnLanguageChanged" Margin="Margin.Dense"/>
                     <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="AddOrUpdateTranslation" StartIcon="@Icons.Material.Filled.Add">
                         @(_translations.ContainsKey(_selectedLanguage) ? "Update" : "Add")
                     </MudButton>
