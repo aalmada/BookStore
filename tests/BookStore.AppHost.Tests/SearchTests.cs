@@ -1,9 +1,6 @@
-using System.Net;
-using System.Net.Http.Json;
-using Aspire.Hosting;
-using Aspire.Hosting.Testing;
+using BookStore.Client;
+using BookTranslationDto = BookStore.Client.BookTranslationDto;
 using BookStore.Shared.Models;
-using Projects;
 
 namespace BookStore.AppHost.Tests;
 
@@ -13,38 +10,33 @@ public class SearchTests
     public async Task SearchBooks_WithValidQuery_ShouldReturnMatches()
     {
         // Arrange
-        var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
+        var adminClient = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
         var uniqueTitle = $"UniqueSearchTerm-{Guid.NewGuid()}";
 
-        // Create a book with a unique title
-        var createRequest = new
+        // Create a book with a unique title using proper request model
+        var createRequest = new CreateBookRequest
         {
             Title = uniqueTitle,
             Isbn = "978-3-16-148410-0",
             Language = "en",
-            Translations = new Dictionary<string, object>
-            {
-                ["en"] = new { Description = "Test description" }
-            },
-            PublicationDate = new { Year = 2024, Month = 1, Day = 1 },
-            PublisherId = (Guid?)null,
-            AuthorIds = new Guid[] { },
-            CategoryIds = new Guid[] { },
+            Translations =
+                new Dictionary<string, BookTranslationDto> { ["en"] = new() { Description = "Test description" } },
+            PublicationDate = new PartialDate(2024, 1, 1),
+            PublisherId = null,
+            AuthorIds = [],
+            CategoryIds = [],
             Prices = new Dictionary<string, decimal> { ["USD"] = 10.0m }
         };
-        var createdBook = await TestHelpers.CreateBookAsync(httpClient, createRequest);
+        var createdBook = await TestHelpers.CreateBookAsync(adminClient, createRequest);
 
-        // Act - Search for the unique term
-        // We might need to wait for indexing (projection)
-        // Since CreateBookAsync waits for the projection, it should be available immediately
-
-        var publicClient = TestHelpers.GetUnauthenticatedClient();
+        // Act
+        var publicClient = TestHelpers.GetUnauthenticatedClient<IBooksClient>();
         PagedListDto<BookDto>? searchResult = null;
 
-        // Retry loop in case of slight indexing delay (though CreateBookAsync waits for projection)
-        for (var i = 0; i < 5; i++)
+        // Retry loop in case of slight indexing delay
+        for (var i = 0; i < TestConstants.ShortRetryCount; i++)
         {
-            var response = await publicClient.GetFromJsonAsync<PagedListDto<BookDto>>($"/api/books?search={uniqueTitle}");
+            var response = await publicClient.GetBooksAsync(new BookSearchRequest { Search = uniqueTitle });
             if (response != null && response.Items.Count > 0)
             {
                 searchResult = response;
@@ -64,14 +56,15 @@ public class SearchTests
     public async Task SearchBooks_WithNoMatches_ShouldReturnEmpty()
     {
         // Arrange
-        var publicClient = TestHelpers.GetUnauthenticatedClient();
+        var publicClient = TestHelpers.GetUnauthenticatedClient<IBooksClient>();
         var globalHooks = GlobalHooks.NotificationService; // ensure app is ready
-        _ = await globalHooks!.WaitForResourceHealthyAsync("apiservice", CancellationToken.None).WaitAsync(TestConstants.DefaultTimeout);
+        _ = await globalHooks!.WaitForResourceHealthyAsync("apiservice", CancellationToken.None)
+            .WaitAsync(TestConstants.DefaultTimeout);
 
         var impossibleTerm = $"ImpossibleTerm-{Guid.NewGuid()}";
 
         // Act
-        var response = await publicClient.GetFromJsonAsync<PagedListDto<BookDto>>($"/api/books?search={impossibleTerm}");
+        var response = await publicClient.GetBooksAsync(new BookSearchRequest { Search = impossibleTerm });
 
         // Assert
         _ = await Assert.That(response).IsNotNull();

@@ -78,8 +78,7 @@ public class MultiLanguageTranslationTests
         {
             Translations = new Dictionary<string, CategoryTranslationDto>
             {
-                ["en"] = new() { Name = englishName },
-                ["pt"] = new() { Name = "Categoria em Português" }
+                ["en"] = new() { Name = englishName }, ["pt"] = new() { Name = "Categoria em Português" }
             }
         };
 
@@ -186,16 +185,12 @@ public class MultiLanguageTranslationTests
 
         // 4. Verify using Accept-Language
         // English
-        var clientEn = TestHelpers.GetUnauthenticatedClient();
-        clientEn.DefaultRequestHeaders.AcceptLanguage.ParseAdd("en");
-        var publicClientEn = RestService.For<IBooksClient>(clientEn);
+        var publicClientEn = TestHelpers.GetUnauthenticatedClientWithLanguage<IBooksClient>("en");
         var bookEn = await publicClientEn.GetBookAsync(book.Id);
         _ = await Assert.That(bookEn.Description).IsEqualTo("English Updated");
 
         // Spanish
-        var clientEs = TestHelpers.GetUnauthenticatedClient();
-        clientEs.DefaultRequestHeaders.AcceptLanguage.ParseAdd("es");
-        var publicClientEs = RestService.For<IBooksClient>(clientEs);
+        var publicClientEs = TestHelpers.GetUnauthenticatedClientWithLanguage<IBooksClient>("es");
         var bookEs = await publicClientEs.GetBookAsync(book.Id);
         _ = await Assert.That(bookEs.Description).IsEqualTo("Descripción Original");
     }
