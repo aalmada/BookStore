@@ -1,6 +1,6 @@
 using BookStore.Client;
-using BookTranslationDto = BookStore.Client.BookTranslationDto;
 using BookStore.Shared.Models;
+using BookTranslationDto = BookStore.Client.BookTranslationDto;
 
 namespace BookStore.AppHost.Tests;
 

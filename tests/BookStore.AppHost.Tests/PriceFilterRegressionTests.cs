@@ -69,7 +69,10 @@ public class PriceFilterRegressionTests
             {
                 var request = new SharedModels.BookSearchRequest
                 {
-                    Search = "PriceScenario", MinPrice = minPrice, MaxPrice = maxPrice, Currency = "USD"
+                    Search = "PriceScenario",
+                    MinPrice = minPrice,
+                    MaxPrice = maxPrice,
+                    Currency = "USD"
                 };
 
                 var list = await publicClient.GetBooksAsync(request);
@@ -202,7 +205,10 @@ public class PriceFilterRegressionTests
             {
                 var request = new SharedModels.BookSearchRequest
                 {
-                    Search = uniqueTitle, MinPrice = 40m, MaxPrice = 60m, Currency = "USD"
+                    Search = uniqueTitle,
+                    MinPrice = 40m,
+                    MaxPrice = 60m,
+                    Currency = "USD"
                 };
 
                 var list = await publicClient.GetBooksAsync(request);
@@ -263,7 +269,10 @@ public class PriceFilterRegressionTests
             {
                 var request = new SharedModels.BookSearchRequest
                 {
-                    Search = uniqueTitle, MinPrice = 40, MaxPrice = 60, Currency = "USD"
+                    Search = uniqueTitle,
+                    MinPrice = 40,
+                    MaxPrice = 60,
+                    Currency = "USD"
                 };
                 var list = await publicClient.GetBooksAsync(request);
                 if (list.Items.Any(b => b.Id == bookId))

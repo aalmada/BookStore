@@ -78,7 +78,8 @@ public class MultiLanguageTranslationTests
         {
             Translations = new Dictionary<string, CategoryTranslationDto>
             {
-                ["en"] = new() { Name = englishName }, ["pt"] = new() { Name = "Categoria em Português" }
+                ["en"] = new() { Name = englishName },
+                ["pt"] = new() { Name = "Categoria em Português" }
             }
         };
 
