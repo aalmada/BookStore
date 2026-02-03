@@ -6,12 +6,17 @@ using BookStore.ApiService.Infrastructure.Extensions;
 using BookStore.ApiService.Infrastructure.Logging;
 using BookStore.Shared.Notifications;
 using Marten;
+using Microsoft.Extensions.Caching.Hybrid;
 
 namespace BookStore.ApiService.Handlers.Categories;
 
 public static class CategoryHandlers
 {
-    public static async Task<IResult> Handle(CreateCategory command, IDocumentSession session, ILogger<CreateCategory> logger)
+    public static async Task<IResult> Handle(
+        CreateCategory command,
+        IDocumentSession session,
+        HybridCache cache,
+        ILogger<CreateCategory> logger)
     {
         Log.Categories.CategoryCreating(logger, command.Id, session.CorrelationId ?? "none");
         // Validate language codes in CategoryTranslation
@@ -53,8 +58,8 @@ public static class CategoryHandlers
 
         _ = session.Events.StartStream<CategoryAggregate>(command.Id, eventResult.Value);
 
-        // Fetch state to ensure flush
-        _ = await session.Events.FetchStreamStateAsync(command.Id);
+        // Invalidate cache
+        await cache.RemoveByTagAsync([CacheTags.CategoryList], default);
 
         return Results.Created(
             $"/api/admin/categories/{command.Id}",
@@ -65,6 +70,7 @@ public static class CategoryHandlers
         UpdateCategory command,
         IDocumentSession session,
         IHttpContextAccessor httpContextAccessor,
+        HybridCache cache,
         ILogger<UpdateCategory> logger)
     {
         // Validate language codes in CategoryTranslation
@@ -124,14 +130,8 @@ public static class CategoryHandlers
 
         _ = session.Events.Append(command.Id, eventResult.Value);
 
-        Log.Categories.CategoryUpdated(logger, command.Id);
-
-        var newStreamState = await session.Events.FetchStreamStateAsync(command.Id);
-        var newETag = ETagHelper.GenerateETag(newStreamState!.Version);
-        if (context != null)
-        {
-            ETagHelper.AddETagHeader(context, newETag);
-        }
+        // Invalidate cache
+        await cache.RemoveByTagAsync([CacheTags.CategoryList, CacheTags.ForItem(CacheTags.CategoryItemPrefix, command.Id)], context?.RequestAborted ?? default);
 
         return Results.NoContent();
     }
@@ -140,6 +140,7 @@ public static class CategoryHandlers
         SoftDeleteCategory command,
         IDocumentSession session,
         IHttpContextAccessor httpContextAccessor,
+        HybridCache cache,
         ILogger<SoftDeleteCategory> logger)
     {
         Log.Categories.CategorySoftDeleting(logger, command.Id);
@@ -174,14 +175,8 @@ public static class CategoryHandlers
 
         _ = session.Events.Append(command.Id, eventResult.Value);
 
-        Log.Categories.CategorySoftDeleted(logger, command.Id);
-
-        var newStreamState = await session.Events.FetchStreamStateAsync(command.Id);
-        var newETag = ETagHelper.GenerateETag(newStreamState!.Version);
-        if (context != null)
-        {
-            ETagHelper.AddETagHeader(context, newETag);
-        }
+        // Invalidate cache
+        await cache.RemoveByTagAsync([CacheTags.CategoryList, CacheTags.ForItem(CacheTags.CategoryItemPrefix, command.Id)], context?.RequestAborted ?? default);
 
         return Results.NoContent();
     }
@@ -190,6 +185,7 @@ public static class CategoryHandlers
         RestoreCategory command,
         IDocumentSession session,
         IHttpContextAccessor httpContextAccessor,
+        HybridCache cache,
         ILogger<RestoreCategory> logger)
     {
         Log.Categories.CategoryRestoring(logger, command.Id);
@@ -224,14 +220,8 @@ public static class CategoryHandlers
 
         _ = session.Events.Append(command.Id, eventResult.Value);
 
-        Log.Categories.CategoryRestored(logger, command.Id);
-
-        var newStreamState = await session.Events.FetchStreamStateAsync(command.Id);
-        var newETag = ETagHelper.GenerateETag(newStreamState!.Version);
-        if (context != null)
-        {
-            ETagHelper.AddETagHeader(context, newETag);
-        }
+        // Invalidate cache
+        await cache.RemoveByTagAsync([CacheTags.CategoryList, CacheTags.ForItem(CacheTags.CategoryItemPrefix, command.Id)], context?.RequestAborted ?? default);
 
         return Results.NoContent();
     }

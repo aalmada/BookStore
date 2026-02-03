@@ -37,7 +37,7 @@ public class AuthorHandlerTests
         });
 
         // Act
-        var result = AuthorHandlers.Handle(command, session, localizationOptions, Substitute.For<ILogger<CreateAuthor>>());
+        var result = await AuthorHandlers.Handle(command, session, localizationOptions, Substitute.For<ILogger<CreateAuthor>>());
 
         // Assert
         _ = await Assert.That(result).IsNotNull();
@@ -71,7 +71,7 @@ public class AuthorHandlerTests
         });
 
         // Act
-        var result = AuthorHandlers.Handle(command, session, localizationOptions, Substitute.For<ILogger<CreateAuthor>>());
+        var result = await AuthorHandlers.Handle(command, session, localizationOptions, Substitute.For<ILogger<CreateAuthor>>());
 
         // Assert
         // Assert

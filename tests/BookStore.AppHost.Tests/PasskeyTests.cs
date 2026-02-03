@@ -1,20 +1,25 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Bogus;
-using BookStore.AppHost.Tests;
+using BookStore.Client;
 using BookStore.Shared.Models;
+using Refit;
 using TUnit.Core.Interfaces;
 
 namespace BookStore.AppHost.Tests;
 
 public class PasskeyTests
 {
-    readonly HttpClient _client;
+    readonly IIdentityClient _identityClient;
+    readonly IPasskeyClient _passkeyClient;
     readonly Faker _faker;
 
     public PasskeyTests()
     {
-        _client = TestHelpers.GetUnauthenticatedClient();
+        var httpClient = TestHelpers.GetUnauthenticatedClient();
+        _identityClient = RestService.For<IIdentityClient>(httpClient);
+        _passkeyClient = RestService.For<IPasskeyClient>(httpClient);
         _faker = new Faker();
     }
 
@@ -27,19 +32,23 @@ public class PasskeyTests
         var email = _faker.Internet.Email();
         var password = _faker.Internet.Password(8, false, "\\w", "Aa1!");
 
-        var registerResponse =
-            await _client.PostAsJsonAsync("/account/register", new { Email = email, Password = password });
-        _ = await Assert.That(registerResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        var registerResponse = await _identityClient.RegisterAsync(new RegisterRequest(email, password));
+        _ = await Assert.That(registerResponse).IsNotNull();
 
-        var request = new { Email = email };
+        var request = new PasskeyLoginOptionsRequest { Email = email };
 
-        // Act
-        var response = await _client.PostAsJsonAsync("/account/assertion/options", request);
-
-        // Assert - Should return BadRequest because user has no passkeys registered
-        _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
-        var error = await response.Content.ReadFromJsonAsync<TestHelpers.ErrorResponse>();
-        _ = await Assert.That(error?.Error).IsEqualTo(ErrorCodes.Passkey.UserNotFound);
+        // Act & Assert
+        try
+        {
+            _ = await _passkeyClient.GetPasskeyLoginOptionsAsync(request);
+            Assert.Fail("Should have thrown BadRequest");
+        }
+        catch (ApiException ex)
+        {
+            _ = await Assert.That(ex.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+            var error = await ex.GetContentAsAsync<TestHelpers.ErrorResponse>();
+            _ = await Assert.That(error?.Error).IsEqualTo(ErrorCodes.Passkey.UserNotFound);
+        }
     }
 
     [Test]
@@ -50,18 +59,15 @@ public class PasskeyTests
         var password = _faker.Internet.Password(8, false, "\\w", "Aa1!");
 
         // Register a user
-        _ = await _client.PostAsJsonAsync("/account/register", new { Email = email, Password = password });
+        _ = await _identityClient.RegisterAsync(new RegisterRequest(email, password));
 
         // Act - Try to start passkey registration for same email (unauthenticated flow)
-        var response = await _client.PostAsJsonAsync("/account/attestation/options", new { Email = email });
+        var response =
+            await _passkeyClient.GetPasskeyCreationOptionsAsync(new PasskeyCreationRequest { Email = email });
 
         // Assert - Should return OK to prevent enumeration (currently fails with BadRequest)
-        _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-
-        // Verify it returns options structure
-        var wrappedOptions = await response.Content.ReadFromJsonAsync<AttestationOptionsResponse>();
-        _ = await Assert.That(wrappedOptions).IsNotNull();
-        _ = await Assert.That(wrappedOptions!.Options).IsNotNull();
+        _ = await Assert.That(response).IsNotNull();
+        _ = await Assert.That(response.Options).IsNotNull();
     }
 
     [Test]
@@ -72,43 +78,34 @@ public class PasskeyTests
         var password = _faker.Internet.Password(8, false, "\\w", "Aa1!");
 
         // Register
-        _ = await _client.PostAsJsonAsync("/account/register", new { Email = email, Password = password });
+        _ = await _identityClient.RegisterAsync(new RegisterRequest(email, password));
 
         // Login
-        var loginResponse = await _client.PostAsJsonAsync("/account/login", new { Email = email, Password = password });
-        var loginResult = await loginResponse.Content.ReadFromJsonAsync<LoginResponse>();
+        var loginResult = await _identityClient.LoginAsync(new LoginRequest(email, password));
 
         // Create authenticated client
-        // Use a fresh client to avoid header pollution or just use common helper and set header
-        var authClient = TestHelpers.GetUnauthenticatedClient();
-        authClient.DefaultRequestHeaders.Authorization =
+        var authHttpClient = TestHelpers.GetUnauthenticatedClient();
+        authHttpClient.DefaultRequestHeaders.Authorization =
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", loginResult!.AccessToken);
+        var authPasskeyClient = RestService.For<IPasskeyClient>(authHttpClient);
 
         // Act
         // This endpoint usually doesn't need a body if the user is already authenticated
         // It uses the identity from the claims to generate options for that user
-        var response = await authClient.PostAsJsonAsync("/account/attestation/options", new { });
+        var response = await authPasskeyClient.GetPasskeyCreationOptionsAsync(new PasskeyCreationRequest());
 
         // Assert
-        _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        _ = await Assert.That(response).IsNotNull();
+        _ = await Assert.That(response.Options).IsNotNull(); // Options is object
 
-        // Response is now wrapped: { options: {...}, userId: "..." }
-        var wrappedOptions = await response.Content.ReadFromJsonAsync<AttestationOptionsResponse>();
-        _ = await Assert.That(wrappedOptions).IsNotNull();
-        _ = await Assert.That(wrappedOptions!.Options).IsNotNull();
-        _ = await Assert.That(wrappedOptions.Options!.Challenge).IsNotNull().And.IsNotEmpty();
-        _ = await Assert.That(wrappedOptions.Options.User.Name).IsEqualTo(email);
-        _ = await Assert.That(wrappedOptions.UserId).IsNotNull().And.IsNotEmpty();
+        // To verify deeply we need to inspect the object (JObject/JsonElement)
+        var optionsJson = JsonSerializer.Serialize(response.Options);
+        var optionsDoc = JsonDocument.Parse(optionsJson);
+        var root = optionsDoc.RootElement;
+
+        _ = await Assert.That(root.GetProperty("challenge").GetString()).IsNotNull().And.IsNotEmpty();
+        _ = await Assert.That(root.GetProperty("user").GetProperty("name").GetString()).IsEqualTo(email);
+
+        _ = await Assert.That(response.UserId).IsNotNull().And.IsNotEmpty();
     }
-
-    // Minimal records for deserialization
-    record LoginResponse(string AccessToken, string RefreshToken);
-
-    record AssertionOptions(string Challenge);
-
-    record AttestationOptions(string Challenge, UserEntity User);
-
-    record AttestationOptionsResponse(AttestationOptions Options, string UserId);
-
-    record UserEntity(string Name, string Id, string DisplayName);
 }

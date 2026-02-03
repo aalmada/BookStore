@@ -17,7 +17,7 @@ public class CategoryProjectionTests
             id,
             new Dictionary<string, CategoryTranslation>
             {
-                ["en"] = new("Technology", "Tech books")
+                ["en"] = new("Technology")
             },
             timestamp
         );
@@ -48,8 +48,8 @@ public class CategoryProjectionTests
             projection.Id,
             new Dictionary<string, CategoryTranslation>
             {
-                ["en"] = new("New Tech", "New Desc"),
-                ["pt"] = new("Tecnologia", "Desc")
+                ["en"] = new("New Tech"),
+                ["pt"] = new("Tecnologia")
             },
             timestamp
         );

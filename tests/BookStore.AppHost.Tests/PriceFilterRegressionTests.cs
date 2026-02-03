@@ -69,7 +69,7 @@ public class PriceFilterRegressionTests
                 };
 
                 var list = await publicClient.GetBooksAsync(request);
-                matched = list != null && list.Items.Any(b => b.Id == bookId);
+                matched = list.Items.Any(b => b.Id == bookId);
 
                 if (matched == shouldMatch)
                 {
@@ -78,7 +78,7 @@ public class PriceFilterRegressionTests
             }
             catch
             {
-                // Ignore errors during poll
+                // Ignore errors during poll - we will retry or eventually fail the assert
             }
 
             await Task.Delay(500);
@@ -127,6 +127,7 @@ public class PriceFilterRegressionTests
             }
             catch
             {
+                // Expected if projection hasn't finished yet
             }
 
             await Task.Delay(500);
@@ -194,7 +195,7 @@ public class PriceFilterRegressionTests
                 };
 
                 var list = await publicClient.GetBooksAsync(request);
-                if (list != null && list.Items.Any(b => b.Id == bookId))
+                if (list.Items.Any(b => b.Id == bookId))
                 {
                     foundBeforeUpdate = true;
                     break;
@@ -202,6 +203,7 @@ public class PriceFilterRegressionTests
             }
             catch
             {
+                // Wait for projection
             }
 
             await Task.Delay(500);
@@ -256,7 +258,7 @@ public class PriceFilterRegressionTests
                     Currency = "USD"
                 };
                 var list = await publicClient.GetBooksAsync(request);
-                if (list != null && list.Items.Any(b => b.Id == bookId))
+                if (list.Items.Any(b => b.Id == bookId))
                 {
                     foundAfterUpdate = true;
                     break;
@@ -264,6 +266,7 @@ public class PriceFilterRegressionTests
             }
             catch
             {
+                // Wait for projection to reflect update
             }
 
             await Task.Delay(500);
