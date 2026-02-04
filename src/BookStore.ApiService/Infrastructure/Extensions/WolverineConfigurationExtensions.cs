@@ -34,6 +34,13 @@ public static class WolverineConfigurationExtensions
             // defaults because this causes database changes
             opts.Durability.InboxStaleTime = TimeSpan.FromMinutes(10);
             opts.Durability.OutboxStaleTime = TimeSpan.FromMinutes(10);
+
+            // Just annoying
+            opts.EnableAutomaticFailureAcks = false;
+
+            // Relatively new behavior that will store "unknown" messages
+            // in the dead letter queue for possible recovery later
+            opts.UnknownMessageBehavior = UnknownMessageBehavior.DeadLetterQueue;
         });
 
         return services;
