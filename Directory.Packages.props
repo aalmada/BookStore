@@ -14,6 +14,8 @@
     <PackageVersion Include="Azure.Storage.Blobs" Version="12.27.0" />
     <PackageVersion Include="Blazored.LocalStorage" Version="4.3.0" />
     <PackageVersion Include="Bogus" Version="35.6.5" />
+    <PackageVersion Include="bunit" Version="1.40.0" />
+    <PackageVersion Include="bunit.web" Version="1.40.0" />
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
     <PackageVersion Include="JasperFx.Core" Version="1.12.0" />
     <PackageVersion Include="MailKit" Version="4.14.1" />

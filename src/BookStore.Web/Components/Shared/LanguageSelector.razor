@@ -55,27 +55,19 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        Console.WriteLine($"[LanguageSelector] OnInitializedAsync - Value: {Value}");
         _selectedValue = Value; // Initialize local value
         await LoadLanguagesAsync();
         await LoadDefaultCultureAsync();
-        Console.WriteLine($"[LanguageSelector] After loading - _selectedValue: {_selectedValue}, languages count: {_languages?.Count}");
     }
 
     protected override void OnParametersSet()
     {
         // Sync the local value with the parameter
-        Console.WriteLine($"[LanguageSelector] OnParametersSet - Value: {Value}, _selectedValue: {_selectedValue}");
-        if (_selectedValue != Value)
-        {
-            _selectedValue = Value;
-            Console.WriteLine($"[LanguageSelector] Updated _selectedValue to: {_selectedValue}");
-        }
+        _selectedValue = Value;
     }
 
     private async Task OnValueChangedInternal(string value)
     {
-        Console.WriteLine($"[LanguageSelector] OnValueChangedInternal - value: {value}");
         _selectedValue = value;
         await ValueChanged.InvokeAsync(value);
     }
@@ -84,17 +76,11 @@ else
     {
         try
         {
-            Console.WriteLine("[LanguageSelector] Starting to load languages...");
             _languages = await LanguageService.GetLanguagesWithDisplayNamesAsync();
-            Console.WriteLine($"[LanguageSelector] Loaded {_languages.Count} languages");
             StateHasChanged(); // Force re-render after loading
         }
-        catch (Exception ex)
+        catch
         {
-            // Log the full error for debugging
-            Console.WriteLine($"[LanguageSelector] Error loading languages: {ex.GetType().Name}: {ex.Message}");
-            Console.WriteLine($"[LanguageSelector] Stack trace: {ex.StackTrace}");
-
             // Use fallback languages instead of empty dictionary
             _languages = new Dictionary<string, string>
             {
@@ -105,7 +91,6 @@ else
                 { "fr", "French" },
                 { "de", "German" }
             };
-            Console.WriteLine($"[LanguageSelector] Using fallback: {_languages.Count} languages");
             StateHasChanged();
         }
     }
@@ -115,11 +100,9 @@ else
         try
         {
             _defaultCulture = await LanguageService.GetDefaultCultureAsync();
-            Console.WriteLine($"[LanguageSelector] Default culture: {_defaultCulture}");
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine($"[LanguageSelector] Error loading default culture: {ex.Message}");
             _defaultCulture = "en";
         }
     }

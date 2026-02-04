@@ -1,3 +1,4 @@
+using System.Globalization;
 using BookStore.Client;
 
 namespace BookStore.Web.Services;
@@ -10,45 +11,6 @@ public class LanguageService
     readonly IConfigurationClient _configurationClient;
     string[]? _cachedLanguages;
     readonly SemaphoreSlim _lock = new(1, 1);
-
-    // Comprehensive mapping of culture codes to display names
-    static readonly Dictionary<string, string> CultureDisplayNames = new()
-    {
-        { "en", "English" },
-        { "en-US", "English (United States)" },
-        { "en-GB", "English (United Kingdom)" },
-        { "pt", "Portuguese" },
-        { "pt-PT", "Portuguese (Portugal)" },
-        { "pt-BR", "Portuguese (Brazil)" },
-        { "es", "Spanish" },
-        { "es-ES", "Spanish (Spain)" },
-        { "es-MX", "Spanish (Mexico)" },
-        { "fr", "French" },
-        { "fr-FR", "French (France)" },
-        { "de", "German" },
-        { "de-DE", "German (Germany)" },
-        { "it", "Italian" },
-        { "it-IT", "Italian (Italy)" },
-        { "ja", "Japanese" },
-        { "ja-JP", "Japanese (Japan)" },
-        { "zh", "Chinese" },
-        { "zh-CN", "Chinese (Simplified)" },
-        { "zh-TW", "Chinese (Traditional)" },
-        { "ko", "Korean" },
-        { "ko-KR", "Korean (Korea)" },
-        { "ru", "Russian" },
-        { "ru-RU", "Russian (Russia)" },
-        { "ar", "Arabic" },
-        { "ar-SA", "Arabic (Saudi Arabia)" },
-        { "nl", "Dutch" },
-        { "nl-NL", "Dutch (Netherlands)" },
-        { "pl", "Polish" },
-        { "pl-PL", "Polish (Poland)" },
-        { "sv", "Swedish" },
-        { "sv-SE", "Swedish (Sweden)" },
-        { "tr", "Turkish" },
-        { "tr-TR", "Turkish (Turkey)" },
-    };
 
     public LanguageService(IConfigurationClient configurationClient) => _configurationClient = configurationClient;
 
@@ -87,25 +49,39 @@ public class LanguageService
     }
 
     /// <summary>
-    /// Get display name for a culture code
+    /// Get display name for a culture code in the current UI language
     /// </summary>
-    public static string GetDisplayName(string cultureCode) => CultureDisplayNames.TryGetValue(cultureCode, out var displayName)
-            ? displayName
-            : cultureCode; // Fallback to culture code if no mapping exists
+    public static string GetDisplayName(string cultureCode)
+    {
+        try
+        {
+            var culture = new CultureInfo(cultureCode);
+            return culture.DisplayName;
+        }
+        catch
+        {
+            return cultureCode;
+        }
+    }
 
     /// <summary>
-    /// Get all supported languages with their display names
+    /// Get all supported languages with their display names in the current UI language
     /// </summary>
     public async Task<Dictionary<string, string>> GetLanguagesWithDisplayNamesAsync()
-    {
-        var languages = await GetSupportedLanguagesAsync();
-        return languages
-            .Distinct() // Remove duplicates
-            .ToDictionary(
-                lang => lang,
-                lang => GetDisplayName(lang)
-            );
-    }
+        => (await GetSupportedLanguagesAsync())
+        .Distinct() // Remove duplicates
+        .ToDictionary(
+            lang => lang,
+            GetDisplayName
+        );
+
+    /// <summary>
+    /// Get all available .NET languages with their display names in the current UI language
+    /// </summary>
+    public IEnumerable<(string Code, string LocalName, string NativeName)> GetAllLanguages() => CultureInfo.GetCultures(CultureTypes.NeutralCultures | CultureTypes.SpecificCultures)
+            .Where(c => !string.IsNullOrEmpty(c.Name))
+            .OrderBy(c => c.DisplayName)
+            .Select(c => (c.Name, c.DisplayName, c.NativeName));
 
     /// <summary>
     /// Get the default culture from the backend configuration
