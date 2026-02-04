@@ -12,8 +12,10 @@
 @inject ISnackbar Snackbar
 @implements IAsyncDisposable
 @rendermode InteractiveServer
+@inject CatalogService CatalogService
 @inject CurrencyService CurrencyService
 @inject IDialogService DialogService
+@using BookStore.Web.Infrastructure
 
 <PageTitle>@(book?.Title ?? "Book Details") - BookStore</PageTitle>
 
@@ -61,7 +63,7 @@
                     else
                     {
                         <MudPaper Elevation="4" Style="border-radius: 12px; overflow: hidden; background: var(--mud-palette-primary); color: var(--mud-palette-primary-text); height: 500px; display: flex; align-items: center; justify-content: center;">
-                            <MudIcon Icon="@Icons.Material.Filled.MenuBook" Size="Size.Large" Color="Color.Inherit" Style="font-size: 10rem;"/>
+                            <MudIcon Icon="@UIConstants.Icons.Book" Size="Size.Large" Color="Color.Inherit" Style="font-size: 10rem;"/>
                         </MudPaper>
                     }
                 </MudItem>
@@ -73,7 +75,7 @@
                     @if (book.Authors.Count > 0)
                     {
                         <MudText Typo="Typo.h6" Color="Color.Secondary" Class="mb-4">
-                            <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small"/> by @string.Join(", ", book.Authors.Select(a => a.Name))
+                            <MudIcon Icon="@UIConstants.Icons.Author" Size="Size.Small" Class="mr-1"/> by @string.Join(", ", book.Authors.Select(a => a.Name))
                         </MudText>
                     }
 
@@ -92,8 +94,9 @@
                         <Authorized>
                             <MudButton Variant="Variant.Outlined"
                                        Color="@(book.IsFavorite ? Color.Error : Color.Default)"
-                                       StartIcon="@(book.IsFavorite ? Icons.Material.Filled.Favorite : Icons.Material.Filled.FavoriteBorder)"
+                                       StartIcon="@(book.IsFavorite ? UIConstants.Icons.Favorite : UIConstants.Icons.FavoriteBorder)"
                                        OnClick="@(() => ToggleFavorite(book))"
+                                       aria-label="@(book.IsFavorite ? "Remove from favorites" : "Add to favorites")"
                                        Class="mb-4">
                                 @(book.IsFavorite ? "Remove from Favorites" : "Add to Favorites") (@book.LikeCount)
                             </MudButton>
@@ -109,9 +112,10 @@
                                 {
                                     var starIndex = i;
                                     var isFilled = book.UserRating >= starIndex;
-                                    <MudIconButton Icon="@(isFilled ? Icons.Material.Filled.Star : Icons.Material.Outlined.StarBorder)"
+                                    <MudIconButton Icon="@(isFilled ? UIConstants.Icons.Star : UIConstants.Icons.StarBorder)"
                                                    Color="@(isFilled ? Color.Warning : Color.Default)"
                                                    Size="Size.Large"
+                                                   aria-label="@($"Rate {starIndex} stars")"
                                                    OnClick="@(() => RateBookAsync(starIndex))"/>
                                 }
                                 @if (book.UserRating > 0)
@@ -120,6 +124,7 @@
                                         <MudIconButton Icon="@Icons.Material.Filled.Clear"
                                                        Color="Color.Default"
                                                        Size="Size.Small"
+                                                       aria-label="Clear your rating"
                                                        OnClick="@RemoveRatingAsync"/>
                                     </MudTooltip>
                                 }
@@ -135,7 +140,7 @@
                                         var starIndex = i;
                                         var isFilled = book.AverageRating >= starIndex;
                                         var isHalfFilled = !isFilled && book.AverageRating >= starIndex - 0.5f;
-                                        <MudIcon Icon="@(isFilled ? Icons.Material.Filled.Star : (isHalfFilled ? Icons.Material.Filled.StarHalf : Icons.Material.Outlined.StarBorder))"
+                                        <MudIcon Icon="@(isFilled ? UIConstants.Icons.Star : (isHalfFilled ? UIConstants.Icons.StarHalf : UIConstants.Icons.StarBorder))"
                                                  Color="@(isFilled || isHalfFilled ? Color.Warning : Color.Default)"
                                                  Size="Size.Small"/>
                                     }
@@ -219,7 +224,7 @@
                                 @if (book.Publisher != null)
                                 {
                                     <MudStack Row="true" AlignItems="AlignItems.Center">
-                                        <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" Color="Color.Secondary"/>
+                                        <MudIcon Icon="@UIConstants.Icons.Publisher" Size="Size.Small" Color="Color.Secondary"/>
                                         <MudText Typo="Typo.body2">
                                             <strong>Publisher:</strong> @book.Publisher.Name
                                         </MudText>
@@ -426,112 +431,59 @@
 
     private async Task ToggleFavorite(BookDto bookToToggle)
     {
-        var originalState = bookToToggle.IsFavorite;
-
-        // 1. Optimistic
-        bookQuery?.MutateData(current => current == null
-            ? null
-            : current with
-            {
-                IsFavorite = !originalState,
-                LikeCount = originalState ? current.LikeCount - 1 : current.LikeCount + 1
-            });
-
-        // 2. API Call
-        try
-        {
-            if (originalState)
-            {
-                await BooksClient.RemoveBookFromFavoritesAsync(bookToToggle.Id);
-                Snackbar.Add("Removed from favorites", Severity.Success);
-            }
-            else
-            {
-                await BooksClient.AddBookToFavoritesAsync(bookToToggle.Id);
-                Snackbar.Add("Added to favorites", Severity.Success);
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Failed to toggle favorite for book {BookId}", bookToToggle.Id);
-            // 3. Rollback
-            bookQuery?.MutateData(current => current == null
+        await CatalogService.ToggleFavoriteAsync(bookToToggle,
+            setOptimistic: (newState) => bookQuery?.MutateData(current => current == null
                 ? null
                 : current with
                 {
-                    IsFavorite = originalState,
-                    LikeCount = originalState ? current.LikeCount + 1 : current.LikeCount - 1
-                });
-            Snackbar.Add($"Failed: {ex.Message}", Severity.Error);
-        }
+                    IsFavorite = newState,
+                    LikeCount = newState ? current.LikeCount + 1 : current.LikeCount - 1
+                }),
+            setRollback: (oldState) => bookQuery?.MutateData(current => current == null
+                ? null
+                : current with
+                {
+                    IsFavorite = oldState,
+                    LikeCount = oldState ? current.LikeCount + 1 : current.LikeCount - 1
+                }));
     }
 
     private async Task RateBookAsync(int rating)
     {
         if (book == null) return;
 
-        var previousRating = book.UserRating;
-
-        // 1. Optimistic update
-        bookQuery?.MutateData(current => current == null
-            ? null
-            : current with
-            {
-                UserRating = rating
-            });
-
-        // 2. API Call
-        try
-        {
-            await BooksClient.RateBookAsync(book.Id, new BookStore.Client.RateBookRequest(rating));
-            Snackbar.Add($"Rated {rating} stars", Severity.Success);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Failed to rate book {BookId}", book.Id);
-            // 3. Rollback
-            bookQuery?.MutateData(current => current == null
+        await CatalogService.RateBookAsync(book, rating,
+            setOptimistic: (newRating) => bookQuery?.MutateData(current => current == null
                 ? null
                 : current with
                 {
-                    UserRating = previousRating
-                });
-            Snackbar.Add($"Failed to rate: {ex.Message}", Severity.Error);
-        }
+                    UserRating = newRating
+                }),
+            setRollback: (oldRating) => bookQuery?.MutateData(current => current == null
+                ? null
+                : current with
+                {
+                    UserRating = oldRating
+                }));
     }
 
     private async Task RemoveRatingAsync()
     {
-        if (book == null || book.UserRating == 0) return;
+        if (book == null) return;
 
-        var previousRating = book.UserRating;
-
-        // 1. Optimistic update
-        bookQuery?.MutateData(current => current == null
-            ? null
-            : current with
-            {
-                UserRating = 0
-            });
-
-        // 2. API Call
-        try
-        {
-            await BooksClient.RemoveBookRatingAsync(book.Id);
-            Snackbar.Add("Rating removed", Severity.Success);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Failed to remove rating for book {BookId}", book.Id);
-            // 3. Rollback
-            bookQuery?.MutateData(current => current == null
+        await CatalogService.RemoveRatingAsync(book,
+            setOptimistic: () => bookQuery?.MutateData(current => current == null
                 ? null
                 : current with
                 {
-                    UserRating = previousRating
-                });
-            Snackbar.Add($"Failed to remove rating: {ex.Message}", Severity.Error);
-        }
+                    UserRating = 0
+                }),
+            setRollback: (oldRating) => bookQuery?.MutateData(current => current == null
+                ? null
+                : current with
+                {
+                    UserRating = oldRating
+                }));
     }
 
     private async Task DeleteBookAsync()
