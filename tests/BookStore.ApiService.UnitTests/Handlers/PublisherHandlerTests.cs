@@ -6,6 +6,7 @@ using BookStore.ApiService.Infrastructure;
 using BookStore.Shared.Models;
 using Marten;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NSubstitute;
@@ -25,7 +26,8 @@ public class PublisherHandlerTests
         _ = session.CorrelationId.Returns("test-correlation-id");
 
         // Act
-        var result = await PublisherHandlers.Handle(command, session, Substitute.For<ILogger<CreatePublisher>>());
+        var result =
+            await PublisherHandlers.Handle(command, session, Substitute.For<HybridCache>(), Substitute.For<ILogger>());
 
         // Assert
         _ = await Assert.That(result).IsNotNull();
@@ -44,9 +46,7 @@ public class PublisherHandlerTests
             Guid.CreateVersion7(),
             "O'Reilly Updated"
         )
-        {
-            ETag = "test-etag"
-        };
+        { ETag = "test-etag" };
 
         var session = Substitute.For<IDocumentSession>();
         var httpContext = new DefaultHttpContext();
@@ -61,7 +61,8 @@ public class PublisherHandlerTests
         _ = session.Events.AggregateStreamAsync<PublisherAggregate>(command.Id).Returns(existingAggregate);
 
         // Act
-        var result = await PublisherHandlers.Handle(command, session, httpContextAccessor, Substitute.For<ILogger<UpdatePublisher>>());
+        var result = await PublisherHandlers.Handle(command, session, httpContextAccessor,
+            Substitute.For<HybridCache>(), Substitute.For<ILogger>());
 
         // Assert
         _ = await Assert.That(result).IsTypeOf<Microsoft.AspNetCore.Http.HttpResults.NoContent>();
@@ -92,7 +93,8 @@ public class PublisherHandlerTests
         _ = session.Events.AggregateStreamAsync<PublisherAggregate>(id).Returns(existingAggregate);
 
         // Act
-        var result = await PublisherHandlers.Handle(command, session, httpContextAccessor, Substitute.For<ILogger<SoftDeletePublisher>>());
+        var result = await PublisherHandlers.Handle(command, session, httpContextAccessor,
+            Substitute.For<HybridCache>(), Substitute.For<ILogger>());
 
         // Assert
         _ = await Assert.That(result).IsTypeOf<Microsoft.AspNetCore.Http.HttpResults.NoContent>();
@@ -122,7 +124,8 @@ public class PublisherHandlerTests
         _ = session.Events.AggregateStreamAsync<PublisherAggregate>(id).Returns(existingAggregate);
 
         // Act
-        var result = await PublisherHandlers.Handle(command, session, httpContextAccessor, Substitute.For<ILogger<RestorePublisher>>());
+        var result = await PublisherHandlers.Handle(command, session, httpContextAccessor,
+            Substitute.For<HybridCache>(), Substitute.For<ILogger>());
 
         // Assert
         _ = await Assert.That(result).IsTypeOf<Microsoft.AspNetCore.Http.HttpResults.NoContent>();

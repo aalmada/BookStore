@@ -30,7 +30,7 @@ public class SaleAggregateTests
         // First one succeeds
         var r1 = aggregate.ScheduleSale(20m, start, end);
         // ... (comments)
-        
+
         _ = await Assert.That(r1.IsSuccess).IsTrue();
     }
 }

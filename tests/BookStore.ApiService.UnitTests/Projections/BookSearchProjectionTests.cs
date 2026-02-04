@@ -272,7 +272,7 @@ public class BookSearchProjectionTests
         );
 
         // Act
-        projection.Apply(@event, Substitute.For<IQuerySession>());
+        _ = projection.Apply(@event, Substitute.For<IQuerySession>());
 
         // Assert
         _ = await Assert.That(projection.DiscountPercentage).IsEqualTo(20m);

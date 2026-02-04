@@ -14,20 +14,20 @@ public class ValidationTests
         var id = Guid.NewGuid();
         var title = ""; // Invalid
         var isbn = "123"; // Invalid
-        
+
         // Act
         var result = BookAggregate.CreateEvent(
-            id, 
-            title, 
-            isbn, 
-            "en", 
-            [], 
-            null, 
-            null, 
-            [], 
-            [], 
+            id,
+            title,
+            isbn,
+            "en",
+            [],
+            null,
+            null,
+            [],
+            [],
             []);
-        
+
         // Assert
         _ = await Assert.That(result.IsFailure).IsTrue();
         _ = await Assert.That(result.Error.Code).IsEqualTo(ErrorCodes.Books.TitleRequired);
@@ -40,10 +40,10 @@ public class ValidationTests
         // Arrange
         var id = Guid.NewGuid();
         var name = ""; // Invalid
-        
+
         // Act
         var result = AuthorAggregate.CreateEvent(id, name, []);
-        
+
         // Assert
         _ = await Assert.That(result.IsFailure).IsTrue();
         _ = await Assert.That(result.Error.Code).IsEqualTo(ErrorCodes.Authors.NameRequired);
@@ -55,10 +55,10 @@ public class ValidationTests
     {
         // Arrange
         var id = Guid.NewGuid();
-        
+
         // Act
         var result = CategoryAggregate.CreateEvent(id, []);
-        
+
         // Assert
         _ = await Assert.That(result.IsFailure).IsTrue();
         _ = await Assert.That(result.Error.Code).IsEqualTo(ErrorCodes.Categories.TranslationsRequired);
