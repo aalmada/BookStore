@@ -54,3 +54,42 @@ h1:focus {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
     text-align: start;
 }
+
+/* Catalog Improvements */
+.deleted-book {
+    filter: grayscale(100%);
+    opacity: 0.7;
+    position: relative;
+}
+
+.deleted-book .deleted-badge {
+    filter: none !important; /* Attempt to preserve badge color */
+}
+
+/* Ensure child elements like badges aren't grayscale if we can help it */
+.deleted-book *:not(.deleted-badge) {
+    /* filter: grayscale(100%); */
+}
+
+/* If the whole card has filter, children are affected. 
+   Option: Apply filter only to non-badge elements. */
+.deleted-book .mud-image, 
+.deleted-book .mud-card-content, 
+.deleted-book .mud-card-actions {
+    /* These can be specifically filtered if we remove filter from .deleted-book */
+}
+
+.book-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2) !important;
+}
+
+.optimistic-card {
+    animation: pulse 2s ease-in-out infinite;
+    opacity: 0.9;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 0.9; }
+    50% { opacity: 1; }
+}

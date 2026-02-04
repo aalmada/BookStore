@@ -24,7 +24,8 @@ public static partial class Log
     [LoggerMessage(
         Level = LogLevel.Warning,
         Message = "Failed to get creation options: {StatusCode} {Error}")]
-    public static partial void RegistrationOptionsFailed(ILogger logger, System.Net.HttpStatusCode statusCode, string error);
+    public static partial void RegistrationOptionsFailed(ILogger logger, System.Net.HttpStatusCode statusCode,
+        string error);
 
     [LoggerMessage(
         Level = LogLevel.Error,
@@ -44,7 +45,8 @@ public static partial class Log
     [LoggerMessage(
         Level = LogLevel.Warning,
         Message = "Passkey registration failed: {StatusCode} - {Error}")]
-    public static partial void RegistrationResultFailed(ILogger logger, System.Net.HttpStatusCode statusCode, string error);
+    public static partial void RegistrationResultFailed(ILogger logger, System.Net.HttpStatusCode statusCode,
+        string error);
 
     [LoggerMessage(
         Level = LogLevel.Error,
@@ -54,7 +56,8 @@ public static partial class Log
     [LoggerMessage(
         Level = LogLevel.Error,
         Message = "Passkey login failed: {StatusCode} - {Error}")]
-    public static partial void AssertionResultFailed(ILogger logger, System.Net.HttpStatusCode statusCode, string error);
+    public static partial void
+        AssertionResultFailed(ILogger logger, System.Net.HttpStatusCode statusCode, string error);
 
     [LoggerMessage(
         Level = LogLevel.Error,
@@ -65,4 +68,20 @@ public static partial class Log
         Level = LogLevel.Error,
         Message = "Error logging in with passkey")]
     public static partial void PasskeyLoginError(ILogger logger, Exception ex);
+
+    // CatalogService
+    [LoggerMessage(
+        Level = LogLevel.Error,
+        Message = "Failed to toggle favorite for book {BookId}")]
+    public static partial void FavoriteToggleFailed(ILogger logger, Guid bookId, Exception ex);
+
+    [LoggerMessage(
+        Level = LogLevel.Error,
+        Message = "Failed to rate book {BookId}")]
+    public static partial void RatingFailed(ILogger logger, Guid bookId, Exception ex);
+
+    [LoggerMessage(
+        Level = LogLevel.Error,
+        Message = "Failed to remove rating for book {BookId}")]
+    public static partial void RatingRemovalFailed(ILogger logger, Guid bookId, Exception ex);
 }

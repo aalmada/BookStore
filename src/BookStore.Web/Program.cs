@@ -191,6 +191,9 @@ builder.Services.AddBookStoreEvents(new Uri(apiServiceUrl));
 // Register Error Localization Service
 builder.Services.AddScoped<ErrorLocalizationService>();
 
+// Register Catalog Service
+builder.Services.AddScoped<CatalogService>();
+
 builder.Services.AddOutputCache();
 
 var app = builder.Build();
