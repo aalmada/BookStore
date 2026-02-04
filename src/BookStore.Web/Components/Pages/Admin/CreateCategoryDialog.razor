@@ -16,7 +16,7 @@
                 <MudText Typo="Typo.subtitle1" Class="mb-2 fw-bold">Translations (Multi-language)</MudText>
 
                 <div class="d-flex align-center gap-2 mb-4">
-                    <LanguageSelector Value="_selectedLanguage" ValueChanged="OnLanguageChanged" Margin="Margin.Dense"/>
+                    <LanguageSelector Value="@_selectedLanguage" ValueChanged="OnLanguageChanged" Margin="Margin.Dense"/>
                     <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="AddOrUpdateTranslation" StartIcon="@Icons.Material.Filled.Add">
                         @(_translations.ContainsKey(_selectedLanguage) ? "Update" : "Add")
                     </MudButton>
