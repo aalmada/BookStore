@@ -13,20 +13,20 @@
     </TitleContent>
     <DialogContent>
         <MudForm @ref="_form" @bind-IsValid="_success">
-            <MudTextField T="string" Label="Name" @bind-Value="_model.Name" Required="true" RequiredError="Author name is required!" Variant="Variant.Outlined"/>
+            <MudTextField T="string" Label="Name" @bind-Value="_model.Name" Required="true" RequiredError="Author name is required!" Variant="Variant.Outlined" Immediate="true"/>
 
             <MudCard Elevation="0" Class="mt-4 p-4 glass">
                 <MudText Typo="Typo.subtitle1" Class="mb-2 fw-bold">Biographies (Multi-language)</MudText>
 
                 <div class="d-flex align-end gap-2">
                     <LanguageSelector Value="@_selectedLanguage" ValueChanged="OnLanguageChanged" Margin="Margin.Dense"/>
-                    <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="AddOrUpdateBiography" StartIcon="@Icons.Material.Filled.Add">
+                    <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="AddOrUpdateBiography" StartIcon="@Icons.Material.Filled.Add" Disabled="@(!CanAddOrUpdateBiography())">
                         @(_translations.ContainsKey(_selectedLanguage) ? "Update" : "Add")
                     </MudButton>
                 </div>
 
                 <MudTextField T="string" Label="@($"Biography ({_selectedLanguage})")" @bind-Value="_currentBiography"
-                              Lines="3" Variant="Variant.Outlined" Placeholder="Enter biography..."/>
+                              Lines="3" Variant="Variant.Outlined" Placeholder="Enter biography..." Immediate="true"/>
 
                 <MudList T="string" Class="mt-2">
                     @foreach (var translation in _translations)
@@ -50,7 +50,7 @@
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="@(!_success || !_translations.ContainsKey("en"))">Update</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="@(!CanUpdate())">Update</MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -67,15 +67,21 @@
     private string _currentBiography = "";
     private Dictionary<string, string> _translations = new();
 
+    // Store original values for change detection
+    private string _originalName = "";
+    private Dictionary<string, string> _originalTranslations = new();
+
     protected override void OnInitialized()
     {
         _model = new UpdateAuthorRequest { Name = Author.Name, Translations = new Dictionary<string, BookStore.Client.AuthorTranslationDto>() };
+        _originalName = Author.Name;
 
         if (Author.Translations != null)
         {
             foreach (var translation in Author.Translations)
             {
                 _translations[translation.Key] = translation.Value.Biography;
+                _originalTranslations[translation.Key] = translation.Value.Biography;
             }
 
             if (_translations.TryGetValue("en", out var enBio))
@@ -86,6 +92,7 @@
         else if (!string.IsNullOrEmpty(Author.Biography))
         {
             _translations["en"] = Author.Biography;
+            _originalTranslations["en"] = Author.Biography;
             _currentBiography = Author.Biography;
         }
     }
@@ -94,18 +101,59 @@
     {
         _selectedLanguage = lang;
         _currentBiography = _translations.TryGetValue(lang, out var bio) ? bio : "";
+        StateHasChanged();
     }
 
     private void AddOrUpdateBiography()
     {
         if (string.IsNullOrWhiteSpace(_currentBiography)) return;
         _translations[_selectedLanguage] = _currentBiography;
-        _currentBiography = "";
+        StateHasChanged();
     }
 
     private void RemoveBiography(string lang)
     {
         _translations.Remove(lang);
+        StateHasChanged();
+    }
+
+    private bool CanAddOrUpdateBiography()
+    {
+        if (string.IsNullOrWhiteSpace(_currentBiography))
+            return false;
+
+        // Check if the current biography is different from the stored one
+        if (!_translations.TryGetValue(_selectedLanguage, out var existingBio))
+            return true; // New translation, allow adding
+
+        return _currentBiography != existingBio; // Only enable if changed
+    }
+
+    private bool HasChanges()
+    {
+        // Check if name changed
+        if (_model.Name != _originalName)
+            return true;
+
+        // Check if translations changed
+        if (_translations.Count != _originalTranslations.Count)
+            return true;
+
+        foreach (var kvp in _translations)
+        {
+            if (!_originalTranslations.TryGetValue(kvp.Key, out var originalValue) || originalValue != kvp.Value)
+                return true;
+        }
+
+        return false;
+    }
+
+    private bool CanUpdate()
+    {
+        return _success &&
+               !string.IsNullOrWhiteSpace(_model.Name) &&
+               _translations.ContainsKey("en") &&
+               HasChanges();
     }
 
     private async Task Submit()

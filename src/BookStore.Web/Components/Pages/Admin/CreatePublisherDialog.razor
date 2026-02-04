@@ -12,12 +12,12 @@
     </TitleContent>
     <DialogContent>
         <MudForm @ref="_form" @bind-IsValid="_success">
-            <MudTextField T="string" Label="Name" @bind-Value="_model.Name" Required="true" RequiredError="Publisher name is required!" Variant="Variant.Outlined"/>
+            <MudTextField T="string" Label="Name" @bind-Value="_model.Name" Required="true" RequiredError="Publisher name is required!" Variant="Variant.Outlined" Immediate="true"/>
         </MudForm>
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="@(!_success)">Create</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="@(!CanCreate())">Create</MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -26,6 +26,11 @@
     private MudForm _form = null!;
     private bool _success;
     private CreatePublisherRequest _model = new();
+
+    private bool CanCreate()
+    {
+        return _success && !string.IsNullOrWhiteSpace(_model.Name);
+    }
 
     private async Task Submit()
     {

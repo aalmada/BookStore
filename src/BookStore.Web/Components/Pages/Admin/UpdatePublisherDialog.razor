@@ -12,12 +12,12 @@
     </TitleContent>
     <DialogContent>
         <MudForm @ref="_form" @bind-IsValid="_success">
-            <MudTextField T="string" Label="Name" @bind-Value="_model.Name" Required="true" RequiredError="Publisher name is required!" Variant="Variant.Outlined"/>
+            <MudTextField T="string" Label="Name" @bind-Value="_model.Name" Required="true" RequiredError="Publisher name is required!" Variant="Variant.Outlined" Immediate="true"/>
         </MudForm>
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="@(!_success)">Update</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="@(!CanUpdate())">Update</MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -30,9 +30,20 @@
     private bool _success;
     private UpdatePublisherRequest _model = new();
 
+    // Store original value for change detection
+    private string _originalName = "";
+
     protected override void OnInitialized()
     {
         _model = new UpdatePublisherRequest { Name = Publisher.Name };
+        _originalName = Publisher.Name;
+    }
+
+    private bool CanUpdate()
+    {
+        return _success &&
+               !string.IsNullOrWhiteSpace(_model.Name) &&
+               _model.Name != _originalName;
     }
 
     private async Task Submit()

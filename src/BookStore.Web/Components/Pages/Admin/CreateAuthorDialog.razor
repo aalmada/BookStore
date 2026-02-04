@@ -12,7 +12,7 @@
     </TitleContent>
     <DialogContent>
         <MudForm @ref="_form" @bind-IsValid="_success">
-            <MudTextField T="string" Label="Name" @bind-Value="_model.Name" Required="true" RequiredError="Author name is required!" Variant="Variant.Outlined" Class="mb-4"/>
+            <MudTextField T="string" Label="Name" @bind-Value="_model.Name" Required="true" RequiredError="Author name is required!" Variant="Variant.Outlined" Class="mb-4" Immediate="true"/>
 
             <MudDivider Class="my-4"/>
 
@@ -21,12 +21,12 @@
             <div class="d-flex flex-column gap-3">
                 <div class="d-flex align-end gap-2">
                     <LanguageSelector Value="@_selectedLanguage" ValueChanged="OnLanguageChanged" Style="max-width: 150px;"/>
-                    <MudButton StartIcon="@Icons.Material.Filled.Add" Color="Color.Secondary" Variant="Variant.Filled" OnClick="AddTranslation" Disabled="@(string.IsNullOrWhiteSpace(_currentBiography))">
+                    <MudButton StartIcon="@Icons.Material.Filled.Add" Color="Color.Secondary" Variant="Variant.Filled" OnClick="AddTranslation" Disabled="@(!CanAddTranslation())">
                         Add
                     </MudButton>
                 </div>
 
-                <MudTextField T="string" Label="Biography" @bind-Value="_currentBiography" Lines="3" Variant="Variant.Outlined" Placeholder="Enter biography for the selected language..."/>
+                <MudTextField T="string" Label="Biography" @bind-Value="_currentBiography" Lines="3" Variant="Variant.Outlined" Placeholder="Enter biography for the selected language..." Immediate="true"/>
 
                 @if (_translations.Any())
                 {
@@ -53,7 +53,7 @@
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="@(!_success || !_translations.ContainsKey("en"))">Create</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="@(!CanCreate())">Create</MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -72,13 +72,13 @@
     {
         _selectedLanguage = lang;
         _currentBiography = _translations.TryGetValue(lang, out var bio) ? bio : "";
+        StateHasChanged();
     }
 
     private void AddTranslation()
     {
         if (string.IsNullOrWhiteSpace(_currentBiography)) return;
         _translations[_selectedLanguage] = _currentBiography;
-        _currentBiography = "";
         StateHasChanged();
     }
 
@@ -92,6 +92,25 @@
     {
         if (string.IsNullOrEmpty(text)) return "";
         return text.Length <= maxLength ? text : text.Substring(0, maxLength) + "...";
+    }
+
+    private bool CanAddTranslation()
+    {
+        if (string.IsNullOrWhiteSpace(_currentBiography))
+            return false;
+
+        // Check if the current biography is different from the stored one
+        if (!_translations.TryGetValue(_selectedLanguage, out var existingBio))
+            return true; // New translation, allow adding
+
+        return _currentBiography != existingBio; // Only enable if changed
+    }
+
+    private bool CanCreate()
+    {
+        return _success &&
+               !string.IsNullOrWhiteSpace(_model.Name) &&
+               _translations.ContainsKey("en");
     }
 
     private async Task Submit()

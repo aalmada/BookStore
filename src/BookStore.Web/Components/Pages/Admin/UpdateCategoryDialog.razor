@@ -17,13 +17,13 @@
 
                 <div class="d-flex align-center gap-2 mb-4">
                     <LanguageSelector Value="@_selectedLanguage" ValueChanged="OnLanguageChanged" Margin="Margin.Dense"/>
-                    <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="AddOrUpdateTranslation" StartIcon="@Icons.Material.Filled.Add">
+                    <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="AddOrUpdateTranslation" StartIcon="@Icons.Material.Filled.Add" Disabled="@(!CanAddOrUpdateTranslation())">
                         @(_translations.ContainsKey(_selectedLanguage) ? "Update" : "Add")
                     </MudButton>
                 </div>
 
                 <MudTextField T="string" Label="@($"Name ({_selectedLanguage})")" @bind-Value="_currentName"
-                              Required="true" RequiredError="Name is required for the language!" Variant="Variant.Outlined"/>
+                              Required="true" RequiredError="Name is required for the language!" Variant="Variant.Outlined" Immediate="true"/>
 
                 <MudList T="string" Class="mt-2" Dense="true">
                     @foreach (var translation in _translations.OrderBy(t => t.Key))
@@ -47,7 +47,7 @@
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="@(!_success || !_translations.ContainsKey("en"))">Update</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="@(!CanUpdate())">Update</MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -63,6 +63,9 @@
     private string _currentName = "";
     private Dictionary<string, string> _translations = new();
 
+    // Store original values for change detection
+    private Dictionary<string, string> _originalTranslations = new();
+
     protected override void OnInitialized()
     {
         if (Category.Translations != null)
@@ -70,6 +73,7 @@
             foreach (var translation in Category.Translations)
             {
                 _translations[translation.Key] = translation.Value.Name;
+                _originalTranslations[translation.Key] = translation.Value.Name;
             }
 
             if (_translations.TryGetValue("en", out var enName))
@@ -80,6 +84,7 @@
         else
         {
             _translations["en"] = Category.Name;
+            _originalTranslations["en"] = Category.Name;
             _currentName = Category.Name;
         }
     }
@@ -88,18 +93,55 @@
     {
         _selectedLanguage = lang;
         _currentName = _translations.TryGetValue(lang, out var name) ? name : "";
+        StateHasChanged();
     }
 
     private void AddOrUpdateTranslation()
     {
         if (string.IsNullOrWhiteSpace(_currentName)) return;
         _translations[_selectedLanguage] = _currentName;
-        _currentName = "";
+        StateHasChanged();
     }
 
     private void RemoveTranslation(string lang)
     {
         _translations.Remove(lang);
+        StateHasChanged();
+    }
+
+    private bool CanAddOrUpdateTranslation()
+    {
+        if (string.IsNullOrWhiteSpace(_currentName))
+            return false;
+
+        // Check if the current name is different from the stored one
+        if (!_translations.TryGetValue(_selectedLanguage, out var existingName))
+            return true; // New translation, allow adding
+
+        return _currentName != existingName; // Only enable if changed
+    }
+
+    private bool HasChanges()
+    {
+        // Check if translations changed
+        if (_translations.Count != _originalTranslations.Count)
+            return true;
+
+        foreach (var kvp in _translations)
+        {
+            if (!_originalTranslations.TryGetValue(kvp.Key, out var originalValue) || originalValue != kvp.Value)
+                return true;
+        }
+
+        return false;
+    }
+
+    private bool CanUpdate()
+    {
+        return _success &&
+               _translations.ContainsKey("en") &&
+               !string.IsNullOrWhiteSpace(_translations["en"]) &&
+               HasChanges();
     }
 
     private async Task Submit()
