@@ -22,6 +22,8 @@ public abstract class BunitTestContext : IDisposable
         _ = Context.JSInterop.SetupModule("mudSelect");
         _ = Context.JSInterop.SetupVoid("mudKeyInterceptor.connect", _ => true);
         _ = Context.JSInterop.SetupVoid("mudKeyInterceptor.disconnect", _ => true);
+
+        _ = Context.Services.AddMudServices();
     }
 
     public void Dispose()
