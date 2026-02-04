@@ -4,7 +4,7 @@
     <BookStore.Web.Components.Shared.LogEnricher/>
     <MudAppBar Elevation="1">
         <MudTooltip Text="Toggle Navigation" Arrow="true" Placement="Placement.Bottom">
-            <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer"/>
+            <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer" aria-label="Toggle Navigation"/>
         </MudTooltip>
         <MudText Typo="Typo.h5" Class="ml-3">
             @if (TenantService.IsLoading)
@@ -15,7 +15,7 @@
         </MudText>
         <MudSpacer/>
         <MudTooltip Text="Switch Tenant" Arrow="true" Placement="Placement.Bottom" Disabled="@_isTenantMenuOpen">
-            <MudMenu @bind-Open="@_isTenantMenuOpen" Icon="@Icons.Material.Filled.Business" Color="Color.Inherit" Class="mr-2">
+            <MudMenu @bind-Open="@_isTenantMenuOpen" Icon="@Icons.Material.Filled.Business" Color="Color.Inherit" Class="mr-2" aria-label="Switch Tenant">
                 @foreach (var tenant in TenantService.AvailableTenants)
                 {
                     <MudMenuItem OnClick="@(() => SwitchTenant(tenant.Id))">@tenant.Name</MudMenuItem>

@@ -4,7 +4,7 @@
 <MudMenu @bind-Open="_isOpen" Dense="true" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" LockScroll="true">
     <ActivatorContent>
         <MudTooltip Text="Change Currency" Arrow="true" Placement="Placement.Bottom" Disabled="@_isOpen">
-            <MudButton Variant="Variant.Text" Color="Color.Inherit" Class="typography-button" EndIcon="@Icons.Material.Filled.KeyboardArrowDown">
+            <MudButton Variant="Variant.Text" Color="Color.Inherit" Class="typography-button" EndIcon="@Icons.Material.Filled.KeyboardArrowDown" aria-label="Change Currency">
                 <span class="mr-2" style="font-size: 1.2em;">@GetCurrencyFlag(CurrencyService.CurrentCurrency)</span>
                 @CurrencyService.CurrentCurrency
             </MudButton>

@@ -1,8 +1,7 @@
-@using BookStore.Web.Services
 @inject ThemeService ThemeInfo
 
 <MudTooltip Text="Switch Theme" Arrow="true" Placement="Placement.Bottom">
-    <MudMenu Icon="@GetThemeIcon()" Color="Color.Inherit" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" Dense="true">
+    <MudMenu Icon="@GetThemeIcon()" Color="Color.Inherit" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" Dense="true" aria-label="Switch Theme">
         <MudMenuItem OnClick="@(() => SetTheme(ThemeMode.Light))">
             <div class="d-flex align-center gap-2">
                 <MudIcon Icon="@Icons.Material.Filled.LightMode" Size="Size.Small"/>
