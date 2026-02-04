@@ -7,12 +7,12 @@ namespace BookStore.Web.Services;
 /// </summary>
 public class LanguageService
 {
-    private readonly IConfigurationClient _configurationClient;
-    private string[]? _cachedLanguages;
-    private readonly SemaphoreSlim _lock = new(1, 1);
+    readonly IConfigurationClient _configurationClient;
+    string[]? _cachedLanguages;
+    readonly SemaphoreSlim _lock = new(1, 1);
 
     // Comprehensive mapping of culture codes to display names
-    private static readonly Dictionary<string, string> CultureDisplayNames = new()
+    static readonly Dictionary<string, string> CultureDisplayNames = new()
     {
         { "en", "English" },
         { "en-US", "English (United States)" },
@@ -50,10 +50,7 @@ public class LanguageService
         { "tr-TR", "Turkish (Turkey)" },
     };
 
-    public LanguageService(IConfigurationClient configurationClient)
-    {
-        _configurationClient = configurationClient;
-    }
+    public LanguageService(IConfigurationClient configurationClient) => _configurationClient = configurationClient;
 
     /// <summary>
     /// Get supported languages from the backend configuration
@@ -74,7 +71,7 @@ public class LanguageService
             }
 
             var config = await _configurationClient.GetLocalizationConfigAsync();
-            _cachedLanguages = config.SupportedCultures.ToArray();
+            _cachedLanguages = [.. config.SupportedCultures];
             return _cachedLanguages;
         }
         catch
@@ -85,19 +82,16 @@ public class LanguageService
         }
         finally
         {
-            _lock.Release();
+            _ = _lock.Release();
         }
     }
 
     /// <summary>
     /// Get display name for a culture code
     /// </summary>
-    public static string GetDisplayName(string cultureCode)
-    {
-        return CultureDisplayNames.TryGetValue(cultureCode, out var displayName)
+    public static string GetDisplayName(string cultureCode) => CultureDisplayNames.TryGetValue(cultureCode, out var displayName)
             ? displayName
             : cultureCode; // Fallback to culture code if no mapping exists
-    }
 
     /// <summary>
     /// Get all supported languages with their display names
@@ -133,8 +127,5 @@ public class LanguageService
     /// <summary>
     /// Clear the cached languages (useful for testing or if configuration changes)
     /// </summary>
-    public void ClearCache()
-    {
-        _cachedLanguages = null;
-    }
+    public void ClearCache() => _cachedLanguages = null;
 }
