@@ -64,6 +64,9 @@ public static class MartenConfigurationExtensions
             // for rebuild optimizations
             options.Events.UseMandatoryStreamTypeDeclaration = true;
 
+            // This is just annoying anyway
+            options.DisableNpgsqlLogging = true;
+
             // Configure automatic schema creation/updates based on environment
             // Development: All - creates/updates/drops schema objects as needed
             // Production: CreateOnly - only creates missing objects, never modifies existing
