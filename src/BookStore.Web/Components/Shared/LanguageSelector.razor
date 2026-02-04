@@ -6,8 +6,9 @@
 {
     <MudSelect T="string"
                Label="@Label"
-               @bind-Value="@_internalValue"
-               ToStringFunc="@(value => GetDisplayText(value))"
+               Value="@_selectedValue"
+               ValueChanged="@OnValueChangedInternal"
+               ToStringFunc="@GetDisplayTextForValue"
                Variant="@Variant"
                Dense="@Dense"
                Margin="@Margin"
@@ -51,24 +52,33 @@ else
 
     private Dictionary<string, string>? _languages;
     private string? _defaultCulture;
-
-    private string? _internalValue
-    {
-        get => Value;
-        set
-        {
-            if (Value != value)
-            {
-                Value = value;
-                ValueChanged.InvokeAsync(value);
-            }
-        }
-    }
+    private string? _selectedValue;
 
     protected override async Task OnInitializedAsync()
     {
+        Console.WriteLine($"[LanguageSelector] OnInitializedAsync - Value: {Value}");
+        _selectedValue = Value; // Initialize local value
         await LoadLanguagesAsync();
         await LoadDefaultCultureAsync();
+        Console.WriteLine($"[LanguageSelector] After loading - _selectedValue: {_selectedValue}, languages count: {_languages?.Count}");
+    }
+
+    protected override void OnParametersSet()
+    {
+        // Sync the local value with the parameter
+        Console.WriteLine($"[LanguageSelector] OnParametersSet - Value: {Value}, _selectedValue: {_selectedValue}");
+        if (_selectedValue != Value)
+        {
+            _selectedValue = Value;
+            Console.WriteLine($"[LanguageSelector] Updated _selectedValue to: {_selectedValue}");
+        }
+    }
+
+    private async Task OnValueChangedInternal(string value)
+    {
+        Console.WriteLine($"[LanguageSelector] OnValueChangedInternal - value: {value}");
+        _selectedValue = value;
+        await ValueChanged.InvokeAsync(value);
     }
 
     private async Task LoadLanguagesAsync()
@@ -129,9 +139,9 @@ else
     }
 
     /// <summary>
-    /// Get the display text for a language code (includes default indicator)
+    /// Get the display text for a language code (used by ToStringFunc)
     /// </summary>
-    private string GetDisplayText(string? languageCode)
+    private string GetDisplayTextForValue(string? languageCode)
     {
         if (string.IsNullOrEmpty(languageCode) || _languages == null)
         {

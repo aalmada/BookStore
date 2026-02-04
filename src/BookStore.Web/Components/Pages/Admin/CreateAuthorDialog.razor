@@ -20,7 +20,7 @@
 
             <div class="d-flex flex-column gap-3">
                 <div class="d-flex align-end gap-2">
-                    <LanguageSelector Value="_selectedLanguage" ValueChanged="OnLanguageChanged" Style="max-width: 150px;"/>
+                    <LanguageSelector Value="@_selectedLanguage" ValueChanged="OnLanguageChanged" Style="max-width: 150px;"/>
                     <MudButton StartIcon="@Icons.Material.Filled.Add" Color="Color.Secondary" Variant="Variant.Filled" OnClick="AddTranslation" Disabled="@(string.IsNullOrWhiteSpace(_currentBiography))">
                         Add
                     </MudButton>

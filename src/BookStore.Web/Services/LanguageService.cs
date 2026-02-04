@@ -105,10 +105,12 @@ public class LanguageService
     public async Task<Dictionary<string, string>> GetLanguagesWithDisplayNamesAsync()
     {
         var languages = await GetSupportedLanguagesAsync();
-        return languages.ToDictionary(
-            lang => lang,
-            lang => GetDisplayName(lang)
-        );
+        return languages
+            .Distinct() // Remove duplicates
+            .ToDictionary(
+                lang => lang,
+                lang => GetDisplayName(lang)
+            );
     }
 
     /// <summary>

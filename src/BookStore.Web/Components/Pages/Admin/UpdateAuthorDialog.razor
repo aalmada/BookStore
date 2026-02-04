@@ -19,7 +19,7 @@
                 <MudText Typo="Typo.subtitle1" Class="mb-2 fw-bold">Biographies (Multi-language)</MudText>
 
                 <div class="d-flex align-end gap-2">
-                    <LanguageSelector Value="_selectedLanguage" ValueChanged="OnLanguageChanged" Margin="Margin.Dense"/>
+                    <LanguageSelector Value="@_selectedLanguage" ValueChanged="OnLanguageChanged" Margin="Margin.Dense"/>
                     <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="AddOrUpdateBiography" StartIcon="@Icons.Material.Filled.Add">
                         @(_translations.ContainsKey(_selectedLanguage) ? "Update" : "Add")
                     </MudButton>
