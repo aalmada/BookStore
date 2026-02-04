@@ -1,4 +1,5 @@
 using BookStore.Shared.Notifications;
+using JasperFx.Core;
 using Wolverine;
 
 namespace BookStore.ApiService.Infrastructure.Extensions;
@@ -28,6 +29,11 @@ public static class WolverineConfigurationExtensions
             // This *should* have some performance improvements, but would
             // require downtime to enable in existing systems
             opts.Durability.EnableInboxPartitioning = true;
+
+            // Extra resiliency for unexpected problems, but can't be
+            // defaults because this causes database changes
+            opts.Durability.InboxStaleTime = TimeSpan.FromMinutes(10);
+            opts.Durability.OutboxStaleTime = TimeSpan.FromMinutes(10);
         });
 
         return services;
