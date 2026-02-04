@@ -95,10 +95,8 @@ public static class MartenConfigurationExtensions
         .AddAsyncDaemon(DaemonMode.Solo)
         .PublishEventsToWolverine("marten")
         .IntegrateWithWolverine(x =>
-        {
             // Let Wolverine do the load distribution better than what Marten by itself can do
-            x.UseWolverineManagedEventSubscriptionDistribution = true;
-        });
+            x.UseWolverineManagedEventSubscriptionDistribution = true);
 
         // Register IDocumentSession with proper tenant scoping
         // Since we use Marten's "*DEFAULT*" for the default tenant,
