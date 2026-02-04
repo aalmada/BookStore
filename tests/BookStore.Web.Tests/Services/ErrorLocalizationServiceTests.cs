@@ -108,4 +108,39 @@ public class ErrorLocalizationServiceTests
         _ = await Assert.That(service.GetLocalizedMessage("")).IsEqualTo("Friendly Default Error");
         _ = await Assert.That(service.GetLocalizedMessage("   ")).IsEqualTo("Friendly Default Error");
     }
+
+    [Test]
+    public async Task GetLocalizedMessage_ReturnsDefault_WhenTypeNotFound()
+    {
+        // Arrange
+        var localizer = Substitute.For<IStringLocalizer<ErrorLocalizationService>>();
+        _ = localizer[Arg.Any<string>()].Returns(x => new LocalizedString((string)x[0], (string)x[0], true));
+        var defaultError = new LocalizedString("DefaultError", "Friendly Default Error");
+        _ = localizer["DefaultError"].Returns(defaultError);
+        var service = new ErrorLocalizationService(localizer);
+        var error = Error.Conflict("CONFLICT", "Something crashed with an Exception");
+
+        // Act & Assert
+        _ = await Assert.That(service.GetLocalizedMessage(error)).IsEqualTo("Friendly Default Error");
+    }
+
+    [Test]
+    [Arguments(ErrorType.Validation, "ErrorType_Validation", "Validation Error")]
+    [Arguments(ErrorType.Conflict, "ErrorType_Conflict", "Conflict Error")]
+    [Arguments(ErrorType.NotFound, "ErrorType_NotFound", "Not Found Error")]
+    [Arguments(ErrorType.Unauthorized, "ErrorType_Unauthorized", "Unauthorized Error")]
+    [Arguments(ErrorType.Forbidden, "ErrorType_Forbidden", "Forbidden Error")]
+    public async Task GetLocalizedMessage_ReturnsTypeDefault_ForVariousTypes(ErrorType type, string key,
+        string expected)
+    {
+        // Arrange
+        var localizer = Substitute.For<IStringLocalizer<ErrorLocalizationService>>();
+        _ = localizer[Arg.Any<string>()].Returns(x => new LocalizedString((string)x[0], (string)x[0], true));
+        _ = localizer[key].Returns(new LocalizedString(key, expected));
+        var service = new ErrorLocalizationService(localizer);
+        var error = new Error("CODE", "Technical message", type);
+
+        // Act & Assert
+        _ = await Assert.That(service.GetLocalizedMessage(error)).IsEqualTo(expected);
+    }
 }

@@ -1,6 +1,7 @@
 using BookStore.Client;
 using BookStore.Web.Components.Shared;
 using BookStore.Web.Services;
+using BookStore.Web.Tests.Infrastructure;
 using Bunit;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
@@ -32,8 +33,8 @@ public class AllLanguageSelectorTests : BunitTestContext
     {
         // Act
         var cut = RenderComponent<AllLanguageSelector>(parameters => parameters
-            .Add(p => p.Value, "pt-PT")
-            .Add(p => p.Label, "Primary Language")
+            .Add<string?>(p => p.Value, "pt-PT")
+            .Add<string>(p => p.Label, "Primary Language")
         );
 
         // Assert
@@ -49,7 +50,7 @@ public class AllLanguageSelectorTests : BunitTestContext
         // Arrange
         string? selectedValue = null;
         var cut = RenderComponent<AllLanguageSelector>(parameters => parameters
-            .Add(p => p.Value, "en-US")
+            .Add<string?>(p => p.Value, "en-US")
             .Add<EventCallback<string>>(p => p.ValueChanged,
                 EventCallback.Factory.Create<string>(this, v => selectedValue = v))
         );

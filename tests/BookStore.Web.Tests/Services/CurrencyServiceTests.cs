@@ -22,7 +22,8 @@ public class CurrencyServiceTests
     public async Task InitializeAsync_ShouldLoadFromLocalStorage()
     {
         // Arrange
-        _ = _jsRuntime.InvokeAsync<string?>("localStorage.getItem", Arg.Is<object[]>(a => a[0].ToString() == "selected_currency"))
+        _ = _jsRuntime.InvokeAsync<string?>("localStorage.getItem",
+                Arg.Is<object[]>(a => a[0].ToString() == "selected_currency"))
             .Returns(new ValueTask<string?>("EUR"));
 
         // Act
@@ -40,7 +41,8 @@ public class CurrencyServiceTests
 
         // Assert
         _ = await Assert.That(_sut.CurrentCurrency).IsEqualTo("GBP");
-        _ = await _jsRuntime.Received(1).InvokeAsync<IJSVoidResult>("localStorage.setItem", Arg.Is<object[]>(a => a[0].ToString() == "selected_currency" && a[1].ToString() == "GBP"));
+        _ = await _jsRuntime.Received(1).InvokeAsync<IJSVoidResult>("localStorage.setItem",
+            Arg.Is<object[]>(a => a[0].ToString() == "selected_currency" && a[1].ToString() == "GBP"));
     }
 
     [Test]
@@ -65,12 +67,7 @@ public class CurrencyServiceTests
     {
         // Arrange
         await _sut.SetCurrencyAsync(currency);
-        var prices = new Dictionary<string, decimal>
-        {
-            ["USD"] = 10.00m,
-            ["EUR"] = 10.00m,
-            ["GBP"] = 10.00m
-        };
+        var prices = new Dictionary<string, decimal> { ["USD"] = 10.00m, ["EUR"] = 10.00m, ["GBP"] = 10.00m };
 
         // Act
         var result = _sut.FormatPrice(prices);
@@ -84,10 +81,7 @@ public class CurrencyServiceTests
     {
         // Arrange
         await _sut.SetCurrencyAsync("EUR");
-        var prices = new Dictionary<string, decimal>
-        {
-            ["USD"] = 10.00m
-        };
+        var prices = new Dictionary<string, decimal> { ["USD"] = 10.00m };
 
         // Act
         var result = _sut.FormatPrice(prices);

@@ -2,6 +2,7 @@ using BookStore.Client;
 using BookStore.Shared.Models;
 using BookStore.Web.Components.Shared;
 using BookStore.Web.Services;
+using BookStore.Web.Tests.Infrastructure;
 using Bunit;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
@@ -37,8 +38,8 @@ public class LanguageSelectorTests : BunitTestContext
     {
         // Act
         var cut = RenderComponent<LanguageSelector>(parameters => parameters
-            .Add(p => p.Value, "en-US")
-            .Add(p => p.Label, "Test Label")
+            .Add<string?>(p => p.Value, "en-US")
+            .Add<string>(p => p.Label, "Test Label")
         );
 
         // Assert
@@ -55,8 +56,8 @@ public class LanguageSelectorTests : BunitTestContext
         // Arrange
         string? selectedValue = null;
         var cut = RenderComponent<LanguageSelector>(parameters => parameters
-            .Add(p => p.Value, "en-US")
-            .Add<EventCallback<string>>(p => p.ValueChanged,
+            .Add<string?>(p => p.Value, "en-US")
+            .Add(p => p.ValueChanged,
                 EventCallback.Factory.Create<string>(this, v => selectedValue = v))
         );
 
@@ -66,39 +67,5 @@ public class LanguageSelectorTests : BunitTestContext
 
         // Assert
         _ = await Assert.That(selectedValue).IsEqualTo("pt-PT");
-    }
-}
-
-public abstract class BunitTestContext : IDisposable
-{
-    protected Bunit.TestContext Context { get; } = new();
-
-    public BunitTestContext()
-    {
-        Context.JSInterop.Mode = JSRuntimeMode.Loose;
-        _ = Context.JSInterop.SetupVoid("mudPopover.initialize", _ => true);
-        _ = Context.JSInterop.SetupVoid("mudPopover.dispose", _ => true);
-        _ = Context.JSInterop.Setup<int>("mudpopoverHelper.countProviders").SetResult(1);
-        _ = Context.JSInterop.SetupVoid("mudElementRef.addOnBlurEvent", _ => true);
-        _ = Context.JSInterop.SetupVoid("mudElementRef.removeOnBlurEvent", _ => true);
-        _ = Context.JSInterop.SetupVoid("mudElementRef.focus", _ => true);
-        _ = Context.JSInterop.SetupModule("mudAutocomplete");
-        _ = Context.JSInterop.SetupModule("mudSelect");
-        _ = Context.JSInterop.SetupVoid("mudKeyInterceptor.connect", _ => true);
-        _ = Context.JSInterop.SetupVoid("mudKeyInterceptor.disconnect", _ => true);
-    }
-
-    public void Dispose()
-    {
-        Context.Dispose();
-        GC.SuppressFinalize(this);
-    }
-
-    protected IRenderedComponent<TComponent> RenderComponent<TComponent>(
-        Action<ComponentParameterCollectionBuilder<TComponent>>? parameterBuilder = null)
-        where TComponent : Microsoft.AspNetCore.Components.IComponent
-    {
-        _ = Context.RenderComponent<MudPopoverProvider>();
-        return Context.RenderComponent(parameterBuilder);
     }
 }
