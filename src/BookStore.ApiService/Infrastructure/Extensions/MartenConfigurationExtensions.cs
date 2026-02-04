@@ -60,6 +60,10 @@ public static class MartenConfigurationExtensions
             // immutable in your command handler code
             options.Events.UseIdentityMapForAggregates = true;
 
+            // Future proofing a bit. Will help with some future optimizations
+            // for rebuild optimizations
+            options.Events.UseMandatoryStreamTypeDeclaration = true;
+
             // Configure automatic schema creation/updates based on environment
             // Development: All - creates/updates/drops schema objects as needed
             // Production: CreateOnly - only creates missing objects, never modifies existing
