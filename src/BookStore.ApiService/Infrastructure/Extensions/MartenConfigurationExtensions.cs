@@ -91,6 +91,7 @@ public static class MartenConfigurationExtensions
 
             return options;
         })
+        .UseLightweightSessions()
         .AddAsyncDaemon(DaemonMode.Solo)
         .PublishEventsToWolverine("marten")
         .IntegrateWithWolverine();
