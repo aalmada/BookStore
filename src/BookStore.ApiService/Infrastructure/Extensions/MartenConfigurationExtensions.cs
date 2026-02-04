@@ -51,6 +51,10 @@ public static class MartenConfigurationExtensions
             // 50% improvement in throughput, less "event skipping"
             options.Events.AppendMode = EventAppendMode.Quick;
 
+            // These cause some database changes, so can't be defaults,
+            // but these might help "heal" systems that have problems later
+            options.Events.EnableAdvancedAsyncTracking = true;
+
             // Configure automatic schema creation/updates based on environment
             // Development: All - creates/updates/drops schema objects as needed
             // Production: CreateOnly - only creates missing objects, never modifies existing
