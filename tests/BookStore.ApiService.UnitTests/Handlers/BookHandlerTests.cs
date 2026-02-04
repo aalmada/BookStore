@@ -7,11 +7,12 @@ using BookStore.ApiService.Handlers.Sales;
 using BookStore.ApiService.Infrastructure;
 using BookStore.ApiService.Infrastructure.Logging;
 using BookStore.Shared.Models;
+using JasperFx.Events;
 using Marten;
 using Marten.Events;
-using JasperFx.Events;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NSubstitute;
@@ -25,18 +26,10 @@ namespace BookStore.ApiService.UnitTests.Handlers;
 public class BookHandlerTests
 {
     static IOptions<LocalizationOptions> CreateLocalizationOptions()
-        => Options.Create(new LocalizationOptions
-        {
-            DefaultCulture = "en",
-            SupportedCultures = ["en"]
-        });
+        => Options.Create(new LocalizationOptions { DefaultCulture = "en", SupportedCultures = ["en"] });
 
     static IOptions<CurrencyOptions> CreateCurrencyOptions()
-        => Options.Create(new CurrencyOptions
-        {
-            DefaultCurrency = "USD",
-            SupportedCurrencies = ["USD", "EUR"]
-        });
+        => Options.Create(new CurrencyOptions { DefaultCurrency = "USD", SupportedCurrencies = ["USD", "EUR"] });
 
     [Test]
     [Category("Unit")]
@@ -62,7 +55,8 @@ public class BookHandlerTests
         _ = session.CorrelationId.Returns("test-correlation-id");
 
         // Act
-        var result = BookHandlers.Handle(command, session, CreateLocalizationOptions(), CreateCurrencyOptions(), Substitute.For<ILogger<CreateBook>>());
+        var result = await BookHandlers.Handle(command, session, CreateLocalizationOptions(), CreateCurrencyOptions(),
+            Substitute.For<HybridCache>(), Substitute.For<ILogger>());
 
         // Assert
         _ = await Assert.That(result).IsNotNull();
@@ -79,7 +73,8 @@ public class BookHandlerTests
     [Arguments("invalid", "en", 10)]
     [Arguments("en", "invalid", 10)]
     [Arguments("en", "en", 5001)]
-    public async Task CreateBookHandler_WithInvalidHandlerValidation_ShouldReturnBadRequest(string language, string culture, int descLength)
+    public async Task CreateBookHandler_WithInvalidHandlerValidation_ShouldReturnBadRequest(string language,
+        string culture, int descLength)
     {
         // Arrange
         var description = new string('a', descLength);
@@ -88,10 +83,7 @@ public class BookHandlerTests
             "Clean Code",
             "978-0132350884",
             language,
-            new Dictionary<string, BookTranslationDto>
-            {
-                [culture] = new BookTranslationDto(description)
-            },
+            new Dictionary<string, BookTranslationDto> { [culture] = new BookTranslationDto(description) },
             new PartialDate(2008, 8, 1),
             Guid.CreateVersion7(),
             [Guid.CreateVersion7()],
@@ -102,7 +94,8 @@ public class BookHandlerTests
         var session = Substitute.For<IDocumentSession>();
 
         // Act
-        var result = BookHandlers.Handle(command, session, CreateLocalizationOptions(), CreateCurrencyOptions(), Substitute.For<ILogger<CreateBook>>());
+        var result = await BookHandlers.Handle(command, session, CreateLocalizationOptions(), CreateCurrencyOptions(),
+            Substitute.For<HybridCache>(), Substitute.For<ILogger>());
 
         // Assert
         _ = await Assert.That(result).IsAssignableTo<IStatusCodeHttpResult>();
@@ -124,10 +117,7 @@ public class BookHandlerTests
             title,
             isbn,
             "en",
-            new Dictionary<string, BookTranslationDto>
-            {
-                ["en"] = new BookTranslationDto("Description")
-            },
+            new Dictionary<string, BookTranslationDto> { ["en"] = new BookTranslationDto("Description") },
             new PartialDate(2008, 8, 1),
             Guid.CreateVersion7(),
             [Guid.CreateVersion7()],
@@ -138,7 +128,8 @@ public class BookHandlerTests
         var session = Substitute.For<IDocumentSession>();
 
         // Act
-        var result = BookHandlers.Handle(command, session, CreateLocalizationOptions(), CreateCurrencyOptions(), Substitute.For<ILogger<CreateBook>>());
+        var result = await BookHandlers.Handle(command, session, CreateLocalizationOptions(), CreateCurrencyOptions(),
+            Substitute.For<HybridCache>(), Substitute.For<ILogger>());
 
         // Assert
         _ = await Assert.That(result).IsAssignableTo<IStatusCodeHttpResult>();
@@ -166,7 +157,8 @@ public class BookHandlerTests
         var session = Substitute.For<IDocumentSession>();
 
         // Act
-        var result = BookHandlers.Handle(command, session, CreateLocalizationOptions(), CreateCurrencyOptions(), Substitute.For<ILogger<CreateBook>>());
+        var result = await BookHandlers.Handle(command, session, CreateLocalizationOptions(), CreateCurrencyOptions(),
+            Substitute.For<HybridCache>(), Substitute.For<ILogger>());
 
         // Assert
         _ = await Assert.That(result).IsAssignableTo<IStatusCodeHttpResult>();
@@ -200,11 +192,13 @@ public class BookHandlerTests
             .Returns(Task.FromResult<Marten.Events.StreamState?>(null));
 
         // Act
-        var result = await BookHandlers.Handle(command, session, contextAccessor, CreateLocalizationOptions(), CreateCurrencyOptions(), Substitute.For<ILogger<UpdateBook>>());
+        var result = await BookHandlers.Handle(command, session, contextAccessor, CreateLocalizationOptions(),
+            CreateCurrencyOptions(), Substitute.For<HybridCache>(), Substitute.For<ILogger>());
 
         // Assert
         _ = await Assert.That(result).IsTypeOf<Microsoft.AspNetCore.Http.HttpResults.NotFound>();
     }
+
     [Test]
     [Category("Unit")]
     public async Task ScheduleSale_ShouldAppendEvent()
@@ -281,11 +275,12 @@ public class BookHandlerTests
         var session = Substitute.For<IDocumentSession>();
 
         _ = session.Events.FetchStreamStateAsync(bookId).Returns(new Marten.Events.StreamState { Version = 1 });
-        
+
         // SaleHandlers.Handle for CancelSale fetches stream and projects manually
         var events = new List<IEvent>
         {
-            new JasperFx.Events.Event<BookSaleScheduled>(new BookSaleScheduled(bookId, new BookSale(10m, saleStart, saleStart.AddDays(1))))
+            new JasperFx.Events.Event<BookSaleScheduled>(new BookSaleScheduled(bookId,
+                new BookSale(10m, saleStart, saleStart.AddDays(1))))
         };
         _ = session.Events.FetchStreamAsync(bookId).Returns(events);
 
@@ -302,7 +297,8 @@ public class BookHandlerTests
 
     static void SetPrivateProperty<T>(T obj, string propertyName, object value)
     {
-        var property = typeof(T).GetProperty(propertyName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        var property = typeof(T).GetProperty(propertyName,
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
         property?.SetValue(obj, value);
     }
 }

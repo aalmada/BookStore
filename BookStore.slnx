@@ -15,10 +15,8 @@
     <Project Path="src/BookStore.ServiceDefaults/BookStore.ServiceDefaults.csproj" />
   </Folder>
   <Folder Name="/tests/">
-    <Folder Name="/ApiService/">
-      <Project Path="tests/BookStore.ApiService.Analyzers.UnitTests/BookStore.ApiService.Analyzers.UnitTests.csproj" />
-      <Project Path="tests/BookStore.ApiService.UnitTests/BookStore.ApiService.UnitTests.csproj" />
-    </Folder>
+    <Project Path="tests/BookStore.ApiService.Analyzers.UnitTests/BookStore.ApiService.Analyzers.UnitTests.csproj" />
+    <Project Path="tests/BookStore.ApiService.UnitTests/BookStore.ApiService.UnitTests.csproj" />
     <Project Path="tests/BookStore.Shared.UnitTests/BookStore.Shared.UnitTests.csproj" />
     <Project Path="tests/BookStore.Web.Tests/BookStore.Web.Tests.csproj" />
     <Project Path="tests/BookStore.AppHost.Tests/BookStore.AppHost.Tests.csproj" />

@@ -6,6 +6,7 @@ using BookStore.ApiService.Infrastructure;
 using BookStore.Shared.Models;
 using Marten;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NSubstitute;
@@ -21,10 +22,7 @@ public class AuthorHandlerTests
         // Arrange
         var command = new CreateAuthor(
             "Robert C. Martin",
-            new Dictionary<string, AuthorTranslationDto>
-            {
-                ["en"] = new AuthorTranslationDto("Uncle Bob")
-            }
+            new Dictionary<string, AuthorTranslationDto> { ["en"] = new AuthorTranslationDto("Uncle Bob") }
         );
 
         var session = Substitute.For<IDocumentSession>();
@@ -37,7 +35,8 @@ public class AuthorHandlerTests
         });
 
         // Act
-        var result = await AuthorHandlers.Handle(command, session, localizationOptions, Substitute.For<ILogger<CreateAuthor>>());
+        var result = await AuthorHandlers.Handle(command, session, localizationOptions, Substitute.For<HybridCache>(),
+            Substitute.For<ILogger>());
 
         // Assert
         _ = await Assert.That(result).IsNotNull();
@@ -57,10 +56,7 @@ public class AuthorHandlerTests
         // Arrange
         var command = new CreateAuthor(
             "Robert C. Martin",
-            new Dictionary<string, AuthorTranslationDto>
-            {
-                [invalidCulture] = new AuthorTranslationDto("Uncle Bob")
-            }
+            new Dictionary<string, AuthorTranslationDto> { [invalidCulture] = new AuthorTranslationDto("Uncle Bob") }
         );
 
         var session = Substitute.For<IDocumentSession>();
@@ -71,7 +67,8 @@ public class AuthorHandlerTests
         });
 
         // Act
-        var result = await AuthorHandlers.Handle(command, session, localizationOptions, Substitute.For<ILogger<CreateAuthor>>());
+        var result = await AuthorHandlers.Handle(command, session, localizationOptions, Substitute.For<HybridCache>(),
+            Substitute.For<ILogger>());
 
         // Assert
         // Assert
@@ -88,14 +85,9 @@ public class AuthorHandlerTests
         var command = new UpdateAuthor(
             Guid.CreateVersion7(),
             "Robert C. Martin Updated",
-            new Dictionary<string, AuthorTranslationDto>
-            {
-                ["en"] = new AuthorTranslationDto("Uncle Bob Updated")
-            }
+            new Dictionary<string, AuthorTranslationDto> { ["en"] = new AuthorTranslationDto("Uncle Bob Updated") }
         )
-        {
-            ETag = "test-etag"
-        };
+        { ETag = "test-etag" };
 
         var session = Substitute.For<IDocumentSession>();
         var httpContext = new DefaultHttpContext();
@@ -116,7 +108,8 @@ public class AuthorHandlerTests
         _ = session.Events.AggregateStreamAsync<AuthorAggregate>(command.Id).Returns(existingAggregate);
 
         // Act
-        var result = await AuthorHandlers.Handle(command, session, httpContextAccessor, localizationOptions, Substitute.For<ILogger<UpdateAuthor>>());
+        var result = await AuthorHandlers.Handle(command, session, httpContextAccessor, localizationOptions,
+            Substitute.For<HybridCache>(), Substitute.For<ILogger>());
 
         // Assert
         _ = await Assert.That(result).IsTypeOf<Microsoft.AspNetCore.Http.HttpResults.NoContent>();
@@ -147,7 +140,8 @@ public class AuthorHandlerTests
         _ = session.Events.AggregateStreamAsync<AuthorAggregate>(id).Returns(existingAggregate);
 
         // Act
-        var result = await AuthorHandlers.Handle(command, session, httpContextAccessor, Substitute.For<ILogger<SoftDeleteAuthor>>());
+        var result = await AuthorHandlers.Handle(command, session, httpContextAccessor, Substitute.For<HybridCache>(),
+            Substitute.For<ILogger>());
 
         // Assert
         _ = await Assert.That(result).IsTypeOf<Microsoft.AspNetCore.Http.HttpResults.NoContent>();
@@ -177,7 +171,8 @@ public class AuthorHandlerTests
         _ = session.Events.AggregateStreamAsync<AuthorAggregate>(id).Returns(existingAggregate);
 
         // Act
-        var result = await AuthorHandlers.Handle(command, session, httpContextAccessor, Substitute.For<ILogger<RestoreAuthor>>());
+        var result = await AuthorHandlers.Handle(command, session, httpContextAccessor, Substitute.For<HybridCache>(),
+            Substitute.For<ILogger>());
 
         // Assert
         _ = await Assert.That(result).IsTypeOf<Microsoft.AspNetCore.Http.HttpResults.NoContent>();
@@ -197,7 +192,8 @@ public class AuthorHandlerTests
         typeof(AuthorAggregate).GetProperty(nameof(AuthorAggregate.Id))!.SetValue(aggregate, id);
         typeof(AuthorAggregate).GetProperty(nameof(AuthorAggregate.Name))!.SetValue(aggregate, name);
         typeof(AuthorAggregate).GetProperty(nameof(AuthorAggregate.Deleted))!.SetValue(aggregate, isDeleted);
-        typeof(AuthorAggregate).GetProperty(nameof(AuthorAggregate.Translations))!.SetValue(aggregate, new Dictionary<string, AuthorTranslation> { ["en"] = new("Bio") });
+        typeof(AuthorAggregate).GetProperty(nameof(AuthorAggregate.Translations))!.SetValue(aggregate,
+            new Dictionary<string, AuthorTranslation> { ["en"] = new("Bio") });
 
         return aggregate;
     }

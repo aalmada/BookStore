@@ -6,6 +6,7 @@ using BookStore.ApiService.Infrastructure;
 using BookStore.Shared.Models;
 using Marten;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NSubstitute;
@@ -20,17 +21,15 @@ public class CategoryHandlerTests
     {
         // Arrange
         var command = new CreateCategory(
-            new Dictionary<string, CategoryTranslationDto>
-            {
-                ["en"] = new CategoryTranslationDto("Technology")
-            }
+            new Dictionary<string, CategoryTranslationDto> { ["en"] = new CategoryTranslationDto("Technology") }
         );
 
         var session = Substitute.For<IDocumentSession>();
         _ = session.CorrelationId.Returns("test-correlation-id");
 
         // Act
-        var result = await CategoryHandlers.Handle(command, session, Substitute.For<ILogger<CreateCategory>>());
+        var result = await CategoryHandlers.Handle(command, session, Substitute.For<HybridCache>(),
+            Substitute.For<ILogger<CreateCategory>>());
 
         // Assert
         _ = await Assert.That(result).IsNotNull();
@@ -52,17 +51,15 @@ public class CategoryHandlerTests
         var name = new string('a', nameLength);
 
         var command = new CreateCategory(
-            new Dictionary<string, CategoryTranslationDto>
-            {
-                [culture] = new CategoryTranslationDto(name)
-            }
+            new Dictionary<string, CategoryTranslationDto> { [culture] = new CategoryTranslationDto(name) }
         );
 
         var session = Substitute.For<IDocumentSession>();
 
         // Act
         // Act
-        var result = await CategoryHandlers.Handle(command, session, Substitute.For<ILogger<CreateCategory>>());
+        var result = await CategoryHandlers.Handle(command, session, Substitute.For<HybridCache>(),
+            Substitute.For<ILogger<CreateCategory>>());
 
         // Assert
         _ = await Assert.That(result).IsAssignableTo<Microsoft.AspNetCore.Http.IStatusCodeHttpResult>();
@@ -77,14 +74,9 @@ public class CategoryHandlerTests
         // Arrange
         var command = new UpdateCategory(
             Guid.CreateVersion7(),
-            new Dictionary<string, CategoryTranslationDto>
-            {
-                ["en"] = new CategoryTranslationDto("Technology Updated")
-            }
+            new Dictionary<string, CategoryTranslationDto> { ["en"] = new CategoryTranslationDto("Technology Updated") }
         )
-        {
-            ETag = "test-etag"
-        };
+        { ETag = "test-etag" };
 
         var session = Substitute.For<IDocumentSession>();
         var httpContext = new DefaultHttpContext();
@@ -100,7 +92,8 @@ public class CategoryHandlerTests
 
         // Act
         // Act
-        var result = await CategoryHandlers.Handle(command, session, httpContextAccessor, Substitute.For<ILogger<UpdateCategory>>());
+        var result = await CategoryHandlers.Handle(command, session, httpContextAccessor, Substitute.For<HybridCache>(),
+            Substitute.For<ILogger<UpdateCategory>>());
 
         // Assert
         _ = await Assert.That(result).IsTypeOf<Microsoft.AspNetCore.Http.HttpResults.NoContent>();
@@ -131,7 +124,8 @@ public class CategoryHandlerTests
         _ = session.Events.AggregateStreamAsync<CategoryAggregate>(id).Returns(existingAggregate);
 
         // Act
-        var result = await CategoryHandlers.Handle(command, session, httpContextAccessor, Substitute.For<ILogger<SoftDeleteCategory>>());
+        var result = await CategoryHandlers.Handle(command, session, httpContextAccessor, Substitute.For<HybridCache>(),
+            Substitute.For<ILogger<SoftDeleteCategory>>());
 
         // Assert
         _ = await Assert.That(result).IsTypeOf<Microsoft.AspNetCore.Http.HttpResults.NoContent>();
@@ -161,7 +155,8 @@ public class CategoryHandlerTests
         _ = session.Events.AggregateStreamAsync<CategoryAggregate>(id).Returns(existingAggregate);
 
         // Act
-        var result = await CategoryHandlers.Handle(command, session, httpContextAccessor, Substitute.For<ILogger<RestoreCategory>>());
+        var result = await CategoryHandlers.Handle(command, session, httpContextAccessor, Substitute.For<HybridCache>(),
+            Substitute.For<ILogger<RestoreCategory>>());
 
         // Assert
         _ = await Assert.That(result).IsTypeOf<Microsoft.AspNetCore.Http.HttpResults.NoContent>();
@@ -176,10 +171,8 @@ public class CategoryHandlerTests
 
         typeof(CategoryAggregate).GetProperty(nameof(CategoryAggregate.Id))!.SetValue(aggregate, id);
         typeof(CategoryAggregate).GetProperty(nameof(CategoryAggregate.Deleted))!.SetValue(aggregate, isDeleted);
-        typeof(CategoryAggregate).GetProperty(nameof(CategoryAggregate.Translations))!.SetValue(aggregate, new Dictionary<string, CategoryTranslation>
-        {
-            ["en"] = new(defaultName)
-        });
+        typeof(CategoryAggregate).GetProperty(nameof(CategoryAggregate.Translations))!.SetValue(aggregate,
+            new Dictionary<string, CategoryTranslation> { ["en"] = new(defaultName) });
 
         return aggregate;
     }

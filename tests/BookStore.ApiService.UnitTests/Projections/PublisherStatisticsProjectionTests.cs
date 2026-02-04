@@ -17,17 +17,17 @@ public class PublisherStatisticsProjectionTests
             Id = publisherId,
             BookCount = count
         };
-        
+
         if (includeBookId.HasValue)
         {
             _ = stats.BookIds.Add(includeBookId.Value);
         }
-        
+
         while (stats.BookIds.Count < count)
         {
             _ = stats.BookIds.Add(Guid.CreateVersion7());
         }
-        
+
         return stats;
     }
 

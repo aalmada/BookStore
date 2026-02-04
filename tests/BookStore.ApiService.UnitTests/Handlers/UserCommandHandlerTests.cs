@@ -1,10 +1,10 @@
+using System.Threading;
 using BookStore.ApiService.Handlers;
 using BookStore.ApiService.Messages.Commands;
 using BookStore.ApiService.Projections;
 using BookStore.Shared.Messages.Events;
 using Marten;
 using NSubstitute;
-using System.Threading;
 
 #pragma warning disable CS8602 // Dereference of a possibly null reference - Exception.Message is never null for our test scenarios
 
