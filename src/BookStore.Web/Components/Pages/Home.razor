@@ -10,6 +10,7 @@
 @inject OptimisticUpdateService OptimisticService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject ISnackbar Snackbar
+@inject CatalogService CatalogService
 @implements IAsyncDisposable
 
 @inject IAuthorsClient AuthorsClient
@@ -18,6 +19,7 @@
 
 @inject TenantService TenantService
 @inject CurrencyService CurrencyService
+@using BookStore.Web.Infrastructure
 
 <PageTitle>@TenantService.CurrentTenantName - Discover Your Next Great Read</PageTitle>
 
@@ -132,6 +134,7 @@
                       OnClearButtonClick="ClearSearch"
                       Immediate="true"
                       FullWidth="true"
+                      UserAttributes="@(new Dictionary<string, object> { { "aria-label", "Search books" } })"
                       Class="mud-text-field-large"/>
     </MudPaper>
 
@@ -202,12 +205,12 @@
                         <MudCardContent>
                             <MudText Typo="Typo.h6" Class="mb-2">@optimisticBook.Title</MudText>
                             <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-1">
-                                <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small"/> @optimisticBook.AuthorNames
+                                <MudIcon Icon="@UIConstants.Icons.Author" Size="Size.Small" Class="mr-1"/> @optimisticBook.AuthorNames
                             </MudText>
                             @if (!string.IsNullOrWhiteSpace(optimisticBook.PublisherName))
                             {
                                 <MudText Typo="Typo.body2" Color="Color.Secondary">
-                                    <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small"/> @optimisticBook.PublisherName
+                                    <MudIcon Icon="@UIConstants.Icons.Publisher" Size="Size.Small" Class="mr-1"/> @optimisticBook.PublisherName
                                 </MudText>
                             }
                         </MudCardContent>
@@ -226,10 +229,11 @@
                         @* Heart Overlay *@
                         <AuthorizeView>
                             <Authorized>
-                                <MudIconButton Icon="@(book.IsFavorite ? Icons.Material.Filled.Favorite : Icons.Material.Filled.FavoriteBorder)"
+                                <MudIconButton Icon="@(book.IsFavorite ? UIConstants.Icons.Favorite : UIConstants.Icons.FavoriteBorder)"
                                                Color="@(book.IsFavorite ? Color.Error : Color.Default)"
                                                OnClick="@(() => ToggleFavorite(book))"
                                                Class="favorite-overlay"
+                                               aria-label="@(book.IsFavorite ? "Remove from favorites" : "Add to favorites")"
                                                Style="position: absolute; top: 12px; right: 12px; z-index: 10; background-color: rgba(255,255,255,0.8); backdrop-filter: blur(4px);"
                                                Size="Size.Medium"/>
                             </Authorized>
@@ -251,7 +255,7 @@
                         else
                         {
                             <MudPaper Elevation="0" Height="200px" Style="background: var(--mud-palette-primary); color: var(--mud-palette-primary-text); display: flex; align-items: center; justify-content: center;">
-                                <MudIcon Icon="@Icons.Material.Filled.MenuBook" Size="Size.Large" Color="Color.Inherit" Style="font-size: 4rem;"/>
+                                <MudIcon Icon="@UIConstants.Icons.Book" Size="Size.Large" Color="Color.Inherit" Style="font-size: 4rem;"/>
                             </MudPaper>
                         }
                         <MudCardContent>
@@ -259,12 +263,12 @@
                                 @book.Title
                             </MudText>
                             <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-1">
-                                <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small"/> @string.Join(", ", book.Authors.Select(a => a.Name))
+                                <MudIcon Icon="@UIConstants.Icons.Author" Size="Size.Small" Class="mr-1"/> @string.Join(", ", book.Authors.Select(a => a.Name))
                             </MudText>
                             @if (book.Categories?.Count > 0)
                             {
                                 <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-1">
-                                    <MudIcon Icon="@Icons.Material.Filled.Category" Size="Size.Small"/>
+                                    <MudIcon Icon="@UIConstants.Icons.Category" Size="Size.Small" Class="mr-1"/>
                                     @foreach (var category in book.Categories)
                                     {
                                         <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" Class="mr-1">@category.Name</MudChip>
@@ -274,7 +278,7 @@
                             @if (book.Publisher != null)
                             {
                                 <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-1">
-                                    <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small"/> @book.Publisher.Name
+                                    <MudIcon Icon="@UIConstants.Icons.Publisher" Size="Size.Small" Class="mr-1"/> @book.Publisher.Name
                                 </MudText>
                             }
                             @if (book.PublicationDate.HasValue)
@@ -311,11 +315,11 @@
                             @if (book.RatingCount > 0)
                             {
                                 <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                                    <MudIcon Icon="@Icons.Material.Filled.Star" Color="Color.Warning" Size="Size.Small"/>
+                                    <MudIcon Icon="@UIConstants.Icons.Star" Color="Color.Warning" Size="Size.Small"/>
                                     <MudText Typo="Typo.caption">@book.AverageRating.ToString("F1")</MudText>
                                 </MudStack>
                             }
-                            <MudChip T="string" Size="Size.Small" Icon="@Icons.Material.Filled.Favorite" Color="Color.Error" Variant="Variant.Text">
+                            <MudChip T="string" Size="Size.Small" Icon="@UIConstants.Icons.Favorite" Color="Color.Error" Variant="Variant.Text">
                                 @book.LikeCount
                             </MudChip>
                         </MudCardActions>
@@ -323,6 +327,10 @@
                 </MudItem>
             }
         </MudGrid>
+
+        <MudScrollToTop>
+            <MudFab Color="Color.Primary" StartIcon="@Icons.Material.Filled.ArrowUpward" aria-label="Back to top"/>
+        </MudScrollToTop>
 
         @* Pagination *@
         @if (pagedBooks.PageCount > 1)
@@ -366,7 +374,6 @@
 
     private string searchQuery = string.Empty;
     private int currentPage = 1;
-    private const int pageSize = 10;
 
     // Filters
     private AuthorDto? selectedAuthor;
@@ -528,7 +535,7 @@
         var request = new BookSearchRequest
         {
             Page = currentPage,
-            PageSize = pageSize,
+            PageSize = UIConstants.DefaultPageSize,
             Search = string.IsNullOrWhiteSpace(searchQuery) ? string.Empty : searchQuery,
             AuthorId = selectedAuthor?.Id,
             CategoryId = selectedCategory?.Id,
@@ -564,7 +571,7 @@
 
         // Debounce search
         debounceTimer?.Dispose();
-        debounceTimer = new System.Threading.Timer(async _ => { await InvokeAsync(SearchBooks); }, null, 500, Timeout.Infinite);
+        debounceTimer = new System.Threading.Timer(async _ => { await InvokeAsync(SearchBooks); }, null, UIConstants.DebounceDelay, Timeout.Infinite);
     }
 
     private async Task SearchBooks()
@@ -608,50 +615,8 @@
 
     private async Task ToggleFavorite(BookDto book)
     {
-        var originalState = book.IsFavorite;
-
-        // 1. Optimistic Update (Immediate Feedback)
-        bookQuery?.MutateData(currentList =>
-        {
-            var items = currentList.Items.ToList();
-            var index = items.FindIndex(b => b.Id == book.Id);
-            if (index != -1)
-            {
-                items[index] = items[index] with
-                {
-                    IsFavorite = !originalState,
-                    LikeCount = originalState ? items[index].LikeCount - 1 : items[index].LikeCount + 1
-                };
-            }
-
-            return new PagedListDto<BookDto>(
-                items,
-                currentList.PageNumber,
-                currentList.PageSize,
-                currentList.TotalItemCount
-            );
-        });
-
-        // 2. Call API
-        try
-        {
-            if (originalState) // Was favorite, so remove
-            {
-                await BooksClient.RemoveBookFromFavoritesAsync(book.Id);
-                Snackbar.Add("Removed from favorites", Severity.Success);
-            }
-            else // Was not favorite, so add
-            {
-                await BooksClient.AddBookToFavoritesAsync(book.Id);
-                Snackbar.Add("Added to favorites", Severity.Success);
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Failed to toggle favorite for book {BookId}", book.Id);
-
-            // 3. Rollback on failure
-            bookQuery?.MutateData(currentList =>
+        await CatalogService.ToggleFavoriteAsync(book,
+            setOptimistic: (newState) => bookQuery?.MutateData(currentList =>
             {
                 var items = currentList.Items.ToList();
                 var index = items.FindIndex(b => b.Id == book.Id);
@@ -659,8 +624,8 @@
                 {
                     items[index] = items[index] with
                     {
-                        IsFavorite = originalState,
-                        LikeCount = originalState ? items[index].LikeCount + 1 : items[index].LikeCount - 1
+                        IsFavorite = newState,
+                        LikeCount = newState ? items[index].LikeCount + 1 : items[index].LikeCount - 1
                     };
                 }
 
@@ -670,10 +635,27 @@
                     currentList.PageSize,
                     currentList.TotalItemCount
                 );
-            });
+            }),
+            setRollback: (oldState) => bookQuery?.MutateData(currentList =>
+            {
+                var items = currentList.Items.ToList();
+                var index = items.FindIndex(b => b.Id == book.Id);
+                if (index != -1)
+                {
+                    items[index] = items[index] with
+                    {
+                        IsFavorite = oldState,
+                        LikeCount = oldState ? items[index].LikeCount + 1 : items[index].LikeCount - 1
+                    };
+                }
 
-            Snackbar.Add($"Failed: {ex.Message}", Severity.Error);
-        }
+                return new PagedListDto<BookDto>(
+                    items,
+                    currentList.PageNumber,
+                    currentList.PageSize,
+                    currentList.TotalItemCount
+                );
+            }));
     }
 
     private async Task RetryLoad()
@@ -715,46 +697,3 @@
     }
 
 }
-
-<style>
-    .book-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2) !important;
-    }
-
-    .optimistic-card {
-        animation: pulse 2s ease-in-out infinite;
-        opacity: 0.9;
-    }
-
-    @@keyframes pulse {
-        0%, 100% {
-            opacity: 0.9;
-        }
-        50% {
-            opacity: 1;
-        }
-    }
-
-    .mud-text-field-large .mud-input {
-        font-size: 1.1rem;
-    }
-
-    .deleted-book {
-        filter: grayscale(100%);
-        opacity: 0.7;
-    }
-    
-    .deleted-book:hover {
-        transform: none !important;
-        box-shadow: none !important;
-        cursor: not-allowed;
-    }
-    
-    .deleted-badge {
-        filter: none; /* Ensure badge itself isn't grayscale if possible, but filter applies to element */
-        /* Since filter applies to the whole card, the badge will also be grayscale. 
-           To fix this properly, we'd need to apply filter to content excluding badge, or accept it. 
-           Accepting it for now as red in grayscale is still dark/distinct. */
-    }
-</style>
