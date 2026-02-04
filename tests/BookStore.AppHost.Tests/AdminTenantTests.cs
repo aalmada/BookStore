@@ -2,6 +2,7 @@ using System.Net;
 using BookStore.ApiService.Models;
 using BookStore.Client;
 using BookStore.Shared.Models;
+using JasperFx.Events;
 using Marten;
 using Refit;
 using Weasel.Core;
@@ -142,6 +143,11 @@ public class AdminTenantTests
             opts.Connection(connectionString!);
             opts.UseSystemTextJsonForSerialization(EnumStorage.AsString, Casing.CamelCase);
             _ = opts.Policies.AllDocumentsAreMultiTenanted();
+
+            opts.Events.AppendMode = EventAppendMode.Quick;
+            opts.Events.UseArchivedStreamPartitioning = true;
+            opts.Events.EnableEventSkippingInProjectionsOrSubscriptions = true;
+
             opts.Events.TenancyStyle = Marten.Storage.TenancyStyle.Conjoined;
         });
 
