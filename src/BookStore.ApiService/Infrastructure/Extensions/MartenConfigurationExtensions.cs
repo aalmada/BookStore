@@ -55,6 +55,11 @@ public static class MartenConfigurationExtensions
             // but these might help "heal" systems that have problems later
             options.Events.EnableAdvancedAsyncTracking = true;
 
+            // This will optimize the usage of Inline projections, but will force
+            // you to treat your aggregate projection "write models" as being
+            // immutable in your command handler code
+            options.Events.UseIdentityMapForAggregates = true;
+
             // Configure automatic schema creation/updates based on environment
             // Development: All - creates/updates/drops schema objects as needed
             // Production: CreateOnly - only creates missing objects, never modifies existing
