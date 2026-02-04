@@ -48,6 +48,9 @@ public static class MartenConfigurationExtensions
             var options = new StoreOptions();
             options.Connection(connectionString);
 
+            // 50% improvement in throughput, less "event skipping"
+            options.Events.AppendMode = EventAppendMode.Quick;
+
             // Configure automatic schema creation/updates based on environment
             // Development: All - creates/updates/drops schema objects as needed
             // Production: CreateOnly - only creates missing objects, never modifies existing
