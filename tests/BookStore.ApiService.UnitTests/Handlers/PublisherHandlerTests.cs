@@ -2,18 +2,13 @@ using BookStore.ApiService.Aggregates;
 using BookStore.ApiService.Commands;
 using BookStore.ApiService.Events;
 using BookStore.ApiService.Handlers.Publishers;
-using BookStore.ApiService.Infrastructure;
-using BookStore.Shared.Models;
-using Marten;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Caching.Hybrid;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using NSubstitute;
 
 namespace BookStore.ApiService.UnitTests.Handlers;
 
-public class PublisherHandlerTests
+public class PublisherHandlerTests : HandlerTestBase
 {
     [Test]
     [Category("Unit")]
@@ -22,16 +17,12 @@ public class PublisherHandlerTests
         // Arrange
         var command = new CreatePublisher("O'Reilly Media");
 
-        var session = Substitute.For<IDocumentSession>();
-        _ = session.CorrelationId.Returns("test-correlation-id");
-
         // Act
-        var result =
-            await PublisherHandlers.Handle(command, session, Substitute.For<HybridCache>(), Substitute.For<ILogger>());
+        var result = await PublisherHandlers.Handle(command, Session, Cache, Logger);
 
         // Assert
         _ = await Assert.That(result).IsNotNull();
-        _ = session.Events.Received(1).StartStream<PublisherAggregate>(
+        _ = Session.Events.Received(1).StartStream<PublisherAggregate>(
             command.Id,
             Arg.Is<PublisherAdded>(e =>
                 e.Name == "O'Reilly Media"));
@@ -42,34 +33,25 @@ public class PublisherHandlerTests
     public async Task UpdatePublisherHandler_ShouldAppendPublisherUpdatedEvent()
     {
         // Arrange
-        var command = new UpdatePublisher(
-            Guid.CreateVersion7(),
-            "O'Reilly Updated"
-        )
-        { ETag = "test-etag" };
-
-        var session = Substitute.For<IDocumentSession>();
-        var httpContext = new DefaultHttpContext();
-        var httpContextAccessor = Substitute.For<IHttpContextAccessor>();
-        _ = httpContextAccessor.HttpContext.Returns(httpContext);
+        var command = new UpdatePublisher(Guid.CreateVersion7(), "O'Reilly Media Updated") { ETag = "test-etag" };
 
         // Mock Stream State
-        _ = session.Events.FetchStreamStateAsync(command.Id).Returns(new Marten.Events.StreamState { Version = 1 });
+        _ = Session.Events.FetchStreamStateAsync(command.Id).Returns(new Marten.Events.StreamState { Version = 1 });
 
         // Mock Aggregate Load
-        var existingAggregate = CreatePublisherAggregate(command.Id, "O'Reilly", false);
-        _ = session.Events.AggregateStreamAsync<PublisherAggregate>(command.Id).Returns(existingAggregate);
+        var existingAggregate = AggregateFactory.Hydrate<PublisherAggregate>(
+            new PublisherAdded(command.Id, "Old Name", DateTimeOffset.UtcNow));
+        _ = Session.Events.AggregateStreamAsync<PublisherAggregate>(command.Id).Returns(existingAggregate);
 
         // Act
-        var result = await PublisherHandlers.Handle(command, session, httpContextAccessor,
-            Substitute.For<HybridCache>(), Substitute.For<ILogger>());
+        var result = await PublisherHandlers.Handle(command, Session, HttpContextAccessor, Cache, Logger);
 
         // Assert
-        _ = await Assert.That(result).IsTypeOf<Microsoft.AspNetCore.Http.HttpResults.NoContent>();
-        _ = session.Events.Received(1).Append(
+        _ = await Assert.That(result).IsTypeOf<NoContent>();
+        _ = Session.Events.Received(1).Append(
             command.Id,
             Arg.Is<PublisherUpdated>(e =>
-                e.Name == "O'Reilly Updated"));
+                e.Name == "O'Reilly Media Updated"));
     }
 
     [Test]
@@ -80,25 +62,20 @@ public class PublisherHandlerTests
         var id = Guid.CreateVersion7();
         var command = new SoftDeletePublisher(id);
 
-        var session = Substitute.For<IDocumentSession>();
-        var httpContext = new DefaultHttpContext();
-        var httpContextAccessor = Substitute.For<IHttpContextAccessor>();
-        _ = httpContextAccessor.HttpContext.Returns(httpContext);
-
         // Mock Stream State
-        _ = session.Events.FetchStreamStateAsync(id).Returns(new Marten.Events.StreamState { Version = 1 });
+        _ = Session.Events.FetchStreamStateAsync(id).Returns(new Marten.Events.StreamState { Version = 1 });
 
         // Mock Aggregate Load
-        var existingAggregate = CreatePublisherAggregate(id, "O'Reilly", false);
-        _ = session.Events.AggregateStreamAsync<PublisherAggregate>(id).Returns(existingAggregate);
+        var existingAggregate = AggregateFactory.Hydrate<PublisherAggregate>(
+            new PublisherAdded(id, "O'Reilly", DateTimeOffset.UtcNow));
+        _ = Session.Events.AggregateStreamAsync<PublisherAggregate>(id).Returns(existingAggregate);
 
         // Act
-        var result = await PublisherHandlers.Handle(command, session, httpContextAccessor,
-            Substitute.For<HybridCache>(), Substitute.For<ILogger>());
+        var result = await PublisherHandlers.Handle(command, Session, HttpContextAccessor, Cache, Logger);
 
         // Assert
-        _ = await Assert.That(result).IsTypeOf<Microsoft.AspNetCore.Http.HttpResults.NoContent>();
-        _ = session.Events.Received(1).Append(
+        _ = await Assert.That(result).IsTypeOf<NoContent>();
+        _ = Session.Events.Received(1).Append(
             id,
             Arg.Is<PublisherSoftDeleted>(e => e.Id == id));
     }
@@ -111,37 +88,22 @@ public class PublisherHandlerTests
         var id = Guid.CreateVersion7();
         var command = new RestorePublisher(id);
 
-        var session = Substitute.For<IDocumentSession>();
-        var httpContext = new DefaultHttpContext();
-        var httpContextAccessor = Substitute.For<IHttpContextAccessor>();
-        _ = httpContextAccessor.HttpContext.Returns(httpContext);
-
         // Mock Stream State
-        _ = session.Events.FetchStreamStateAsync(id).Returns(new Marten.Events.StreamState { Version = 1 });
+        _ = Session.Events.FetchStreamStateAsync(id).Returns(new Marten.Events.StreamState { Version = 1 });
 
         // Mock Aggregate Load - Create DELETED aggregate
-        var existingAggregate = CreatePublisherAggregate(id, "O'Reilly", true);
-        _ = session.Events.AggregateStreamAsync<PublisherAggregate>(id).Returns(existingAggregate);
+        var existingAggregate = AggregateFactory.Hydrate<PublisherAggregate>(
+            new PublisherAdded(id, "O'Reilly", DateTimeOffset.UtcNow),
+            new PublisherSoftDeleted(id, DateTimeOffset.UtcNow));
+        _ = Session.Events.AggregateStreamAsync<PublisherAggregate>(id).Returns(existingAggregate);
 
         // Act
-        var result = await PublisherHandlers.Handle(command, session, httpContextAccessor,
-            Substitute.For<HybridCache>(), Substitute.For<ILogger>());
+        var result = await PublisherHandlers.Handle(command, Session, HttpContextAccessor, Cache, Logger);
 
         // Assert
-        _ = await Assert.That(result).IsTypeOf<Microsoft.AspNetCore.Http.HttpResults.NoContent>();
-        _ = session.Events.Received(1).Append(
+        _ = await Assert.That(result).IsTypeOf<NoContent>();
+        _ = Session.Events.Received(1).Append(
             id,
             Arg.Is<PublisherRestored>(e => e.Id == id));
-    }
-
-    static PublisherAggregate CreatePublisherAggregate(Guid id, string name, bool isDeleted)
-    {
-        var aggregate = (PublisherAggregate)Activator.CreateInstance(typeof(PublisherAggregate), true)!;
-
-        typeof(PublisherAggregate).GetProperty(nameof(PublisherAggregate.Id))!.SetValue(aggregate, id);
-        typeof(PublisherAggregate).GetProperty(nameof(PublisherAggregate.Name))!.SetValue(aggregate, name);
-        typeof(PublisherAggregate).GetProperty(nameof(PublisherAggregate.Deleted))!.SetValue(aggregate, isDeleted);
-
-        return aggregate;
     }
 }
