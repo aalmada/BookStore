@@ -24,6 +24,10 @@ public static class WolverineConfigurationExtensions
             // Policies for automatic behavior
             opts.Policies.AutoApplyTransactions();
             opts.Policies.AddMiddleware(typeof(WolverineCorrelationMiddleware));
+
+            // This *should* have some performance improvements, but would
+            // require downtime to enable in existing systems
+            opts.Durability.EnableInboxPartitioning = true;
         });
 
         return services;
