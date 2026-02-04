@@ -6,6 +6,7 @@ using BookStore.ApiService.Events;
 using BookStore.Shared.Models;
 using JasperFx;
 using JasperFx.Core;
+using JasperFx.Events;
 using Marten;
 using Microsoft.Extensions.Logging;
 using Projects;
@@ -94,8 +95,11 @@ public static class GlobalHooks
 
                    opts.Connection(connectionString);
                    _ = opts.Policies.AllDocumentsAreMultiTenanted();
-                   // Configure Multi-Tenancy (Conjoined)
-                   _ = opts.Policies.AllDocumentsAreMultiTenanted();
+
+                   opts.Events.AppendMode = EventAppendMode.Quick;
+                   opts.Events.UseArchivedStreamPartitioning = true;
+                   opts.Events.EnableEventSkippingInProjectionsOrSubscriptions = true;
+
                    opts.Events.MetadataConfig.CorrelationIdEnabled = true;
                    opts.Events.MetadataConfig.CausationIdEnabled = true;
                    opts.Events.MetadataConfig.HeadersEnabled = true;

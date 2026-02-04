@@ -50,10 +50,15 @@ public static class MartenConfigurationExtensions
 
             // 50% improvement in throughput, less "event skipping"
             options.Events.AppendMode = EventAppendMode.Quick;
+            options.Events.UseArchivedStreamPartitioning = true;
 
             // These cause some database changes, so can't be defaults,
             // but these might help "heal" systems that have problems later
             options.Events.EnableAdvancedAsyncTracking = true;
+
+            // Enables you to mark events as just plain bad so they are skipped
+            // in projections from here on out.
+            options.Events.EnableEventSkippingInProjectionsOrSubscriptions = true;
 
             // This will optimize the usage of Inline projections, but will force
             // you to treat your aggregate projection "write models" as being
@@ -170,7 +175,6 @@ public static class MartenConfigurationExtensions
         // Publisher events
         _ = options.Events.AddEventType<Events.PublisherAdded>();
         _ = options.Events.AddEventType<Events.PublisherUpdated>();
-        _ = options.Events.AddEventType<Events.PublisherSoftDeleted>();
         _ = options.Events.AddEventType<Events.PublisherSoftDeleted>();
         _ = options.Events.AddEventType<Events.PublisherRestored>();
 
