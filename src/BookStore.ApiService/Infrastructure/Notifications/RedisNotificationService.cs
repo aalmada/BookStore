@@ -30,6 +30,23 @@ public class RedisNotificationService : INotificationService, IDisposable
 
         // Subscribe to Redis pub/sub channel
         InitializeRedisSubscription();
+
+        // Start a background heartbeat to verify connectivity
+        _ = Task.Run(async () =>
+        {
+            while (true)
+            {
+                await Task.Delay(10000);
+                try
+                {
+                    await NotifyAsync(new PingNotification());
+                }
+                catch (Exception ex)
+                {
+                    Log.Notifications.FailedToSendHeartbeat(_logger, ex);
+                }
+            }
+        });
     }
 
     void InitializeRedisSubscription()

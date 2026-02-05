@@ -554,10 +554,21 @@
 
     private void HandleNotification(BookStore.Shared.Notifications.IDomainEventNotification notification)
     {
-        // Side effect: Confirm optimistic book if created
-        if (notification is BookStore.Shared.Notifications.BookCreatedNotification bookCreated)
+        try
         {
-            OptimisticService.ConfirmBook(bookCreated.EntityId);
+            // Side effect: Confirm optimistic book if created
+            if (notification is BookStore.Shared.Notifications.BookCreatedNotification bookCreated)
+            {
+                OptimisticService.ConfirmBook(bookCreated.EntityId);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected during navigation
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error processing notification in Home.");
         }
     }
 

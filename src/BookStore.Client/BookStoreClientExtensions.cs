@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Refit;
 
 namespace BookStore.Client;
@@ -70,7 +71,16 @@ public static class BookStoreClientExtensions
         this IServiceCollection services,
         Uri baseAddress)
     {
-        _ = services.AddHttpClient<BookStoreEventsService>(client => client.BaseAddress = baseAddress);
+        _ = services.AddHttpClient("BookStoreEvents", client => client.BaseAddress = baseAddress);
+        // Explicitly register as Scoped to ensure one connection per Blazor Circuit
+        _ = services.AddScoped<BookStoreEventsService>(sp =>
+        {
+            var factory = sp.GetRequiredService<IHttpClientFactory>();
+            var client = factory.CreateClient("BookStoreEvents");
+            var logger = sp.GetRequiredService<ILogger<BookStoreEventsService>>();
+            var context = sp.GetRequiredService<Services.ClientContextService>();
+            return new BookStoreEventsService(client, logger, context);
+        });
         return services;
     }
 }

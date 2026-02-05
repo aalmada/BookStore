@@ -96,5 +96,11 @@ public static partial class Log
             Level = LogLevel.Warning,
             Message = "Error unsubscribing from Redis during disposal")]
         public static partial void FailedToUnsubscribeFromRedis(ILogger logger, Exception ex);
+
+        [LoggerMessage(
+            EventId = 6016,
+            Level = LogLevel.Debug,
+            Message = "Failed to send heartbeat ping")]
+        public static partial void FailedToSendHeartbeat(ILogger logger, Exception ex);
     }
 }

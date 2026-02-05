@@ -85,7 +85,7 @@ public static class AuthorHandlers
         IHttpContextAccessor httpContextAccessor,
         IOptions<LocalizationOptions> localizationOptions,
         HybridCache cache,
-        ILogger _)
+        ILogger logger)
     {
         // Validate language codes in biographies if provided
         if (command.Translations?.Count > 0)
@@ -143,10 +143,7 @@ public static class AuthorHandlers
             return eventResult.ToProblemDetails();
         }
 
-        var streamAction = session.Events.Append(command.Id, eventResult.Value);
-
-        // Invalidate cache
-        await cache.RemoveByTagAsync([CacheTags.AuthorList, CacheTags.ForItem(CacheTags.AuthorItemPrefix, command.Id)], context.RequestAborted);
+        _ = session.Events.Append(command.Id, eventResult.Value);
 
         return Results.NoContent();
     }
@@ -190,9 +187,6 @@ public static class AuthorHandlers
 
         _ = session.Events.Append(command.Id, eventResult.Value);
 
-        // Invalidate cache
-        await cache.RemoveByTagAsync([CacheTags.AuthorList, CacheTags.ForItem(CacheTags.AuthorItemPrefix, command.Id)], context.RequestAborted);
-
         return Results.NoContent();
     }
 
@@ -234,9 +228,6 @@ public static class AuthorHandlers
         }
 
         _ = session.Events.Append(command.Id, eventResult.Value);
-
-        // Invalidate cache
-        await cache.RemoveByTagAsync([CacheTags.AuthorList, CacheTags.ForItem(CacheTags.AuthorItemPrefix, command.Id)], context.RequestAborted);
 
         return Results.NoContent();
     }

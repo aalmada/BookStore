@@ -224,9 +224,6 @@ public static class BookHandlers
 
         _ = session.Events.Append(command.Id, eventResult.Value);
 
-        // Invalidate cache
-        await cache.RemoveByTagAsync([CacheTags.BookList, CacheTags.ForItem(CacheTags.BookItemPrefix, command.Id)], context.RequestAborted);
-
         return Results.NoContent();
     }
 
@@ -276,9 +273,6 @@ public static class BookHandlers
 
         _ = session.Events.Append(command.Id, eventResult.Value);
 
-        // Invalidate cache
-        await cache.RemoveByTagAsync([CacheTags.BookList, CacheTags.ForItem(CacheTags.BookItemPrefix, command.Id)], context.RequestAborted);
-
         return Results.NoContent();
     }
 
@@ -327,9 +321,6 @@ public static class BookHandlers
         }
 
         _ = session.Events.Append(command.Id, eventResult.Value);
-
-        // Invalidate cache
-        await cache.RemoveByTagAsync([CacheTags.BookList, CacheTags.ForItem(CacheTags.BookItemPrefix, command.Id)], context.RequestAborted);
 
         return Results.NoContent();
     }

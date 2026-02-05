@@ -1,12 +1,14 @@
 @page "/admin/books"
-@using BookStore.Client
-@using BookStore.Shared.Models
 @using Microsoft.AspNetCore.Authorization
-@using MudBlazor
+@using BookStore.Shared.Notifications
+@implements IDisposable
+@attribute [Authorize(Roles = "Admin")]
 @inject IBooksClient BooksClient
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
-@attribute [Authorize(Roles = "Admin")]
+@inject BookStoreEventsService EventsService
+@inject QueryInvalidationService InvalidationService
+@inject ILogger<BookManagement> Logger
 
 <PageTitle>Book Management - BookStore</PageTitle>
 
@@ -94,7 +96,57 @@
     private MudTable<AdminBookDto> _table = null!;
     private string _searchString = "";
 
-    private async Task<TableData<AdminBookDto>> ReloadData(TableState state, CancellationToken ct)
+    protected override void OnInitialized()
+    {
+        EventsService.StartListening();
+        EventsService.OnNotificationReceived += HandleNotification;
+    }
+
+    public void Dispose()
+    {
+        EventsService.OnNotificationReceived -= HandleNotification;
+    }
+
+    private async void HandleNotification(IDomainEventNotification notification)
+    {
+        try
+        {
+            if (notification is PingNotification)
+            {
+                Logger.LogTrace("SSE Heartbeat (Ping) received.");
+                return;
+            }
+
+            Logger.LogDebug("Received notification: {EventType} for {EntityId}", notification.EventType, notification.EntityId);
+
+            if (InvalidationService.ShouldInvalidate(notification, ["Books"]))
+            {
+                Logger.LogInformation("Real-time update match for Books. Refreshing...");
+                await InvokeAsync(async () =>
+                {
+                    Snackbar.Add("Real-time update received. Refreshing list...", Severity.Info);
+                    await Task.Delay(1500);
+                    await _table.ReloadServerData();
+                    StateHasChanged();
+                });
+            }
+            else
+            {
+                Logger.LogDebug("Notification {EventType} does not match invalidation keys for Books.", notification.EventType);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            Logger.LogDebug("BookManagement notification update was canceled (likely navigation).");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error processing real-time update for Books.");
+        }
+    }
+
+    private async Task<TableData
+        <AdminBookDto>> ReloadData(TableState state, CancellationToken ct)
     {
         try
         {
@@ -105,23 +157,30 @@
                             b.Title.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
                 .ToList();
 
-            return new TableData<AdminBookDto>
-            {
-                TotalItems = filtered.Count,
-                Items = filtered.Skip(state.Page * state.PageSize).Take(state.PageSize)
-            };
+            return new TableData
+                <AdminBookDto>
+                {
+                    TotalItems = filtered.Count,
+                    Items = filtered.Skip(state.Page * state.PageSize).Take(state.PageSize)
+                };
         }
         catch (Exception ex)
         {
             Snackbar.Add($"Failed to load books: {ex.Message}", Severity.Error);
-            return new TableData<AdminBookDto> { TotalItems = 0, Items = Array.Empty<AdminBookDto>() };
+            return new TableData
+                <AdminBookDto>
+                {
+                    TotalItems = 0, Items = Array.Empty
+                        <AdminBookDto>()
+                };
         }
     }
 
     private async Task OpenAddDialog()
     {
         var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
-        var dialog = await DialogService.ShowAsync<AddBookDialog>("Add New Book", options);
+        var dialog = await DialogService.ShowAsync
+            <AddBookDialog>("Add New Book", options);
         var result = await dialog.Result;
         if (result != null && !result.Canceled)
         {
@@ -131,35 +190,37 @@
 
     private async Task EditBook(AdminBookDto book)
     {
-        var parameters = new DialogParameters<AddBookDialog>
-        {
+        var parameters = new DialogParameters
+            <AddBookDialog>
             {
-                x => x.Model, new CreateBookRequest
                 {
-                    Title = book.Title,
-                    Isbn = book.Isbn,
-                    Language = book.Language,
-                    Translations = book.Translations?.ToDictionary(
-                        kvp => kvp.Key,
-                        kvp => new BookStore.Client.BookTranslationDto
-                        {
-                            Description = kvp.Value.Description
-                        }),
-                    PublicationDate = book.PublicationDate ?? new BookStore.Shared.Models.PartialDate(DateTime.Now.Year),
-                    PublisherId = book.Publisher?.Id,
-                    AuthorIds = book.Authors.Select(a => a.Id).ToList(),
-                    CategoryIds = book.Categories.Select(c => c.Id).ToList()
-                }
-            },
-            { x => x.IsEdit, true },
-            { x => x.BookId, book.Id },
-            { x => x.InitialAuthors, book.Authors.ToList() },
-            { x => x.InitialCategories, book.Categories.ToList() },
-            { x => x.InitialPublisher, book.Publisher }
-        };
+                    x => x.Model, new CreateBookRequest
+                    {
+                        Title = book.Title,
+                        Isbn = book.Isbn,
+                        Language = book.Language,
+                        Translations = book.Translations?.ToDictionary(
+                            kvp => kvp.Key,
+                            kvp => new BookStore.Client.BookTranslationDto
+                            {
+                                Description = kvp.Value.Description
+                            }),
+                        PublicationDate = book.PublicationDate ?? new BookStore.Shared.Models.PartialDate(DateTime.Now.Year),
+                        PublisherId = book.Publisher?.Id,
+                        AuthorIds = book.Authors.Select(a => a.Id).ToList(),
+                        CategoryIds = book.Categories.Select(c => c.Id).ToList()
+                    }
+                },
+                { x => x.IsEdit, true },
+                { x => x.BookId, book.Id },
+                { x => x.InitialAuthors, book.Authors.ToList() },
+                { x => x.InitialCategories, book.Categories.ToList() },
+                { x => x.InitialPublisher, book.Publisher }
+            };
 
         var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
-        var dialog = await DialogService.ShowAsync<AddBookDialog>("Edit Book", parameters, options);
+        var dialog = await DialogService.ShowAsync
+            <AddBookDialog>("Edit Book", parameters, options);
         var result = await dialog.Result;
         if (result != null && !result.Canceled)
         {

@@ -23,6 +23,8 @@ namespace BookStore.Shared.Notifications;
 [JsonDerivedType(typeof(BookCoverUpdatedNotification), "BookCoverUpdated")]
 [JsonDerivedType(typeof(UserVerifiedNotification), "UserVerified")]
 [JsonDerivedType(typeof(UserUpdatedNotification), "UserUpdated")]
+[JsonDerivedType(typeof(TenantCreatedNotification), "TenantCreated")]
+[JsonDerivedType(typeof(TenantUpdatedNotification), "TenantUpdated")]
 public interface IDomainEventNotification
 {
     Guid EventId { get; }
@@ -226,4 +228,30 @@ public record UserUpdatedNotification(
     int FavoritesCount = 0) : IDomainEventNotification
 {
     public string EventType => "UserUpdated";
+}
+
+/// <summary>
+/// Notification when a tenant is created
+/// </summary>
+public record TenantCreatedNotification(
+    Guid EventId,
+    string EntityId,
+    string Name,
+    DateTimeOffset Timestamp) : IDomainEventNotification
+{
+    public string EventType => "TenantCreated";
+    Guid IDomainEventNotification.EntityId => Guid.Empty; // Tenants use string IDs, so we return Empty for the Guid property
+}
+
+/// <summary>
+/// Notification when a tenant is updated
+/// </summary>
+public record TenantUpdatedNotification(
+    Guid EventId,
+    string EntityId,
+    string Name,
+    DateTimeOffset Timestamp) : IDomainEventNotification
+{
+    public string EventType => "TenantUpdated";
+    Guid IDomainEventNotification.EntityId => Guid.Empty;
 }

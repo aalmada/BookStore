@@ -130,9 +130,6 @@ public static class CategoryHandlers
 
         _ = session.Events.Append(command.Id, eventResult.Value);
 
-        // Invalidate cache
-        await cache.RemoveByTagAsync([CacheTags.CategoryList, CacheTags.ForItem(CacheTags.CategoryItemPrefix, command.Id)], context?.RequestAborted ?? default);
-
         return Results.NoContent();
     }
 
@@ -175,9 +172,6 @@ public static class CategoryHandlers
 
         _ = session.Events.Append(command.Id, eventResult.Value);
 
-        // Invalidate cache
-        await cache.RemoveByTagAsync([CacheTags.CategoryList, CacheTags.ForItem(CacheTags.CategoryItemPrefix, command.Id)], context?.RequestAborted ?? default);
-
         return Results.NoContent();
     }
 
@@ -219,9 +213,6 @@ public static class CategoryHandlers
         }
 
         _ = session.Events.Append(command.Id, eventResult.Value);
-
-        // Invalidate cache
-        await cache.RemoveByTagAsync([CacheTags.CategoryList, CacheTags.ForItem(CacheTags.CategoryItemPrefix, command.Id)], context?.RequestAborted ?? default);
 
         return Results.NoContent();
     }

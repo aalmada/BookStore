@@ -97,8 +97,13 @@ public class QueryInvalidationService
                 break;
 
             case UserUpdatedNotification n:
-                yield return "User";
+                yield return "Users";
                 yield return $"User:{n.EntityId}";
+                break;
+
+            case TenantCreatedNotification:
+            case TenantUpdatedNotification:
+                yield return "Tenants";
                 break;
         }
     }

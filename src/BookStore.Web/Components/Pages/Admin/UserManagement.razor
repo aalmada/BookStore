@@ -1,8 +1,13 @@
 @page "/admin/users"
 @using Microsoft.AspNetCore.Authorization
+@using BookStore.Shared.Notifications
+@implements IDisposable
 @inject IAdminUserClient UserClient
 @inject AuthenticationStateProvider AuthStateProvider
 @inject ISnackbar Snackbar
+@inject BookStoreEventsService EventsService
+@inject QueryInvalidationService InvalidationService
+@inject ILogger<UserManagement> Logger
 @attribute [Authorize(Roles = "Admin")]
 
 <PageTitle>User Management - BookStore</PageTitle>
@@ -202,6 +207,48 @@
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         _currentUserEmail = authState.User.Identity?.Name;
+
+        EventsService.OnNotificationReceived += HandleNotification;
+    }
+
+    public void Dispose()
+    {
+        EventsService.OnNotificationReceived -= HandleNotification;
+    }
+
+    private async void HandleNotification(IDomainEventNotification notification)
+    {
+        try
+        {
+            if (notification is PingNotification)
+            {
+                Logger.LogTrace("SSE Heartbeat (Ping) received.");
+                return;
+            }
+
+            Logger.LogDebug("Received notification: {EventType} for {EntityId}", notification.EventType, notification.EntityId);
+
+            if (InvalidationService.ShouldInvalidate(notification, ["Users"]))
+            {
+                Logger.LogInformation("Real-time update match for Users. Refreshing...");
+
+                await InvokeAsync(async () =>
+                {
+                    Snackbar.Add("Real-time update received. Refreshing list...", Severity.Info);
+                    await Task.Delay(1500); // Wait for projections to settle
+                    await _table.ReloadServerData();
+                    StateHasChanged();
+                });
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            Logger.LogDebug("UserManagement notification update was canceled (likely navigation).");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error processing real-time update for Users.");
+        }
     }
 
 

@@ -255,10 +255,7 @@ public static class MartenConfigurationExtensions
     {
         // Register commit listener for cache invalidation and SSE notifications
         // This ensures actions are taken AFTER read models are updated
-        var cache = sp.GetRequiredService<Microsoft.Extensions.Caching.Hybrid.HybridCache>();
-        var notificationService = sp.GetRequiredService<Notifications.INotificationService>();
-        var logger = sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ProjectionCommitListener>>();
-        var listener = new ProjectionCommitListener(cache, notificationService, logger);
+        var listener = sp.GetRequiredService<ProjectionCommitListener>();
         options.Listeners.Add(listener);
         options.Projections.AsyncListeners.Add(listener);
     }

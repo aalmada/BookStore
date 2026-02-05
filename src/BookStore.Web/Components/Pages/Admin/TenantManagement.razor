@@ -1,11 +1,16 @@
 @page "/admin/tenants"
 @using Microsoft.AspNetCore.Authorization
 @using BookStore.Shared.Models
+@using BookStore.Shared.Notifications
 @using BookStore.Shared.Validation
 @using BookStore.Web.Infrastructure
+@implements IDisposable
 @inject IAdminTenantClient TenantClient
 @inject TenantService TenantService
 @inject ISnackbar Snackbar
+@inject BookStoreEventsService EventsService
+@inject QueryInvalidationService InvalidationService
+@inject ILogger<TenantManagement> Logger
 @inject BookStore.Web.Services.ErrorLocalizationService ErrorLocalizer
 @attribute [Authorize(Policy = "SystemAdmin")]
 
@@ -144,6 +149,48 @@
     protected override async Task OnInitializedAsync()
     {
         await LoadTenantsAsync();
+        EventsService.OnNotificationReceived += HandleNotification;
+    }
+
+    public void Dispose()
+    {
+        EventsService.OnNotificationReceived -= HandleNotification;
+    }
+
+    private async void HandleNotification(IDomainEventNotification notification)
+    {
+        try
+        {
+            if (notification is PingNotification)
+            {
+                Logger.LogTrace("SSE Heartbeat (Ping) received.");
+                return;
+            }
+
+            Logger.LogDebug("Received notification: {EventType} for {EntityId}", notification.EventType, notification.EntityId);
+
+            if (InvalidationService.ShouldInvalidate(notification, ["Tenants"]))
+            {
+                Logger.LogInformation("Real-time update match for Tenants. Refreshing...");
+
+                await InvokeAsync(async () =>
+                {
+                    Snackbar.Add("Real-time update received. Refreshing list...", Severity.Info);
+                    await Task.Delay(1500); // Wait for projections to settle
+                    await LoadTenantsAsync();
+                    await TenantService.RefreshAvailableTenantsAsync();
+                    StateHasChanged();
+                });
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            Logger.LogDebug("TenantManagement notification update was canceled (likely navigation).");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error processing real-time update for Tenants.");
+        }
     }
 
     private async Task LoadTenantsAsync()

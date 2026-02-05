@@ -15,6 +15,23 @@ public static class NotificationEndpoints
             .WithSummary("Subscribe to real-time notifications via SSE")
             .Produces(StatusCodes.Status200OK, contentType: "text/event-stream");
 
+        _ = group.MapPost("/test-notification", async (string type, Guid id, INotificationService service) =>
+        {
+            IDomainEventNotification notification = type.ToLowerInvariant() switch
+            {
+                "author" => new AuthorUpdatedNotification(Guid.CreateVersion7(), id, "Test Author", DateTimeOffset.UtcNow),
+                "book" => new BookUpdatedNotification(Guid.CreateVersion7(), id, "Test Book", DateTimeOffset.UtcNow),
+                "category" => new CategoryUpdatedNotification(Guid.CreateVersion7(), id, DateTimeOffset.UtcNow),
+                "publisher" => new PublisherUpdatedNotification(Guid.CreateVersion7(), id, "Test Publisher", DateTimeOffset.UtcNow),
+                _ => new PingNotification()
+            };
+
+            await service.NotifyAsync(notification);
+            return Results.Ok($"Sent {notification.EventType} for {id}");
+        })
+        .WithName("SendTestNotification")
+        .WithSummary("Manually trigger a notification for debugging");
+
         return group;
     }
 

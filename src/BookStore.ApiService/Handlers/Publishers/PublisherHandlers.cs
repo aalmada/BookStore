@@ -76,9 +76,6 @@ public static class PublisherHandlers
 
         _ = session.Events.Append(command.Id, eventResult.Value);
 
-        // Invalidate cache
-        await cache.RemoveByTagAsync([CacheTags.PublisherList, CacheTags.ForItem(CacheTags.PublisherItemPrefix, command.Id)], context.RequestAborted);
-
         return Results.NoContent();
     }
 
@@ -121,9 +118,6 @@ public static class PublisherHandlers
 
         _ = session.Events.Append(command.Id, eventResult.Value);
 
-        // Invalidate cache
-        await cache.RemoveByTagAsync([CacheTags.PublisherList, CacheTags.ForItem(CacheTags.PublisherItemPrefix, command.Id)], context.RequestAborted);
-
         return Results.NoContent();
     }
 
@@ -165,9 +159,6 @@ public static class PublisherHandlers
         }
 
         _ = session.Events.Append(command.Id, eventResult.Value);
-
-        // Invalidate cache
-        await cache.RemoveByTagAsync([CacheTags.PublisherList, CacheTags.ForItem(CacheTags.PublisherItemPrefix, command.Id)], context.RequestAborted);
 
         return Results.NoContent();
     }

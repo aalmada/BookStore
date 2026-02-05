@@ -1,9 +1,13 @@
+using System.Text.Json.Serialization;
+using BookStore.Shared.Infrastructure.Json;
+
 namespace BookStore.Shared.Models;
 
 /// <summary>
 /// Represents a partial date that can be year-only, year-month, or a complete date.
 /// Useful for publication dates where the exact date may not be known.
 /// </summary>
+[JsonConverter(typeof(PartialDateJsonConverter))]
 public readonly record struct PartialDate : IComparable<PartialDate>
 {
     /// <summary>

@@ -8,13 +8,13 @@ namespace BookStore.Shared.Infrastructure.Json;
 /// Custom JSON converter for PartialDate that properly handles nullable values
 /// and serializes the struct as an object with year, month, and day properties.
 /// </summary>
-public class PartialDateJsonConverter : JsonConverter<PartialDate?>
+public class PartialDateJsonConverter : JsonConverter<PartialDate>
 {
-    public override PartialDate? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    public override PartialDate Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         if (reader.TokenType == JsonTokenType.Null)
         {
-            return null;
+            return default;
         }
 
         if (reader.TokenType != JsonTokenType.StartObject)
@@ -81,10 +81,10 @@ public class PartialDateJsonConverter : JsonConverter<PartialDate?>
             // Ignore unknown properties for forward compatibility
         }
 
-        // If year is not provided or is 0, return null
+        // If year is not provided or is 0, return default
         if (!year.HasValue || year.Value == 0)
         {
-            return null;
+            return default;
         }
 
         // Create PartialDate based on available components
@@ -109,15 +109,9 @@ public class PartialDateJsonConverter : JsonConverter<PartialDate?>
         }
     }
 
-    public override void Write(Utf8JsonWriter writer, PartialDate? value, JsonSerializerOptions options)
+    public override void Write(Utf8JsonWriter writer, PartialDate value, JsonSerializerOptions options)
     {
-        if (!value.HasValue)
-        {
-            writer.WriteNullValue();
-            return;
-        }
-
-        var partialDate = value.Value;
+        var partialDate = value;
 
         // Check if this is a default/uninitialized struct (year == 0)
         if (partialDate.Year == 0)

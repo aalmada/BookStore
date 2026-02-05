@@ -41,9 +41,12 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
 
     public async Task AfterCommitAsync(IDocumentSession _, IChangeSet commit, CancellationToken token)
     {
-        // For Async Projections, the 'commit' contains the changes to the Read Models (Documents),
-        // not the original Events.
-        Log.Infrastructure.AfterCommitAsync(_logger, commit.Inserted.Count(), commit.Updated.Count(), commit.Deleted.Count());
+        var inserted = commit.Inserted.Count();
+        var updated = commit.Updated.Count();
+        var deleted = commit.Deleted.Count();
+
+        // High-visibility console log for debugging
+        Log.Infrastructure.AfterCommitAsync(_logger, inserted, updated, deleted);
 
         try
         {
@@ -96,7 +99,13 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
                 await HandlePublisherChangeAsync(publisher, changeType, token);
                 break;
             case UserProfile profile:
-                await HandleUserChangeAsync(profile, changeType, token);
+                await HandleUserProfileChangeAsync(profile, changeType, token);
+                break;
+            case ApplicationUser user:
+                await HandleUserDocumentChangeAsync(user, changeType, token);
+                break;
+            case Models.Tenant tenant:
+                await HandleTenantChangeAsync(tenant, changeType, token);
                 break;
             case BookStatistics stats:
                 await HandleBookStatisticsChangeAsync(stats, changeType, token);
@@ -114,27 +123,39 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
         }
     }
 
-    async Task HandleUserChangeAsync(UserProfile profile, ChangeType _, CancellationToken token)
+    async Task HandleUserProfileChangeAsync(UserProfile profile, ChangeType _, CancellationToken token)
     {
-
-        // For users, we don't have a generic list cache to invalidate (yet), 
-        // but we might want to invalidate specific user data if cached independently.
-        // For now, simply Notify.
-
         Log.Infrastructure.DebugHandleUserChange(_logger, profile.Id, profile.FavoriteBookIds?.Count ?? -1);
 
-        // Use UtcNow as fallback
         var timestamp = DateTimeOffset.UtcNow;
-
-        // We care about updates from:
-        // - Favorites added/removed: BookAddedToFavorites, BookRemovedFromFavorites
-        // - Ratings added/removed/updated: BookRated, BookRatingRemoved
-        // - Shopping cart operations: BookAddedToCart, BookRemovedFromCart, CartItemQuantityUpdated, ShoppingCartCleared
-        // "UserUpdated" is a good catch-all for ReactiveQuery invalidation.
-
         IDomainEventNotification notification = new UserUpdatedNotification(Guid.Empty, profile.Id, timestamp, profile.FavoriteBookIds?.Count ?? 0);
 
         await NotifyAsync("User", notification, token);
+    }
+
+    async Task HandleUserDocumentChangeAsync(ApplicationUser user, ChangeType changeType, CancellationToken token)
+    {
+        Log.Infrastructure.ProcessingDocumentChange(_logger, changeType.ToString(), nameof(ApplicationUser));
+
+        var timestamp = DateTimeOffset.UtcNow;
+        IDomainEventNotification notification = new UserUpdatedNotification(Guid.Empty, user.Id, timestamp, user.Roles.Count);
+
+        await NotifyAsync("User", notification, token);
+    }
+
+    async Task HandleTenantChangeAsync(Models.Tenant tenant, ChangeType changeType, CancellationToken token)
+    {
+        Log.Infrastructure.ProcessingDocumentChange(_logger, changeType.ToString(), nameof(Tenant));
+
+        var timestamp = tenant.UpdatedAt ?? tenant.CreatedAt;
+        IDomainEventNotification notification = changeType switch
+        {
+            ChangeType.Insert => new TenantCreatedNotification(Guid.Empty, tenant.Id, tenant.Name, timestamp),
+            ChangeType.Update => new TenantUpdatedNotification(Guid.Empty, tenant.Id, tenant.Name, timestamp),
+            _ => new TenantUpdatedNotification(Guid.Empty, tenant.Id, tenant.Name, timestamp) // Fallback
+        };
+
+        await NotifyAsync("Tenant", notification, token);
     }
 
     async Task HandleCategoryChangeAsync(CategoryProjection category, ChangeType changeType, CancellationToken token)
@@ -211,32 +232,37 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
 
     async Task HandleBookStatisticsChangeAsync(BookStatistics stats, ChangeType _, CancellationToken token)
     {
+        Log.Infrastructure.ProcessingDocumentChange(_logger, "Update", nameof(BookStatistics));
         await InvalidateCacheTagsAsync(stats.Id, CacheTags.BookItemPrefix, CacheTags.BookList, token);
 
         // Emit BookUpdated so clients refetch the book (including new stats)
-        // Title is unknown here, but usually not critical for simple invalidation signals
         IDomainEventNotification notification = new BookUpdatedNotification(Guid.Empty, stats.Id, "Statistics Updated", DateTimeOffset.UtcNow);
-
         await NotifyAsync("Book", notification, token);
     }
 
     async Task HandleCategoryStatisticsChangeAsync(CategoryStatistics stats, ChangeType _, CancellationToken token)
     {
+        Log.Infrastructure.ProcessingDocumentChange(_logger, "Update", nameof(CategoryStatistics));
         await InvalidateCacheTagsAsync(stats.Id, CacheTags.CategoryItemPrefix, CacheTags.CategoryList, token);
+
         IDomainEventNotification notification = new CategoryUpdatedNotification(Guid.Empty, stats.Id, DateTimeOffset.UtcNow);
         await NotifyAsync("Category", notification, token);
     }
 
     async Task HandleAuthorStatisticsChangeAsync(AuthorStatistics stats, ChangeType _, CancellationToken token)
     {
+        Log.Infrastructure.ProcessingDocumentChange(_logger, "Update", nameof(AuthorStatistics));
         await InvalidateCacheTagsAsync(stats.Id, CacheTags.AuthorItemPrefix, CacheTags.AuthorList, token);
+
         IDomainEventNotification notification = new AuthorUpdatedNotification(Guid.Empty, stats.Id, "Statistics Updated", DateTimeOffset.UtcNow);
         await NotifyAsync("Author", notification, token);
     }
 
     async Task HandlePublisherStatisticsChangeAsync(PublisherStatistics stats, ChangeType _, CancellationToken token)
     {
+        Log.Infrastructure.ProcessingDocumentChange(_logger, "Update", nameof(PublisherStatistics));
         await InvalidateCacheTagsAsync(stats.Id, CacheTags.PublisherItemPrefix, CacheTags.PublisherList, token);
+
         IDomainEventNotification notification = new PublisherUpdatedNotification(Guid.Empty, stats.Id, "Statistics Updated", DateTimeOffset.UtcNow);
         await NotifyAsync("Publisher", notification, token);
     }
@@ -254,9 +280,13 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
 
     async Task InvalidateCacheTagsAsync(Guid id, string entityPrefix, string collectionTag, CancellationToken token)
     {
-        var itemTag = $"{entityPrefix}:{id}";
+        var itemTag = CacheTags.ForItem(entityPrefix, id);
+
+        // Invalidate both the specific item and the collection it belongs to
+        // We call them individually to avoid any potential issues with collection expression overloads in preview packages
         await _cache.RemoveByTagAsync(itemTag, token);
         await _cache.RemoveByTagAsync(collectionTag, token);
+
         Log.Infrastructure.CacheInvalidated(_logger, itemTag, collectionTag);
     }
 

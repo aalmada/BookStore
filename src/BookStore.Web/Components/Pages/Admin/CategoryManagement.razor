@@ -1,12 +1,14 @@
 @page "/admin/categories"
-@using BookStore.Client
-@using BookStore.Shared.Models
 @using Microsoft.AspNetCore.Authorization
-@using MudBlazor
-@inject ICategoriesClient CategoriesClient
-@inject IDialogService DialogService
-@inject ISnackbar Snackbar
+@using BookStore.Shared.Notifications
+@implements IDisposable
 @attribute [Authorize(Roles = "Admin")]
+@inject ICategoriesClient CategoriesClient
+@inject BookStoreEventsService EventsService
+@inject QueryInvalidationService InvalidationService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject ILogger<CategoryManagement> Logger
 
 <PageTitle>Category Management - BookStore</PageTitle>
 
@@ -63,6 +65,55 @@
     }
 
     private string? _searchStringFieldValue;
+
+    protected override void OnInitialized()
+    {
+        EventsService.StartListening();
+        EventsService.OnNotificationReceived += HandleNotification;
+    }
+
+    public void Dispose()
+    {
+        EventsService.OnNotificationReceived -= HandleNotification;
+    }
+
+    private async void HandleNotification(IDomainEventNotification notification)
+    {
+        try
+        {
+            if (notification is PingNotification)
+            {
+                Logger.LogTrace("SSE Heartbeat (Ping) received.");
+                return;
+            }
+
+            Logger.LogDebug("Received notification: {EventType} for {EntityId}", notification.EventType, notification.EntityId);
+
+            if (InvalidationService.ShouldInvalidate(notification, ["Categories"]))
+            {
+                Logger.LogInformation("Real-time update match for Categories. Refreshing...");
+                await InvokeAsync(async () =>
+                {
+                    Snackbar.Add("Real-time update received. Refreshing list...", Severity.Info);
+                    await Task.Delay(1500);
+                    await _table.ReloadServerData();
+                    StateHasChanged();
+                });
+            }
+            else
+            {
+                Logger.LogDebug("Notification {EventType} does not match invalidation keys for Categories.", notification.EventType);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            Logger.LogDebug("CategoryManagement notification update was canceled (likely navigation).");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error processing real-time update for Categories.");
+        }
+    }
 
     private void OnSearchCleared()
     {

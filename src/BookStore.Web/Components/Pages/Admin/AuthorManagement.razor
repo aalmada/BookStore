@@ -1,12 +1,14 @@
 @page "/admin/authors"
-@using BookStore.Client
-@using BookStore.Shared.Models
 @using Microsoft.AspNetCore.Authorization
-@using MudBlazor
-@inject IAuthorsClient AuthorsClient
-@inject IDialogService DialogService
-@inject ISnackbar Snackbar
+@using BookStore.Shared.Notifications
+@implements IDisposable
 @attribute [Authorize(Roles = "Admin")]
+@inject IAuthorsClient AuthorsClient
+@inject BookStoreEventsService EventsService
+@inject QueryInvalidationService InvalidationService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject ILogger<AuthorManagement> Logger
 
 <PageTitle>Author Management - BookStore</PageTitle>
 
@@ -63,6 +65,56 @@
     }
 
     private string? _searchStringFieldValue;
+
+    protected override void OnInitialized()
+    {
+        EventsService.StartListening();
+        EventsService.OnNotificationReceived += HandleNotification;
+    }
+
+    public void Dispose()
+    {
+        EventsService.OnNotificationReceived -= HandleNotification;
+    }
+
+    private async void HandleNotification(IDomainEventNotification notification)
+    {
+        try
+        {
+            if (notification is PingNotification)
+            {
+                Logger.LogTrace("SSE Heartbeat (Ping) received.");
+                return;
+            }
+
+            Logger.LogDebug("Received notification: {EventType} for {EntityId}", notification.EventType, notification.EntityId);
+
+            if (InvalidationService.ShouldInvalidate(notification, ["Authors"]))
+            {
+                Logger.LogInformation("Real-time update match for Authors. Refreshing...");
+
+                await InvokeAsync(async () =>
+                {
+                    Snackbar.Add("Real-time update received. Refreshing list...", Severity.Info);
+                    await Task.Delay(1500); // Wait for projections to settle
+                    await _table.ReloadServerData();
+                    StateHasChanged();
+                });
+            }
+            else
+            {
+                Logger.LogDebug("Notification {EventType} does not match invalidation keys for Authors.", notification.EventType);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            Logger.LogDebug("AuthorManagement notification update was canceled (likely navigation).");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error processing real-time update for Authors.");
+        }
+    }
 
     private void OnSearchCleared()
     {

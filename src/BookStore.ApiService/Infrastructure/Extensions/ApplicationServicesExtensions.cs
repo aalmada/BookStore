@@ -63,6 +63,9 @@ public static class ApplicationServicesExtensions
         // Add HybridCache for L1 (in-memory) + L2 (Redis) caching
         _ = services.AddHybridCache();
 
+        // Register Marten Projection Commit Listener in DI
+        _ = services.AddSingleton<Infrastructure.ProjectionCommitListener>();
+
         // Configure Identity with JWT authentication
         AddIdentityServices(services, configuration);
 
