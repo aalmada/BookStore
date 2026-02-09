@@ -16,15 +16,17 @@ public class AuthorProjectionTests
         var @event = new AuthorAdded(
             id,
             "Robert C. Martin",
-            new Dictionary<string, AuthorTranslation>
-            {
-                ["en"] = new("Uncle Bob")
-            },
+            new Dictionary<string, AuthorTranslation> { ["en"] = new("Uncle Bob") },
             timestamp
         );
 
+        var mockEvent = Substitute.For<JasperFx.Events.IEvent<AuthorAdded>>();
+        mockEvent.Data.Returns(@event);
+        mockEvent.Timestamp.Returns(timestamp);
+        mockEvent.Version.Returns(1);
+
         // Act
-        var projection = AuthorProjection.Create(@event);
+        var projection = AuthorProjection.Create(mockEvent);
 
         // Assert
         _ = await Assert.That(projection.Id).IsEqualTo(id);
@@ -50,16 +52,17 @@ public class AuthorProjectionTests
         var @event = new AuthorUpdated(
             projection.Id,
             "New Name",
-            new Dictionary<string, AuthorTranslation>
-            {
-                ["en"] = new("New Bio"),
-                ["pt"] = new("Nova Bio")
-            },
+            new Dictionary<string, AuthorTranslation> { ["en"] = new("New Bio"), ["pt"] = new("Nova Bio") },
             timestamp
         );
 
+        var mockEvent = Substitute.For<JasperFx.Events.IEvent<AuthorUpdated>>();
+        mockEvent.Data.Returns(@event);
+        mockEvent.Timestamp.Returns(timestamp);
+        mockEvent.Version.Returns(2);
+
         // Act
-        projection.Apply(@event);
+        projection.Apply(mockEvent);
 
         // Assert
         _ = await Assert.That(projection.Name).IsEqualTo("New Name");

@@ -13,9 +13,6 @@ using Marten;
 using Refit;
 using Weasel.Core;
 using Weasel.Postgresql;
-using AuthorTranslationDto = BookStore.Client.AuthorTranslationDto;
-using BookTranslationDto = BookStore.Client.BookTranslationDto;
-using CategoryTranslationDto = BookStore.Client.CategoryTranslationDto;
 // Resolve ambiguities by preferring Client types
 using CreateBookRequest = BookStore.Client.CreateBookRequest;
 using SharedModels = BookStore.Shared.Models;
@@ -49,25 +46,46 @@ public static class TestHelpers
     public static CreateBookRequest
         GenerateFakeBookRequest(Guid? publisherId = null, IEnumerable<Guid>? authorIds = null,
             IEnumerable<Guid>? categoryIds = null) => new()
-            {
-                Title = _faker.Commerce.ProductName(),
-                Isbn = _faker.Commerce.Ean13(),
-                Language = "en",
-                Translations =
+    {
+        Title = _faker.Commerce.ProductName(),
+        Isbn = _faker.Commerce.Ean13(),
+        Language = "en",
+        Translations =
             new Dictionary<string, BookTranslationDto>
             {
-                ["en"] = new() { Description = _faker.Lorem.Paragraph() },
-                ["es"] = new() { Description = _faker.Lorem.Paragraph() }
+                ["en"] = new(_faker.Lorem.Paragraph()), ["es"] = new(_faker.Lorem.Paragraph())
             },
-                PublicationDate = new PartialDate(
+        PublicationDate = new PartialDate(
             _faker.Date.Past(10).Year,
             _faker.Random.Int(1, 12),
             _faker.Random.Int(1, 28)),
-                PublisherId = publisherId,
-                AuthorIds = (ICollection<Guid>)(authorIds ?? []),
-                CategoryIds = (ICollection<Guid>)(categoryIds ?? []),
-                Prices = new Dictionary<string, decimal> { ["USD"] = decimal.Parse(_faker.Commerce.Price(10, 100)) }
-            };
+        PublisherId = publisherId,
+        AuthorIds = (authorIds ?? []).ToList(),
+        CategoryIds = (categoryIds ?? []).ToList(),
+        Prices = new Dictionary<string, decimal> { ["USD"] = decimal.Parse(_faker.Commerce.Price(10, 100)) }
+    };
+
+    public static UpdateBookRequest
+        GenerateFakeUpdateBookRequest(Guid? publisherId = null, IEnumerable<Guid>? authorIds = null,
+            IEnumerable<Guid>? categoryIds = null) => new()
+    {
+        Title = _faker.Commerce.ProductName(),
+        Isbn = _faker.Commerce.Ean13(),
+        Language = "en",
+        Translations =
+            new Dictionary<string, BookTranslationDto>
+            {
+                ["en"] = new(_faker.Lorem.Paragraph()), ["es"] = new(_faker.Lorem.Paragraph())
+            },
+        PublicationDate = new PartialDate(
+            _faker.Date.Past(10).Year,
+            _faker.Random.Int(1, 12),
+            _faker.Random.Int(1, 28)),
+        PublisherId = publisherId,
+        AuthorIds = (authorIds ?? []).ToList(),
+        CategoryIds = (categoryIds ?? []).ToList(),
+        Prices = new Dictionary<string, decimal> { ["USD"] = decimal.Parse(_faker.Commerce.Price(10, 100)) }
+    };
 
     /// <summary>
     /// Generates a fake author creation request with random data using Bogus.
@@ -78,8 +96,7 @@ public static class TestHelpers
         Name = _faker.Name.FullName(),
         Translations = new Dictionary<string, AuthorTranslationDto>
         {
-            ["en"] = new() { Biography = _faker.Lorem.Paragraphs(2) },
-            ["es"] = new() { Biography = _faker.Lorem.Paragraphs(2) }
+            ["en"] = new(_faker.Lorem.Paragraphs(2)), ["es"] = new(_faker.Lorem.Paragraphs(2))
         }
     };
 
@@ -88,8 +105,7 @@ public static class TestHelpers
         Name = _faker.Name.FullName(),
         Translations = new Dictionary<string, AuthorTranslationDto>
         {
-            ["en"] = new() { Biography = _faker.Lorem.Paragraphs(2) },
-            ["es"] = new() { Biography = _faker.Lorem.Paragraphs(2) }
+            ["en"] = new(_faker.Lorem.Paragraphs(2)), ["es"] = new(_faker.Lorem.Paragraphs(2))
         }
     };
 
@@ -101,8 +117,7 @@ public static class TestHelpers
     {
         Translations = new Dictionary<string, CategoryTranslationDto>
         {
-            ["en"] = new() { Name = _faker.Commerce.Department(), Description = _faker.Lorem.Sentence() },
-            ["es"] = new() { Name = _faker.Commerce.Department(), Description = _faker.Lorem.Sentence() }
+            ["en"] = new(_faker.Commerce.Department()), ["es"] = new(_faker.Commerce.Department())
         }
     };
 
@@ -114,8 +129,7 @@ public static class TestHelpers
     {
         Translations = new Dictionary<string, CategoryTranslationDto>
         {
-            ["en"] = new() { Name = _faker.Commerce.Department(), Description = _faker.Lorem.Sentence() },
-            ["es"] = new() { Name = _faker.Commerce.Department(), Description = _faker.Lorem.Sentence() }
+            ["en"] = new(_faker.Commerce.Department()), ["es"] = new(_faker.Commerce.Department())
         }
     };
 
@@ -160,47 +174,70 @@ public static class TestHelpers
         return finalCategory!;
     }
 
-    public static async Task UpdateCategoryAsync(ICategoriesClient client, CategoryDto category,
+    public static async Task<CategoryDto> UpdateCategoryAsync(ICategoriesClient client, CategoryDto category,
         UpdateCategoryRequest request)
     {
         var received = await ExecuteAndWaitForEventAsync(
             category.Id,
             "CategoryUpdated",
-            async () => await client.UpdateCategoryAsync(category.Id, request),
+            async () => await client.UpdateCategoryAsync(category.Id, request, category.ETag),
             TestConstants.DefaultEventTimeout);
 
         if (!received)
         {
             throw new Exception("Failed to receive CategoryUpdated event.");
         }
+
+        return await client.GetCategoryAsync(category.Id);
     }
 
-    public static async Task DeleteCategoryAsync(ICategoriesClient client, CategoryDto category)
+    public static async Task<AdminCategoryDto> UpdateCategoryAsync(ICategoriesClient client, AdminCategoryDto category,
+        UpdateCategoryRequest request)
+    {
+        var received = await ExecuteAndWaitForEventAsync(
+            category.Id,
+            "CategoryUpdated",
+            async () => await client.UpdateCategoryAsync(category.Id, request, category.ETag),
+            TestConstants.DefaultEventTimeout);
+
+        if (!received)
+        {
+            throw new Exception("Failed to receive CategoryUpdated event.");
+        }
+
+        return await client.GetCategoryAdminAsync(category.Id);
+    }
+
+    public static async Task<CategoryDto> DeleteCategoryAsync(ICategoriesClient client, CategoryDto category)
     {
         var received = await ExecuteAndWaitForEventAsync(
             category.Id,
             "CategoryDeleted",
-            async () => await client.SoftDeleteCategoryAsync(category.Id),
+            async () => await client.SoftDeleteCategoryAsync(category.Id, category.ETag),
             TestConstants.DefaultEventTimeout);
 
         if (!received)
         {
             throw new Exception("Failed to receive CategoryDeleted event.");
         }
+
+        return await client.GetCategoryAsync(category.Id);
     }
 
-    public static async Task RestoreCategoryAsync(ICategoriesClient client, CategoryDto category)
+    public static async Task<CategoryDto> RestoreCategoryAsync(ICategoriesClient client, CategoryDto category)
     {
         var received = await ExecuteAndWaitForEventAsync(
             category.Id,
             "CategoryUpdated",
-            async () => await client.RestoreCategoryAsync(category.Id),
+            async () => await client.RestoreCategoryAsync(category.Id, category.ETag),
             TestConstants.DefaultEventTimeout);
 
         if (!received)
         {
             throw new Exception("Failed to receive CategoryUpdated event (Restore).");
         }
+
+        return await client.GetCategoryAsync(category.Id);
     }
 
     /// <summary>
@@ -282,13 +319,18 @@ public static class TestHelpers
         Guid entityId,
         string eventType,
         Func<Task> action,
-        TimeSpan timeout) => await ExecuteAndWaitForEventAsync(entityId, [eventType], action, timeout);
+        TimeSpan timeout,
+        long minVersion = 0,
+        DateTimeOffset? minTimestamp = null) =>
+        await ExecuteAndWaitForEventAsync(entityId, [eventType], action, timeout, minVersion, minTimestamp);
 
     public static async Task<bool> ExecuteAndWaitForEventAsync(
         Guid entityId,
         string[] eventTypes,
         Func<Task> action,
-        TimeSpan timeout)
+        TimeSpan timeout,
+        long minVersion = 0,
+        DateTimeOffset? minTimestamp = null)
     {
         var matchAnyId = entityId == Guid.Empty;
         var receivedEvents = new List<string>();
@@ -324,7 +366,9 @@ public static class TestHelpers
                         continue;
                     }
 
-                    receivedEvents.Add($"Type: {item.EventType}, Data: {item.Data}");
+                    var received = $"Type: {item.EventType}, Data: {item.Data}";
+                    Console.WriteLine($"[TestHelpers] Received SSE: {received}");
+                    receivedEvents.Add(received);
 
                     if (eventTypes.Contains(item.EventType))
                     {
@@ -334,6 +378,38 @@ public static class TestHelpers
                             var receivedId = idProp.GetGuid();
                             if (matchAnyId || receivedId == entityId)
                             {
+                                if (minVersion > 0)
+                                {
+                                    if (doc.RootElement.TryGetProperty("version", out var versionProp) &&
+                                        versionProp.ValueKind == JsonValueKind.Number &&
+                                        versionProp.GetInt64() >= minVersion)
+                                    {
+                                        // Version match
+                                    }
+                                    else
+                                    {
+                                        Console.WriteLine(
+                                            $"[TestHelpers] Received event {item.EventType} for {receivedId} but version mismatch");
+                                        continue;
+                                    }
+                                }
+
+                                if (minTimestamp.HasValue)
+                                {
+                                    if (doc.RootElement.TryGetProperty("timestamp", out var timestampProp) &&
+                                        timestampProp.TryGetDateTimeOffset(out var timestamp) &&
+                                        timestamp >= minTimestamp.Value)
+                                    {
+                                        // Timestamp match
+                                    }
+                                    else
+                                    {
+                                        Console.WriteLine(
+                                            $"[TestHelpers] Received event {item.EventType} for {receivedId} but timestamp mismatch");
+                                        continue;
+                                    }
+                                }
+
                                 _ = tcs.TrySetResult(true);
                                 return;
                             }
@@ -359,7 +435,15 @@ public static class TestHelpers
         }
 
         // Execute the action that should trigger the event
-        await action();
+        try
+        {
+            await action();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[TestHelpers] Action failed with exception: {ex}");
+            throw;
+        }
 
         // Wait for either the event or timeout
         _ = await Task.WhenAny(tcs.Task, Task.Delay(timeout));
@@ -393,9 +477,12 @@ public static class TestHelpers
             return true;
         }
 
+        var message =
+            $"Timed out waiting for {string.Join(" OR ", eventTypes)} (EntityId: {entityId}). Received {receivedEvents.Count} events: {string.Join(", ", receivedEvents.Take(20))}";
+        Console.WriteLine($"[TestHelpers] {message}");
+
         // Throw with debug info
-        throw new Exception(
-            $"Timed out waiting for {string.Join(" OR ", eventTypes)} (EntityId: {entityId}). Received {receivedEvents.Count} events: {string.Join(", ", receivedEvents.Take(5))}");
+        throw new Exception(message);
     }
 
     /// <summary>
@@ -542,47 +629,136 @@ public static class TestHelpers
         return finalAuthor!;
     }
 
-    public static async Task UpdateAuthorAsync(IAuthorsClient client, AuthorDto author,
+    public static async Task<AuthorDto> UpdateAuthorAsync(IAuthorsClient client, AuthorDto author,
         UpdateAuthorRequest updateRequest)
     {
         var received = await ExecuteAndWaitForEventAsync(
             author.Id,
             "AuthorUpdated",
-            async () => await client.UpdateAuthorAsync(author.Id, updateRequest),
-            TestConstants.DefaultEventTimeout);
+            async () => await client.UpdateAuthorAsync(author.Id, updateRequest, author.ETag),
+            TestConstants.DefaultEventTimeout,
+            minTimestamp: DateTimeOffset.UtcNow);
 
         if (!received)
         {
             throw new Exception("Failed to receive AuthorUpdated event after UpdateAuthor.");
         }
+
+        return await client.GetAuthorAsync(author.Id);
     }
 
-    public static async Task DeleteAuthorAsync(IAuthorsClient client, AuthorDto author)
+    public static async Task<AdminAuthorDto> UpdateAuthorAsync(IAuthorsClient client, AdminAuthorDto author,
+        UpdateAuthorRequest updateRequest)
+    {
+        var received = await ExecuteAndWaitForEventAsync(
+            author.Id,
+            "AuthorUpdated",
+            async () => await client.UpdateAuthorAsync(author.Id, updateRequest, author.ETag),
+            TestConstants.DefaultEventTimeout,
+            minTimestamp: DateTimeOffset.UtcNow);
+
+        if (!received)
+        {
+            throw new Exception("Failed to receive AuthorUpdated event after UpdateAuthor.");
+        }
+
+        return await client.GetAuthorAdminAsync(author.Id);
+    }
+
+    public static async Task<AuthorDto> DeleteAuthorAsync(IAuthorsClient client, AuthorDto author)
     {
         var received = await ExecuteAndWaitForEventAsync(
             author.Id,
             "AuthorDeleted",
-            async () => await client.SoftDeleteAuthorAsync(author.Id),
+            async () =>
+            {
+                var etag = author.ETag;
+                if (string.IsNullOrEmpty(etag))
+                {
+                    var latestAuthor = await client.GetAuthorAdminAsync(author.Id);
+                    etag = latestAuthor?.ETag;
+                }
+
+                await client.SoftDeleteAuthorAsync(author.Id, etag);
+            },
             TestConstants.DefaultEventTimeout);
 
         if (!received)
         {
             throw new Exception("Failed to receive AuthorDeleted event after DeleteAuthor.");
         }
+
+        return await client.GetAuthorAsync(author.Id);
     }
 
-    public static async Task RestoreAuthorAsync(IAuthorsClient client, AuthorDto author)
+    public static async Task<AdminAuthorDto> DeleteAuthorAsync(IAuthorsClient client, AdminAuthorDto author)
+    {
+        var received = await ExecuteAndWaitForEventAsync(
+            author.Id,
+            "AuthorDeleted",
+            async () =>
+            {
+                var etag = author.ETag;
+                if (string.IsNullOrEmpty(etag))
+                {
+                    var latestAuthor = await client.GetAuthorAdminAsync(author.Id);
+                    etag = latestAuthor?.ETag;
+                }
+
+                await client.SoftDeleteAuthorAsync(author.Id, etag);
+            },
+            TestConstants.DefaultEventTimeout);
+
+        if (!received)
+        {
+            throw new Exception("Failed to receive AuthorDeleted event after DeleteAuthor.");
+        }
+
+        return await client.GetAuthorAdminAsync(author.Id);
+    }
+
+    public static async Task<AuthorDto> RestoreAuthorAsync(IAuthorsClient client, AuthorDto author)
     {
         var received = await ExecuteAndWaitForEventAsync(
             author.Id,
             "AuthorUpdated",
-            async () => await client.RestoreAuthorAsync(author.Id),
+            async () =>
+            {
+                var latestAuthor = await client.GetAuthorAdminAsync(author.Id);
+                var etag = latestAuthor?.ETag;
+
+                await client.RestoreAuthorAsync(author.Id, etag);
+            },
             TestConstants.DefaultEventTimeout);
 
         if (!received)
         {
             throw new Exception("Failed to receive AuthorUpdated event after RestoreAuthor.");
         }
+
+        return await client.GetAuthorAsync(author.Id);
+    }
+
+    public static async Task<AdminAuthorDto> RestoreAuthorAsync(IAuthorsClient client, AdminAuthorDto author)
+    {
+        var received = await ExecuteAndWaitForEventAsync(
+            author.Id,
+            "AuthorUpdated",
+            async () =>
+            {
+                var latestAuthor = await client.GetAuthorAdminAsync(author.Id);
+                var etag = latestAuthor?.ETag;
+
+                await client.RestoreAuthorAsync(author.Id, etag);
+            },
+            TestConstants.DefaultEventTimeout);
+
+        if (!received)
+        {
+            throw new Exception("Failed to receive AuthorUpdated event after RestoreAuthor.");
+        }
+
+        return await client.GetAuthorAdminAsync(author.Id);
     }
 
     public static async Task<BookDto> CreateBookAsync(IBooksClient client, CreateBookRequest createBookRequest)
@@ -681,47 +857,53 @@ public static class TestHelpers
         return finalPublisher!;
     }
 
-    public static async Task UpdatePublisherAsync(IPublishersClient client, PublisherDto publisher,
+    public static async Task<PublisherDto> UpdatePublisherAsync(IPublishersClient client, PublisherDto publisher,
         UpdatePublisherRequest request)
     {
         var received = await ExecuteAndWaitForEventAsync(
             publisher.Id,
             "PublisherUpdated",
-            async () => await client.UpdatePublisherAsync(publisher.Id, request),
+            async () => await client.UpdatePublisherAsync(publisher.Id, request, publisher.ETag),
             TestConstants.DefaultEventTimeout);
 
         if (!received)
         {
             throw new Exception("Failed to receive PublisherUpdated event.");
         }
+
+        return await client.GetPublisherAsync(publisher.Id);
     }
 
-    public static async Task DeletePublisherAsync(IPublishersClient client, PublisherDto publisher)
+    public static async Task<PublisherDto> DeletePublisherAsync(IPublishersClient client, PublisherDto publisher)
     {
         var received = await ExecuteAndWaitForEventAsync(
             publisher.Id,
             "PublisherDeleted",
-            async () => await client.SoftDeletePublisherAsync(publisher.Id),
+            async () => await client.SoftDeletePublisherAsync(publisher.Id, publisher.ETag),
             TestConstants.DefaultEventTimeout);
 
         if (!received)
         {
             throw new Exception("Failed to receive PublisherDeleted event.");
         }
+
+        return await client.GetPublisherAsync(publisher.Id);
     }
 
-    public static async Task RestorePublisherAsync(IPublishersClient client, PublisherDto publisher)
+    public static async Task<PublisherDto> RestorePublisherAsync(IPublishersClient client, PublisherDto publisher)
     {
         var received = await ExecuteAndWaitForEventAsync(
             publisher.Id,
             "PublisherUpdated",
-            async () => await client.RestorePublisherAsync(publisher.Id),
+            async () => await client.RestorePublisherAsync(publisher.Id, publisher.ETag),
             TestConstants.DefaultEventTimeout);
 
         if (!received)
         {
             throw new Exception("Failed to receive PublisherUpdated event (Restore).");
         }
+
+        return await client.GetPublisherAsync(publisher.Id);
     }
 
     public static async Task<BookDto> CreateBookAsync(HttpClient httpClient, Guid? publisherId = null,
@@ -818,7 +1000,8 @@ public static class TestHelpers
             expectedEntityId ?? Guid.Empty,
             "UserUpdated",
             async () => await client.AddToCartAsync(new AddToCartClientRequest(bookId, quantity)),
-            TestConstants.DefaultEventTimeout);
+            TestConstants.DefaultEventTimeout,
+            minTimestamp: DateTimeOffset.UtcNow);
 
         if (!received)
         {
@@ -838,7 +1021,8 @@ public static class TestHelpers
                     new UpdateCartItemClientRequest(quantity));
                 _ = await Assert.That(response.IsSuccessStatusCode).IsTrue();
             },
-            TestConstants.DefaultEventTimeout);
+            TestConstants.DefaultEventTimeout,
+            minTimestamp: DateTimeOffset.UtcNow);
 
         if (!received)
         {
@@ -853,7 +1037,8 @@ public static class TestHelpers
             expectedEntityId ?? Guid.Empty,
             "UserUpdated",
             async () => await client.UpdateCartItemAsync(bookId, new UpdateCartItemClientRequest(quantity)),
-            TestConstants.DefaultEventTimeout);
+            TestConstants.DefaultEventTimeout,
+            minTimestamp: DateTimeOffset.UtcNow);
 
         if (!received)
         {
@@ -871,7 +1056,8 @@ public static class TestHelpers
                 var response = await client.DeleteAsync($"/api/cart/items/{bookId}");
                 _ = await Assert.That(response.IsSuccessStatusCode).IsTrue();
             },
-            TestConstants.DefaultEventTimeout);
+            TestConstants.DefaultEventTimeout,
+            minTimestamp: DateTimeOffset.UtcNow);
 
         if (!received)
         {
@@ -885,7 +1071,8 @@ public static class TestHelpers
             expectedEntityId ?? Guid.Empty,
             "UserUpdated",
             async () => await client.RemoveFromCartAsync(bookId),
-            TestConstants.DefaultEventTimeout);
+            TestConstants.DefaultEventTimeout,
+            minTimestamp: DateTimeOffset.UtcNow);
 
         if (!received)
         {
@@ -903,7 +1090,8 @@ public static class TestHelpers
                 var response = await client.DeleteAsync("/api/cart");
                 _ = await Assert.That(response.IsSuccessStatusCode).IsTrue();
             },
-            TestConstants.DefaultEventTimeout);
+            TestConstants.DefaultEventTimeout,
+            minTimestamp: DateTimeOffset.UtcNow);
 
         if (!received)
         {
@@ -917,7 +1105,8 @@ public static class TestHelpers
             expectedEntityId ?? Guid.Empty,
             "UserUpdated",
             async () => await client.ClearCartAsync(),
-            TestConstants.DefaultEventTimeout);
+            TestConstants.DefaultEventTimeout,
+            minTimestamp: DateTimeOffset.UtcNow);
 
         if (!received)
         {
@@ -945,7 +1134,8 @@ public static class TestHelpers
                 var response = await client.PostAsJsonAsync($"/api/books/{bookId}/rating", new { Rating = rating });
                 _ = await Assert.That(response.IsSuccessStatusCode).IsTrue();
             },
-            TestConstants.DefaultEventTimeout);
+            TestConstants.DefaultEventTimeout,
+            minTimestamp: DateTimeOffset.UtcNow);
 
         if (!received)
         {
@@ -953,19 +1143,15 @@ public static class TestHelpers
         }
     }
 
-    public static async Task RateBookAsync(IBooksClient client, Guid bookId, int rating, Guid? expectedEntityId = null,
-        string expectedEvent = "UserUpdated")
+    public static async Task RateBookAsync(IBooksClient client, Guid bookId, int rating, Guid expectedEntityId,
+        string expectedEvent)
     {
-        var received = await ExecuteAndWaitForEventAsync(
-            expectedEntityId ?? Guid.Empty,
+        await ExecuteAndWaitForEventAsync(
+            expectedEntityId,
             expectedEvent,
-            async () => await client.RateBookAsync(bookId, new RateBookRequest(rating)),
-            TestConstants.DefaultEventTimeout);
-
-        if (!received)
-        {
-            throw new Exception($"Timed out waiting for {expectedEvent} event after RateBook.");
-        }
+            () => client.RateBookAsync(bookId, new RateBookRequest(rating)),
+            TimeSpan.FromSeconds(10), // Increased timeout
+            minTimestamp: DateTimeOffset.UtcNow); // Use current time to avoid stale events
     }
 
     public static async Task RemoveRatingAsync(HttpClient client, Guid bookId, Guid? expectedEntityId = null,
@@ -979,7 +1165,8 @@ public static class TestHelpers
                 var response = await client.DeleteAsync($"/api/books/{bookId}/rating");
                 _ = await Assert.That(response.IsSuccessStatusCode).IsTrue();
             },
-            TestConstants.DefaultEventTimeout);
+            TestConstants.DefaultEventTimeout,
+            minTimestamp: DateTimeOffset.UtcNow);
 
         if (!received)
         {
@@ -987,19 +1174,15 @@ public static class TestHelpers
         }
     }
 
-    public static async Task RemoveRatingAsync(IBooksClient client, Guid bookId, Guid? expectedEntityId = null,
-        string expectedEvent = "UserUpdated")
+    public static async Task RemoveRatingAsync(IBooksClient client, Guid bookId, Guid expectedEntityId,
+        string expectedEvent)
     {
-        var received = await ExecuteAndWaitForEventAsync(
-            expectedEntityId ?? Guid.Empty,
+        await ExecuteAndWaitForEventAsync(
+            expectedEntityId,
             expectedEvent,
-            async () => await client.RemoveBookRatingAsync(bookId),
-            TestConstants.DefaultEventTimeout);
-
-        if (!received)
-        {
-            throw new Exception($"Timed out waiting for {expectedEvent} event after RemoveRating.");
-        }
+            () => client.RemoveBookRatingAsync(bookId),
+            TimeSpan.FromSeconds(10),
+            minTimestamp: DateTimeOffset.UtcNow);
     }
 
     public static async Task AddToFavoritesAsync(HttpClient client, Guid bookId, Guid? expectedEntityId = null,
@@ -1013,7 +1196,8 @@ public static class TestHelpers
                 var response = await client.PostAsync($"/api/books/{bookId}/favorites", null);
                 _ = await Assert.That(response.IsSuccessStatusCode).IsTrue();
             },
-            TestConstants.DefaultEventTimeout);
+            TestConstants.DefaultEventTimeout,
+            minTimestamp: DateTimeOffset.UtcNow);
 
         if (!received)
         {
@@ -1027,8 +1211,10 @@ public static class TestHelpers
         var received = await ExecuteAndWaitForEventAsync(
             expectedEntityId ?? Guid.Empty,
             expectedEvent,
-            async () => await client.AddBookToFavoritesAsync(bookId),
-            TestConstants.DefaultEventTimeout);
+            async () => await client.AddBookToFavoritesAsync(bookId,
+                null),
+            TestConstants.DefaultEventTimeout,
+            minTimestamp: DateTimeOffset.UtcNow);
 
         if (!received)
         {
@@ -1047,7 +1233,8 @@ public static class TestHelpers
                 var response = await client.DeleteAsync($"/api/books/{bookId}/favorites");
                 _ = await Assert.That(response.IsSuccessStatusCode).IsTrue();
             },
-            TestConstants.DefaultEventTimeout);
+            TestConstants.DefaultEventTimeout,
+            minTimestamp: DateTimeOffset.UtcNow);
 
         if (!received)
         {
@@ -1061,8 +1248,13 @@ public static class TestHelpers
         var received = await ExecuteAndWaitForEventAsync(
             expectedEntityId ?? Guid.Empty,
             expectedEvent,
-            async () => await client.RemoveBookFromFavoritesAsync(bookId),
-            TestConstants.DefaultEventTimeout);
+            async () =>
+            {
+                var book = await client.GetBookAsync(bookId);
+                await client.RemoveBookFromFavoritesAsync(bookId, book?.ETag);
+            },
+            TestConstants.DefaultEventTimeout,
+            minTimestamp: DateTimeOffset.UtcNow);
 
         if (!received)
         {
@@ -1090,7 +1282,8 @@ public static class TestHelpers
 
                 _ = await Assert.That(updateResponse.IsSuccessStatusCode).IsTrue();
             },
-            TestConstants.DefaultEventTimeout);
+            TestConstants.DefaultEventTimeout,
+            minTimestamp: DateTimeOffset.UtcNow);
 
         if (!received)
         {
@@ -1098,38 +1291,49 @@ public static class TestHelpers
         }
     }
 
-    public static async Task UpdateBookAsync(IBooksClient client, Guid bookId, UpdateBookRequest updatePayload,
+    public static async Task<BookDto> UpdateBookAsync(IBooksClient client, Guid bookId, UpdateBookRequest updatePayload,
         string etag)
     {
         var received = await ExecuteAndWaitForEventAsync(
             bookId,
             "BookUpdated",
             async () => await client.UpdateBookAsync(bookId, updatePayload, etag),
-            TestConstants.DefaultEventTimeout);
+            TestConstants.DefaultEventTimeout,
+            minTimestamp: DateTimeOffset.UtcNow);
 
         if (!received)
         {
             throw new Exception("Timed out waiting for BookUpdated event after UpdateBook.");
         }
+
+        return await client.GetBookAsync(bookId);
     }
 
-    // Helper to accept generic object and cast if possible or use fake request
-    public static async Task UpdateBookAsync(IBooksClient client, Guid bookId, object updatePayload, string etag)
+    public static async Task<AdminBookDto> UpdateBookAsync(IBooksClient client, AdminBookDto book,
+        UpdateBookRequest request)
     {
-        // If updatePayload is anonymous, we can't easily cast it to UpdateBookRequest used by Refit.
-        // But the tests typically use TestHelpers.GenerateFakeBookRequest which we changed to return strict type CreateBookRequest.
-        // Wait, CreateBookRequest is not UpdateBookRequest.
-        // We might need a converter or just update the tests to use proper request type.
-        // For now, let's assume we will fix the tests to pass UpdateBookRequest or similar.
-        // If we pass an object that JSON serializes to UpdateBookRequest, we'd need to serialize/deserialize.
-        // Usage in BookCrudTests: TestHelpers.GenerateFakeBookRequest() -> Returns CreateBookRequest.
-        // Does CreateBookRequest match UpdateBookRequest? SImilar properties.
-        // I should check if I can map them.
-        // Or just change GenerateFakeBookRequest to be generic?
-        // Refit expects UpdateBookRequest.
+        var received = await ExecuteAndWaitForEventAsync(
+            book.Id,
+            "BookUpdated",
+            async () => await client.UpdateBookAsync(book.Id, request, book.ETag),
+            TestConstants.DefaultEventTimeout,
+            minTimestamp: DateTimeOffset.UtcNow);
+
+        if (!received)
+        {
+            throw new Exception("Failed to receive BookUpdated event.");
+        }
+
+        return await client.GetBookAdminAsync(book.Id);
+    }
+
+// Helper to accept generic object and cast if possible or use fake request
+    public static async Task<BookDto> UpdateBookAsync(IBooksClient client, Guid bookId, object updatePayload,
+        string etag)
+    {
         var json = JsonSerializer.Serialize(updatePayload);
         var request = JsonSerializer.Deserialize<UpdateBookRequest>(json);
-        await UpdateBookAsync(client, bookId, request!, etag);
+        return await UpdateBookAsync(client, bookId, request!, etag);
     }
 
     public static async Task DeleteBookAsync(HttpClient client, Guid bookId, string etag)
@@ -1149,7 +1353,8 @@ public static class TestHelpers
 
                 _ = await Assert.That(deleteResponse.IsSuccessStatusCode).IsTrue();
             },
-            TestConstants.DefaultEventTimeout);
+            TestConstants.DefaultEventTimeout,
+            minTimestamp: DateTimeOffset.UtcNow);
 
         if (!received)
         {
@@ -1157,25 +1362,39 @@ public static class TestHelpers
         }
     }
 
-    public static async Task DeleteBookAsync(IBooksClient client, Guid bookId, string etag)
+    public static async Task<AdminBookDto> DeleteBookAsync(IBooksClient client, Guid bookId, string etag)
     {
         var received = await ExecuteAndWaitForEventAsync(
             bookId,
-            "BookDeleted",
+            ["BookDeleted", "BookSoftDeleted"],
             async () => await client.SoftDeleteBookAsync(bookId, etag),
             TestConstants.DefaultEventTimeout);
 
         if (!received)
         {
-            throw new Exception("Timed out waiting for BookDeleted event after DeleteBook.");
+            throw new Exception("Timed out waiting for BookSoftDeleted event after DeleteBook.");
         }
+
+        return await client.GetBookAdminAsync(bookId);
+    }
+
+    public static async Task<AdminBookDto> DeleteBookAsync(IBooksClient client, BookDto book)
+    {
+        var etag = book.ETag;
+        if (string.IsNullOrEmpty(etag))
+        {
+            var latest = await client.GetBookAsync(book.Id);
+            etag = latest.ETag;
+        }
+
+        return await DeleteBookAsync(client, book.Id, etag!);
     }
 
     public static async Task RestoreBookAsync(HttpClient client, Guid bookId)
     {
         var received = await ExecuteAndWaitForEventAsync(
             bookId,
-            "BookUpdated",
+            ["BookUpdated", "BookRestored"],
             async () =>
             {
                 var restoreResponse = await client.PostAsync($"/api/admin/books/{bookId}/restore", null);
@@ -1193,18 +1412,33 @@ public static class TestHelpers
         }
     }
 
-    public static async Task RestoreBookAsync(IBooksClient client, Guid bookId, string? etag = null)
+    public static async Task<BookDto> RestoreBookAsync(IBooksClient client, Guid bookId, string? etag = null)
     {
         var received = await ExecuteAndWaitForEventAsync(
             bookId,
-            "BookUpdated",
-            async () => await client.RestoreBookAsync(bookId, apiVersion: "1.0", etag: etag),
-            TestConstants.DefaultEventTimeout);
+            ["BookUpdated", "BookRestored"],
+            async () =>
+            {
+                var currentETag = etag;
+                if (string.IsNullOrEmpty(currentETag))
+                {
+                    // Use Admin endpoint to get the book, including soft-deleted ones, to get the ETag
+                    var book = await client.GetBookAdminAsync(bookId);
+                    currentETag = book?.ETag;
+                    Console.WriteLine($"[TestHelpers] Fetched ETag for restore: {currentETag}");
+                }
+
+                await client.RestoreBookAsync(bookId, apiVersion: "1.0", etag: currentETag);
+            },
+            TestConstants.DefaultEventTimeout,
+            minTimestamp: DateTimeOffset.UtcNow);
 
         if (!received)
         {
             throw new Exception("Timed out waiting for BookUpdated event after RestoreBook.");
         }
+
+        return await client.GetBookAsync(bookId);
     }
 
     public static async Task WaitForConditionAsync(Func<Task<bool>> condition, TimeSpan timeout, string failureMessage)

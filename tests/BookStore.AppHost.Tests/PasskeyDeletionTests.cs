@@ -152,7 +152,7 @@ public class PasskeyDeletionTests
         _ = await Assert.That(encodedId).DoesNotContain("+");
 
         // 4. Act - Delete the passkey
-        await authenticatedPasskeyClient.DeletePasskeyAsync(encodedId);
+        await authenticatedPasskeyClient.DeletePasskeyAsync(encodedId, "\"0\"");
 
         // 5. Assert
 

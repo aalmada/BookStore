@@ -5,6 +5,7 @@ namespace BookStore.Shared.Models;
 /// </summary>
 public record CategoryDto(
     Guid Id,
-    string Name);
+    string Name,
+    string? ETag = null);
 
 public record CategoryTranslationDto(string Name);

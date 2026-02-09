@@ -21,6 +21,10 @@ namespace BookStore.Client
         [Headers("Accept: application/json")]
         [Get("/api/authors/{id}")]
         Task<AuthorDto> GetAuthorAsync(System.Guid id, [Header("Accept-Language")] string? acceptLanguage = default, CancellationToken cancellationToken = default);
+
+        [Headers("Accept: application/json")]
+        [Get("/api/authors/{id}")]
+        Task<IApiResponse<AuthorDto>> GetAuthorWithResponseAsync(System.Guid id, [Header("Accept-Language")] string? acceptLanguage = default, CancellationToken cancellationToken = default);
     }
 
 }

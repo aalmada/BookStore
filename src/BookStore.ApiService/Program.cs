@@ -81,6 +81,9 @@ app.UseRequestLocalization(requestLocalizationOptions);
 // Add Tenant Resolution Middleware
 app.UseTenantResolution();
 
+// Add Tenant Resolution Middleware
+app.UseTenantResolution();
+
 // Add Marten metadata middleware to set correlation/causation IDs
 app.UseMartenMetadata();
 
@@ -99,6 +102,12 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseTenantSecurity();
 app.UseAuthorization();
+
+// Add Marten Concurrency Exception Middleware
+app.UseMartenConcurrencyException();
+
+// Add ETag Validation Middleware
+app.UseETagValidation();
 
 // Map OpenAPI endpoint and configure Scalar UI
 app.MapOpenApi().WithMetadata(new AllowAnonymousTenantAttribute());

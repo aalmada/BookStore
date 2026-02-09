@@ -1,4 +1,4 @@
-using BookStore.Shared.Models;
+using BookStore.Shared.Commands;
 
 namespace BookStore.ApiService.Commands;
 
@@ -18,23 +18,23 @@ public record CreateAuthor(
 public record UpdateAuthor(
     Guid Id,
     string Name,
-    IReadOnlyDictionary<string, AuthorTranslationDto>? Translations)
+    IReadOnlyDictionary<string, AuthorTranslationDto>? Translations) : IHaveETag
 {
-    public string? ETag { get; init; }
+    public string? ETag { get; set; }
 }
 
 /// <summary>
 /// Command to soft delete an author
 /// </summary>
-public record SoftDeleteAuthor(Guid Id)
+public record SoftDeleteAuthor(Guid Id) : IHaveETag
 {
-    public string? ETag { get; init; }
+    public string? ETag { get; set; }
 }
 
 /// <summary>
 /// Command to restore a soft deleted author
 /// </summary>
-public record RestoreAuthor(Guid Id)
+public record RestoreAuthor(Guid Id) : IHaveETag
 {
-    public string? ETag { get; init; }
+    public string? ETag { get; set; }
 }

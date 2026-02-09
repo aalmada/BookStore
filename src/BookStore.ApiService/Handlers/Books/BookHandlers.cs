@@ -16,7 +16,7 @@ namespace BookStore.ApiService.Handlers.Books;
 /// Wolverine handlers for Book commands
 /// Handlers are auto-discovered by Wolverine and provide clean separation of concerns
 /// </summary>
-public static class BookHandlers
+public static partial class BookHandlers
 {
     /// <summary>
     /// Handle CreateBook command
@@ -173,24 +173,6 @@ public static class BookHandlers
             return Result.Failure(Error.Validation(ErrorCodes.Books.PriceCurrencyInvalid, "Invalid currencies provided")).ToProblemDetails();
         }
 
-        // Get current stream state for ETag validation
-        var streamState = await session.Events.FetchStreamStateAsync(command.Id);
-        if (streamState is null)
-        {
-            Log.Books.BookNotFound(logger, command.Id);
-            return Results.NotFound();
-        }
-
-        var currentETag = ETagHelper.GenerateETag(streamState.Version);
-
-        // Check If-Match header for optimistic concurrency
-        if (!string.IsNullOrEmpty(command.ETag) &&
-            !ETagHelper.CheckIfMatch(context, currentETag))
-        {
-            Log.Books.ETagMismatch(logger, command.Id, currentETag, command.ETag);
-            return ETagHelper.PreconditionFailed();
-        }
-
         var aggregate = await session.Events.AggregateStreamAsync<BookAggregate>(command.Id);
         if (aggregate is null)
         {
@@ -198,12 +180,18 @@ public static class BookHandlers
             return Results.NotFound();
         }
 
-        Log.Books.BookUpdating(logger, command.Id, command.Title, streamState.Version);
+        Log.Books.BookUpdating(logger, command.Id, command.Title, 0); // Version will be handled by Marten
 
         // Convert DTOs to domain objects
         var descriptions = command.Translations.ToDictionary(
             kvp => kvp.Key,
             kvp => new BookTranslation(kvp.Value.Description));
+
+        var expectedVersion = ETagHelper.ParseETag(command.ETag);
+        if (expectedVersion.HasValue && aggregate.Version != expectedVersion.Value)
+        {
+            return ETagHelper.PreconditionFailed();
+        }
 
         var eventResult = aggregate.UpdateEvent(
             command.Title,
@@ -237,31 +225,19 @@ public static class BookHandlers
         HybridCache cache,
         ILogger logger)
     {
-        var context = contextAccessor.HttpContext!;
         Log.Books.BookSoftDeleting(logger, command.Id);
-
-        // Get current stream state for ETag validation
-        var streamState = await session.Events.FetchStreamStateAsync(command.Id);
-        if (streamState is null)
-        {
-            Log.Books.BookNotFound(logger, command.Id);
-            return Results.NotFound();
-        }
-
-        var currentETag = ETagHelper.GenerateETag(streamState.Version);
-
-        // Check If-Match header for optimistic concurrency
-        if (!string.IsNullOrEmpty(command.ETag) &&
-            !ETagHelper.CheckIfMatch(context, currentETag))
-        {
-            return ETagHelper.PreconditionFailed();
-        }
 
         var aggregate = await session.Events.AggregateStreamAsync<BookAggregate>(command.Id);
         if (aggregate is null)
         {
             Log.Books.BookNotFound(logger, command.Id);
             return Results.NotFound();
+        }
+
+        var expectedVersion = ETagHelper.ParseETag(command.ETag);
+        if (expectedVersion.HasValue && aggregate.Version != expectedVersion.Value)
+        {
+            return ETagHelper.PreconditionFailed();
         }
 
         var eventResult = aggregate.SoftDeleteEvent();
@@ -276,6 +252,8 @@ public static class BookHandlers
         return Results.NoContent();
     }
 
+
+
     /// <summary>
     /// Handle RestoreBook command with ETag validation
     /// </summary>
@@ -286,31 +264,19 @@ public static class BookHandlers
         HybridCache cache,
         ILogger logger)
     {
-        var context = contextAccessor.HttpContext!;
         Log.Books.BookRestoring(logger, command.Id);
-
-        // Get current stream state for ETag validation
-        var streamState = await session.Events.FetchStreamStateAsync(command.Id);
-        if (streamState is null)
-        {
-            Log.Books.BookNotFound(logger, command.Id);
-            return Results.NotFound();
-        }
-
-        var currentETag = ETagHelper.GenerateETag(streamState.Version);
-
-        // Check If-Match header for optimistic concurrency
-        if (!string.IsNullOrEmpty(command.ETag) &&
-            !ETagHelper.CheckIfMatch(context, currentETag))
-        {
-            return ETagHelper.PreconditionFailed();
-        }
 
         var aggregate = await session.Events.AggregateStreamAsync<BookAggregate>(command.Id);
         if (aggregate is null)
         {
             Log.Books.BookNotFound(logger, command.Id);
             return Results.NotFound();
+        }
+
+        var expectedVersion = ETagHelper.ParseETag(command.ETag);
+        if (expectedVersion.HasValue && aggregate.Version != expectedVersion.Value)
+        {
+            return ETagHelper.PreconditionFailed();
         }
 
         var eventResult = aggregate.RestoreEvent();

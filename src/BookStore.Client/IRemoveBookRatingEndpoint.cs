@@ -6,5 +6,5 @@ namespace BookStore.Client;
 public partial interface IRemoveBookRatingEndpoint
 {
     [Delete("/api/books/{id}/rating")]
-    Task RemoveBookRatingAsync(Guid id);
+    Task RemoveBookRatingAsync(Guid id, [Header("If-Match")] string? etag = null);
 }

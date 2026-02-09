@@ -16,45 +16,55 @@ public static class SaleHandlers
         IDocumentSession session)
     {
         Instrumentation.SalesScheduled.Add(1, new System.Diagnostics.TagList { { "tenant_id", session.TenantId } });
-        try
+        
+        // Manually project SaleAggregate to avoid Marten exceptions on unknown events
+        var events = await session.Events.FetchStreamAsync(command.BookId);
+        if (events == null || events.Count == 0)
         {
-            var streamState = await session.Events.FetchStreamStateAsync(command.BookId);
-            if (streamState == null)
-            {
-                return Results.NotFound();
-            }
-
-            // Manually project SaleAggregate to avoid Marten exceptions on unknown events
-            var events = await session.Events.FetchStreamAsync(command.BookId);
-            var aggregate = new SaleAggregate { Id = command.BookId };
-            foreach (var e in events)
-            {
-                if (e.Data is BookSaleScheduled s)
-                {
-                    aggregate.Apply(s);
-                }
-
-                if (e.Data is BookSaleCancelled c)
-                {
-                    aggregate.Apply(c);
-                }
-            }
-
-            var result = aggregate.ScheduleSale(command.Percentage, command.Start, command.End);
-            if (result.IsFailure)
-            {
-                return result.ToProblemDetails();
-            }
-
-            // Append with expected version to force Marten to recognize existing stream
-            _ = session.Events.Append(command.BookId, streamState.Version + 1, result.Value);
-            await session.SaveChangesAsync();
-            return Results.NoContent();
+            return Results.NotFound();
         }
-        catch
+
+        var aggregate = new SaleAggregate { Id = command.BookId };
+        foreach (var e in events)
         {
-            throw;
+            if (e.Data is BookSaleScheduled s)
+            {
+                aggregate.Apply(s);
+            }
+
+            if (e.Data is BookSaleCancelled c)
+            {
+                aggregate.Apply(c);
+            }
         }
+
+        var result = aggregate.ScheduleSale(command.Percentage, command.Start, command.End);
+        if (result.IsFailure)
+        {
+            return result.ToProblemDetails();
+        }
+
+        var currentVersion = events.Max(e => e.Version);
+        var expectedVersion = ETagHelper.ParseETag(command.ETag);
+        if (expectedVersion.HasValue)
+        {
+            if (currentVersion != expectedVersion.Value)
+            {
+                // Diagnostic logging
+                try { System.IO.File.AppendAllText("debug_concurrency.log", $"[{DateTimeOffset.UtcNow}] ScheduleSale Mismatch: BookId={command.BookId} Expected={expectedVersion.Value} Actual={currentVersion} ETagHeader={command.ETag}\n"); } catch { }
+                return ETagHelper.PreconditionFailed();
+            }
+
+            _ = session.Events.Append(command.BookId, result.Value);
+        }
+        else
+        {
+            // For SaleAggregate, we should probably always have a version since it's an update to an existing book
+            // But if it's the first sale, maybe version is needed too.
+            _ = session.Events.Append(command.BookId, result.Value);
+        }
+        
+        return Results.NoContent();
     }
 
     public static async Task<IResult> Handle(
@@ -62,15 +72,15 @@ public static class SaleHandlers
         IDocumentSession session)
     {
         Instrumentation.SalesCanceled.Add(1, new System.Diagnostics.TagList { { "tenant_id", session.TenantId } });
-        var streamState = await session.Events.FetchStreamStateAsync(command.BookId);
-        if (streamState == null)
+        
+        // Manually project SaleAggregate
+        var events = await session.Events.FetchStreamAsync(command.BookId);
+        if (events == null || events.Count == 0)
         {
             return Results.NotFound();
         }
 
-        // Manually project SaleAggregate
-        var events = await session.Events.FetchStreamAsync(command.BookId);
-        var aggregate = new SaleAggregate();
+        var aggregate = new SaleAggregate { Id = command.BookId };
         foreach (var e in events)
         {
             if (e.Data is BookSaleScheduled s)
@@ -90,8 +100,16 @@ public static class SaleHandlers
             return eventResult.ToProblemDetails();
         }
 
-        _ = session.Events.Append(command.BookId, streamState.Version + 1, eventResult.Value);
-        await session.SaveChangesAsync();
+        var expectedVersion = ETagHelper.ParseETag(command.ETag);
+        if (expectedVersion.HasValue)
+        {
+            _ = session.Events.Append(command.BookId, eventResult.Value);
+        }
+        else
+        {
+        var currentVersion = events.Max(e => e.Version);
+        _ = session.Events.Append(command.BookId, eventResult.Value);
+        }
 
         return Results.NoContent();
     }

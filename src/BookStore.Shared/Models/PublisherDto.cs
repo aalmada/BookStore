@@ -5,4 +5,5 @@ namespace BookStore.Shared.Models;
 /// </summary>
 public record PublisherDto(
     Guid Id,
-    string Name);
+    string Name,
+    string? ETag = null);

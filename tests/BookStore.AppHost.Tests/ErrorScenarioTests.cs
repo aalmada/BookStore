@@ -32,9 +32,9 @@ public class ErrorScenarioTests
             Isbn = "invalid-isbn", // Invalid: bad ISBN format (handled by validation?)
             Language = "en",
             Translations =
-                new Dictionary<string, BookStore.Client.BookTranslationDto>
+                new Dictionary<string, BookTranslationDto>
                 {
-                    ["en"] = new BookStore.Client.BookTranslationDto { Description = "Test description" }
+                    ["en"] = new BookTranslationDto("Test description")
                 },
             PublicationDate = new PartialDate(2026, 1, 1),
             PublisherId = null,

@@ -1,3 +1,5 @@
+using BookStore.Shared.Commands;
+
 namespace BookStore.ApiService.Commands;
 
 /// <summary>
@@ -13,23 +15,23 @@ public record CreatePublisher(string Name)
 /// </summary>
 public record UpdatePublisher(
     Guid Id,
-    string Name)
+    string Name) : IHaveETag
 {
-    public string? ETag { get; init; }
+    public string? ETag { get; set; }
 }
 
 /// <summary>
 /// Command to soft delete a publisher
 /// </summary>
-public record SoftDeletePublisher(Guid Id)
+public record SoftDeletePublisher(Guid Id) : IHaveETag
 {
-    public string? ETag { get; init; }
+    public string? ETag { get; set; }
 }
 
 /// <summary>
 /// Command to restore a soft deleted publisher
 /// </summary>
-public record RestorePublisher(Guid Id)
+public record RestorePublisher(Guid Id) : IHaveETag
 {
-    public string? ETag { get; init; }
+    public string? ETag { get; set; }
 }

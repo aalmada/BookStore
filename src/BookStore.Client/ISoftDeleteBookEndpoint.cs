@@ -20,6 +20,9 @@ namespace BookStore.Client
     {
         [Delete("/api/admin/books/{id}")]
         Task SoftDeleteBookAsync(System.Guid id, [Header("If-Match")] string? etag = null, CancellationToken cancellationToken = default);
+
+        [Delete("/api/admin/books/{id}")]
+        Task<IApiResponse> SoftDeleteBookWithResponseAsync(System.Guid id, [Header("If-Match")] string? etag = null, CancellationToken cancellationToken = default);
     }
 
 }

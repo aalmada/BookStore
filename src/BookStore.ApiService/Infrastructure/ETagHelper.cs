@@ -65,16 +65,40 @@ public static class ETagHelper
             detail: "The resource has been modified since you last retrieved it. Please refresh and try again.",
             statusCode: 412,
             title: "Precondition Failed");
+
+    /// <summary>
+    /// Parse an ETag string into a version number
+    /// </summary>
+    public static long? ParseETag(string? etag)
+    {
+        if (string.IsNullOrEmpty(etag))
+        {
+            return null;
+        }
+
+        var trimmed = etag.Trim();
+        if (trimmed.StartsWith("W/", StringComparison.OrdinalIgnoreCase))
+        {
+            trimmed = trimmed[2..];
+        }
+        trimmed = trimmed.Trim('"');
+        return long.TryParse(trimmed, out var version) ? version : null;
+    }
 }
 
-/// <summary>
-/// Extension methods for adding ETags to IResult
-/// </summary>
 public static class ETagResultExtensions
 {
-    public static IResult WithETag(this IResult result, HttpContext context, string etag)
+    public static IResult WithETag(this IResult result, string etag)
     {
-        ETagHelper.AddETagHeader(context, etag);
-        return result;
+        return new ETagResult(result, etag);
+    }
+
+    private sealed class ETagResult(IResult inner, string etag) : IResult
+    {
+        public Task ExecuteAsync(HttpContext httpContext)
+        {
+            httpContext.Response.Headers.ETag = etag;
+            return inner.ExecuteAsync(httpContext);
+        }
     }
 }

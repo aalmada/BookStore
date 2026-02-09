@@ -20,7 +20,11 @@ namespace BookStore.Client
     {
         [Headers("Content-Type: application/json")]
         [Put("/api/admin/publishers/{id}")]
-        Task UpdatePublisherAsync(System.Guid id, [Body] UpdatePublisherRequest body, CancellationToken cancellationToken = default);
+        Task UpdatePublisherAsync(System.Guid id, [Body] UpdatePublisherRequest body, [Header("If-Match")] string? etag = null, CancellationToken cancellationToken = default);
+
+        [Headers("Content-Type: application/json")]
+        [Put("/api/admin/publishers/{id}")]
+        Task<IApiResponse> UpdatePublisherWithResponseAsync(System.Guid id, [Body] UpdatePublisherRequest body, [Header("If-Match")] string? etag = null, CancellationToken cancellationToken = default);
     }
 
 }

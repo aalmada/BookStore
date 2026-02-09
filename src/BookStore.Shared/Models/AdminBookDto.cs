@@ -28,4 +28,5 @@ public record AdminBookDto(
     BookSale? ActiveSale,
     IReadOnlyList<PriceEntry> CurrentPrices,
     bool IsDeleted,
-    IReadOnlyDictionary<string, BookTranslationDto> Translations);
+    IReadOnlyDictionary<string, BookTranslationDto> Translations,
+    string? ETag = null);

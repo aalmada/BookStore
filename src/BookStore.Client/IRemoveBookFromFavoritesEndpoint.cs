@@ -8,5 +8,5 @@ public partial interface IRemoveBookFromFavoritesEndpoint
 {
     [Headers("Accept: application/json")]
     [Delete("/api/books/{id}/favorites")]
-    Task RemoveBookFromFavoritesAsync(Guid id, CancellationToken cancellationToken = default);
+    Task RemoveBookFromFavoritesAsync(Guid id, [Header("If-Match")] string? etag = null, CancellationToken cancellationToken = default);
 }

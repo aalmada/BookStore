@@ -33,10 +33,10 @@ public static class RateLimitingExtensions
                                                                                                                                            return RateLimitPartition.GetFixedWindowLimiter(tenantId, _ =>
                                                                                                                                                new FixedWindowRateLimiterOptions
                                                                                                                                                {
-                                                                                                                                                   PermitLimit = 1000,
-                                                                                                                                                   Window = TimeSpan.FromMinutes(1),
+                                                                                                                                                   PermitLimit = rateLimitOptions.PermitLimit,
+                                                                                                                                                   Window = TimeSpan.FromMinutes(rateLimitOptions.WindowInMinutes),
                                                                                                                                                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-                                                                                                                                                   QueueLimit = 10
+                                                                                                                                                   QueueLimit = 100
                                                                                                                                                });
                                                                                                                                        });
 

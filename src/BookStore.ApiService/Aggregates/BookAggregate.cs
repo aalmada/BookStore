@@ -25,6 +25,8 @@ public class BookAggregate : ISoftDeleted
     public List<BookSale> Sales { get; private set; } = [];
     public decimal CurrentDiscountPercentage { get; private set; }
     public CoverImageFormat CoverFormat { get; private set; } = CoverImageFormat.None;
+    public long Version { get; private set; }
+
 
     // Marten uses this for rehydration
     void Apply(BookAdded @event)

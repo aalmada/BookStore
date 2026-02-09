@@ -6,6 +6,7 @@ namespace BookStore.Shared.Models;
 public record AuthorDto(
     Guid Id,
     string Name,
-    string? Biography);
+    string? Biography,
+    string? ETag = null);
 
 public record AuthorTranslationDto(string Biography);

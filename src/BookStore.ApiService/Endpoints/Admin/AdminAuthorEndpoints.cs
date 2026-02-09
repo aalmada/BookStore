@@ -44,6 +44,10 @@ namespace BookStore.ApiService.Endpoints.Admin
                 .WithName("GetAllAuthors")
                 .WithSummary("Get all authors (including deleted)");
 
+            _ = group.MapGet("/{id:guid}", GetAuthor)
+                .WithName("GetAdminAuthor")
+                .WithSummary("Get author by ID (including deleted)");
+
             return group.RequireAuthorization("Admin");
         }
 
@@ -89,10 +93,37 @@ namespace BookStore.ApiService.Endpoints.Admin
                 x.Id,
                 x.Name,
                 LocalizationHelper.GetLocalizedValue(x.Biographies, culture, defaultCulture, ""),
-                x.Biographies.ToDictionary(kvp => kvp.Key, kvp => new AuthorTranslationDto(kvp.Value))
+                x.Biographies.ToDictionary(kvp => kvp.Key, kvp => new AuthorTranslationDto(kvp.Value)),
+                ETagHelper.GenerateETag(x.Version)
             )).ToList();
 
             return Results.Ok(new PagedListDto<AdminAuthorDto>(dtos, pagedList.PageNumber, pagedList.PageSize, pagedList.TotalItemCount));
+        }
+
+        static async Task<IResult> GetAuthor(
+            Guid id,
+            [FromServices] IQuerySession session,
+            [FromServices] IOptions<LocalizationOptions> localizationOptions,
+            CancellationToken cancellationToken)
+        {
+            var culture = CultureInfo.CurrentUICulture.Name;
+            var defaultCulture = localizationOptions.Value.DefaultCulture;
+
+            var author = await session.LoadAsync<AuthorProjection>(id, cancellationToken);
+            if (author == null)
+            {
+                return Results.NotFound();
+            }
+
+            var dto = new AdminAuthorDto(
+                author.Id,
+                author.Name,
+                LocalizationHelper.GetLocalizedValue(author.Biographies, culture, defaultCulture, ""),
+                author.Biographies.ToDictionary(kvp => kvp.Key, kvp => new AuthorTranslationDto(kvp.Value)),
+                ETagHelper.GenerateETag(author.Version)
+            );
+
+            return Results.Ok(dto).WithETag(dto.ETag!);
         }
 
         static Task<IResult> CreateAuthor(

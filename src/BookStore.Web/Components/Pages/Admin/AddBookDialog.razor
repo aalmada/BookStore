@@ -310,7 +310,7 @@
 
             _model.Translations = _translations.ToDictionary(
                 kvp => kvp.Key,
-                kvp => new BookStore.Client.BookTranslationDto { Description = kvp.Value }
+                kvp => new BookTranslationDto(kvp.Value)
             );
 
             _model.AdditionalProperties["prices"] = new Dictionary<string, decimal>

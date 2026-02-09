@@ -37,6 +37,7 @@ public class CorrelationTests
         var request = new HttpRequestMessage(HttpMethod.Post, $"/api/books/{fakeBookId}/rating");
         request.Content = JsonContent.Create(new { Rating = 5 });
         request.Headers.Add("X-Correlation-ID", correlationId);
+        request.Headers.IfMatch.Add(new EntityTagHeaderValue("\"0\""));
         request.Headers.UserAgent.ParseAdd("TUnit-Test-Agent");
 
         // Act & Assert
@@ -126,6 +127,7 @@ public class CorrelationTests
 
         var request = new HttpRequestMessage(HttpMethod.Post, $"/api/books/{fakeBookId}/rating");
         request.Content = JsonContent.Create(new { Rating = 4 });
+        request.Headers.IfMatch.Add(new EntityTagHeaderValue("\"0\""));
         request.Headers.UserAgent.ParseAdd("TUnit-Test-Agent-No-ID");
         // NOTE: No X-Correlation-ID header added
 

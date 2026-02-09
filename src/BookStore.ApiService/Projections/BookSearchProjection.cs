@@ -1,5 +1,7 @@
+using JasperFx.Events;
 using BookStore.ApiService.Events;
 using BookStore.Shared.Models;
+using Marten.Events;
 using Marten;
 using Marten.Events.Aggregation;
 
@@ -16,6 +18,7 @@ public class BookSearchProjection
     public string? PublicationDateString { get; set; } // For generic string sorting (Marten friendly)
     public bool Deleted { get; set; }
     public DateTimeOffset? DeletedAt { get; set; }
+    public long Version { get; set; }
 
     // Localized field as dictionary (key = culture, value = description)
     public Dictionary<string, string> Descriptions { get; set; } = [];
@@ -40,24 +43,25 @@ public class BookSearchProjection
     public CoverImageFormat CoverFormat { get; set; } = CoverImageFormat.None;
 
     // SingleStreamProjection methods
-    public static BookSearchProjection Create(BookAdded @event, IQuerySession session)
+    public static BookSearchProjection Create(IEvent<BookAdded> @event, IQuerySession session)
     {
-        var prices = @event.Prices?
+        var prices = @event.Data.Prices?
                 .Select(kvp => new PriceEntry(kvp.Key, kvp.Value))
                 .ToList() ?? [];
 
         var projection = new BookSearchProjection
         {
-            Id = @event.Id,
-            Title = @event.Title,
-            Isbn = @event.Isbn,
-            OriginalLanguage = @event.Language,
-            PublicationDate = @event.PublicationDate,
-            PublicationDateString = @event.PublicationDate?.ToString(),
-            PublisherId = @event.PublisherId,
-            AuthorIds = @event.AuthorIds,
-            CategoryIds = @event.CategoryIds,
-            Descriptions = @event.Translations?
+            Id = @event.Data.Id,
+            Title = @event.Data.Title,
+            Isbn = @event.Data.Isbn,
+            OriginalLanguage = @event.Data.Language,
+            PublicationDate = @event.Data.PublicationDate,
+            PublicationDateString = @event.Data.PublicationDate?.ToString(),
+            Version = @event.Version,
+            PublisherId = @event.Data.PublisherId,
+            AuthorIds = @event.Data.AuthorIds,
+            CategoryIds = @event.Data.CategoryIds,
+            Descriptions = @event.Data.Translations?
                 .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Description)
                 ?? [],
             Prices = prices,
@@ -65,26 +69,28 @@ public class BookSearchProjection
             DiscountPercentage = 0
         };
 
+        projection.RecalculateCurrentPrices();
         LoadDenormalizedData(projection, session);
         UpdateSearchText(projection);
 
         return projection;
     }
 
-    public BookSearchProjection Apply(BookUpdated @event, IQuerySession session)
+    public BookSearchProjection Apply(IEvent<BookUpdated> @event, IQuerySession session)
     {
-        Title = @event.Title;
-        Isbn = @event.Isbn;
-        OriginalLanguage = @event.Language;
-        PublicationDate = @event.PublicationDate;
-        PublicationDateString = @event.PublicationDate?.ToString();
-        PublisherId = @event.PublisherId;
-        AuthorIds = @event.AuthorIds;
-        CategoryIds = @event.CategoryIds;
-        Descriptions = @event.Translations?
+        Title = @event.Data.Title;
+        Isbn = @event.Data.Isbn;
+        OriginalLanguage = @event.Data.Language;
+        PublicationDate = @event.Data.PublicationDate;
+        PublicationDateString = @event.Data.PublicationDate?.ToString();
+        Version = @event.Version;
+        PublisherId = @event.Data.PublisherId;
+        AuthorIds = @event.Data.AuthorIds;
+        CategoryIds = @event.Data.CategoryIds;
+        Descriptions = @event.Data.Translations?
             .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Description)
             ?? [];
-        Prices = @event.Prices?
+        Prices = @event.Data.Prices?
             .Select(kvp => new PriceEntry(kvp.Key, kvp.Value))
             .ToList() ?? [];
 
@@ -97,9 +103,10 @@ public class BookSearchProjection
     }
 
     // New handler for discount updates
-    public void Apply(BookDiscountUpdated @event)
+    public void Apply(IEvent<BookDiscountUpdated> @event)
     {
-        DiscountPercentage = @event.DiscountPercentage;
+        DiscountPercentage = @event.Data.DiscountPercentage;
+        Version = @event.Version;
         RecalculateCurrentPrices();
     }
 
@@ -114,21 +121,27 @@ public class BookSearchProjection
         CurrentPrices = [.. Prices.Select(p => new PriceEntry(p.Currency, p.Value * factor))];
     }
 
-    public void Apply(BookSoftDeleted @event)
+    public void Apply(IEvent<BookSoftDeleted> @event)
     {
         Deleted = true;
+        Version = @event.Version;
         DeletedAt = @event.Timestamp;
     }
 
-    public void Apply(BookRestored _)
+    public void Apply(IEvent<BookRestored> @event)
     {
         Deleted = false;
+        Version = @event.Version;
         DeletedAt = null;
     }
 
-    public void Apply(BookCoverUpdated @event) => CoverFormat = @event.CoverFormat;
+    public void Apply(IEvent<BookCoverUpdated> @event)
+    {
+        CoverFormat = @event.Data.CoverFormat;
+        Version = @event.Version;
+    }
 
-    public void Apply(BookSaleScheduled @event)
+    public void Apply(IEvent<BookSaleScheduled> @event)
     {
         // Legacy: We keep this for backward compatibility or display purposes?
         // Ideally we should sync Sales from SaleAggregate, but BookSearchProjection only sees Book events.
@@ -138,11 +151,25 @@ public class BookSearchProjection
         // 'CurrentPrices' < 'Prices' implies sale.
 
         // Remove any existing sale with the same start time
-        _ = Sales.RemoveAll(s => s.Start == @event.Sale.Start);
-        Sales.Add(@event.Sale);
+        _ = Sales.RemoveAll(s => s.Start == @event.Data.Sale.Start);
+        Sales.Add(@event.Data.Sale);
+
+        // If the sale is currently active, update the discount percentage and recalculate prices
+        var now = DateTimeOffset.UtcNow;
+        if (@event.Data.Sale.Start <= now && @event.Data.Sale.End > now)
+        {
+            DiscountPercentage = @event.Data.Sale.Percentage;
+        }
+
+        RecalculateCurrentPrices();
+        Version = @event.Version;
     }
 
-    public void Apply(BookSaleCancelled @event) => _ = Sales.RemoveAll(s => s.Start == @event.SaleStart);
+    public void Apply(IEvent<BookSaleCancelled> @event)
+    {
+        _ = Sales.RemoveAll(s => s.Start == @event.Data.SaleStart);
+        Version = @event.Version;
+    }
 
     // Helper methods for denormalization
     static void LoadDenormalizedData(BookSearchProjection projection, IQuerySession session)

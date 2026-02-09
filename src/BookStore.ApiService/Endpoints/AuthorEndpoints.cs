@@ -77,7 +77,8 @@ public static class AuthorEndpoints
                 var authorDtos = pagedList.Select(author => new AuthorDto(
                     author.Id,
                     author.Name,
-                    LocalizationHelper.GetLocalizedValue(author.Biographies, culture, defaultCulture, "")
+                    LocalizationHelper.GetLocalizedValue(author.Biographies, culture, defaultCulture, ""),
+                    ETagHelper.GenerateETag(author.Version)
                 )).ToList();
 
                 return new PagedListDto<AuthorDto>(
@@ -97,7 +98,7 @@ public static class AuthorEndpoints
         return TypedResults.Ok(response);
     }
 
-    static async Task<Results<Ok<AuthorDto>, NotFound>> GetAuthor(
+    static async Task<IResult> GetAuthor(
         Guid id,
         [FromServices] IDocumentStore store,
         [FromServices] ITenantContext tenantContext,
@@ -130,7 +131,8 @@ public static class AuthorEndpoints
                 return new AuthorDto(
                     author.Id,
                     author.Name,
-                    localizedBiography);
+                    localizedBiography,
+                    ETagHelper.GenerateETag(author.Version));
             },
             options: new HybridCacheEntryOptions
             {
@@ -140,7 +142,12 @@ public static class AuthorEndpoints
             tags: [CacheTags.ForItem(CacheTags.AuthorItemPrefix, id)],
             token: cancellationToken);
 
-        return response is null ? TypedResults.NotFound() : TypedResults.Ok(response);
+        if (response is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        return TypedResults.Ok(response).WithETag(response.ETag!);
     }
 }
 

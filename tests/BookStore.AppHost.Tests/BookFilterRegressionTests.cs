@@ -4,7 +4,6 @@ using BookStore.Shared.Models;
 using Marten;
 using Refit;
 using Weasel.Core;
-using BookTranslationDto = BookStore.Client.BookTranslationDto;
 using CreateAuthorRequest = BookStore.Client.CreateAuthorRequest;
 using CreateBookRequest = BookStore.Client.CreateBookRequest;
 
@@ -102,10 +101,7 @@ public class BookFilterRegressionTests
             Isbn = "978-0-00-000000-0",
             Language = "en",
             Translations =
-                new Dictionary<string, BookTranslationDto>
-                {
-                    ["en"] = new BookTranslationDto { Description = "Test description" }
-                },
+                new Dictionary<string, BookTranslationDto> { ["en"] = new BookTranslationDto("Test description") },
             PublicationDate = new PartialDate(2024, 1, 1),
             Prices = new Dictionary<string, decimal> { ["USD"] = 10.0m, ["EUR"] = 50.0m }
         };
@@ -132,10 +128,7 @@ public class BookFilterRegressionTests
         // Execute Search
         var request = new BookSearchRequest
         {
-            Search = uniqueTitle,
-            Currency = currency,
-            MinPrice = (decimal?)minPrice,
-            MaxPrice = (decimal?)maxPrice
+            Search = uniqueTitle, Currency = currency, MinPrice = (decimal?)minPrice, MaxPrice = (decimal?)maxPrice
         };
 
         var content = await publicClient.GetBooksAsync(request);
@@ -167,10 +160,7 @@ public class BookFilterRegressionTests
             Isbn = "978-0-00-000000-0",
             Language = "en",
             Translations =
-                new Dictionary<string, BookTranslationDto>
-                {
-                    ["en"] = new BookTranslationDto { Description = "Sales test" }
-                },
+                new Dictionary<string, BookTranslationDto> { ["en"] = new BookTranslationDto("Sales test") },
             PublicationDate = new PartialDate(2024, 1, 1),
             Prices = new Dictionary<string, decimal> { ["USD"] = 50.0m }
         };
@@ -181,9 +171,7 @@ public class BookFilterRegressionTests
         // Verify initially NOT found with MaxPrice=40 (Price is 50)
         var preSaleList = await publicClient.GetBooksAsync(new BookSearchRequest
         {
-            Search = uniqueTitle,
-            MaxPrice = 40,
-            Currency = "USD"
+            Search = uniqueTitle, MaxPrice = 40, Currency = "USD"
         });
         _ = await Assert.That(preSaleList!.Items.Any(b => b.Title == uniqueTitle)).IsFalse();
 
@@ -192,8 +180,14 @@ public class BookFilterRegressionTests
         var saleRequest =
             new ScheduleSaleRequest(50m, DateTimeOffset.UtcNow.AddSeconds(-5), DateTimeOffset.UtcNow.AddDays(1));
 
-        _ = await TestHelpers.ExecuteAndWaitForEventAsync(bookId, "BookUpdated",
-            async () => await authClient.ScheduleBookSaleAsync(bookId, saleRequest), TimeSpan.FromSeconds(5));
+        var putReceived = await TestHelpers.ExecuteAndWaitForEventAsync(bookId, "BookUpdated",
+            async () => await authClient.ScheduleBookSaleAsync(bookId, saleRequest, book.ETag),
+            TimeSpan.FromSeconds(5));
+
+        _ = await Assert.That(putReceived).IsTrue();
+
+        // Refresh book to get new ETag if we needed it later (not needed here but good practice)
+        book = await authClient.GetBookAsync(bookId);
 
         // Poll for search projection to update with Sale
         var foundOnSale = false;
@@ -202,9 +196,7 @@ public class BookFilterRegressionTests
             // Search with MaxPrice=40. Desired price is 25.
             var list = await publicClient.GetBooksAsync(new BookSearchRequest
             {
-                Search = uniqueTitle,
-                MaxPrice = 40,
-                Currency = "USD"
+                Search = uniqueTitle, MaxPrice = 40, Currency = "USD"
             });
 
             if (list != null && list.Items.Any(b => b.Id == bookId))

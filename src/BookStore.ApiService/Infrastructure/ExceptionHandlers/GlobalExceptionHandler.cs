@@ -12,6 +12,16 @@ public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IE
     {
         BookStore.ApiService.Infrastructure.Logging.Log.Infrastructure.UnhandledException(logger, exception, exception.Message);
 
+        try
+        {
+            System.IO.File.AppendAllText("global_exception.log", $"[{DateTimeOffset.UtcNow}] {exception.GetType().Name}: {exception.Message}{Environment.NewLine}{exception.StackTrace}{Environment.NewLine}");
+            if (exception.InnerException != null)
+            {
+                System.IO.File.AppendAllText("global_exception.log", $"INNER: {exception.InnerException.GetType().Name}: {exception.InnerException.Message}{Environment.NewLine}{exception.InnerException.StackTrace}{Environment.NewLine}");
+            }
+        }
+        catch { }
+
         var problemDetails = new Microsoft.AspNetCore.Mvc.ProblemDetails
         {
             Status = StatusCodes.Status500InternalServerError,

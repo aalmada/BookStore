@@ -187,8 +187,8 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
         var timestamp = DateTimeOffset.UtcNow;
         IDomainEventNotification notification = effectiveChangeType switch
         {
-            ChangeType.Insert => new BookCreatedNotification(Guid.Empty, book.Id, book.Title, timestamp),
-            ChangeType.Update => new BookUpdatedNotification(Guid.Empty, book.Id, book.Title, timestamp),
+            ChangeType.Insert => new BookCreatedNotification(Guid.Empty, book.Id, book.Title, timestamp, book.Version),
+            ChangeType.Update => new BookUpdatedNotification(Guid.Empty, book.Id, book.Title, timestamp, book.Version),
             ChangeType.Delete => new BookDeletedNotification(Guid.Empty, book.Id, timestamp),
             _ => throw new ArgumentOutOfRangeException(nameof(effectiveChangeType))
         };
@@ -204,8 +204,8 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
 
         IDomainEventNotification notification = effectiveChangeType switch
         {
-            ChangeType.Insert => new AuthorCreatedNotification(Guid.Empty, author.Id, author.Name, author.LastModified),
-            ChangeType.Update => new AuthorUpdatedNotification(Guid.Empty, author.Id, author.Name, author.LastModified),
+            ChangeType.Insert => new AuthorCreatedNotification(Guid.Empty, author.Id, author.Name, author.LastModified, author.Version),
+            ChangeType.Update => new AuthorUpdatedNotification(Guid.Empty, author.Id, author.Name, author.LastModified, author.Version),
             ChangeType.Delete => new AuthorDeletedNotification(Guid.Empty, author.Id, author.LastModified),
             _ => throw new ArgumentOutOfRangeException(nameof(effectiveChangeType))
         };
@@ -236,7 +236,7 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
         await InvalidateCacheTagsAsync(stats.Id, CacheTags.BookItemPrefix, CacheTags.BookList, token);
 
         // Emit BookUpdated so clients refetch the book (including new stats)
-        IDomainEventNotification notification = new BookUpdatedNotification(Guid.Empty, stats.Id, "Statistics Updated", DateTimeOffset.UtcNow);
+        IDomainEventNotification notification = new BookUpdatedNotification(Guid.Empty, stats.Id, "Statistics Updated", DateTimeOffset.UtcNow, 0); // Stats don't have a specific book version
         await NotifyAsync("Book", notification, token);
     }
 

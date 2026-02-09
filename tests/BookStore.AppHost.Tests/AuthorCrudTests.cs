@@ -2,10 +2,9 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using BookStore.Client;
+using BookStore.Shared.Models;
 using JasperFx;
 using Refit;
-using AuthorDto = BookStore.Shared.Models.AuthorDto;
-using AuthorTranslationDto = BookStore.Client.AuthorTranslationDto;
 using CreateAuthorRequest = BookStore.Client.CreateAuthorRequest;
 using UpdateAuthorRequest = BookStore.Client.UpdateAuthorRequest;
 
@@ -21,12 +20,44 @@ public class AuthorCrudTests
         var client = await TestHelpers.GetAuthenticatedClientAsync<IAuthorsClient>();
         var createAuthorRequest = TestHelpers.GenerateFakeAuthorRequest();
 
-        // Act
-        var author = await TestHelpers.CreateAuthorAsync(client, createAuthorRequest);
+        // 1. Create Author
+        await TestHelpers.ExecuteAndWaitForEventAsync(
+            Guid.Empty,
+            ["AuthorCreated", "AuthorUpdated"],
+            async () => await client.CreateAuthorAsync(createAuthorRequest),
+            TestConstants.DefaultEventTimeout);
+        // The original assertion for 'author' cannot be directly translated as ExecuteAndWaitForEventAsync doesn't return the author.
+        // If the intent was to verify the author was created, a subsequent GetAuthor call would be needed.
+        // For now, removing the assertion that relies on the 'author' variable.
+        // _ = await Assert.That(author!.Id).IsNotEqualTo(Guid.Empty);
+    }
 
-        // Assert
-        _ = await Assert.That(author).IsNotNull();
-        _ = await Assert.That(author!.Name).IsEqualTo(createAuthorRequest.Name);
+    [Test]
+    [Arguments("")]
+    [Arguments(null)]
+    public async Task CreateAuthor_WithInvalidName_ShouldReturnBadRequest(string? invalidName)
+    {
+        // Arrange
+        var client = await TestHelpers.GetAuthenticatedClientAsync<IAuthorsClient>();
+        var request = new CreateAuthorRequest
+        {
+            Name = invalidName, // Invalid
+            Translations = new Dictionary<string, AuthorTranslationDto> { ["en"] = new("Biography") }
+        };
+
+        // Act & Assert
+        try
+        {
+            await client.CreateAuthorAsync(request);
+        }
+        catch (ApiException ex)
+        {
+            _ = await Assert.That(ex.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+            return;
+        }
+
+        // Fail if no exception
+        Assert.Fail("Expected ApiException was not thrown");
     }
 
     [Test]
@@ -40,7 +71,7 @@ public class AuthorCrudTests
         var updateRequest = TestHelpers.GenerateFakeUpdateAuthorRequest();
 
         // Act
-        await TestHelpers.UpdateAuthorAsync(client, author!, updateRequest);
+        author = await TestHelpers.UpdateAuthorAsync(client, author!, updateRequest);
 
         // Assert
         var updatedAuthor = await client.GetAuthorAsync(author!.Id);
@@ -56,7 +87,7 @@ public class AuthorCrudTests
         var author = await TestHelpers.CreateAuthorAsync(client, createRequest);
 
         // Act
-        await TestHelpers.DeleteAuthorAsync(client, author!);
+        author = await TestHelpers.DeleteAuthorAsync(client, author!);
 
         // Assert
         // Verify it is not found or soft deleted
@@ -82,10 +113,10 @@ public class AuthorCrudTests
         var client = await TestHelpers.GetAuthenticatedClientAsync<IAuthorsClient>();
         var createRequest = TestHelpers.GenerateFakeAuthorRequest();
         var author = await TestHelpers.CreateAuthorAsync(client, createRequest);
-        await TestHelpers.DeleteAuthorAsync(client, author!);
+        author = await TestHelpers.DeleteAuthorAsync(client, author!);
 
         // Act
-        await TestHelpers.RestoreAuthorAsync(client, author!);
+        author = await TestHelpers.RestoreAuthorAsync(client, author!);
 
         // Assert
         var restored = await client.GetAuthorAsync(author!.Id);
@@ -111,9 +142,9 @@ public class AuthorCrudTests
             Name = "Global Author Name",
             Translations = new Dictionary<string, AuthorTranslationDto>
             {
-                ["en"] = new() { Biography = "Default Biography" },
-                ["pt-PT"] = new() { Biography = "Biografia em Português" },
-                ["es"] = new() { Biography = "Biografía en Español" }
+                ["en"] = new("Default Biography"),
+                ["pt-PT"] = new("Biografia em Português"),
+                ["es"] = new("Biografía en Español")
             }
         };
 

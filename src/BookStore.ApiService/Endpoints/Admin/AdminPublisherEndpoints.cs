@@ -77,7 +77,8 @@ namespace BookStore.ApiService.Endpoints.Admin
 
             var dtos = pagedList.ToList().Select(x => new PublisherDto(
                 x.Id,
-                x.Name
+                x.Name,
+                ETagHelper.GenerateETag(x.Version)
             )).ToList();
 
             return Results.Ok(new PagedListDto<PublisherDto>(dtos, pagedList.PageNumber, pagedList.PageSize, pagedList.TotalItemCount));

@@ -1,4 +1,7 @@
+using JasperFx.Events;
 using BookStore.ApiService.Events;
+using BookStore.Shared.Infrastructure;
+using Marten.Events;
 using Marten.Events.Aggregation;
 
 namespace BookStore.ApiService.Projections;
@@ -16,37 +19,42 @@ public class AuthorProjection
     public DateTimeOffset LastModified { get; set; }
     public bool Deleted { get; set; }
     public DateTimeOffset? DeletedAt { get; set; }
+    public long Version { get; set; }
 
     // SingleStreamProjection methods
-    public static AuthorProjection Create(AuthorAdded @event) => new()
+    public static AuthorProjection Create(IEvent<AuthorAdded> @event) => new()
     {
-        Id = @event.Id,
-        Name = @event.Name,
+        Id = @event.Data.Id,
+        Name = @event.Data.Name,
         LastModified = @event.Timestamp,
-        Biographies = @event.Translations?
+        Version = @event.Version,
+        Biographies = @event.Data.Translations?
                 .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Biography)
                 ?? []
     };
 
-    public void Apply(AuthorUpdated @event)
+    public void Apply(IEvent<AuthorUpdated> @event)
     {
-        Name = @event.Name;
+        Name = @event.Data.Name;
         LastModified = @event.Timestamp;
-        Biographies = @event.Translations?
+        Version = @event.Version;
+        Biographies = @event.Data.Translations?
             .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Biography)
             ?? [];
     }
 
-    public void Apply(AuthorSoftDeleted @event)
+    public void Apply(IEvent<AuthorSoftDeleted> @event)
     {
         LastModified = @event.Timestamp;
+        Version = @event.Version;
         Deleted = true;
         DeletedAt = @event.Timestamp;
     }
 
-    public void Apply(AuthorRestored @event)
+    public void Apply(IEvent<AuthorRestored> @event)
     {
         LastModified = @event.Timestamp;
+        Version = @event.Version;
         Deleted = false;
         DeletedAt = null;
     }

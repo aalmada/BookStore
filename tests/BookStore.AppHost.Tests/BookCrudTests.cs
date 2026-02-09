@@ -22,7 +22,7 @@ public class BookCrudTests
         var createdBook = await TestHelpers.CreateBookAsync(client);
 
         // Get ETag for concurrency check
-        var getResponse = await client.GetBookWithHeadersAsync(createdBook.Id);
+        var getResponse = await client.GetBookWithResponseAsync(createdBook.Id);
         var etag = getResponse.Headers.ETag?.Tag;
         _ = await Assert.That(etag).IsNotNull();
 
@@ -72,7 +72,7 @@ public class BookCrudTests
         var createdBook = await TestHelpers.CreateBookAsync(client);
 
         // Get the book to retrieve its ETag
-        var getResponse = await client.GetBookWithHeadersAsync(createdBook.Id);
+        var getResponse = await client.GetBookWithResponseAsync(createdBook.Id);
         _ = await Assert.That(getResponse.IsSuccessStatusCode).IsTrue();
 
         var etag = getResponse.Headers.ETag?.Tag;
@@ -80,7 +80,7 @@ public class BookCrudTests
 
         // Act
         var updateBookRequest = TestHelpers.GenerateFakeBookRequest();
-        await TestHelpers.UpdateBookAsync(client, createdBook.Id, updateBookRequest, etag!);
+        createdBook = await TestHelpers.UpdateBookAsync(client, createdBook.Id, updateBookRequest, etag!);
 
         // Assert - Success is validated inside UpdateBookAsync
     }
@@ -93,14 +93,14 @@ public class BookCrudTests
         var createdBook = await TestHelpers.CreateBookAsync(client);
 
         // Get the book to retrieve its ETag
-        var getResponse = await client.GetBookWithHeadersAsync(createdBook.Id);
+        var getResponse = await client.GetBookWithResponseAsync(createdBook.Id);
         _ = await Assert.That(getResponse.IsSuccessStatusCode).IsTrue();
 
         var etag = getResponse.Headers.ETag?.Tag;
         _ = await Assert.That(etag).IsNotNull();
 
         // Act
-        await TestHelpers.DeleteBookAsync(client, createdBook.Id, etag!);
+        var deletedBook = await TestHelpers.DeleteBookAsync(client, createdBook.Id, etag!);
 
         // Assert - Success is validated inside DeleteBookAsync
     }
@@ -113,15 +113,15 @@ public class BookCrudTests
         var createdBook = await TestHelpers.CreateBookAsync(client);
 
         // Get ETag for delete
-        var getResponse = await client.GetBookWithHeadersAsync(createdBook.Id);
+        var getResponse = await client.GetBookWithResponseAsync(createdBook.Id);
         var deleteEtag = getResponse.Headers.ETag?.Tag;
         _ = await Assert.That(deleteEtag).IsNotNull();
 
         // Soft delete book
-        await client.SoftDeleteBookAsync(createdBook.Id, deleteEtag!);
+        await TestHelpers.DeleteBookAsync(client, createdBook.Id, deleteEtag!);
 
         // Act
-        await TestHelpers.RestoreBookAsync(client, createdBook.Id);
+        createdBook = await TestHelpers.RestoreBookAsync(client, createdBook.Id);
 
         // Assert - Success is validated inside RestoreBookAsync
     }

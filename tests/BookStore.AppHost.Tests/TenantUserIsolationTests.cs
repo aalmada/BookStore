@@ -1,5 +1,6 @@
 using System.Net;
 using BookStore.Client;
+using BookStore.Shared.Models;
 using Refit;
 using SharedModels = BookStore.Shared.Models;
 
@@ -30,7 +31,7 @@ public class TenantUserIsolationTests
             Isbn = "1234567890",
             Language = "en",
             Translations =
-                new Dictionary<string, BookTranslationDto> { ["en"] = new() { Description = "Tenant Book" } },
+                new Dictionary<string, BookTranslationDto> { ["en"] = new("Tenant Book") },
             PublicationDate = new SharedModels.PartialDate(2024),
             Prices = new Dictionary<string, decimal> { ["USD"] = 10.99m },
             AuthorIds = [],
@@ -77,7 +78,7 @@ public class TenantUserIsolationTests
             Isbn = "1234567890",
             Language = "en",
             Translations =
-                new Dictionary<string, BookTranslationDto> { ["en"] = new() { Description = "Fav Book" } },
+                new Dictionary<string, BookTranslationDto> { ["en"] = new("Fav Book") },
             PublicationDate = new SharedModels.PartialDate(2024),
             Prices = new Dictionary<string, decimal> { ["USD"] = 10.99m },
             AuthorIds = [],
@@ -127,7 +128,7 @@ public class TenantUserIsolationTests
             Isbn = "1234567890",
             Language = "en",
             Translations =
-                new Dictionary<string, BookTranslationDto> { ["en"] = new() { Description = "Cart Book" } },
+                new Dictionary<string, BookTranslationDto> { ["en"] = new("Cart Book") },
             PublicationDate = new SharedModels.PartialDate(2024),
             Prices = new Dictionary<string, decimal> { ["USD"] = 10.99m },
             AuthorIds = [],
@@ -188,7 +189,7 @@ public class TenantUserIsolationTests
                 Isbn = "1234567890",
                 Language = "en",
                 Translations =
-                    new Dictionary<string, BookTranslationDto> { ["en"] = new() { Description = "Iso Book" } },
+                    new Dictionary<string, BookTranslationDto> { ["en"] = new("Iso Book") },
                 PublicationDate = new SharedModels.PartialDate(2024),
                 Prices = new Dictionary<string, decimal> { ["USD"] = 10.99m },
                 AuthorIds = [],

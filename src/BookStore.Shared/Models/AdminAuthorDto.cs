@@ -7,4 +7,5 @@ public record AdminAuthorDto(
     Guid Id,
     string Name,
     string? Biography,
-    IReadOnlyDictionary<string, AuthorTranslationDto> Translations);
+    IReadOnlyDictionary<string, AuthorTranslationDto> Translations,
+    string? ETag = null);

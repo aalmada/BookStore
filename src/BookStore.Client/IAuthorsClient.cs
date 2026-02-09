@@ -9,6 +9,7 @@ public interface IAuthorsClient :
     IUpdateAuthorEndpoint,
     ISoftDeleteAuthorEndpoint,
     IRestoreAuthorEndpoint,
-    IGetAllAuthorsAdminEndpoint
+    IGetAllAuthorsAdminEndpoint,
+    IGetAuthorAdminEndpoint
 {
 }

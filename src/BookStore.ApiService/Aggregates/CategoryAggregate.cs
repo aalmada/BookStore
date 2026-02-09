@@ -12,6 +12,8 @@ public class CategoryAggregate : ISoftDeleted
 
     public Guid Id { get; private set; }
     public Dictionary<string, CategoryTranslation> Translations { get; private set; } = [];
+    public long Version { get; private set; }
+
 #pragma warning disable BS3005 // Aggregate properties must have private setters
     public bool Deleted { get; set; }
     public DateTimeOffset? DeletedAt { get; set; }

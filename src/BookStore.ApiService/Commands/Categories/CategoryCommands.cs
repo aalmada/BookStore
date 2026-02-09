@@ -1,4 +1,4 @@
-using BookStore.Shared.Models;
+using BookStore.Shared.Commands;
 
 namespace BookStore.ApiService.Commands;
 
@@ -16,23 +16,23 @@ public record CreateCategory(
 /// </summary>
 public record UpdateCategory(
     Guid Id,
-    IReadOnlyDictionary<string, CategoryTranslationDto> Translations)
+    IReadOnlyDictionary<string, CategoryTranslationDto> Translations) : IHaveETag
 {
-    public string? ETag { get; init; }
+    public string? ETag { get; set; }
 }
 
 /// <summary>
 /// Command to soft delete a category
 /// </summary>
-public record SoftDeleteCategory(Guid Id)
+public record SoftDeleteCategory(Guid Id) : IHaveETag
 {
-    public string? ETag { get; init; }
+    public string? ETag { get; set; }
 }
 
 /// <summary>
 /// Command to restore a soft deleted category
 /// </summary>
-public record RestoreCategory(Guid Id)
+public record RestoreCategory(Guid Id) : IHaveETag
 {
-    public string? ETag { get; init; }
+    public string? ETag { get; set; }
 }

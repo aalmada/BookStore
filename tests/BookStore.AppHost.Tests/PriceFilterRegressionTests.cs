@@ -1,12 +1,12 @@
 using System.Globalization;
-using System.Net;
-using System.Net.Http.Json;
-using BookStore.AppHost.Tests;
+using TUnit;
 using BookStore.Client;
+using BookStore.Shared.Models;
 using SharedModels = BookStore.Shared.Models;
 
 namespace BookStore.AppHost.Tests;
 
+[NotInParallel]
 public class PriceFilterRegressionTests
 {
     /// <summary>
@@ -17,15 +17,15 @@ public class PriceFilterRegressionTests
     /// price is inside (and vice versa).
     /// </summary>
     [Test]
-    [Arguments(100.0, 0, 40.0, 60.0, false)] // Case 1: Original price outside range (too high)
-    [Arguments(100.0, 50, 40.0, 60.0, true)] // Case 2: Discounted price inside range (50 is in [40, 60])
-    [Arguments(50.0, 0, 40.0, 60.0, true)] // Case 3: Original price inside range
-    [Arguments(50.0, 80, 40.0, 60.0, false)] // Case 4: Discounted price outside range (10 is too low)
+    [Arguments(100.0, 0.0, 40.0, 60.0, false)] // Case 1: Original price outside range (too high)
+    [Arguments(100.0, 50.0, 40.0, 60.0, true)] // Case 2: Discounted price inside range (50 is in [40, 60])
+    [Arguments(50.0, 0.0, 40.0, 60.0, true)] // Case 3: Original price inside range
+    [Arguments(50.0, 80.0, 40.0, 60.0, false)] // Case 4: Discounted price outside range (10 is too low)
     public async Task SearchBooks_WithVariousPriceAndDiscountScenarios_ShouldFilterCorrectly(
-        decimal originalPrice,
-        decimal discountPercentage,
-        decimal minPrice,
-        decimal maxPrice,
+        double originalPrice,
+        double discountPercentage,
+        double minPrice,
+        double maxPrice,
         bool shouldMatch)
     {
         var authClient = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
@@ -42,23 +42,28 @@ public class PriceFilterRegressionTests
             Isbn = "978-0-00-000000-0",
             Language = "en",
             Translations =
-                new Dictionary<string, BookTranslationDto> { ["en"] = new() { Description = "Price scenario test" } },
+                new Dictionary<string, BookTranslationDto> { ["en"] = new("Price scenario test") },
             PublicationDate = new SharedModels.PartialDate(2025),
             AuthorIds = [],
             CategoryIds = []
         };
-        createRequest.Prices = new Dictionary<string, decimal> { ["USD"] = originalPrice };
+        createRequest.Prices = new Dictionary<string, decimal> { ["USD"] = (decimal)originalPrice };
 
         var book = await TestHelpers.CreateBookAsync(authClient, createRequest);
         var bookId = book.Id;
 
         if (discountPercentage > 0)
         {
-            var saleRequest = new ScheduleSaleRequest(discountPercentage, DateTimeOffset.UtcNow.AddSeconds(-5),
+            var saleRequest = new ScheduleSaleRequest((decimal)discountPercentage, DateTimeOffset.UtcNow.AddSeconds(-5),
                 DateTimeOffset.UtcNow.AddDays(1));
 
+            var bookResponse = await authClient.GetBookWithResponseAsync(bookId);
+            var currentVersion = ParseETag(bookResponse.Headers.ETag?.Tag);
+
             _ = await TestHelpers.ExecuteAndWaitForEventAsync(bookId, "BookUpdated",
-                async () => await authClient.ScheduleBookSaleAsync(bookId, saleRequest), TimeSpan.FromSeconds(10));
+                async () => await authClient.ScheduleBookSaleAsync(bookId, saleRequest, bookResponse.Headers.ETag?.Tag),
+                TimeSpan.FromSeconds(10),
+                minVersion: currentVersion + 1);
         }
 
         // Wait for consistency and check
@@ -70,8 +75,8 @@ public class PriceFilterRegressionTests
                 var request = new SharedModels.BookSearchRequest
                 {
                     Search = "PriceScenario",
-                    MinPrice = minPrice,
-                    MaxPrice = maxPrice,
+                    MinPrice = (decimal)minPrice,
+                    MaxPrice = (decimal)maxPrice,
                     Currency = "USD"
                 };
 
@@ -114,9 +119,9 @@ public class PriceFilterRegressionTests
             Isbn = "978-0-00-000000-0",
             Language = "en",
             Translations =
-                new Dictionary<string, BookTranslationDto> { ["en"] = new() { Description = "Mixed non-match test" } },
-            PublicationDate = new SharedModels.PartialDate(2024),
-            Prices = new Dictionary<string, decimal> { ["USD"] = 10.0m, ["EUR"] = 200.0m },
+                new Dictionary<string, BookTranslationDto> { ["en"] = new("Mixed non-match test") },
+            PublicationDate = new SharedModels.PartialDate(2025),
+            Prices = new Dictionary<string, decimal> { ["USD"] = 200.0m, ["EUR"] = 200.0m },
             AuthorIds = [],
             CategoryIds = []
         };
@@ -163,24 +168,17 @@ public class PriceFilterRegressionTests
     public async Task SearchBooks_WithDiscount_AfterBookUpdate_ShouldStillFilterByDiscountedPrice()
     {
         var authClient = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
-        // Need raw client to fetch ETag
-        var adminClient = await TestHelpers.GetAuthenticatedClientAsync(); // Raw HttpClient
-
         var publicHttpClient = TestHelpers.GetUnauthenticatedClient();
         var publicClient = Refit.RestService.For<IBooksClient>(publicHttpClient);
 
         var uniqueTitle = $"UpdateResetsDiscount-{Guid.NewGuid()}";
-        // Create book with Price=100 USD
         var createRequest = new CreateBookRequest
         {
             Title = uniqueTitle,
             Isbn = "978-0-00-000000-0",
             Language = "en",
             Translations =
-                new Dictionary<string, BookTranslationDto>
-                {
-                    ["en"] = new() { Description = "Update resets discount test" }
-                },
+                new Dictionary<string, BookTranslationDto> { ["en"] = new("Update resets discount test") },
             PublicationDate = new SharedModels.PartialDate(2024),
             Prices = new Dictionary<string, decimal> { ["USD"] = 100.0m },
             AuthorIds = [],
@@ -194,33 +192,26 @@ public class PriceFilterRegressionTests
         var saleRequest =
             new ScheduleSaleRequest(50m, DateTimeOffset.UtcNow.AddSeconds(-5), DateTimeOffset.UtcNow.AddDays(1));
 
-        _ = await TestHelpers.ExecuteAndWaitForEventAsync(bookId, "BookUpdated",
-            async () => await authClient.ScheduleBookSaleAsync(bookId, saleRequest), TimeSpan.FromSeconds(10));
+        var initialBookResponse = await authClient.GetBookWithResponseAsync(bookId);
+        var initialVersion = ParseETag(initialBookResponse.Headers.ETag?.Tag);
 
-        // 2. Verify it's found in range [40, 60]
+        _ = await TestHelpers.ExecuteAndWaitForEventAsync(bookId, "BookUpdated",
+            async () => await authClient.ScheduleBookSaleAsync(bookId, saleRequest), TimeSpan.FromSeconds(10),
+            minVersion: initialVersion + 1);
+
+        // Wait for projection
         var foundBeforeUpdate = false;
         for (var i = 0; i < TestConstants.DefaultMaxRetries; i++)
         {
-            try
+            var searchRequest = new SharedModels.BookSearchRequest
             {
-                var request = new SharedModels.BookSearchRequest
-                {
-                    Search = uniqueTitle,
-                    MinPrice = 40m,
-                    MaxPrice = 60m,
-                    Currency = "USD"
-                };
-
-                var list = await publicClient.GetBooksAsync(request);
-                if (list.Items.Any(b => b.Id == bookId))
-                {
-                    foundBeforeUpdate = true;
-                    break;
-                }
-            }
-            catch
+                Search = uniqueTitle, MinPrice = 40, MaxPrice = 60, Currency = "USD"
+            };
+            var searchList = await publicClient.GetBooksAsync(searchRequest);
+            if (searchList.Items.Any(b => b.Id == bookId))
             {
-                // Wait for projection
+                foundBeforeUpdate = true;
+                break;
             }
 
             await Task.Delay(500);
@@ -228,67 +219,92 @@ public class PriceFilterRegressionTests
 
         _ = await Assert.That(foundBeforeUpdate).IsTrue();
 
-        // 3. Update book - MUST include Prices to avoid Validation Failure
-        var response = await authClient.GetBookWithHeadersAsync(bookId);
-        var fetchedBook = response.Content;
-        var etagValue = response.Headers.ETag?.Tag ?? string.Empty;
+        // 2. Fetch book to get ETag and Current State
+        // Poll until the read model catches up with the version we know exists
+        // Poll until the read model catches up with the version we know exists
+        // +1 for ScheduleBookSale, +1 for immediate ApplyBookDiscount (side effect)
+        var expectedVersion = initialVersion + 2;
+        Refit.IApiResponse<BookDto> response = null!;
+        BookDto fetchedBook = null!;
+        string? etagValue = null;
 
+        for (var i = 0; i < TestConstants.LongRetryCount; i++)
+        {
+            response = await authClient.GetBookWithResponseAsync(bookId);
+            fetchedBook = response.Content!;
+            etagValue = response.Headers.ETag?.Tag;
+            var currentVersion = ParseETag(etagValue);
+
+            if (currentVersion >= expectedVersion)
+            {
+                break;
+            }
+
+            await Task.Delay(500);
+        }
+
+        // 3. Update book Title (should preserve prices and discount)
         var updateRequest = new UpdateBookRequest
         {
             Title = uniqueTitle + " Updated",
-            Isbn = fetchedBook!.Isbn,
+            Isbn = fetchedBook.Isbn ?? "",
             Language = fetchedBook.Language,
             Translations =
-                new Dictionary<string, BookTranslationDto> { ["en"] = new() { Description = "Updated description" } },
-            PublicationDate = new SharedModels.PartialDate(2024),
-            AuthorIds = [],
-            CategoryIds = []
+                new Dictionary<string, BookTranslationDto>
+                {
+                    [fetchedBook.Language] = new BookTranslationDto(fetchedBook.Description ?? "")
+                },
+            PublicationDate = fetchedBook.PublicationDate ?? new PartialDate(),
+            AuthorIds = [.. fetchedBook.Authors.Select(a => a.Id)],
+            CategoryIds = [.. fetchedBook.Categories.Select(c => c.Id)],
+            Prices = fetchedBook.Prices?.ToDictionary(k => k.Key, v => v.Value) ?? []
         };
-        // Explicitly set Prices from fetched book or default
-        updateRequest.Prices = fetchedBook.Prices?.ToDictionary(k => k.Key, v => v.Value)
-                               ?? new Dictionary<string, decimal> { ["USD"] = 100.0m };
 
-        // Debug output if failure
-        try
-        {
-            _ = await TestHelpers.ExecuteAndWaitForEventAsync(bookId, "BookUpdated",
-                async () => await authClient.UpdateBookAsync(bookId, updateRequest, etagValue),
-                TimeSpan.FromSeconds(5));
-        }
-        catch (Refit.ApiException ex)
-        {
-            // Log error content for debug
-            Console.WriteLine($"UpdateBookAsync failed in test: {ex.Content}");
-            throw;
-        }
+        _ = await TestHelpers.ExecuteAndWaitForEventAsync(bookId, "BookUpdated",
+            async () => await authClient.UpdateBookAsync(bookId, updateRequest, etagValue),
+            TimeSpan.FromSeconds(10));
 
+        // 4. Verify book is STILL found in the same price range
         var foundAfterUpdate = false;
+        var updatedTitle = uniqueTitle + " Updated";
+
         for (var i = 0; i < TestConstants.LongRetryCount; i++)
         {
-            try
+            var searchRequest = new SharedModels.BookSearchRequest
             {
-                var request = new SharedModels.BookSearchRequest
-                {
-                    Search = uniqueTitle,
-                    MinPrice = 40,
-                    MaxPrice = 60,
-                    Currency = "USD"
-                };
-                var list = await publicClient.GetBooksAsync(request);
-                if (list.Items.Any(b => b.Id == bookId))
-                {
-                    foundAfterUpdate = true;
-                    break;
-                }
+                Search = updatedTitle, MinPrice = 40, MaxPrice = 60, Currency = "USD"
+            };
+            var searchList = await publicClient.GetBooksAsync(searchRequest);
+            if (searchList.Items.Any(b => b.Id == bookId))
+            {
+                foundAfterUpdate = true;
+                break;
             }
-            catch
+
+            if (i == TestConstants.LongRetryCount - 1)
             {
-                // Wait for projection to reflect update
+                // Diagnostic: search WITHOUT price filter
+                var isolationList =
+                    await publicClient.GetBooksAsync(new SharedModels.BookSearchRequest { Search = updatedTitle });
+                var foundWithoutFilter = isolationList.Items.Any(b => b.Id == bookId);
+                var details = string.Join("\n", isolationList.Items.Where(b => b.Id == bookId).Select(b =>
+                    $"Title: {b.Title}, Prices: {string.Join(", ", b.Prices?.Select(p => $"{p.Key}:{p.Value}") ?? [])}, CurrentPrices: {string.Join(", ", b.CurrentPrices?.Select(p => $"{p.Currency}:{p.Value}") ?? [])}, Discount: {b.ActiveSale?.Percentage}%"));
+
+                Console.WriteLine($"Search FAILED after update. Found without filter: {foundWithoutFilter}\n{details}");
             }
 
             await Task.Delay(500);
         }
 
         _ = await Assert.That(foundAfterUpdate).IsTrue();
+    }
+
+    private static long ParseETag(string? etag)
+    {
+        if (string.IsNullOrEmpty(etag)) return 0;
+        var trimmed = etag.Trim();
+        if (trimmed.StartsWith("W/", StringComparison.OrdinalIgnoreCase)) trimmed = trimmed[2..];
+        trimmed = trimmed.Trim('"');
+        return long.TryParse(trimmed, out var version) ? version : 0;
     }
 }

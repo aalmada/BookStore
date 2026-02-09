@@ -1,4 +1,4 @@
-using BookStore.Shared.Models;
+using BookStore.Shared.Commands;
 
 namespace BookStore.ApiService.Commands;
 
@@ -35,34 +35,34 @@ public record UpdateBook(
     Guid? PublisherId,
     IReadOnlyList<Guid> AuthorIds,
     IReadOnlyList<Guid> CategoryIds,
-    IReadOnlyDictionary<string, decimal>? Prices = null)
+    IReadOnlyDictionary<string, decimal>? Prices = null) : IHaveETag
 {
     /// <summary>
     /// ETag for optimistic concurrency control
     /// </summary>
-    public string? ETag { get; init; }
+    public string? ETag { get; set; }
 }
 
 /// <summary>
 /// Command to soft delete a book
 /// </summary>
-public record SoftDeleteBook(Guid Id)
+public record SoftDeleteBook(Guid Id) : IHaveETag
 {
     /// <summary>
     /// ETag for optimistic concurrency control
     /// </summary>
-    public string? ETag { get; init; }
+    public string? ETag { get; set; }
 }
 
 /// <summary>
 /// Command to restore a soft deleted book
 /// </summary>
-public record RestoreBook(Guid Id)
+public record RestoreBook(Guid Id) : IHaveETag
 {
     /// <summary>
     /// ETag for optimistic concurrency control
     /// </summary>
-    public string? ETag { get; init; }
+    public string? ETag { get; set; }
 }
 
 /// <summary>
@@ -72,8 +72,13 @@ public record UpdateBookCover(
     Guid BookId,
     byte[] Content,
     string ContentType,
-    string? ETag = null,
-    string? TenantId = null);
+    string? TenantId = null) : IHaveETag
+{
+    /// <summary>
+    /// ETag for optimistic concurrency control
+    /// </summary>
+    public string? ETag { get; set; }
+}
 
 /// <summary>
 /// Command to schedule a sale for a book
@@ -82,12 +87,12 @@ public record ScheduleBookSale(
     Guid BookId,
     decimal Percentage,
     DateTimeOffset Start,
-    DateTimeOffset End)
+    DateTimeOffset End) : IHaveETag
 {
     /// <summary>
     /// ETag for optimistic concurrency control
     /// </summary>
-    public string? ETag { get; init; }
+    public string? ETag { get; set; }
 }
 
 /// <summary>
@@ -95,11 +100,11 @@ public record ScheduleBookSale(
 /// </summary>
 public record CancelBookSale(
     Guid BookId,
-    DateTimeOffset SaleStart)
+    DateTimeOffset SaleStart) : IHaveETag
 {
     /// <summary>
     /// ETag for optimistic concurrency control
     /// </summary>
-    public string? ETag { get; init; }
+    public string? ETag { get; set; }
 }
 

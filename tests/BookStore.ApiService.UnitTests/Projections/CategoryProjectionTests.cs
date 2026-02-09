@@ -15,15 +15,17 @@ public class CategoryProjectionTests
         var timestamp = DateTimeOffset.UtcNow;
         var @event = new CategoryAdded(
             id,
-            new Dictionary<string, CategoryTranslation>
-            {
-                ["en"] = new("Technology")
-            },
+            new Dictionary<string, CategoryTranslation> { ["en"] = new("Technology") },
             timestamp
         );
 
+        var mockEvent = Substitute.For<JasperFx.Events.IEvent<CategoryAdded>>();
+        mockEvent.Data.Returns(@event);
+        mockEvent.Timestamp.Returns(timestamp);
+        mockEvent.Version.Returns(1);
+
         // Act
-        var projection = CategoryProjection.Create(@event);
+        var projection = CategoryProjection.Create(mockEvent);
 
         // Assert
         _ = await Assert.That(projection.Id).IsEqualTo(id);
@@ -39,23 +41,23 @@ public class CategoryProjectionTests
         // Arrange
         var projection = new CategoryProjection
         {
-            Id = Guid.NewGuid(),
-            Names = new Dictionary<string, string> { ["en"] = "Old Tech" }
+            Id = Guid.NewGuid(), Names = new Dictionary<string, string> { ["en"] = "Old Tech" }
         };
 
         var timestamp = DateTimeOffset.UtcNow;
         var @event = new CategoryUpdated(
             projection.Id,
-            new Dictionary<string, CategoryTranslation>
-            {
-                ["en"] = new("New Tech"),
-                ["pt"] = new("Tecnologia")
-            },
+            new Dictionary<string, CategoryTranslation> { ["en"] = new("New Tech"), ["pt"] = new("Tecnologia") },
             timestamp
         );
 
+        var mockEvent = Substitute.For<JasperFx.Events.IEvent<CategoryUpdated>>();
+        mockEvent.Data.Returns(@event);
+        mockEvent.Timestamp.Returns(timestamp);
+        mockEvent.Version.Returns(2);
+
         // Act
-        projection.Apply(@event);
+        projection.Apply(mockEvent);
 
         // Assert
         _ = await Assert.That(projection.LastModified).IsEqualTo(timestamp);

@@ -49,6 +49,10 @@ namespace BookStore.ApiService.Endpoints.Admin
                 .WithName("GetAllCategories")
                 .WithSummary("Get all categories (including deleted)");
 
+            _ = group.MapGet("/{id:guid}", GetCategory)
+                .WithName("GetAdminCategory")
+                .WithSummary("Get category by ID (including deleted)");
+
             return group.RequireAuthorization("Admin");
         }
 
@@ -91,10 +95,36 @@ namespace BookStore.ApiService.Endpoints.Admin
             var dtos = pagedList.ToList().Select(x => new AdminCategoryDto(
                 x.Id,
                 LocalizationHelper.GetLocalizedValue(x.Names, culture, defaultCulture, "Unknown"),
-                x.Names.ToDictionary(kvp => kvp.Key, kvp => new CategoryTranslationDto(kvp.Value))
+                x.Names.ToDictionary(kvp => kvp.Key, kvp => new CategoryTranslationDto(kvp.Value)),
+                ETagHelper.GenerateETag(x.Version)
             )).ToList();
 
             return Results.Ok(new PagedListDto<AdminCategoryDto>(dtos, pagedList.PageNumber, pagedList.PageSize, pagedList.TotalItemCount));
+        }
+
+        static async Task<IResult> GetCategory(
+            Guid id,
+            [FromServices] IQuerySession session,
+            [FromServices] IOptions<LocalizationOptions> localizationOptions,
+            CancellationToken cancellationToken)
+        {
+            var culture = CultureInfo.CurrentUICulture.Name;
+            var defaultCulture = localizationOptions.Value.DefaultCulture;
+
+            var category = await session.LoadAsync<CategoryProjection>(id, cancellationToken);
+            if (category == null)
+            {
+                return Results.NotFound();
+            }
+
+            var dto = new AdminCategoryDto(
+                category.Id,
+                LocalizationHelper.GetLocalizedValue(category.Names, culture, defaultCulture, "Unknown"),
+                category.Names.ToDictionary(kvp => kvp.Key, kvp => new CategoryTranslationDto(kvp.Value)),
+                ETagHelper.GenerateETag(category.Version)
+            );
+
+            return Results.Ok(dto).WithETag(dto.ETag!);
         }
 
         static Task<IResult> CreateCategory(

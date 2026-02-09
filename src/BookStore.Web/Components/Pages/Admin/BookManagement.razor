@@ -201,10 +201,7 @@
                         Language = book.Language,
                         Translations = book.Translations?.ToDictionary(
                             kvp => kvp.Key,
-                            kvp => new BookStore.Client.BookTranslationDto
-                            {
-                                Description = kvp.Value.Description
-                            }),
+                            kvp => new BookTranslationDto(kvp.Value.Description)),
                         PublicationDate = book.PublicationDate ?? new BookStore.Shared.Models.PartialDate(DateTime.Now.Year),
                         PublisherId = book.Publisher?.Id,
                         AuthorIds = book.Authors.Select(a => a.Id).ToList(),

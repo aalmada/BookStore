@@ -29,7 +29,8 @@ public record BookDto(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     BookSale? ActiveSale = null, // Currently active sale, if any
     IReadOnlyList<PriceEntry>? CurrentPrices = null,
-    bool IsDeleted = false);
+    bool IsDeleted = false,
+    string? ETag = null);
 
 public record BookTranslationDto(string Description);
 
