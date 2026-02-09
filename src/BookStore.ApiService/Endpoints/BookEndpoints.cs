@@ -285,14 +285,15 @@ public static class BookEndpoints
                         book.PublicationDate,
                         BookStore.ApiService.Helpers.BookHelpers.IsPreRelease(book.PublicationDate),
                         book.PublisherId.HasValue && publishers.TryGetValue(book.PublisherId.Value, out var pub)
-                            ? new PublisherDto(pub.Id, pub.Name)
+                            ? new PublisherDto(pub.Id, pub.Name, ETagHelper.GenerateETag(pub.Version))
                             : null,
                         [.. book.AuthorIds
                             .Select(id => authors.TryGetValue(id, out var author)
                                 ? new AuthorDto(
                                     author.Id,
                                     author.Name,
-                                    LocalizationHelper.GetLocalizedValue(author.Biographies, culture, defaultCulture, ""))
+                                    LocalizationHelper.GetLocalizedValue(author.Biographies, culture, defaultCulture, ""),
+                                    ETagHelper.GenerateETag(author.Version))
                                 : null)
                             .Where(a => a != null)
                             .Cast<AuthorDto>()],
@@ -300,7 +301,8 @@ public static class BookEndpoints
                             .Select(id => categories.TryGetValue(id, out var cat)
                                 ? new CategoryDto(
                                     cat.Id,
-                                    LocalizationHelper.GetLocalizedValue(cat.Names, culture, defaultCulture, "Unknown"))
+                                    LocalizationHelper.GetLocalizedValue(cat.Names, culture, defaultCulture, "Unknown"),
+                                    ETagHelper.GenerateETag(cat.Version))
                                 : null)
                             .Where(c => c != null)
                             .Cast<CategoryDto>()],
@@ -313,7 +315,8 @@ public static class BookEndpoints
                         GenerateCoverUrl(book.Id, book.CoverFormat, tenantContext.TenantId, context.Request),
                         activeSale,
                         book.CurrentPrices,
-                        book.Deleted
+                        book.Deleted,
+                        ETagHelper.GenerateETag(book.Version)
                     );
                 }).ToList();
 
@@ -480,14 +483,15 @@ public static class BookEndpoints
                 book.PublicationDate,
                 BookStore.ApiService.Helpers.BookHelpers.IsPreRelease(book.PublicationDate),
                 book.PublisherId.HasValue && publishers.TryGetValue(book.PublisherId.Value, out var pub)
-                    ? new PublisherDto(pub.Id, pub.Name)
+                    ? new PublisherDto(pub.Id, pub.Name, ETagHelper.GenerateETag(pub.Version))
                     : null,
                 [.. book.AuthorIds
                     .Select(id => authors.TryGetValue(id, out var author)
                         ? new AuthorDto(
                             author.Id,
                             author.Name,
-                            LocalizationHelper.GetLocalizedValue(author.Biographies, culture, defaultCulture, ""))
+                            LocalizationHelper.GetLocalizedValue(author.Biographies, culture, defaultCulture, ""),
+                            ETagHelper.GenerateETag(author.Version))
                         : null)
                     .Where(a => a != null)
                     .Cast<AuthorDto>()],
@@ -495,7 +499,8 @@ public static class BookEndpoints
                     .Select(id => categories.TryGetValue(id, out var cat)
                         ? new CategoryDto(
                             cat.Id,
-                            LocalizationHelper.GetLocalizedValue(cat.Names, culture, defaultCulture, "Unknown"))
+                            LocalizationHelper.GetLocalizedValue(cat.Names, culture, defaultCulture, "Unknown"),
+                            ETagHelper.GenerateETag(cat.Version))
                         : null)
                     .Where(c => c != null)
                     .Cast<CategoryDto>()],
@@ -508,7 +513,8 @@ public static class BookEndpoints
                 GenerateCoverUrl(book.Id, book.CoverFormat, session.TenantId, context.Request),
                 activeSale,
                 book.CurrentPrices,
-                book.Deleted
+                book.Deleted,
+                ETagHelper.GenerateETag(book.Version)
             );
         }).ToList();
 
@@ -603,7 +609,7 @@ public static class BookEndpoints
                 // Map to DTO with localized values
                 var now = DateTimeOffset.UtcNow;
                 var activeSale = GetActiveSale(book.Sales, now);
-                return new BookDto(
+                var dto = new BookDto(
                     book.Id,
                     book.Title,
                     book.Isbn,
@@ -613,14 +619,15 @@ public static class BookEndpoints
                     book.PublicationDate,
                     BookStore.ApiService.Helpers.BookHelpers.IsPreRelease(book.PublicationDate),
                     book.PublisherId.HasValue && publishers.TryGetValue(book.PublisherId.Value, out var pub)
-                        ? new PublisherDto(pub.Id, pub.Name)
+                        ? new PublisherDto(pub.Id, pub.Name, ETagHelper.GenerateETag(pub.Version))
                         : null,
                     [.. book.AuthorIds
                         .Select(authorId => authors.TryGetValue(authorId, out var author)
                             ? new AuthorDto(
                                 author.Id,
                                 author.Name,
-                                LocalizationHelper.GetLocalizedValue(author.Biographies, culture, defaultCulture, ""))
+                                LocalizationHelper.GetLocalizedValue(author.Biographies, culture, defaultCulture, ""),
+                                ETagHelper.GenerateETag(author.Version))
                             : null)
                         .Where(a => a != null)
                         .Cast<AuthorDto>()],
@@ -628,7 +635,8 @@ public static class BookEndpoints
                         .Select(catId => categories.TryGetValue(catId, out var cat)
                             ? new CategoryDto(
                                 catId,
-                                LocalizationHelper.GetLocalizedValue(cat.Names, culture, defaultCulture, "Unknown"))
+                                LocalizationHelper.GetLocalizedValue(cat.Names, culture, defaultCulture, "Unknown"),
+                                ETagHelper.GenerateETag(cat.Version))
                             : null)
                         .Where(c => c != null)
                         .Cast<CategoryDto>()],
@@ -641,8 +649,10 @@ public static class BookEndpoints
                     GenerateCoverUrl(book.Id, book.CoverFormat, tenantContext.TenantId, context.Request),
                     activeSale,
                     book.CurrentPrices,
-                    book.Deleted
+                    book.Deleted,
+                    ETagHelper.GenerateETag(book.Version)
                     );
+                return dto;
             },
             options: new HybridCacheEntryOptions
             {
@@ -688,7 +698,7 @@ public static class BookEndpoints
             }
         }
 
-        return TypedResults.Ok(response);
+        return TypedResults.Ok(response).WithETag(response.ETag!);
     }
 
     static async Task<IResult> AddFavorite(
@@ -783,15 +793,7 @@ public static class BookEndpoints
             ETag = etag
         };
 
-        try
-        {
-            return await bus.InvokeAsync<IResult>(command, new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[BookEndpoints] Failed to invoke ScheduleSale: {ex}");
-            return Results.Problem(ex.ToString());
-        }
+        return await bus.InvokeAsync<IResult>(command, new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
     }
 
     static async Task<IResult> CancelSale(

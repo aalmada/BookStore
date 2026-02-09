@@ -1,6 +1,5 @@
 using BookStore.Client;
 using BookStore.Shared.Models;
-using BookTranslationDto = BookStore.Client.BookTranslationDto;
 
 namespace BookStore.AppHost.Tests;
 
@@ -20,7 +19,7 @@ public class SearchTests
             Isbn = "978-3-16-148410-0",
             Language = "en",
             Translations =
-                new Dictionary<string, BookTranslationDto> { ["en"] = new() { Description = "Test description" } },
+                new Dictionary<string, BookTranslationDto> { ["en"] = new("Test description") },
             PublicationDate = new PartialDate(2024, 1, 1),
             PublisherId = null,
             AuthorIds = [],

@@ -81,7 +81,8 @@ public static class CategoryEndpoints
                 // Extract localized names using LocalizationHelper
                 var items = pagedList.Select(c => new CategoryDto(
                     c.Id,
-                    LocalizationHelper.GetLocalizedValue(c.Names, culture, defaultCulture, "Unknown")
+                    LocalizationHelper.GetLocalizedValue(c.Names, culture, defaultCulture, "Unknown"),
+                    ETagHelper.GenerateETag(c.Version)
                 )).ToList();
 
                 return new PagedListDto<CategoryDto>(
@@ -101,7 +102,7 @@ public static class CategoryEndpoints
         return TypedResults.Ok(response);
     }
 
-    static async Task<Results<Ok<CategoryDto>, NotFound>> GetCategory(
+    static async Task<IResult> GetCategory(
         Guid id,
         [FromServices] IDocumentStore store,
         [FromServices] ITenantContext tenantContext,
@@ -146,6 +147,10 @@ public static class CategoryEndpoints
             defaultCulture,
             "Unknown");
 
-        return TypedResults.Ok(new CategoryDto(projection.Id, localizedName));
+        var etag = ETagHelper.GenerateETag(projection.Version);
+        return TypedResults.Ok(new CategoryDto(
+            projection.Id,
+            localizedName,
+            etag)).WithETag(etag);
     }
 }

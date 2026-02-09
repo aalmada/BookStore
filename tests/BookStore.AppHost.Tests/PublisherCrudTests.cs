@@ -38,7 +38,7 @@ public class PublisherCrudTests
         var updateRequest = new UpdatePublisherRequest { Name = "Updated Publisher Name" };
 
         // Act
-        await TestHelpers.UpdatePublisherAsync(client, createdPublisher, updateRequest);
+        createdPublisher = await TestHelpers.UpdatePublisherAsync(client, createdPublisher, updateRequest);
 
         // Verify update in public API (data should be consistent now)
         var publicClient =
@@ -57,7 +57,7 @@ public class PublisherCrudTests
         var createdPublisher = await TestHelpers.CreatePublisherAsync(client, createRequest);
 
         // Act
-        await TestHelpers.DeletePublisherAsync(client, createdPublisher);
+        createdPublisher = await TestHelpers.DeletePublisherAsync(client, createdPublisher);
 
         // Verify it's gone from public API
         // Verify it's gone from public API
@@ -86,10 +86,10 @@ public class PublisherCrudTests
         var createdPublisher = await TestHelpers.CreatePublisherAsync(client, createRequest);
 
         // 2. Soft Delete Publisher
-        await TestHelpers.DeletePublisherAsync(client, createdPublisher);
+        createdPublisher = await TestHelpers.DeletePublisherAsync(client, createdPublisher);
 
         // Act - Restore
-        await TestHelpers.RestorePublisherAsync(client, createdPublisher);
+        createdPublisher = await TestHelpers.RestorePublisherAsync(client, createdPublisher);
 
         // Verify
         // Use client to get it (should succeed now if visible to admin, which it is)

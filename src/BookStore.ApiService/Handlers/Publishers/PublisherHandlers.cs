@@ -43,22 +43,6 @@ public static class PublisherHandlers
         HybridCache cache,
         ILogger logger)
     {
-        var streamState = await session.Events.FetchStreamStateAsync(command.Id);
-        if (streamState is null)
-        {
-            Log.Publishers.PublisherNotFound(logger, command.Id);
-            return Result.Failure(Error.NotFound(ErrorCodes.Publishers.NotDeleted, "Publisher not found")).ToProblemDetails();
-        }
-
-        var context = httpContextAccessor.HttpContext!;
-        var currentETag = ETagHelper.GenerateETag(streamState.Version);
-        if (!string.IsNullOrEmpty(command.ETag) &&
-            !ETagHelper.CheckIfMatch(context, currentETag))
-        {
-            Log.Publishers.ETagMismatch(logger, command.Id, currentETag, command.ETag);
-            return ETagHelper.PreconditionFailed();
-        }
-
         var aggregate = await session.Events.AggregateStreamAsync<PublisherAggregate>(command.Id);
         if (aggregate is null)
         {
@@ -66,7 +50,13 @@ public static class PublisherHandlers
             return Result.Failure(Error.NotFound(ErrorCodes.Publishers.NotDeleted, "Publisher not found")).ToProblemDetails();
         }
 
-        Log.Publishers.PublisherUpdating(logger, command.Id, command.Name, streamState.Version);
+        Log.Publishers.PublisherUpdating(logger, command.Id, command.Name, aggregate.Version);
+
+        var expectedVersion = ETagHelper.ParseETag(command.ETag);
+        if (expectedVersion.HasValue && aggregate.Version != expectedVersion.Value)
+        {
+             return ETagHelper.PreconditionFailed();
+        }
 
         var eventResult = aggregate.UpdateEvent(command.Name);
         if (eventResult.IsFailure)
@@ -88,26 +78,17 @@ public static class PublisherHandlers
     {
         Log.Publishers.PublisherSoftDeleting(logger, command.Id);
 
-        var streamState = await session.Events.FetchStreamStateAsync(command.Id);
-        if (streamState is null)
-        {
-            Log.Publishers.PublisherNotFound(logger, command.Id);
-            return Result.Failure(Error.NotFound(ErrorCodes.Publishers.NotDeleted, "Publisher not found")).ToProblemDetails();
-        }
-
-        var context = httpContextAccessor.HttpContext!;
-        var currentETag = ETagHelper.GenerateETag(streamState.Version);
-        if (!string.IsNullOrEmpty(command.ETag) &&
-            !ETagHelper.CheckIfMatch(context, currentETag))
-        {
-            return ETagHelper.PreconditionFailed();
-        }
-
         var aggregate = await session.Events.AggregateStreamAsync<PublisherAggregate>(command.Id);
         if (aggregate is null)
         {
             Log.Publishers.PublisherNotFound(logger, command.Id);
             return Result.Failure(Error.NotFound(ErrorCodes.Publishers.NotDeleted, "Publisher not found")).ToProblemDetails();
+        }
+
+        var expectedVersion = ETagHelper.ParseETag(command.ETag);
+        if (expectedVersion.HasValue && aggregate.Version != expectedVersion.Value)
+        {
+             return ETagHelper.PreconditionFailed();
         }
 
         var eventResult = aggregate.SoftDeleteEvent();
@@ -130,26 +111,17 @@ public static class PublisherHandlers
     {
         Log.Publishers.PublisherRestoring(logger, command.Id);
 
-        var streamState = await session.Events.FetchStreamStateAsync(command.Id);
-        if (streamState is null)
-        {
-            Log.Publishers.PublisherNotFound(logger, command.Id);
-            return Result.Failure(Error.NotFound(ErrorCodes.Publishers.NotDeleted, "Publisher not found")).ToProblemDetails();
-        }
-
-        var context = httpContextAccessor.HttpContext!;
-        var currentETag = ETagHelper.GenerateETag(streamState.Version);
-        if (!string.IsNullOrEmpty(command.ETag) &&
-            !ETagHelper.CheckIfMatch(context, currentETag))
-        {
-            return ETagHelper.PreconditionFailed();
-        }
-
         var aggregate = await session.Events.AggregateStreamAsync<PublisherAggregate>(command.Id);
         if (aggregate is null)
         {
             Log.Publishers.PublisherNotFound(logger, command.Id);
             return Result.Failure(Error.NotFound(ErrorCodes.Publishers.NotDeleted, "Publisher not found")).ToProblemDetails();
+        }
+
+        var expectedVersion = ETagHelper.ParseETag(command.ETag);
+        if (expectedVersion.HasValue && aggregate.Version != expectedVersion.Value)
+        {
+             return ETagHelper.PreconditionFailed();
         }
 
         var eventResult = aggregate.RestoreEvent();

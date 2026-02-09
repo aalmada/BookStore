@@ -3,7 +3,6 @@ using BookStore.Shared.Models;
 using Marten;
 using Refit;
 using Weasel.Core;
-using BookTranslationDto = BookStore.Client.BookTranslationDto;
 using CreateAuthorRequest = BookStore.Client.CreateAuthorRequest;
 using CreateBookRequest = BookStore.Client.CreateBookRequest;
 
@@ -43,10 +42,7 @@ public class RefitMartenRegressionTests
             Isbn = "978-0-00-000000-0",
             Language = "en",
             Translations =
-                new Dictionary<string, BookTranslationDto>
-                {
-                    ["en"] = new BookTranslationDto { Description = "Test description" }
-                },
+                new Dictionary<string, BookTranslationDto> { ["en"] = new BookTranslationDto("Test description") },
             PublicationDate = new PartialDate(2024, 1, 1),
             Prices = new Dictionary<string, decimal> { ["USD"] = 10.0m }
         };
@@ -57,9 +53,7 @@ public class RefitMartenRegressionTests
         // because it was trying to query the Dictionary directly.
         var response = await publicClient.GetBooksAsync(new BookSearchRequest
         {
-            Search = uniqueTitle,
-            MinPrice = 5,
-            MaxPrice = 15
+            Search = uniqueTitle, MinPrice = 5, MaxPrice = 15
         });
 
         // Assert
@@ -82,10 +76,7 @@ public class RefitMartenRegressionTests
             Isbn = "978-0-00-000000-0",
             Language = "en",
             Translations =
-                new Dictionary<string, BookTranslationDto>
-                {
-                    ["en"] = new BookTranslationDto { Description = "Test description" }
-                },
+                new Dictionary<string, BookTranslationDto> { ["en"] = new BookTranslationDto("Test description") },
             PublicationDate = new PartialDate(2024, 1, 1),
             Prices = new Dictionary<string, decimal> { ["USD"] = 20.0m }
         };
@@ -94,9 +85,7 @@ public class RefitMartenRegressionTests
         // Act
         var response = await publicClient.GetBooksAsync(new BookSearchRequest
         {
-            Search = uniqueTitle,
-            MinPrice = 5,
-            MaxPrice = 15
+            Search = uniqueTitle, MinPrice = 5, MaxPrice = 15
         });
 
         // Assert
@@ -118,10 +107,7 @@ public class RefitMartenRegressionTests
                 Isbn = "978-0-00-000000-0",
                 Language = "en",
                 Translations =
-                    new Dictionary<string, BookTranslationDto>
-                    {
-                        ["en"] = new BookTranslationDto { Description = "Test description" }
-                    },
+                    new Dictionary<string, BookTranslationDto> { ["en"] = new BookTranslationDto("Test description") },
                 PublicationDate = new PartialDate(2024, 1, 1),
                 Prices = new Dictionary<string, decimal> { ["USD"] = 10.0m }
             });
@@ -156,10 +142,7 @@ public class RefitMartenRegressionTests
             Isbn = "978-0-00-000000-0",
             Language = "en",
             Translations =
-                new Dictionary<string, BookTranslationDto>
-                {
-                    ["en"] = new BookTranslationDto { Description = "Test description" }
-                },
+                new Dictionary<string, BookTranslationDto> { ["en"] = new BookTranslationDto("Test description") },
             PublicationDate = new PartialDate(2024, 1, 1),
             Prices = new Dictionary<string, decimal>
             {
@@ -174,9 +157,7 @@ public class RefitMartenRegressionTests
         // The system should now verify p.Currency == "USD" && p.Value <= maxPrice.
         var response = await publicClient.GetBooksAsync(new BookSearchRequest
         {
-            Search = uniqueTitle,
-            MaxPrice = 15,
-            Currency = "USD"
+            Search = uniqueTitle, MaxPrice = 15, Currency = "USD"
         });
 
         // Assert
@@ -278,20 +259,12 @@ public class RefitMartenRegressionTests
 
         // Create Unique Authors and wait for projection
         var authorReqA = TestHelpers.GenerateFakeAuthorRequest();
-
-        _ = await TestHelpers.ExecuteAndWaitForEventAsync(Guid.Empty, ["AuthorCreated", "AuthorUpdated"],
-            async () =>
-            {
-                var authorResA = await adminClientA.CreateAuthorWithResponseAsync(authorReqA);
-                _ = await Assert.That(authorResA.StatusCode).IsEqualTo(HttpStatusCode.Created);
-            }, TimeSpan.FromSeconds(5));
+        var authorA = await TestHelpers.CreateAuthorAsync(adminClientA, authorReqA);
+        _ = await Assert.That(authorA).IsNotNull();
 
         var authorReqB = TestHelpers.GenerateFakeAuthorRequest();
-        _ = await TestHelpers.ExecuteAndWaitForEventAsync(Guid.Empty, "AuthorUpdated", async () =>
-        {
-            var authorResB = await adminClientB.CreateAuthorWithResponseAsync(authorReqB);
-            _ = await Assert.That(authorResB.StatusCode).IsEqualTo(HttpStatusCode.Created);
-        }, TimeSpan.FromSeconds(5));
+        var authorB = await TestHelpers.CreateAuthorAsync(adminClientB, authorReqB);
+        _ = await Assert.That(authorB).IsNotNull();
 
         // Act & Assert
         // 1. Get Authors from Tenant A. Should contain Author A.

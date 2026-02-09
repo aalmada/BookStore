@@ -21,6 +21,10 @@ namespace BookStore.Client
         [Headers("Content-Type: application/json")]
         [Get("/api/categories/{id}")]
         Task<CategoryDto> GetCategoryAsync(System.Guid id, [Header("If-None-Match")] string? ifNoneMatch = default, [Header("Accept-Language")] string? acceptLanguage = default, CancellationToken cancellationToken = default);
+
+        [Headers("Content-Type: application/json")]
+        [Get("/api/categories/{id}")]
+        Task<IApiResponse<CategoryDto>> GetCategoryWithResponseAsync(System.Guid id, [Header("If-None-Match")] string? ifNoneMatch = default, [Header("Accept-Language")] string? acceptLanguage = default, CancellationToken cancellationToken = default);
     }
 
 }

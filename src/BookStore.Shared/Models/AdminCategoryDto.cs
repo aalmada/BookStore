@@ -6,4 +6,5 @@ namespace BookStore.Shared.Models;
 public record AdminCategoryDto(
     Guid Id,
     string Name,
-    IReadOnlyDictionary<string, CategoryTranslationDto> Translations);
+    IReadOnlyDictionary<string, CategoryTranslationDto> Translations,
+    string? ETag = null);

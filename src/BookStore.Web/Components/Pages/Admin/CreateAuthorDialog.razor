@@ -122,7 +122,7 @@
         {
             _model.Translations = _translations.ToDictionary(
                 kvp => kvp.Key,
-                kvp => new BookStore.Client.AuthorTranslationDto { Biography = kvp.Value }
+                kvp => new AuthorTranslationDto(kvp.Value)
             );
 
             await AuthorsClient.CreateAuthorAsync(_model);

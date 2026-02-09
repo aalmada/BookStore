@@ -29,6 +29,7 @@ public static class ErrorCodes
         public const string BookNotFound = "ERR_BOOK_NOT_FOUND";
         public const string RatingInvalid = "ERR_BOOK_RATING_INVALID";
         public const string UserNotFound = "ERR_BOOK_USER_NOT_FOUND";
+        public const string ConcurrencyConflict = "ERR_BOOK_CONCURRENCY_CONFLICT";
     }
 
     // Author Codes
@@ -44,6 +45,7 @@ public static class ErrorCodes
         public const string AlreadyDeleted = "ERR_AUTHOR_ALREADY_DELETED";
         public const string NotDeleted = "ERR_AUTHOR_NOT_DELETED";
         public const string DefaultTranslationRequired = "ERR_AUTHOR_DEFAULT_TRANSLATION_REQUIRED";
+        public const string ConcurrencyConflict = "ERR_AUTHOR_CONCURRENCY_CONFLICT"; // Already added, ensuring keeps check
     }
 
     // Category Codes
@@ -57,6 +59,7 @@ public static class ErrorCodes
         public const string AlreadyDeleted = "ERR_CATEGORY_ALREADY_DELETED";
         public const string NotDeleted = "ERR_CATEGORY_NOT_DELETED";
         public const string DefaultTranslationRequired = "ERR_CATEGORY_DEFAULT_TRANSLATION_REQUIRED";
+        public const string ConcurrencyConflict = "ERR_CATEGORY_CONCURRENCY_CONFLICT";
     }
 
     // Publisher Codes

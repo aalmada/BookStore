@@ -192,7 +192,7 @@ public class MultiTenantAuthenticationTests : IDisposable
             CategoryIds = bookData.categoryIds,
             Prices = new Dictionary<string, decimal> { ["USD"] = bookData.prices.USD },
             PublicationDate = new PartialDate(2024),
-            Translations = new Dictionary<string, BookStore.Client.BookTranslationDto>()
+            Translations = new Dictionary<string, BookTranslationDto>()
         };
 
         try

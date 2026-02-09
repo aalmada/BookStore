@@ -73,7 +73,7 @@
 
     protected override void OnInitialized()
     {
-        _model = new UpdateAuthorRequest { Name = Author.Name, Translations = new Dictionary<string, BookStore.Client.AuthorTranslationDto>() };
+        _model = new UpdateAuthorRequest { Name = Author.Name, Translations = new Dictionary<string, AuthorTranslationDto>() };
         _originalName = Author.Name;
 
         if (Author.Translations != null)
@@ -165,7 +165,7 @@
         {
             var updatedTranslations = _translations.ToDictionary(
                 kvp => kvp.Key,
-                kvp => new BookStore.Client.AuthorTranslationDto { Biography = kvp.Value }
+                kvp => new AuthorTranslationDto(kvp.Value)
             );
 
             var request = new UpdateAuthorRequest { Name = _model.Name, Translations = updatedTranslations };

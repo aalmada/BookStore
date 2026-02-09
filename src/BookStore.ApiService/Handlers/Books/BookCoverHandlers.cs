@@ -24,26 +24,17 @@ public static class BookCoverHandlers
         // This ensures checking the Correct Aggregate Stream
         await using var session = store.LightweightSession(tenantId);
 
-        // Get current stream state for ETag validation
-        var streamState = await session.Events.FetchStreamStateAsync(command.BookId);
-        if (streamState is null)
-        {
-            return (Results.NotFound(), null!);
-        }
-
-        var currentETag = ETagHelper.GenerateETag(streamState.Version);
-
-        // Check If-Match header for optimistic concurrency
-        if (context is not null && !string.IsNullOrEmpty(command.ETag) &&
-            !ETagHelper.CheckIfMatch(context, currentETag))
-        {
-            return (ETagHelper.PreconditionFailed(), null!);
-        }
-
         var aggregate = await session.Events.AggregateStreamAsync<BookAggregate>(command.BookId);
         if (aggregate is null)
         {
             return (Results.NotFound(), null!);
+        }
+
+        var expectedVersion = ETagHelper.ParseETag(command.ETag);
+        
+        if (expectedVersion.HasValue && aggregate.Version != expectedVersion.Value)
+        {
+             return (ETagHelper.PreconditionFailed(), null!);
         }
 
         using var imageStream = new MemoryStream(command.Content);
@@ -60,7 +51,9 @@ public static class BookCoverHandlers
 
         // Update aggregate with format enum (URL will be generated dynamically by API endpoints)
         var @event = aggregate.UpdateCoverImage(format);
+        
         _ = session.Events.Append(command.BookId, @event.Value);
+
         await session.SaveChangesAsync();
 
         // Get new stream state and return new ETag

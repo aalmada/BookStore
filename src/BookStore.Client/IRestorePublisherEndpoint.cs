@@ -19,7 +19,10 @@ namespace BookStore.Client
     public partial interface IRestorePublisherEndpoint
     {
         [Post("/api/admin/publishers/{id}/restore")]
-        Task RestorePublisherAsync(System.Guid id, CancellationToken cancellationToken = default);
+        Task RestorePublisherAsync(System.Guid id, [Header("If-Match")] string? etag = null, CancellationToken cancellationToken = default);
+
+        [Post("/api/admin/publishers/{id}/restore")]
+        Task<IApiResponse> RestorePublisherWithResponseAsync(System.Guid id, [Header("If-Match")] string? etag = null, CancellationToken cancellationToken = default);
     }
 
 }

@@ -49,7 +49,7 @@ public static class MartenConfigurationExtensions
             options.Connection(connectionString);
 
             // 50% improvement in throughput, less "event skipping"
-            options.Events.AppendMode = EventAppendMode.Quick;
+            options.Events.AppendMode = EventAppendMode.Rich;
             options.Events.UseArchivedStreamPartitioning = true;
 
             // These cause some database changes, so can't be defaults,

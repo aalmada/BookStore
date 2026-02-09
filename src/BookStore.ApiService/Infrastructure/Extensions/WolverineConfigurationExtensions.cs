@@ -1,6 +1,7 @@
 using BookStore.Shared.Notifications;
 using JasperFx.Core;
 using Wolverine;
+using Wolverine.ErrorHandling;
 
 namespace BookStore.ApiService.Infrastructure.Extensions;
 
@@ -25,6 +26,7 @@ public static class WolverineConfigurationExtensions
             // Policies for automatic behavior
             opts.Policies.AutoApplyTransactions();
             opts.Policies.AddMiddleware(typeof(WolverineCorrelationMiddleware));
+            opts.Policies.AddMiddleware(typeof(WolverineETagMiddleware));
 
             // This *should* have some performance improvements, but would
             // require downtime to enable in existing systems

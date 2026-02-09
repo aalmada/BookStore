@@ -34,7 +34,8 @@ public static class GlobalHooks
                 "--Seeding:Enabled=false",
                 "--RateLimit:AuthPermitLimit=2000",
                 "--RateLimit:PermitLimit=2000",
-                "--Email:DeliveryMethod=None"
+                "--Email:DeliveryMethod=None",
+                "--Jwt:ExpirationMinutes=240"
             ]);
             _ = builder.Services.AddLogging(logging =>
             {
@@ -123,10 +124,7 @@ public static class GlobalHooks
                 {
                     tenantSession.Store(new BookStore.ApiService.Models.Tenant
                     {
-                        Id = tenantId,
-                        Name = tenantName,
-                        IsEnabled = true,
-                        CreatedAt = DateTimeOffset.UtcNow
+                        Id = tenantId, Name = tenantName, IsEnabled = true, CreatedAt = DateTimeOffset.UtcNow
                     });
                 }
                 else

@@ -23,10 +23,7 @@ public class BookSearchProjectionTests
             "Clean Code",
             "978-0132350884",
             "en",
-            new Dictionary<string, BookTranslation>
-            {
-                ["en"] = new("A Handbook of Agile Software Craftsmanship")
-            },
+            new Dictionary<string, BookTranslation> { ["en"] = new("A Handbook of Agile Software Craftsmanship") },
             new PartialDate(2008, 8, 1),
             publisherId,
             [authorId],
@@ -37,25 +34,24 @@ public class BookSearchProjectionTests
         var session = Substitute.For<IQuerySession>();
 
         // Mock Publisher lookup
-        var publisherList = new List<PublisherProjection>
-        {
-            new() { Id = publisherId, Name = "Prentice Hall" }
-        };
+        var publisherList = new List<PublisherProjection> { new() { Id = publisherId, Name = "Prentice Hall" } };
         var publisherQuery = CreateMartenQueryable(publisherList);
 
         _ = session.Query<PublisherProjection>().Returns(publisherQuery);
 
         // Mock Author lookup
-        var authorList = new List<AuthorProjection>
-        {
-            new() { Id = authorId, Name = "Robert C. Martin" }
-        };
+        var authorList = new List<AuthorProjection> { new() { Id = authorId, Name = "Robert C. Martin" } };
         var authorQuery = CreateMartenQueryable(authorList);
 
         _ = session.Query<AuthorProjection>().Returns(authorQuery);
 
+        var mockEvent = Substitute.For<JasperFx.Events.IEvent<BookAdded>>();
+        mockEvent.Data.Returns(@event);
+        mockEvent.Timestamp.Returns(DateTimeOffset.UtcNow);
+        mockEvent.Version.Returns(1);
+
         // Act
-        var projection = BookSearchProjection.Create(@event, session);
+        var projection = BookSearchProjection.Create(mockEvent, session);
 
         // Assert
         _ = await Assert.That(projection.Id).IsEqualTo(id);
@@ -72,11 +68,7 @@ public class BookSearchProjectionTests
     public async Task Apply_ShouldUpdateProjectionAndReloadDenormalizedData()
     {
         // Arrange
-        var projection = new BookSearchProjection
-        {
-            Id = Guid.NewGuid(),
-            Title = "Old Title"
-        };
+        var projection = new BookSearchProjection { Id = Guid.NewGuid(), Title = "Old Title" };
 
         var publisherId = Guid.NewGuid();
         var authorId = Guid.NewGuid();
@@ -86,10 +78,7 @@ public class BookSearchProjectionTests
             "Clean Code Updated",
             "978-0132350884",
             "en",
-            new Dictionary<string, BookTranslation>
-            {
-                ["en"] = new("Desc")
-            },
+            new Dictionary<string, BookTranslation> { ["en"] = new("Desc") },
             new PartialDate(2008, 8, 1),
             publisherId,
             [authorId],
@@ -100,25 +89,24 @@ public class BookSearchProjectionTests
         var session = Substitute.For<IQuerySession>();
 
         // Mock Publisher lookup
-        var publisherList = new List<PublisherProjection>
-        {
-            new() { Id = publisherId, Name = "Prentice Hall" }
-        };
+        var publisherList = new List<PublisherProjection> { new() { Id = publisherId, Name = "Prentice Hall" } };
         var publisherQuery = CreateMartenQueryable(publisherList);
 
         _ = session.Query<PublisherProjection>().Returns(publisherQuery);
 
         // Mock Author lookup
-        var authorList = new List<AuthorProjection>
-        {
-            new() { Id = authorId, Name = "Uncle Bob" }
-        };
+        var authorList = new List<AuthorProjection> { new() { Id = authorId, Name = "Uncle Bob" } };
         var authorQuery = CreateMartenQueryable(authorList);
 
         _ = session.Query<AuthorProjection>().Returns(authorQuery);
 
+        var mockEvent = Substitute.For<JasperFx.Events.IEvent<BookUpdated>>();
+        mockEvent.Data.Returns(@event);
+        mockEvent.Timestamp.Returns(DateTimeOffset.UtcNow);
+        mockEvent.Version.Returns(2);
+
         // Act
-        _ = projection.Apply(@event, session);
+        _ = projection.Apply(mockEvent, session);
 
         // Assert
         _ = await Assert.That(projection.Title).IsEqualTo("Clean Code Updated");
@@ -140,6 +128,7 @@ public class BookSearchProjectionTests
 
         return mock;
     }
+
     [Test]
     [Category("Unit")]
     public async Task Apply_BookSaleScheduled_ShouldAddSale()
@@ -149,8 +138,13 @@ public class BookSearchProjectionTests
         var sale = new BookSale(10m, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddDays(1));
         var @event = new BookSaleScheduled(projection.Id, sale);
 
+        var mockEvent = Substitute.For<JasperFx.Events.IEvent<BookSaleScheduled>>();
+        mockEvent.Data.Returns(@event);
+        mockEvent.Timestamp.Returns(DateTimeOffset.UtcNow);
+        mockEvent.Version.Returns(2);
+
         // Act
-        projection.Apply(@event);
+        projection.Apply(mockEvent);
 
         // Assert
         _ = await Assert.That(projection.Sales).Count().IsEqualTo(1);
@@ -170,8 +164,13 @@ public class BookSearchProjectionTests
         var newSale = new BookSale(20m, start, start.AddDays(2)); // Same start time, different end/percentage
         var @event = new BookSaleScheduled(projection.Id, newSale);
 
+        var mockEvent = Substitute.For<JasperFx.Events.IEvent<BookSaleScheduled>>();
+        mockEvent.Data.Returns(@event);
+        mockEvent.Timestamp.Returns(DateTimeOffset.UtcNow);
+        mockEvent.Version.Returns(3);
+
         // Act
-        projection.Apply(@event);
+        projection.Apply(mockEvent);
 
         // Assert
         _ = await Assert.That(projection.Sales).Count().IsEqualTo(1);
@@ -191,8 +190,13 @@ public class BookSearchProjectionTests
 
         var @event = new BookSaleCancelled(projection.Id, start);
 
+        var mockEvent = Substitute.For<JasperFx.Events.IEvent<BookSaleCancelled>>();
+        mockEvent.Data.Returns(@event);
+        mockEvent.Timestamp.Returns(DateTimeOffset.UtcNow);
+        mockEvent.Version.Returns(4);
+
         // Act
-        projection.Apply(@event);
+        projection.Apply(mockEvent);
 
         // Assert
         _ = await Assert.That(projection.Sales).IsEmpty();
@@ -213,8 +217,13 @@ public class BookSearchProjectionTests
 
         var @event = new BookDiscountUpdated(id, 20m); // 20% discount
 
+        var mockEvent = Substitute.For<JasperFx.Events.IEvent<BookDiscountUpdated>>();
+        mockEvent.Data.Returns(@event);
+        mockEvent.Timestamp.Returns(DateTimeOffset.UtcNow);
+        mockEvent.Version.Returns(2);
+
         // Act
-        projection.Apply(@event);
+        projection.Apply(mockEvent);
 
         // Assert
         _ = await Assert.That(projection.CurrentPrices).Count().IsEqualTo(2);
@@ -237,8 +246,13 @@ public class BookSearchProjectionTests
 
         var @event = new BookDiscountUpdated(id, 0m);
 
+        var mockEvent = Substitute.For<JasperFx.Events.IEvent<BookDiscountUpdated>>();
+        mockEvent.Data.Returns(@event);
+        mockEvent.Timestamp.Returns(DateTimeOffset.UtcNow);
+        mockEvent.Version.Returns(2);
+
         // Act
-        projection.Apply(@event);
+        projection.Apply(mockEvent);
 
         // Assert
         _ = await Assert.That(projection.CurrentPrices[0].Value).IsEqualTo(100m);
@@ -271,8 +285,13 @@ public class BookSearchProjectionTests
             new Dictionary<string, decimal> { ["USD"] = 200m } // New base price
         );
 
+        var mockEvent = Substitute.For<JasperFx.Events.IEvent<BookUpdated>>();
+        mockEvent.Data.Returns(@event);
+        mockEvent.Timestamp.Returns(DateTimeOffset.UtcNow);
+        mockEvent.Version.Returns(2);
+
         // Act
-        _ = projection.Apply(@event, Substitute.For<IQuerySession>());
+        _ = projection.Apply(mockEvent, Substitute.For<IQuerySession>());
 
         // Assert
         _ = await Assert.That(projection.DiscountPercentage).IsEqualTo(20m);

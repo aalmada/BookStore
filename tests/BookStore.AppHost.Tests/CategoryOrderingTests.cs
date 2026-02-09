@@ -4,7 +4,6 @@ using BookStore.Client;
 using BookStore.Shared.Models;
 using Refit;
 using TUnit.Core.Interfaces;
-using CategoryTranslationDto = BookStore.Client.CategoryTranslationDto;
 
 namespace BookStore.AppHost.Tests;
 
@@ -32,7 +31,7 @@ public class CategoryOrderingTests
             {
                 Translations = new Dictionary<string, CategoryTranslationDto>
                 {
-                    ["en"] = new CategoryTranslationDto { Name = name, Description = $"Description for {name}" }
+                    ["en"] = new CategoryTranslationDto(name)
                 }
             };
             await adminClient.CreateCategoryAsync(createRequest);
@@ -86,8 +85,7 @@ public class CategoryOrderingTests
             {
                 Translations = new Dictionary<string, CategoryTranslationDto>
                 {
-                    ["en"] = new CategoryTranslationDto { Name = cat.EN, Description = "Desc" },
-                    ["pt-PT"] = new CategoryTranslationDto { Name = cat.PT, Description = "Desc" }
+                    ["en"] = new CategoryTranslationDto(cat.EN), ["pt-PT"] = new CategoryTranslationDto(cat.PT)
                 }
             };
             await adminClient.CreateCategoryAsync(createRequest);
@@ -99,10 +97,7 @@ public class CategoryOrderingTests
         // Act - Request admin categories ordered by name in English
         var result = await adminClient.GetAllCategoriesAsync(new CategorySearchRequest
         {
-            SortBy = "name",
-            SortOrder = "asc",
-            Language = "en",
-            PageSize = 100
+            SortBy = "name", SortOrder = "asc", Language = "en", PageSize = 100
         });
 
         // Assert - Should be A-Category followed by C-Category
@@ -114,10 +109,7 @@ public class CategoryOrderingTests
         // Act - Request admin categories ordered by name in Portuguese
         result = await adminClient.GetAllCategoriesAsync(new CategorySearchRequest
         {
-            SortBy = "name",
-            SortOrder = "asc",
-            Language = "pt-PT",
-            PageSize = 100
+            SortBy = "name", SortOrder = "asc", Language = "pt-PT", PageSize = 100
         });
 
         // Assert - Should be A-Portuguese (which is Cat 1) followed by C-Portuguese (which is Cat 2)

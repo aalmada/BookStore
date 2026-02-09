@@ -1,6 +1,7 @@
 using System.Net;
 using Bogus;
 using BookStore.Client;
+using BookStore.Shared.Models;
 using Refit;
 using MvcProblemDetails = Microsoft.AspNetCore.Mvc.ProblemDetails;
 using SharedModels = BookStore.Shared.Models;
@@ -28,10 +29,7 @@ public class BookValidationTests
             Isbn = _faker.Commerce.Ean13(),
             Language = language,
             Translations =
-                new Dictionary<string, BookTranslationDto>
-                {
-                    ["en"] = new() { Description = _faker.Lorem.Paragraph() }
-                },
+                new Dictionary<string, BookTranslationDto> { ["en"] = new(_faker.Lorem.Paragraph()) },
             PublicationDate = new SharedModels.PartialDate(2023),
             AuthorIds = [],
             CategoryIds = [],

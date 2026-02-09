@@ -19,7 +19,10 @@ namespace BookStore.Client
     public partial interface ISoftDeletePublisherEndpoint
     {
         [Delete("/api/admin/publishers/{id}")]
-        Task SoftDeletePublisherAsync(System.Guid id, CancellationToken cancellationToken = default);
+        Task SoftDeletePublisherAsync(System.Guid id, [Header("If-Match")] string? etag = null, CancellationToken cancellationToken = default);
+
+        [Delete("/api/admin/publishers/{id}")]
+        Task<IApiResponse> SoftDeletePublisherWithResponseAsync(System.Guid id, [Header("If-Match")] string? etag = null, CancellationToken cancellationToken = default);
     }
 
 }

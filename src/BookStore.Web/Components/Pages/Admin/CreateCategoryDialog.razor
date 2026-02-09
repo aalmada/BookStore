@@ -106,7 +106,7 @@
         {
             var translations = _translations.ToDictionary(
                 kvp => kvp.Key,
-                kvp => new BookStore.Client.CategoryTranslationDto { Name = kvp.Value }
+                kvp => new CategoryTranslationDto(kvp.Value)
             );
 
             var request = new CreateCategoryRequest { Translations = translations };

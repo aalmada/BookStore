@@ -11,6 +11,8 @@ public class AuthorAggregate : ISoftDeleted
     public Guid Id { get; private set; }
     public string Name { get; private set; } = string.Empty;
     public Dictionary<string, AuthorTranslation> Translations { get; private set; } = [];
+    public long Version { get; private set; }
+
 #pragma warning disable BS3005 // Aggregate properties must have private setters (Marten ISoftDeleted requirement)
     public bool Deleted { get; set; }
     public DateTimeOffset? DeletedAt { get; set; }

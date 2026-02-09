@@ -21,6 +21,10 @@ namespace BookStore.Client
         [Headers("Content-Type: application/json")]
         [Get("/api/publishers/{id}")]
         Task<PublisherDto> GetPublisherAsync(System.Guid id, [Header("If-None-Match")] string? ifNoneMatch = default, CancellationToken cancellationToken = default);
+
+        [Headers("Content-Type: application/json")]
+        [Get("/api/publishers/{id}")]
+        Task<IApiResponse<PublisherDto>> GetPublisherWithResponseAsync(System.Guid id, [Header("If-None-Match")] string? ifNoneMatch = default, CancellationToken cancellationToken = default);
     }
 
 }

@@ -1,4 +1,4 @@
-using BookStore.Shared.Models;
+using BookStore.Shared.Commands;
 
 namespace BookStore.ApiService.Commands;
 
@@ -9,9 +9,9 @@ public record ScheduleSale(
     Guid BookId,
     decimal Percentage,
     DateTimeOffset Start,
-    DateTimeOffset End)
+    DateTimeOffset End) : IHaveETag
 {
-    public string? ETag { get; init; }
+    public string? ETag { get; set; }
 }
 
 /// <summary>
@@ -19,7 +19,7 @@ public record ScheduleSale(
 /// </summary>
 public record CancelSale(
     Guid BookId,
-    DateTimeOffset SaleStart)
+    DateTimeOffset SaleStart) : IHaveETag
 {
-    public string? ETag { get; init; }
+    public string? ETag { get; set; }
 }

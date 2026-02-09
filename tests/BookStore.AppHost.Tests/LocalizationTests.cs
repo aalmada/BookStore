@@ -22,11 +22,11 @@ public class LocalizationTests
 
         // Create the book
         // Use dictionary for Translations as per contract
-        var translations = new Dictionary<string, BookStore.Client.BookTranslationDto>
+        var translations = new Dictionary<string, BookTranslationDto>
         {
-            ["en"] = new BookStore.Client.BookTranslationDto { Description = "Default Description" },
-            ["pt-PT"] = new BookStore.Client.BookTranslationDto { Description = "Descrição em Português" },
-            ["es"] = new BookStore.Client.BookTranslationDto { Description = "Descripción en Español" }
+            ["en"] = new BookTranslationDto("Default Description"),
+            ["pt-PT"] = new BookTranslationDto("Descrição em Português"),
+            ["es"] = new BookTranslationDto("Descripción en Español")
         };
 
         var request = TestHelpers.GenerateFakeBookRequest();

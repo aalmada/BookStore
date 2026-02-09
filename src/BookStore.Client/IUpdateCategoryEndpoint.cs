@@ -20,7 +20,11 @@ namespace BookStore.Client
     {
         [Headers("Content-Type: application/json")]
         [Put("/api/admin/categories/{id}")]
-        Task UpdateCategoryAsync(System.Guid id, [Body] UpdateCategoryRequest body, CancellationToken cancellationToken = default);
+        Task UpdateCategoryAsync(System.Guid id, [Body] UpdateCategoryRequest body, [Header("If-Match")] string? etag = null, CancellationToken cancellationToken = default);
+
+        [Headers("Content-Type: application/json")]
+        [Put("/api/admin/categories/{id}")]
+        Task<IApiResponse> UpdateCategoryWithResponseAsync(System.Guid id, [Body] UpdateCategoryRequest body, [Header("If-Match")] string? etag = null, CancellationToken cancellationToken = default);
     }
 
 }

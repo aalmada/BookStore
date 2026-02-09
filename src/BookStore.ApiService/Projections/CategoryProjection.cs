@@ -1,4 +1,7 @@
+using JasperFx.Events;
 using BookStore.ApiService.Events;
+using BookStore.Shared.Infrastructure;
+using Marten.Events;
 using Marten.Events.Aggregation;
 
 namespace BookStore.ApiService.Projections;
@@ -15,36 +18,41 @@ public class CategoryProjection
     public DateTimeOffset LastModified { get; set; }
     public bool Deleted { get; set; }
     public DateTimeOffset? DeletedAt { get; set; }
+    public long Version { get; set; }
 
     // SingleStreamProjection methods
-    public static CategoryProjection Create(CategoryAdded @event) => new()
+    public static CategoryProjection Create(IEvent<CategoryAdded> @event) => new()
     {
-        Id = @event.Id,
+        Id = @event.Data.Id,
         LastModified = @event.Timestamp,
+        Version = @event.Version,
         Deleted = false,
-        Names = @event.Translations?
+        Names = @event.Data.Translations?
                 .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Name)
                 ?? []
     };
 
-    public void Apply(CategoryUpdated @event)
+    public void Apply(IEvent<CategoryUpdated> @event)
     {
         LastModified = @event.Timestamp;
-        Names = @event.Translations?
+        Version = @event.Version;
+        Names = @event.Data.Translations?
             .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Name)
             ?? [];
     }
 
-    public void Apply(CategorySoftDeleted @event)
+    public void Apply(IEvent<CategorySoftDeleted> @event)
     {
         LastModified = @event.Timestamp;
+        Version = @event.Version;
         Deleted = true;
         DeletedAt = @event.Timestamp;
     }
 
-    public void Apply(CategoryRestored @event)
+    public void Apply(IEvent<CategoryRestored> @event)
     {
         LastModified = @event.Timestamp;
+        Version = @event.Version;
         Deleted = false;
         DeletedAt = null;
     }

@@ -71,7 +71,7 @@ public static class PublisherEndpoints
                     .ToPagedListAsync(paging.Page!.Value, paging.PageSize!.Value, cancel);
 
                 // Map to DTOs using LINQ's lazy Select (no intermediate collection)
-                var mappedList = pagedList.Select(p => new PublisherDto(p.Id, p.Name)).ToList();
+                var mappedList = pagedList.Select(p => new PublisherDto(p.Id, p.Name, ETagHelper.GenerateETag(p.Version))).ToList();
 
                 // Wrap in adapter for zero-allocation serialization
                 return new PagedListAdapter<PublisherDto>(
@@ -92,11 +92,12 @@ public static class PublisherEndpoints
         return TypedResults.Ok(response);
     }
 
-    static async Task<Microsoft.AspNetCore.Http.HttpResults.Results<Ok<PublisherDto>, NotFound>> GetPublisher(
+    static async Task<IResult> GetPublisher(
         Guid id,
         [FromServices] IDocumentStore store,
         [FromServices] ITenantContext tenantContext,
         [FromServices] HybridCache cache,
+        HttpContext context,
         CancellationToken cancellationToken)
     {
         var response = await cache.GetOrCreateAsync(
@@ -110,7 +111,7 @@ public static class PublisherEndpoints
                     return (PublisherDto?)null;
                 }
 
-                return new PublisherDto(publisher.Id, publisher.Name);
+                return new PublisherDto(publisher.Id, publisher.Name, ETagHelper.GenerateETag(publisher.Version));
             },
             options: new HybridCacheEntryOptions
             {
@@ -120,7 +121,12 @@ public static class PublisherEndpoints
             tags: [CacheTags.ForItem(CacheTags.PublisherItemPrefix, id)],
             cancellationToken: cancellationToken);
 
-        return response is null ? TypedResults.NotFound() : TypedResults.Ok(response);
+        if (response is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        return TypedResults.Ok(response).WithETag(response.ETag!);
     }
 }
 

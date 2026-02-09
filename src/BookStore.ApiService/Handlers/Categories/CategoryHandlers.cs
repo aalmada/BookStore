@@ -93,22 +93,6 @@ public static class CategoryHandlers
             }
         }
 
-        var streamState = await session.Events.FetchStreamStateAsync(command.Id);
-        if (streamState is null)
-        {
-            Log.Categories.CategoryNotFound(logger, command.Id);
-            return Result.Failure(Error.NotFound(ErrorCodes.Categories.NotDeleted, "Category not found")).ToProblemDetails();
-        }
-
-        var context = httpContextAccessor.HttpContext;
-        var currentETag = ETagHelper.GenerateETag(streamState.Version);
-        if (context != null && !string.IsNullOrEmpty(command.ETag) &&
-            !ETagHelper.CheckIfMatch(context, currentETag))
-        {
-            Log.Categories.ETagMismatch(logger, command.Id, currentETag, command.ETag);
-            return ETagHelper.PreconditionFailed();
-        }
-
         var aggregate = await session.Events.AggregateStreamAsync<CategoryAggregate>(command.Id);
         if (aggregate is null)
         {
@@ -116,7 +100,14 @@ public static class CategoryHandlers
             return Result.Failure(Error.NotFound(ErrorCodes.Categories.NotDeleted, "Category not found")).ToProblemDetails();
         }
 
-        Log.Categories.CategoryUpdating(logger, command.Id, streamState.Version);
+        Log.Categories.CategoryUpdating(logger, command.Id, 0);
+
+        var expectedVersion = ETagHelper.ParseETag(command.ETag);
+        
+        if (expectedVersion.HasValue && aggregate.Version != expectedVersion.Value)
+        {
+             return ETagHelper.PreconditionFailed();
+        }
 
         var translations = command.Translations.ToDictionary(
             kvp => kvp.Key,
@@ -130,6 +121,16 @@ public static class CategoryHandlers
 
         _ = session.Events.Append(command.Id, eventResult.Value);
 
+        try
+        {
+            await session.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            System.IO.File.AppendAllText("debug_concurrency.log", $"UpdateCategory SaveChanges Exception: {ex.GetType().Name} - {ex.Message}\n");
+            throw;
+        }
+
         return Results.NoContent();
     }
 
@@ -142,26 +143,18 @@ public static class CategoryHandlers
     {
         Log.Categories.CategorySoftDeleting(logger, command.Id);
 
-        var streamState = await session.Events.FetchStreamStateAsync(command.Id);
-        if (streamState is null)
-        {
-            Log.Categories.CategoryNotFound(logger, command.Id);
-            return Result.Failure(Error.NotFound(ErrorCodes.Categories.NotDeleted, "Category not found")).ToProblemDetails();
-        }
-
-        var context = httpContextAccessor.HttpContext;
-        var currentETag = ETagHelper.GenerateETag(streamState.Version);
-        if (context != null && !string.IsNullOrEmpty(command.ETag) &&
-            !ETagHelper.CheckIfMatch(context, currentETag))
-        {
-            return ETagHelper.PreconditionFailed();
-        }
-
         var aggregate = await session.Events.AggregateStreamAsync<CategoryAggregate>(command.Id);
         if (aggregate is null)
         {
             Log.Categories.CategoryNotFound(logger, command.Id);
             return Result.Failure(Error.NotFound(ErrorCodes.Categories.NotDeleted, "Category not found")).ToProblemDetails();
+        }
+
+        var expectedVersion = ETagHelper.ParseETag(command.ETag);
+        
+        if (expectedVersion.HasValue && aggregate.Version != expectedVersion.Value)
+        {
+             return ETagHelper.PreconditionFailed();
         }
 
         var eventResult = aggregate.SoftDeleteEvent();
@@ -171,6 +164,16 @@ public static class CategoryHandlers
         }
 
         _ = session.Events.Append(command.Id, eventResult.Value);
+
+        try
+        {
+            await session.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            System.IO.File.AppendAllText("debug_concurrency.log", $"SoftDeleteCategory SaveChanges Exception: {ex.GetType().Name} - {ex.Message}\n");
+            throw;
+        }
 
         return Results.NoContent();
     }
@@ -184,26 +187,18 @@ public static class CategoryHandlers
     {
         Log.Categories.CategoryRestoring(logger, command.Id);
 
-        var streamState = await session.Events.FetchStreamStateAsync(command.Id);
-        if (streamState is null)
-        {
-            Log.Categories.CategoryNotFound(logger, command.Id);
-            return Result.Failure(Error.NotFound(ErrorCodes.Categories.NotDeleted, "Category not found")).ToProblemDetails();
-        }
-
-        var context = httpContextAccessor.HttpContext;
-        var currentETag = ETagHelper.GenerateETag(streamState.Version);
-        if (context != null && !string.IsNullOrEmpty(command.ETag) &&
-            !ETagHelper.CheckIfMatch(context, currentETag))
-        {
-            return ETagHelper.PreconditionFailed();
-        }
-
         var aggregate = await session.Events.AggregateStreamAsync<CategoryAggregate>(command.Id);
         if (aggregate is null)
         {
             Log.Categories.CategoryNotFound(logger, command.Id);
             return Result.Failure(Error.NotFound(ErrorCodes.Categories.NotDeleted, "Category not found")).ToProblemDetails();
+        }
+
+        var expectedVersion = ETagHelper.ParseETag(command.ETag);
+        
+        if (expectedVersion.HasValue && aggregate.Version != expectedVersion.Value)
+        {
+             return ETagHelper.PreconditionFailed();
         }
 
         var eventResult = aggregate.RestoreEvent();
@@ -213,6 +208,16 @@ public static class CategoryHandlers
         }
 
         _ = session.Events.Append(command.Id, eventResult.Value);
+
+        try
+        {
+            await session.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            System.IO.File.AppendAllText("debug_concurrency.log", $"RestoreCategory SaveChanges Exception: {ex.GetType().Name} - {ex.Message}\n");
+            throw;
+        }
 
         return Results.NoContent();
     }

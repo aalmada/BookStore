@@ -22,7 +22,7 @@ namespace BookStore.Client
         Task<BookDto> GetBookAsync(System.Guid id, CancellationToken cancellationToken = default);
 
         [Get("/api/books/{id}")]
-        Task<IApiResponse<BookDto>> GetBookWithHeadersAsync(System.Guid id, CancellationToken cancellationToken = default);
+        Task<IApiResponse<BookDto>> GetBookWithResponseAsync(System.Guid id, CancellationToken cancellationToken = default);
     }
 
 }

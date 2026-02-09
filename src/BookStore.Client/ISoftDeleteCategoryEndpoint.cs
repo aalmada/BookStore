@@ -19,7 +19,10 @@ namespace BookStore.Client
     public partial interface ISoftDeleteCategoryEndpoint
     {
         [Delete("/api/admin/categories/{id}")]
-        Task SoftDeleteCategoryAsync(System.Guid id, CancellationToken cancellationToken = default);
+        Task SoftDeleteCategoryAsync(System.Guid id, [Header("If-Match")] string? etag = null, CancellationToken cancellationToken = default);
+
+        [Delete("/api/admin/categories/{id}")]
+        Task<IApiResponse> SoftDeleteCategoryWithResponseAsync(System.Guid id, [Header("If-Match")] string? etag = null, CancellationToken cancellationToken = default);
     }
 
 }

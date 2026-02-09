@@ -31,6 +31,7 @@ public interface IDomainEventNotification
     Guid EntityId { get; }
     string EventType { get; }
     DateTimeOffset Timestamp { get; }
+    long Version { get; }
 }
 
 /// <summary>
@@ -40,7 +41,8 @@ public record BookCreatedNotification(
     Guid EventId,
     Guid EntityId,
     string Title,
-    DateTimeOffset Timestamp) : IDomainEventNotification
+    DateTimeOffset Timestamp,
+    long Version = 0) : IDomainEventNotification
 {
     public string EventType => "BookCreated";
 }
@@ -52,7 +54,8 @@ public record BookUpdatedNotification(
     Guid EventId,
     Guid EntityId,
     string Title,
-    DateTimeOffset Timestamp) : IDomainEventNotification
+    DateTimeOffset Timestamp,
+    long Version = 0) : IDomainEventNotification
 {
     public string EventType => "BookUpdated";
 }
@@ -63,7 +66,8 @@ public record BookUpdatedNotification(
 public record BookDeletedNotification(
     Guid EventId,
     Guid EntityId,
-    DateTimeOffset Timestamp) : IDomainEventNotification
+    DateTimeOffset Timestamp,
+    long Version = 0) : IDomainEventNotification
 {
     public string EventType => "BookDeleted";
 }
@@ -75,7 +79,8 @@ public record AuthorCreatedNotification(
     Guid EventId,
     Guid EntityId,
     string Name,
-    DateTimeOffset Timestamp) : IDomainEventNotification
+    DateTimeOffset Timestamp,
+    long Version = 0) : IDomainEventNotification
 {
     public string EventType => "AuthorCreated";
 }
@@ -87,7 +92,8 @@ public record CategoryCreatedNotification(
     Guid EventId,
     Guid EntityId,
     string Name,
-    DateTimeOffset Timestamp) : IDomainEventNotification
+    DateTimeOffset Timestamp,
+    long Version = 0) : IDomainEventNotification
 {
     public string EventType => "CategoryCreated";
 }
@@ -98,7 +104,8 @@ public record CategoryCreatedNotification(
 public record CategoryUpdatedNotification(
     Guid EventId,
     Guid EntityId,
-    DateTimeOffset Timestamp) : IDomainEventNotification
+    DateTimeOffset Timestamp,
+    long Version = 0) : IDomainEventNotification
 {
     public string EventType => "CategoryUpdated";
 }
@@ -109,7 +116,8 @@ public record CategoryUpdatedNotification(
 public record CategoryDeletedNotification(
     Guid EventId,
     Guid EntityId,
-    DateTimeOffset Timestamp) : IDomainEventNotification
+    DateTimeOffset Timestamp,
+    long Version = 0) : IDomainEventNotification
 {
     public string EventType => "CategoryDeleted";
 }
@@ -120,7 +128,8 @@ public record CategoryDeletedNotification(
 public record CategoryRestoredNotification(
     Guid EventId,
     Guid EntityId,
-    DateTimeOffset Timestamp) : IDomainEventNotification
+    DateTimeOffset Timestamp,
+    long Version = 0) : IDomainEventNotification
 {
     public string EventType => "CategoryRestored";
 }
@@ -132,7 +141,8 @@ public record PublisherCreatedNotification(
     Guid EventId,
     Guid EntityId,
     string Name,
-    DateTimeOffset Timestamp) : IDomainEventNotification
+    DateTimeOffset Timestamp,
+    long Version = 0) : IDomainEventNotification
 {
     public string EventType => "PublisherCreated";
 }
@@ -143,7 +153,8 @@ public record PublisherCreatedNotification(
 public record BookCoverUpdatedNotification(
     Guid EventId,
     Guid EntityId,
-    string? CoverUrl) : IDomainEventNotification
+    string? CoverUrl,
+    long Version = 0) : IDomainEventNotification
 {
     public string EventType => "BookCoverUpdated";
     public DateTimeOffset Timestamp { get; } = DateTimeOffset.UtcNow;
@@ -156,7 +167,8 @@ public record UserVerifiedNotification(
     Guid EventId,
     Guid EntityId,
     string Email,
-    DateTimeOffset Timestamp) : IDomainEventNotification
+    DateTimeOffset Timestamp,
+    long Version = 0) : IDomainEventNotification
 {
     public string EventType => "UserVerified";
 }
@@ -168,7 +180,8 @@ public record AuthorUpdatedNotification(
     Guid EventId,
     Guid EntityId,
     string Name,
-    DateTimeOffset Timestamp) : IDomainEventNotification
+    DateTimeOffset Timestamp,
+    long Version = 0) : IDomainEventNotification
 {
     public string EventType => "AuthorUpdated";
 }
@@ -179,7 +192,8 @@ public record AuthorUpdatedNotification(
 public record AuthorDeletedNotification(
     Guid EventId,
     Guid EntityId,
-    DateTimeOffset Timestamp) : IDomainEventNotification
+    DateTimeOffset Timestamp,
+    long Version = 0) : IDomainEventNotification
 {
     public string EventType => "AuthorDeleted";
 }
@@ -191,7 +205,8 @@ public record PublisherUpdatedNotification(
     Guid EventId,
     Guid EntityId,
     string Name,
-    DateTimeOffset Timestamp) : IDomainEventNotification
+    DateTimeOffset Timestamp,
+    long Version = 0) : IDomainEventNotification
 {
     public string EventType => "PublisherUpdated";
 }
@@ -202,7 +217,8 @@ public record PublisherUpdatedNotification(
 public record PublisherDeletedNotification(
     Guid EventId,
     Guid EntityId,
-    DateTimeOffset Timestamp) : IDomainEventNotification
+    DateTimeOffset Timestamp,
+    long Version = 0) : IDomainEventNotification
 {
     public string EventType => "PublisherDeleted";
 }
@@ -216,6 +232,7 @@ public record PingNotification : IDomainEventNotification
     public Guid EntityId => Guid.Empty;
     public string EventType => "Ping";
     public DateTimeOffset Timestamp => DateTimeOffset.UtcNow;
+    public long Version => 0;
 }
 
 /// <summary>
@@ -225,7 +242,8 @@ public record UserUpdatedNotification(
     Guid EventId,
     Guid EntityId,
     DateTimeOffset Timestamp,
-    int FavoritesCount = 0) : IDomainEventNotification
+    int FavoritesCount = 0,
+    long Version = 0) : IDomainEventNotification
 {
     public string EventType => "UserUpdated";
 }
@@ -237,7 +255,8 @@ public record TenantCreatedNotification(
     Guid EventId,
     string EntityId,
     string Name,
-    DateTimeOffset Timestamp) : IDomainEventNotification
+    DateTimeOffset Timestamp,
+    long Version = 0) : IDomainEventNotification
 {
     public string EventType => "TenantCreated";
     Guid IDomainEventNotification.EntityId => Guid.Empty; // Tenants use string IDs, so we return Empty for the Guid property
@@ -250,7 +269,8 @@ public record TenantUpdatedNotification(
     Guid EventId,
     string EntityId,
     string Name,
-    DateTimeOffset Timestamp) : IDomainEventNotification
+    DateTimeOffset Timestamp,
+    long Version = 0) : IDomainEventNotification
 {
     public string EventType => "TenantUpdated";
     Guid IDomainEventNotification.EntityId => Guid.Empty;

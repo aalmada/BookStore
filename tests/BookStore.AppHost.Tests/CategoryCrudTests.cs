@@ -38,7 +38,7 @@ public class CategoryCrudTests
         var updateRequest = TestHelpers.GenerateFakeUpdateCategoryRequest(); // New data
 
         // Act
-        await TestHelpers.UpdateCategoryAsync(client, createdCategory!, updateRequest);
+        createdCategory = await TestHelpers.UpdateCategoryAsync(client, createdCategory!, updateRequest);
 
         // Verify update in public API (data should be consistent now)
         // We use public unauthenticated client to verify
@@ -62,7 +62,7 @@ public class CategoryCrudTests
         var createdCategory = await TestHelpers.CreateCategoryAsync(client, createRequest);
 
         // Act
-        await TestHelpers.DeleteCategoryAsync(client, createdCategory!);
+        createdCategory = await TestHelpers.DeleteCategoryAsync(client, createdCategory!);
 
         // Verify it's gone from public API
         // Verify it's gone from public API
@@ -89,14 +89,7 @@ public class CategoryCrudTests
         var client = await TestHelpers.GetAuthenticatedClientAsync<ICategoriesClient>();
         var request = new CreateCategoryRequest
         {
-            Translations = new Dictionary<string, BookStore.Client.CategoryTranslationDto>
-            {
-                ["en"] = new()
-                {
-                    Name = invalidName, // Invalid
-                    Description = "Description"
-                }
-            }
+            Translations = new Dictionary<string, CategoryTranslationDto> { ["en"] = new(invalidName!) }
         };
 
         // Act & Assert
@@ -128,11 +121,11 @@ public class CategoryCrudTests
 
         var createRequest = new CreateCategoryRequest
         {
-            Translations = new Dictionary<string, BookStore.Client.CategoryTranslationDto>
+            Translations = new Dictionary<string, CategoryTranslationDto>
             {
-                ["en"] = new() { Name = "Default Name", Description = "Default Description" },
-                ["pt-PT"] = new() { Name = "Nome da Categoria", Description = "Descrição em Português" },
-                ["es"] = new() { Name = "Nombre de la Categoría", Description = "Descripción en Español" }
+                ["en"] = new("Default Name"),
+                ["pt-PT"] = new("Nome da Categoria"),
+                ["es"] = new("Nombre de la Categoría")
             }
         };
 
@@ -177,10 +170,10 @@ public class CategoryCrudTests
         var createdCategory = await TestHelpers.CreateCategoryAsync(client, createRequest);
 
         // 2. Soft Delete Category
-        await TestHelpers.DeleteCategoryAsync(client, createdCategory!);
+        createdCategory = await TestHelpers.DeleteCategoryAsync(client, createdCategory!);
 
         // Act - Restore
-        await TestHelpers.RestoreCategoryAsync(client, createdCategory!);
+        createdCategory = await TestHelpers.RestoreCategoryAsync(client, createdCategory!);
 
         // Verify
         // Use client to get it (should succeed now if visible to admin, which it is)

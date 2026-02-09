@@ -26,14 +26,9 @@ public class BookSoftDeleteTests
         _ = await Assert.That(initialGet).IsNotNull();
 
         // 2. Soft Delete via Admin API
-        // Fetch ETag via raw client to handle concurrency
-        // Fetch ETag via raw client to handle concurrency
-        var getResponse = await publicClient.GetBookWithHeadersAsync(bookId);
-        var etag = getResponse.Headers.ETag?.Tag;
-        _ = await Assert.That(etag).IsNotNull();
 
         // Perform Soft Delete
-        await adminClient.SoftDeleteBookAsync(bookId, etag);
+        var deletedBook = await TestHelpers.DeleteBookAsync(adminClient, createdBook);
 
         // Wait for projection to process deletion
         await TestHelpers.WaitForConditionAsync(async () =>
@@ -68,8 +63,7 @@ public class BookSoftDeleteTests
         _ = await Assert.That(adminBook!.IsDeleted).IsTrue();
 
         // 5. Restore via Admin API
-        // Try restoring without ETag (as getting it for a deleted book is hard via API if public 404s)
-        await adminClient.RestoreBookAsync(bookId, etag: null);
+        createdBook = await TestHelpers.RestoreBookAsync(adminClient, bookId);
 
         // 6. Verify Reappearance
         await TestHelpers.WaitForConditionAsync(async () =>
@@ -101,10 +95,7 @@ public class BookSoftDeleteTests
         var bookId = createdBook!.Id;
 
         // Soft Delete
-        var getResponse = await publicClient.GetBookWithHeadersAsync(bookId);
-        var etag = getResponse.Headers.ETag?.Tag;
-
-        await adminClient.SoftDeleteBookAsync(bookId, etag);
+        var deletedBook = await TestHelpers.DeleteBookAsync(adminClient, createdBook);
 
         // Wait for projection
         await TestHelpers.WaitForConditionAsync(async () =>
@@ -136,7 +127,7 @@ public class BookSoftDeleteTests
         }
 
         // Admin should see the book (Get)
-        var book = await adminClient.GetBookAsync(bookId);
+        var book = await adminClient.GetBookAdminAsync(bookId);
         _ = await Assert.That(book).IsNotNull();
         _ = await Assert.That(book!.Id).IsEqualTo(bookId);
         _ = await Assert.That(book.IsDeleted).IsTrue();

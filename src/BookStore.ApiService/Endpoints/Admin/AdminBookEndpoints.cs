@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using BookStore.ApiService.Infrastructure;
 using BookStore.ApiService.Infrastructure.Extensions;
 using BookStore.ApiService.Infrastructure.Tenant;
 using BookStore.Shared.Models;
@@ -62,6 +63,10 @@ namespace BookStore.ApiService.Endpoints.Admin
             _ = group.MapGet("/", GetAllBooks)
                 .WithName("GetAllBooksAdmin")
                 .WithSummary("Get all books");
+
+            _ = group.MapGet("/{id:guid}", GetBook)
+                .WithName("GetAdminBook")
+                .WithSummary("Get book by ID (including deleted)");
 
             _ = group.MapPost("/{id:guid}/cover", UploadCover)
                 .WithName("UploadBookCover")
@@ -157,6 +162,68 @@ namespace BookStore.ApiService.Endpoints.Admin
             return bus.InvokeAsync<IResult>(command, new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
         }
 
+        static async Task<IResult> GetBook(
+            Guid id,
+            [FromServices] IQuerySession session,
+            CancellationToken cancellationToken)
+        {
+            // Dictionaries to hold included documents
+            var publishers = new Dictionary<Guid, Projections.PublisherProjection>();
+            var authors = new Dictionary<Guid, Projections.AuthorProjection>();
+            var categories = new Dictionary<Guid, Projections.CategoryProjection>();
+
+#pragma warning disable CS8603
+            var book = await session.Query<Projections.BookSearchProjection>()
+                .Include(publishers).On(x => x.PublisherId)!
+                .Include(authors).On(x => x.AuthorIds)!
+                .Include(categories).On(x => x.CategoryIds)!
+                .Where(x => x.Id == id)
+                .FirstOrDefaultAsync(cancellationToken);
+#pragma warning restore CS8603
+
+            if (book == null)
+            {
+                return Results.NotFound();
+            }
+
+            var dto = new AdminBookDto(
+                book.Id,
+                book.Title,
+                book.Isbn,
+                book.OriginalLanguage,
+                "", // Lang name
+                "", // Description
+                book.PublicationDate,
+                false,
+                book.PublisherId.HasValue && publishers.TryGetValue(book.PublisherId.Value, out var pub)
+                    ? new PublisherDto(pub.Id, pub.Name, ETagHelper.GenerateETag(pub.Version))
+                    : null,
+                [.. book.AuthorIds
+                    .Select(aId => authors.TryGetValue(aId, out var author)
+                        ? new AuthorDto(author.Id, author.Name, ETagHelper.GenerateETag(author.Version))
+                        : null)
+                    .Where(a => a != null)
+                    .Cast<AuthorDto>()],
+                [.. book.CategoryIds
+                    .Select(cId => categories.TryGetValue(cId, out var cat)
+                        ? new CategoryDto(cat.Id, "", ETagHelper.GenerateETag(cat.Version))
+                        : null)
+                    .Where(c => c != null)
+                    .Cast<CategoryDto>()],
+                false,
+                0, 0f, 0, 0,
+                book.Prices.ToDictionary(p => p.Currency, p => p.Value),
+                null,
+                null,
+                book.CurrentPrices,
+                book.Deleted,
+                book.Descriptions.ToDictionary(kvp => kvp.Key, kvp => new BookTranslationDto(kvp.Value)),
+                ETagHelper.GenerateETag(book.Version)
+            );
+
+            return Results.Ok(dto).WithETag(dto.ETag!);
+        }
+
         // Read operations don't need Wolverine (no business logic)
         static async Task<IResult> GetAllBooks(
             [FromServices] IQuerySession session,
@@ -186,17 +253,17 @@ namespace BookStore.ApiService.Endpoints.Admin
                 book.PublicationDate,
                 false,
                 book.PublisherId.HasValue && publishers.TryGetValue(book.PublisherId.Value, out var pub)
-                    ? new PublisherDto(pub.Id, pub.Name)
+                    ? new PublisherDto(pub.Id, pub.Name, ETagHelper.GenerateETag(pub.Version))
                     : null,
                 [.. book.AuthorIds
                     .Select(id => authors.TryGetValue(id, out var author)
-                        ? new AuthorDto(author.Id, author.Name, "")
+                        ? new AuthorDto(author.Id, author.Name, ETagHelper.GenerateETag(author.Version))
                         : null)
                     .Where(a => a != null)
                     .Cast<AuthorDto>()],
                 [.. book.CategoryIds
                     .Select(id => categories.TryGetValue(id, out var cat)
-                        ? new CategoryDto(cat.Id, "")
+                        ? new CategoryDto(cat.Id, "", ETagHelper.GenerateETag(cat.Version))
                         : null)
                     .Where(c => c != null)
                     .Cast<CategoryDto>()],
@@ -207,7 +274,8 @@ namespace BookStore.ApiService.Endpoints.Admin
                 null,
                 book.CurrentPrices,
                 book.Deleted,
-                book.Descriptions.ToDictionary(kvp => kvp.Key, kvp => new BookTranslationDto(kvp.Value))
+                book.Descriptions.ToDictionary(kvp => kvp.Key, kvp => new BookTranslationDto(kvp.Value)),
+                ETagHelper.GenerateETag(book.Version)
             )).ToList();
 
             return Results.Ok(bookDtos);

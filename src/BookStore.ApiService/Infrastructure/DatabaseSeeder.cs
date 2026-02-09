@@ -533,7 +533,7 @@ public class DatabaseSeeder(
             {
                 // Use full author name and NO category
                 var coverImage = CoverGenerator.GenerateCover(book.Title, authorName);
-                bookCommands.Add(new UpdateBookCover(bookId, coverImage, "image/png", null, tenantId));
+                bookCommands.Add(new UpdateBookCover(bookId, coverImage, "image/png", tenantId));
             }
             catch (Exception ex)
             {
