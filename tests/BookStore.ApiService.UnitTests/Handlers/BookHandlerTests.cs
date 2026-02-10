@@ -146,20 +146,23 @@ public class BookHandlerTests : HandlerTestBase
         var bookId = Guid.CreateVersion7();
         var command = new ScheduleSale(bookId, 10m, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddDays(1));
 
-        // Mock FetchStreamStateAsync to return a valid state (book exists)
-        _ = Session.Events.FetchStreamStateAsync(bookId).Returns(new Marten.Events.StreamState { Version = 1 });
-
         // SaleHandlers uses FetchStreamAsync and projects manually
-        _ = Session.Events.FetchStreamAsync(bookId).Returns(new List<IEvent>());
+        // Provide at least one event so it doesn't return NotFound
+        var events = new List<IEvent>
+        {
+            new JasperFx.Events.Event<BookAdded>(new BookAdded(bookId, "Title", "ISBN", "en", [], null, null, [],
+                [], [])) { Version = 1 }
+        };
+        _ = Session.Events.FetchStreamAsync(bookId).Returns(events);
 
         // Act
-        var result = await SaleHandlers.Handle(command, Session);
+        var result = await SaleHandlers.Handle(command, Session, Cache);
 
         // Assert
         _ = await Assert.That(result).IsTypeOf<NoContent>();
+        // Handler calls unversioned Append(id, event) when no ETag is provided
         _ = Session.Events.Received(1).Append(
             bookId,
-            2,
             Arg.Is<BookSaleScheduled>(e => e.Sale.Percentage == 10m));
     }
 
@@ -172,24 +175,24 @@ public class BookHandlerTests : HandlerTestBase
         var saleStart = DateTimeOffset.UtcNow;
         var command = new CancelSale(bookId, saleStart);
 
-        _ = Session.Events.FetchStreamStateAsync(bookId).Returns(new Marten.Events.StreamState { Version = 1 });
-
         // SaleHandlers.Handle for CancelSale fetches stream and projects manually
+        // Provide BookAdded and then BookSaleScheduled
         var events = new List<IEvent>
         {
+            new JasperFx.Events.Event<BookAdded>(new BookAdded(bookId, "Title", "ISBN", "en", [], null, null, [], [],
+                [])) { Version = 1 },
             new JasperFx.Events.Event<BookSaleScheduled>(new BookSaleScheduled(bookId,
-                new BookSale(10m, saleStart, saleStart.AddDays(1))))
+                new BookSale(10m, saleStart, saleStart.AddDays(1)))) { Version = 2 }
         };
         _ = Session.Events.FetchStreamAsync(bookId).Returns(events);
 
         // Act
-        var result = await SaleHandlers.Handle(command, Session);
+        var result = await SaleHandlers.Handle(command, Session, Cache);
 
         // Assert
         _ = await Assert.That(result).IsTypeOf<NoContent>();
         _ = Session.Events.Received(1).Append(
             bookId,
-            2, // version + 1
             Arg.Is<BookSaleCancelled>(e => e.SaleStart == saleStart));
     }
 }

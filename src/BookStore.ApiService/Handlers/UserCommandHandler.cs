@@ -4,13 +4,14 @@ using BookStore.ApiService.Models;
 using BookStore.ApiService.Projections;
 using BookStore.Shared.Messages.Events;
 using Marten;
+using Microsoft.Extensions.Caching.Hybrid;
 using Wolverine;
 
 namespace BookStore.ApiService.Handlers;
 
 public static class UserCommandHandler
 {
-    public static async Task Handle(AddBookToFavorites command, IDocumentSession session)
+    public static async Task Handle(AddBookToFavorites command, IDocumentSession session, HybridCache cache)
     {
         Instrumentation.FavoritesAdded.Add(1, new System.Diagnostics.TagList { { "tenant_id", session.TenantId } });
 
@@ -31,20 +32,26 @@ public static class UserCommandHandler
         if (profile == null || !profile.FavoriteBookIds.Contains(command.BookId))
         {
             _ = session.Events.Append(command.UserId, new BookAddedToFavorites(command.BookId));
+
+            // Invalidate cache
+            await cache.RemoveByTagAsync([CacheTags.BookList, CacheTags.ForItem(CacheTags.BookItemPrefix, command.BookId)], default);
         }
     }
 
-    public static async Task Handle(RemoveBookFromFavorites command, IDocumentSession session)
+    public static async Task Handle(RemoveBookFromFavorites command, IDocumentSession session, HybridCache cache)
     {
         var profile = await session.Events.AggregateStreamAsync<UserProfile>(command.UserId);
 
         if (profile != null && profile.FavoriteBookIds.Contains(command.BookId))
         {
             _ = session.Events.Append(command.UserId, new BookRemovedFromFavorites(command.BookId));
+
+            // Invalidate cache
+            await cache.RemoveByTagAsync([CacheTags.BookList, CacheTags.ForItem(CacheTags.BookItemPrefix, command.BookId)], default);
         }
     }
 
-    public static async Task Handle(RateBook command, IDocumentSession session)
+    public static async Task Handle(RateBook command, IDocumentSession session, HybridCache cache)
     {
         Instrumentation.RatingsAdded.Add(1, new System.Diagnostics.TagList { { "tenant_id", session.TenantId } });
 
@@ -68,15 +75,21 @@ public static class UserCommandHandler
         // Always append event (either new rating or update)
         // The Apply method will handle updating the existing rating
         _ = session.Events.Append(command.UserId, new BookRated(command.BookId, command.Rating));
+
+        // Invalidate cache
+        await cache.RemoveByTagAsync([CacheTags.BookList, CacheTags.ForItem(CacheTags.BookItemPrefix, command.BookId)], default);
     }
 
-    public static async Task Handle(RemoveBookRating command, IDocumentSession session)
+    public static async Task Handle(RemoveBookRating command, IDocumentSession session, HybridCache cache)
     {
         var profile = await session.Events.AggregateStreamAsync<UserProfile>(command.UserId);
 
         if (profile != null && profile.BookRatings.ContainsKey(command.BookId))
         {
             _ = session.Events.Append(command.UserId, new BookRatingRemoved(command.BookId));
+
+            // Invalidate cache
+            await cache.RemoveByTagAsync([CacheTags.BookList, CacheTags.ForItem(CacheTags.BookItemPrefix, command.BookId)], default);
         }
     }
 

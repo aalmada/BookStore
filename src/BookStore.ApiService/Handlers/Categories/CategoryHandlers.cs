@@ -121,15 +121,8 @@ public static class CategoryHandlers
 
         _ = session.Events.Append(command.Id, eventResult.Value);
 
-        try
-        {
-            await session.SaveChangesAsync();
-        }
-        catch (Exception ex)
-        {
-            System.IO.File.AppendAllText("debug_concurrency.log", $"UpdateCategory SaveChanges Exception: {ex.GetType().Name} - {ex.Message}\n");
-            throw;
-        }
+        // Invalidate cache
+        await cache.RemoveByTagAsync([CacheTags.CategoryList, CacheTags.ForItem(CacheTags.CategoryItemPrefix, command.Id)], default);
 
         return Results.NoContent();
     }
@@ -165,15 +158,8 @@ public static class CategoryHandlers
 
         _ = session.Events.Append(command.Id, eventResult.Value);
 
-        try
-        {
-            await session.SaveChangesAsync();
-        }
-        catch (Exception ex)
-        {
-            System.IO.File.AppendAllText("debug_concurrency.log", $"SoftDeleteCategory SaveChanges Exception: {ex.GetType().Name} - {ex.Message}\n");
-            throw;
-        }
+        // Invalidate cache
+        await cache.RemoveByTagAsync([CacheTags.CategoryList, CacheTags.ForItem(CacheTags.CategoryItemPrefix, command.Id)], default);
 
         return Results.NoContent();
     }
@@ -209,15 +195,8 @@ public static class CategoryHandlers
 
         _ = session.Events.Append(command.Id, eventResult.Value);
 
-        try
-        {
-            await session.SaveChangesAsync();
-        }
-        catch (Exception ex)
-        {
-            System.IO.File.AppendAllText("debug_concurrency.log", $"RestoreCategory SaveChanges Exception: {ex.GetType().Name} - {ex.Message}\n");
-            throw;
-        }
+        // Invalidate cache
+        await cache.RemoveByTagAsync([CacheTags.CategoryList, CacheTags.ForItem(CacheTags.CategoryItemPrefix, command.Id)], default);
 
         return Results.NoContent();
     }

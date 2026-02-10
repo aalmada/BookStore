@@ -177,13 +177,16 @@ public static class TestHelpers
     public static async Task<CategoryDto> UpdateCategoryAsync(ICategoriesClient client, CategoryDto category,
         UpdateCategoryRequest request)
     {
-        var received = await ExecuteAndWaitForEventAsync(
+        var version = BookStore.ApiService.Infrastructure.ETagHelper.ParseETag(category.ETag) ?? 0;
+        var received = await ExecuteAndWaitForEventWithVersionAsync(
             category.Id,
             "CategoryUpdated",
             async () => await client.UpdateCategoryAsync(category.Id, request, category.ETag),
-            TestConstants.DefaultEventTimeout);
+            TestConstants.DefaultEventTimeout,
+            minVersion: version + 1,
+            minTimestamp: DateTimeOffset.UtcNow);
 
-        if (!received)
+        if (!received.Success)
         {
             throw new Exception("Failed to receive CategoryUpdated event.");
         }
@@ -194,13 +197,16 @@ public static class TestHelpers
     public static async Task<AdminCategoryDto> UpdateCategoryAsync(ICategoriesClient client, AdminCategoryDto category,
         UpdateCategoryRequest request)
     {
-        var received = await ExecuteAndWaitForEventAsync(
+        var version = BookStore.ApiService.Infrastructure.ETagHelper.ParseETag(category.ETag) ?? 0;
+        var received = await ExecuteAndWaitForEventWithVersionAsync(
             category.Id,
             "CategoryUpdated",
             async () => await client.UpdateCategoryAsync(category.Id, request, category.ETag),
-            TestConstants.DefaultEventTimeout);
+            TestConstants.DefaultEventTimeout,
+            minVersion: version + 1,
+            minTimestamp: DateTimeOffset.UtcNow);
 
-        if (!received)
+        if (!received.Success)
         {
             throw new Exception("Failed to receive CategoryUpdated event.");
         }
@@ -210,29 +216,41 @@ public static class TestHelpers
 
     public static async Task<CategoryDto> DeleteCategoryAsync(ICategoriesClient client, CategoryDto category)
     {
-        var received = await ExecuteAndWaitForEventAsync(
+        var result = await ExecuteAndWaitForEventWithVersionAsync(
             category.Id,
             "CategoryDeleted",
             async () => await client.SoftDeleteCategoryAsync(category.Id, category.ETag),
-            TestConstants.DefaultEventTimeout);
+            TestConstants.DefaultEventTimeout,
+            minTimestamp: DateTimeOffset.UtcNow);
 
-        if (!received)
+        if (!result.Success)
         {
             throw new Exception("Failed to receive CategoryDeleted event.");
         }
 
-        return await client.GetCategoryAsync(category.Id);
+        try
+        {
+            return await client.GetCategoryAsync(category.Id);
+        }
+        catch (Refit.ApiException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            // Soft-deleted, hidden from public API. Construct DTO with reconstructed ETag.
+            return category with { ETag = $"\"{result.Version}\"" };
+        }
     }
 
     public static async Task<CategoryDto> RestoreCategoryAsync(ICategoriesClient client, CategoryDto category)
     {
-        var received = await ExecuteAndWaitForEventAsync(
+        var version = BookStore.ApiService.Infrastructure.ETagHelper.ParseETag(category.ETag) ?? 0;
+        var received = await ExecuteAndWaitForEventWithVersionAsync(
             category.Id,
             "CategoryUpdated",
             async () => await client.RestoreCategoryAsync(category.Id, category.ETag),
-            TestConstants.DefaultEventTimeout);
+            TestConstants.DefaultEventTimeout,
+            minVersion: version + 1,
+            minTimestamp: DateTimeOffset.UtcNow);
 
-        if (!received)
+        if (!received.Success)
         {
             throw new Exception("Failed to receive CategoryUpdated event (Restore).");
         }
@@ -322,9 +340,31 @@ public static class TestHelpers
         TimeSpan timeout,
         long minVersion = 0,
         DateTimeOffset? minTimestamp = null) =>
-        await ExecuteAndWaitForEventAsync(entityId, [eventType], action, timeout, minVersion, minTimestamp);
+        (await ExecuteAndWaitForEventWithVersionAsync(entityId, eventType, action, timeout, minVersion, minTimestamp))
+        .Success;
+
+    public static async Task<EventResult> ExecuteAndWaitForEventWithVersionAsync(
+        Guid entityId,
+        string eventType,
+        Func<Task> action,
+        TimeSpan timeout,
+        long minVersion = 0,
+        DateTimeOffset? minTimestamp = null) =>
+        await ExecuteAndWaitForEventWithVersionAsync(entityId, [eventType], action, timeout, minVersion, minTimestamp);
+
+    public record EventResult(bool Success, long Version);
 
     public static async Task<bool> ExecuteAndWaitForEventAsync(
+        Guid entityId,
+        string[] eventTypes,
+        Func<Task> action,
+        TimeSpan timeout,
+        long minVersion = 0,
+        DateTimeOffset? minTimestamp = null) =>
+        (await ExecuteAndWaitForEventWithVersionAsync(entityId, eventTypes, action, timeout, minVersion, minTimestamp))
+        .Success;
+
+    public static async Task<EventResult> ExecuteAndWaitForEventWithVersionAsync(
         Guid entityId,
         string[] eventTypes,
         Func<Task> action,
@@ -343,7 +383,7 @@ public static class TestHelpers
         client.DefaultRequestHeaders.Add("X-Tenant-ID", StorageConstants.DefaultTenantId);
 
         using var cts = new CancellationTokenSource(timeout);
-        var tcs = new TaskCompletionSource<bool>();
+        var tcs = new TaskCompletionSource<EventResult>();
         var connectedTcs = new TaskCompletionSource();
 
         // Start listening to SSE stream
@@ -410,7 +450,22 @@ public static class TestHelpers
                                     }
                                 }
 
-                                _ = tcs.TrySetResult(true);
+                                long version = 0;
+                                if (doc.RootElement.TryGetProperty("version", out var vProp) &&
+                                    vProp.ValueKind == JsonValueKind.Number)
+                                {
+                                    version = vProp.GetInt64();
+                                }
+
+                                Guid eventIdSse = Guid.Empty;
+                                if (doc.RootElement.TryGetProperty("eventId", out var eProp))
+                                {
+                                    eventIdSse = eProp.GetGuid();
+                                }
+
+                                Console.WriteLine(
+                                    $"[TestHelpers] MATCH FOUND: {item.EventType} for {receivedId} (Version: {version}, EventId: {eventIdSse})");
+                                _ = tcs.TrySetResult(new EventResult(true, version));
                                 return;
                             }
                         }
@@ -419,7 +474,7 @@ public static class TestHelpers
             }
             catch (OperationCanceledException)
             {
-                _ = tcs.TrySetResult(false);
+                _ = tcs.TrySetResult(new EventResult(false, 0));
             }
             catch (Exception ex)
             {
@@ -448,11 +503,9 @@ public static class TestHelpers
         // Wait for either the event or timeout
         _ = await Task.WhenAny(tcs.Task, Task.Delay(timeout));
 
-        if (tcs.Task.IsCompleted && tcs.Task.Result)
-        {
-            // Already done
-        }
-        else
+        var result = tcs.Task.IsCompleted && tcs.Task.Result.Success ? tcs.Task.Result : new EventResult(false, 0);
+
+        if (!result.Success)
         {
             cts.Cancel(); // Stop listening
         }
@@ -461,28 +514,22 @@ public static class TestHelpers
         {
             await listenTask; // Ensure cleanup logic runs and we catch any final exceptions
         }
-        catch (OperationCanceledException)
+        catch (Exception ex)
         {
-            // Expected
+            // Valid to ignore here during cleanup, but log for visibility
+            Console.WriteLine($"[TestHelpers] SSE cleanup info: {ex.Message}");
         }
-#pragma warning disable RCS1075 // Avoid empty catch clause
-        catch (Exception)
-        {
-            // Valid to ignore here during cleanup
-        }
-#pragma warning restore RCS1075
 
-        if (tcs.Task.IsCompletedSuccessfully && tcs.Task.Result)
+        if (result.Success)
         {
-            return true;
+            return result;
         }
 
         var message =
             $"Timed out waiting for {string.Join(" OR ", eventTypes)} (EntityId: {entityId}). Received {receivedEvents.Count} events: {string.Join(", ", receivedEvents.Take(20))}";
         Console.WriteLine($"[TestHelpers] {message}");
 
-        // Throw with debug info
-        throw new Exception(message);
+        return result;
     }
 
     /// <summary>
@@ -632,14 +679,16 @@ public static class TestHelpers
     public static async Task<AuthorDto> UpdateAuthorAsync(IAuthorsClient client, AuthorDto author,
         UpdateAuthorRequest updateRequest)
     {
-        var received = await ExecuteAndWaitForEventAsync(
+        var version = BookStore.ApiService.Infrastructure.ETagHelper.ParseETag(author.ETag) ?? 0;
+        var received = await ExecuteAndWaitForEventWithVersionAsync(
             author.Id,
             "AuthorUpdated",
             async () => await client.UpdateAuthorAsync(author.Id, updateRequest, author.ETag),
             TestConstants.DefaultEventTimeout,
+            minVersion: version + 1,
             minTimestamp: DateTimeOffset.UtcNow);
 
-        if (!received)
+        if (!received.Success)
         {
             throw new Exception("Failed to receive AuthorUpdated event after UpdateAuthor.");
         }
@@ -650,14 +699,16 @@ public static class TestHelpers
     public static async Task<AdminAuthorDto> UpdateAuthorAsync(IAuthorsClient client, AdminAuthorDto author,
         UpdateAuthorRequest updateRequest)
     {
-        var received = await ExecuteAndWaitForEventAsync(
+        var version = BookStore.ApiService.Infrastructure.ETagHelper.ParseETag(author.ETag) ?? 0;
+        var received = await ExecuteAndWaitForEventWithVersionAsync(
             author.Id,
             "AuthorUpdated",
             async () => await client.UpdateAuthorAsync(author.Id, updateRequest, author.ETag),
             TestConstants.DefaultEventTimeout,
+            minVersion: version + 1,
             minTimestamp: DateTimeOffset.UtcNow);
 
-        if (!received)
+        if (!received.Success)
         {
             throw new Exception("Failed to receive AuthorUpdated event after UpdateAuthor.");
         }
@@ -860,13 +911,16 @@ public static class TestHelpers
     public static async Task<PublisherDto> UpdatePublisherAsync(IPublishersClient client, PublisherDto publisher,
         UpdatePublisherRequest request)
     {
-        var received = await ExecuteAndWaitForEventAsync(
+        var version = BookStore.ApiService.Infrastructure.ETagHelper.ParseETag(publisher.ETag) ?? 0;
+        var received = await ExecuteAndWaitForEventWithVersionAsync(
             publisher.Id,
             "PublisherUpdated",
             async () => await client.UpdatePublisherAsync(publisher.Id, request, publisher.ETag),
-            TestConstants.DefaultEventTimeout);
+            TestConstants.DefaultEventTimeout,
+            minVersion: version + 1,
+            minTimestamp: DateTimeOffset.UtcNow);
 
-        if (!received)
+        if (!received.Success)
         {
             throw new Exception("Failed to receive PublisherUpdated event.");
         }
@@ -876,18 +930,27 @@ public static class TestHelpers
 
     public static async Task<PublisherDto> DeletePublisherAsync(IPublishersClient client, PublisherDto publisher)
     {
-        var received = await ExecuteAndWaitForEventAsync(
+        var result = await ExecuteAndWaitForEventWithVersionAsync(
             publisher.Id,
             "PublisherDeleted",
             async () => await client.SoftDeletePublisherAsync(publisher.Id, publisher.ETag),
-            TestConstants.DefaultEventTimeout);
+            TestConstants.DefaultEventTimeout,
+            minTimestamp: DateTimeOffset.UtcNow);
 
-        if (!received)
+        if (!result.Success)
         {
             throw new Exception("Failed to receive PublisherDeleted event.");
         }
 
-        return await client.GetPublisherAsync(publisher.Id);
+        try
+        {
+            return await client.GetPublisherAsync(publisher.Id);
+        }
+        catch (Refit.ApiException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            // Soft-deleted, hidden from public API. Construct DTO with reconstructed ETag.
+            return publisher with { ETag = $"\"{result.Version}\"" };
+        }
     }
 
     public static async Task<PublisherDto> RestorePublisherAsync(IPublishersClient client, PublisherDto publisher)
@@ -896,7 +959,8 @@ public static class TestHelpers
             publisher.Id,
             "PublisherUpdated",
             async () => await client.RestorePublisherAsync(publisher.Id, publisher.ETag),
-            TestConstants.DefaultEventTimeout);
+            TestConstants.DefaultEventTimeout,
+            minTimestamp: DateTimeOffset.UtcNow);
 
         if (!received)
         {
@@ -1264,7 +1328,8 @@ public static class TestHelpers
 
     public static async Task UpdateBookAsync(HttpClient client, Guid bookId, object updatePayload, string etag)
     {
-        var received = await ExecuteAndWaitForEventAsync(
+        var version = BookStore.ApiService.Infrastructure.ETagHelper.ParseETag(etag) ?? 0;
+        var received = await ExecuteAndWaitForEventWithVersionAsync(
             bookId,
             "BookUpdated",
             async () =>
@@ -1283,9 +1348,10 @@ public static class TestHelpers
                 _ = await Assert.That(updateResponse.IsSuccessStatusCode).IsTrue();
             },
             TestConstants.DefaultEventTimeout,
+            minVersion: version + 1,
             minTimestamp: DateTimeOffset.UtcNow);
 
-        if (!received)
+        if (!received.Success)
         {
             throw new Exception("Timed out waiting for BookUpdated event after UpdateBook.");
         }
@@ -1294,14 +1360,16 @@ public static class TestHelpers
     public static async Task<BookDto> UpdateBookAsync(IBooksClient client, Guid bookId, UpdateBookRequest updatePayload,
         string etag)
     {
-        var received = await ExecuteAndWaitForEventAsync(
+        var version = BookStore.ApiService.Infrastructure.ETagHelper.ParseETag(etag) ?? 0;
+        var received = await ExecuteAndWaitForEventWithVersionAsync(
             bookId,
             "BookUpdated",
             async () => await client.UpdateBookAsync(bookId, updatePayload, etag),
             TestConstants.DefaultEventTimeout,
+            minVersion: version + 1,
             minTimestamp: DateTimeOffset.UtcNow);
 
-        if (!received)
+        if (!received.Success)
         {
             throw new Exception("Timed out waiting for BookUpdated event after UpdateBook.");
         }
@@ -1312,14 +1380,16 @@ public static class TestHelpers
     public static async Task<AdminBookDto> UpdateBookAsync(IBooksClient client, AdminBookDto book,
         UpdateBookRequest request)
     {
-        var received = await ExecuteAndWaitForEventAsync(
+        var version = BookStore.ApiService.Infrastructure.ETagHelper.ParseETag(book.ETag) ?? 0;
+        var received = await ExecuteAndWaitForEventWithVersionAsync(
             book.Id,
             "BookUpdated",
             async () => await client.UpdateBookAsync(book.Id, request, book.ETag),
             TestConstants.DefaultEventTimeout,
+            minVersion: version + 1,
             minTimestamp: DateTimeOffset.UtcNow);
 
-        if (!received)
+        if (!received.Success)
         {
             throw new Exception("Failed to receive BookUpdated event.");
         }
@@ -1338,7 +1408,8 @@ public static class TestHelpers
 
     public static async Task DeleteBookAsync(HttpClient client, Guid bookId, string etag)
     {
-        var received = await ExecuteAndWaitForEventAsync(
+        var version = BookStore.ApiService.Infrastructure.ETagHelper.ParseETag(etag) ?? 0;
+        var received = await ExecuteAndWaitForEventWithVersionAsync(
             bookId,
             "BookDeleted",
             async () =>
@@ -1354,9 +1425,10 @@ public static class TestHelpers
                 _ = await Assert.That(deleteResponse.IsSuccessStatusCode).IsTrue();
             },
             TestConstants.DefaultEventTimeout,
+            minVersion: version + 1,
             minTimestamp: DateTimeOffset.UtcNow);
 
-        if (!received)
+        if (!received.Success)
         {
             throw new Exception("Timed out waiting for BookDeleted event after DeleteBook.");
         }
@@ -1364,13 +1436,16 @@ public static class TestHelpers
 
     public static async Task<AdminBookDto> DeleteBookAsync(IBooksClient client, Guid bookId, string etag)
     {
-        var received = await ExecuteAndWaitForEventAsync(
+        var version = BookStore.ApiService.Infrastructure.ETagHelper.ParseETag(etag) ?? 0;
+        var received = await ExecuteAndWaitForEventWithVersionAsync(
             bookId,
             ["BookDeleted", "BookSoftDeleted"],
             async () => await client.SoftDeleteBookAsync(bookId, etag),
-            TestConstants.DefaultEventTimeout);
+            TestConstants.DefaultEventTimeout,
+            minVersion: version + 1,
+            minTimestamp: DateTimeOffset.UtcNow);
 
-        if (!received)
+        if (!received.Success)
         {
             throw new Exception("Timed out waiting for BookSoftDeleted event after DeleteBook.");
         }
@@ -1390,9 +1465,10 @@ public static class TestHelpers
         return await DeleteBookAsync(client, book.Id, etag!);
     }
 
-    public static async Task RestoreBookAsync(HttpClient client, Guid bookId)
+    public static async Task RestoreBookAsync(HttpClient client, Guid bookId, string etag)
     {
-        var received = await ExecuteAndWaitForEventAsync(
+        var version = BookStore.ApiService.Infrastructure.ETagHelper.ParseETag(etag) ?? 0;
+        var received = await ExecuteAndWaitForEventWithVersionAsync(
             bookId,
             ["BookUpdated", "BookRestored"],
             async () =>
@@ -1404,9 +1480,11 @@ public static class TestHelpers
 
                 _ = await Assert.That(restoreResponse.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
             },
-            TestConstants.DefaultEventTimeout);
+            TestConstants.DefaultEventTimeout,
+            minVersion: version + 1,
+            minTimestamp: DateTimeOffset.UtcNow);
 
-        if (!received)
+        if (!received.Success)
         {
             throw new Exception("Timed out waiting for BookUpdated event after RestoreBook.");
         }
@@ -1414,26 +1492,25 @@ public static class TestHelpers
 
     public static async Task<BookDto> RestoreBookAsync(IBooksClient client, Guid bookId, string? etag = null)
     {
-        var received = await ExecuteAndWaitForEventAsync(
+        var currentETag = etag;
+        if (string.IsNullOrEmpty(currentETag))
+        {
+            // Use Admin endpoint to get the book, including soft-deleted ones, to get the ETag
+            var book = await client.GetBookAdminAsync(bookId);
+            currentETag = book?.ETag;
+            Console.WriteLine($"[TestHelpers] Fetched ETag for restore: {currentETag}");
+        }
+
+        var version = BookStore.ApiService.Infrastructure.ETagHelper.ParseETag(currentETag) ?? 0;
+        var received = await ExecuteAndWaitForEventWithVersionAsync(
             bookId,
             ["BookUpdated", "BookRestored"],
-            async () =>
-            {
-                var currentETag = etag;
-                if (string.IsNullOrEmpty(currentETag))
-                {
-                    // Use Admin endpoint to get the book, including soft-deleted ones, to get the ETag
-                    var book = await client.GetBookAdminAsync(bookId);
-                    currentETag = book?.ETag;
-                    Console.WriteLine($"[TestHelpers] Fetched ETag for restore: {currentETag}");
-                }
-
-                await client.RestoreBookAsync(bookId, apiVersion: "1.0", etag: currentETag);
-            },
+            async () => { await client.RestoreBookAsync(bookId, apiVersion: "1.0", etag: currentETag); },
             TestConstants.DefaultEventTimeout,
+            minVersion: version + 1,
             minTimestamp: DateTimeOffset.UtcNow);
 
-        if (!received)
+        if (!received.Success)
         {
             throw new Exception("Timed out waiting for BookUpdated event after RestoreBook.");
         }
