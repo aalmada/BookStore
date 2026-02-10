@@ -5,6 +5,7 @@ using BookStore.ApiService.Projections;
 using BookStore.Shared.Messages.Events;
 using Marten;
 using NSubstitute;
+using Microsoft.Extensions.Caching.Hybrid;
 
 #pragma warning disable CS8602 // Dereference of a possibly null reference - Exception.Message is never null for our test scenarios
 
@@ -27,7 +28,7 @@ public class UserCommandHandlerTests
         _ = session.Events.AggregateStreamAsync<UserProfile>(userId).Returns((UserProfile?)null);
 
         // Act
-        await UserCommandHandler.Handle(command, session);
+        await UserCommandHandler.Handle(command, session, Substitute.For<HybridCache>());
 
         // Assert
         _ = session.Events.Received(1).Append(
@@ -53,7 +54,7 @@ public class UserCommandHandlerTests
         _ = session.Events.AggregateStreamAsync<UserProfile>(userId).Returns(existingProfile);
 
         // Act
-        await UserCommandHandler.Handle(command, session);
+        await UserCommandHandler.Handle(command, session, Substitute.For<HybridCache>());
 
         // Assert
         _ = session.Events.Received(1).Append(
@@ -79,7 +80,7 @@ public class UserCommandHandlerTests
         _ = session.Events.AggregateStreamAsync<UserProfile>(userId).Returns(existingProfile);
 
         // Act
-        await UserCommandHandler.Handle(command, session);
+        await UserCommandHandler.Handle(command, session, Substitute.For<HybridCache>());
 
         // Assert
         _ = session.Events.DidNotReceive().Append(
@@ -109,7 +110,7 @@ public class UserCommandHandlerTests
         _ = session.Events.AggregateStreamAsync<UserProfile>(userId).Returns(existingProfile);
 
         // Act
-        await UserCommandHandler.Handle(command, session);
+        await UserCommandHandler.Handle(command, session, Substitute.For<HybridCache>());
 
         // Assert
         _ = session.Events.Received(1).Append(
@@ -135,7 +136,7 @@ public class UserCommandHandlerTests
         _ = session.Events.AggregateStreamAsync<UserProfile>(userId).Returns(existingProfile);
 
         // Act
-        await UserCommandHandler.Handle(command, session);
+        await UserCommandHandler.Handle(command, session, Substitute.For<HybridCache>());
 
         // Assert
         _ = session.Events.DidNotReceive().Append(
@@ -156,7 +157,7 @@ public class UserCommandHandlerTests
         _ = session.Events.AggregateStreamAsync<UserProfile>(userId).Returns((UserProfile?)null);
 
         // Act
-        await UserCommandHandler.Handle(command, session);
+        await UserCommandHandler.Handle(command, session, Substitute.For<HybridCache>());
 
         // Assert
         _ = session.Events.DidNotReceive().Append(
@@ -185,7 +186,7 @@ public class UserCommandHandlerTests
         _ = session.Events.AggregateStreamAsync<UserProfile>(userId).Returns(existingProfile);
 
         // Act
-        await UserCommandHandler.Handle(command, session);
+        await UserCommandHandler.Handle(command, session, Substitute.For<HybridCache>());
 
         // Assert
         _ = session.Events.Received(1).Append(
@@ -205,7 +206,7 @@ public class UserCommandHandlerTests
         var session = Substitute.For<IDocumentSession>();
 
         // Act & Assert
-        var exception = await Assert.That(async () => await UserCommandHandler.Handle(command, session))
+        var exception = await Assert.That(async () => await UserCommandHandler.Handle(command, session, Substitute.For<HybridCache>()))
             .Throws<ArgumentException>();
         _ = await Assert.That(exception.Message!).Contains("Rating must be between 1 and 5");
     }
@@ -222,7 +223,7 @@ public class UserCommandHandlerTests
         var session = Substitute.For<IDocumentSession>();
 
         // Act & Assert
-        var exception = await Assert.That(async () => await UserCommandHandler.Handle(command, session))
+        var exception = await Assert.That(async () => await UserCommandHandler.Handle(command, session, Substitute.For<HybridCache>()))
             .Throws<ArgumentException>();
         _ = await Assert.That(exception.Message!).Contains("Rating must be between 1 and 5");
     }
@@ -239,7 +240,7 @@ public class UserCommandHandlerTests
         var session = Substitute.For<IDocumentSession>();
 
         // Act & Assert
-        var exception = await Assert.That(async () => await UserCommandHandler.Handle(command, session))
+        var exception = await Assert.That(async () => await UserCommandHandler.Handle(command, session, Substitute.For<HybridCache>()))
             .Throws<ArgumentException>();
         _ = await Assert.That(exception.Message!).Contains("Rating must be between 1 and 5");
     }
@@ -262,7 +263,7 @@ public class UserCommandHandlerTests
         _ = session.Events.AggregateStreamAsync<UserProfile>(userId).Returns(existingProfile);
 
         // Act
-        await UserCommandHandler.Handle(command, session);
+        await UserCommandHandler.Handle(command, session, Substitute.For<HybridCache>());
 
         // Assert - Event should still be appended for update
         _ = session.Events.Received(1).Append(
@@ -283,7 +284,7 @@ public class UserCommandHandlerTests
         _ = session.Events.AggregateStreamAsync<UserProfile>(userId).Returns((UserProfile?)null);
 
         // Act
-        await UserCommandHandler.Handle(command, session);
+        await UserCommandHandler.Handle(command, session, Substitute.For<HybridCache>());
 
         // Assert
         _ = session.Events.Received(1).Append(
@@ -313,7 +314,7 @@ public class UserCommandHandlerTests
         _ = session.Events.AggregateStreamAsync<UserProfile>(userId).Returns(existingProfile);
 
         // Act
-        await UserCommandHandler.Handle(command, session);
+        await UserCommandHandler.Handle(command, session, Substitute.For<HybridCache>());
 
         // Assert
         _ = session.Events.Received(1).Append(
@@ -339,7 +340,7 @@ public class UserCommandHandlerTests
         _ = session.Events.AggregateStreamAsync<UserProfile>(userId).Returns(existingProfile);
 
         // Act
-        await UserCommandHandler.Handle(command, session);
+        await UserCommandHandler.Handle(command, session, Substitute.For<HybridCache>());
 
         // Assert
         _ = session.Events.DidNotReceive().Append(
@@ -360,7 +361,7 @@ public class UserCommandHandlerTests
         _ = session.Events.AggregateStreamAsync<UserProfile>(userId).Returns((UserProfile?)null);
 
         // Act
-        await UserCommandHandler.Handle(command, session);
+        await UserCommandHandler.Handle(command, session, Substitute.For<HybridCache>());
 
         // Assert
         _ = session.Events.DidNotReceive().Append(

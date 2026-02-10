@@ -5,6 +5,7 @@ using BookStore.ApiService.Infrastructure.Tenant;
 using BookStore.ApiService.Services;
 using BookStore.Shared.Notifications;
 using Marten;
+using Microsoft.Extensions.Caching.Hybrid;
 
 namespace BookStore.ApiService.Handlers.Books;
 
@@ -14,6 +15,7 @@ public static class BookCoverHandlers
         UpdateBookCover command,
         IDocumentStore store, // Changed from IDocumentSession
         BlobStorageService blobStorage,
+        HybridCache cache,
         IHttpContextAccessor contextAccessor,
         ITenantContext tenantContext)
     {
@@ -55,6 +57,9 @@ public static class BookCoverHandlers
         _ = session.Events.Append(command.BookId, @event.Value);
 
         await session.SaveChangesAsync();
+
+        // Invalidate cache immediately
+        await cache.RemoveByTagAsync([CacheTags.BookList, CacheTags.ForItem(CacheTags.BookItemPrefix, command.BookId)], default);
 
         // Get new stream state and return new ETag
         var newStreamState = await session.Events.FetchStreamStateAsync(command.BookId);

@@ -71,18 +71,18 @@ public static class ETagHelper
     /// </summary>
     public static long? ParseETag(string? etag)
     {
-        if (string.IsNullOrEmpty(etag))
+        if (string.IsNullOrEmpty(etag)) return null;
+
+        // Strip quotes if present
+        var cleanETag = etag.Trim('"');
+
+        // Handle W/ prefix
+        if (cleanETag.StartsWith("W/", StringComparison.OrdinalIgnoreCase))
         {
-            return null;
+            cleanETag = cleanETag[2..].Trim('"');
         }
 
-        var trimmed = etag.Trim();
-        if (trimmed.StartsWith("W/", StringComparison.OrdinalIgnoreCase))
-        {
-            trimmed = trimmed[2..];
-        }
-        trimmed = trimmed.Trim('"');
-        return long.TryParse(trimmed, out var version) ? version : null;
+        return long.TryParse(cleanETag, out var version) ? version : null;
     }
 }
 

@@ -39,7 +39,7 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
     public Task BeforeCommitAsync(IDocumentSession _, IChangeSet __, CancellationToken ___)
         => Task.CompletedTask;
 
-    public async Task AfterCommitAsync(IDocumentSession _, IChangeSet commit, CancellationToken token)
+    public async Task AfterCommitAsync(IDocumentSession session, IChangeSet commit, CancellationToken token)
     {
         var inserted = commit.Inserted.Count();
         var updated = commit.Updated.Count();
@@ -48,12 +48,23 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
         // High-visibility console log for debugging
         Log.Infrastructure.AfterCommitAsync(_logger, inserted, updated, deleted);
 
+        // Try to capture causation/correlation ID for event propagation
+        Guid eventId = Guid.Empty;
+        if (Guid.TryParse(session.CausationId, out var causationGuid))
+        {
+            eventId = causationGuid;
+        }
+        else if (Guid.TryParse(session.CorrelationId, out var correlationGuid))
+        {
+            eventId = correlationGuid;
+        }
+
         try
         {
             // Process all document changes with consistent error handling
-            await ProcessDocumentChangesAsync(commit.Inserted, ChangeType.Insert, token);
-            await ProcessDocumentChangesAsync(commit.Updated, ChangeType.Update, token);
-            await ProcessDocumentChangesAsync(commit.Deleted, ChangeType.Delete, token);
+            await ProcessDocumentChangesAsync(commit.Inserted, ChangeType.Insert, eventId, token);
+            await ProcessDocumentChangesAsync(commit.Updated, ChangeType.Update, eventId, token);
+            await ProcessDocumentChangesAsync(commit.Deleted, ChangeType.Delete, eventId, token);
         }
         catch (Exception ex)
         {
@@ -66,14 +77,14 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
         // Sync hook not used
     }
 
-    async Task ProcessDocumentChangesAsync(IEnumerable<object> documents, ChangeType changeType, CancellationToken token)
+    async Task ProcessDocumentChangesAsync(IEnumerable<object> documents, ChangeType changeType, Guid eventId, CancellationToken token)
     {
         foreach (var doc in documents)
         {
             try
             {
                 Log.Infrastructure.ProcessingDocumentChange(_logger, changeType.ToString(), doc.GetType().Name);
-                await ProcessDocumentChangeAsync(doc, changeType, token);
+                await ProcessDocumentChangeAsync(doc, changeType, eventId, token);
             }
             catch (Exception ex)
             {
@@ -82,83 +93,83 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
         }
     }
 
-    async Task ProcessDocumentChangeAsync(object document, ChangeType changeType, CancellationToken token)
+    async Task ProcessDocumentChangeAsync(object document, ChangeType changeType, Guid eventId, CancellationToken token)
     {
         switch (document)
         {
             case CategoryProjection category:
-                await HandleCategoryChangeAsync(category, changeType, token);
+                await HandleCategoryChangeAsync(category, changeType, eventId, token);
                 break;
             case BookSearchProjection book:
-                await HandleBookChangeAsync(book, changeType, token);
+                await HandleBookChangeAsync(book, changeType, eventId, token);
                 break;
             case AuthorProjection author:
-                await HandleAuthorChangeAsync(author, changeType, token);
+                await HandleAuthorChangeAsync(author, changeType, eventId, token);
                 break;
             case PublisherProjection publisher:
-                await HandlePublisherChangeAsync(publisher, changeType, token);
+                await HandlePublisherChangeAsync(publisher, changeType, eventId, token);
                 break;
             case UserProfile profile:
-                await HandleUserProfileChangeAsync(profile, changeType, token);
+                await HandleUserProfileChangeAsync(profile, changeType, eventId, token);
                 break;
             case ApplicationUser user:
-                await HandleUserDocumentChangeAsync(user, changeType, token);
+                await HandleUserDocumentChangeAsync(user, changeType, eventId, token);
                 break;
             case Models.Tenant tenant:
-                await HandleTenantChangeAsync(tenant, changeType, token);
+                await HandleTenantChangeAsync(tenant, changeType, eventId, token);
                 break;
             case BookStatistics stats:
-                await HandleBookStatisticsChangeAsync(stats, changeType, token);
+                await HandleBookStatisticsChangeAsync(stats, changeType, eventId, token);
                 break;
             case CategoryStatistics stats:
-                await HandleCategoryStatisticsChangeAsync(stats, changeType, token);
+                await HandleCategoryStatisticsChangeAsync(stats, changeType, eventId, token);
                 break;
             case AuthorStatistics stats:
-                await HandleAuthorStatisticsChangeAsync(stats, changeType, token);
+                await HandleAuthorStatisticsChangeAsync(stats, changeType, eventId, token);
                 break;
             case PublisherStatistics stats:
-                await HandlePublisherStatisticsChangeAsync(stats, changeType, token);
+                await HandlePublisherStatisticsChangeAsync(stats, changeType, eventId, token);
                 break;
 
         }
     }
 
-    async Task HandleUserProfileChangeAsync(UserProfile profile, ChangeType _, CancellationToken token)
+    async Task HandleUserProfileChangeAsync(UserProfile profile, ChangeType _, Guid eventId, CancellationToken token)
     {
         Log.Infrastructure.DebugHandleUserChange(_logger, profile.Id, profile.FavoriteBookIds?.Count ?? -1);
 
         var timestamp = DateTimeOffset.UtcNow;
-        IDomainEventNotification notification = new UserUpdatedNotification(Guid.Empty, profile.Id, timestamp, profile.FavoriteBookIds?.Count ?? 0);
+        IDomainEventNotification notification = new UserUpdatedNotification(eventId, profile.Id, timestamp, profile.FavoriteBookIds?.Count ?? 0);
 
         await NotifyAsync("User", notification, token);
     }
 
-    async Task HandleUserDocumentChangeAsync(ApplicationUser user, ChangeType changeType, CancellationToken token)
+    async Task HandleUserDocumentChangeAsync(ApplicationUser user, ChangeType changeType, Guid eventId, CancellationToken token)
     {
         Log.Infrastructure.ProcessingDocumentChange(_logger, changeType.ToString(), nameof(ApplicationUser));
 
         var timestamp = DateTimeOffset.UtcNow;
-        IDomainEventNotification notification = new UserUpdatedNotification(Guid.Empty, user.Id, timestamp, user.Roles.Count);
+        IDomainEventNotification notification = new UserUpdatedNotification(eventId, user.Id, timestamp, user.Roles.Count);
 
         await NotifyAsync("User", notification, token);
     }
 
-    async Task HandleTenantChangeAsync(Models.Tenant tenant, ChangeType changeType, CancellationToken token)
+    async Task HandleTenantChangeAsync(Models.Tenant tenant, ChangeType changeType, Guid eventId, CancellationToken token)
     {
         Log.Infrastructure.ProcessingDocumentChange(_logger, changeType.ToString(), nameof(Tenant));
 
         var timestamp = tenant.UpdatedAt ?? tenant.CreatedAt;
         IDomainEventNotification notification = changeType switch
         {
-            ChangeType.Insert => new TenantCreatedNotification(Guid.Empty, tenant.Id, tenant.Name, timestamp),
-            ChangeType.Update => new TenantUpdatedNotification(Guid.Empty, tenant.Id, tenant.Name, timestamp),
-            _ => new TenantUpdatedNotification(Guid.Empty, tenant.Id, tenant.Name, timestamp) // Fallback
+            ChangeType.Insert => new TenantCreatedNotification(eventId, tenant.Id, tenant.Name, timestamp),
+            ChangeType.Update => new TenantUpdatedNotification(eventId, tenant.Id, tenant.Name, timestamp),
+            _ => new TenantUpdatedNotification(eventId, tenant.Id, tenant.Name, timestamp) // Fallback
         };
 
         await NotifyAsync("Tenant", notification, token);
     }
 
-    async Task HandleCategoryChangeAsync(CategoryProjection category, ChangeType changeType, CancellationToken token)
+    async Task HandleCategoryChangeAsync(CategoryProjection category, ChangeType changeType, Guid eventId, CancellationToken token)
     {
         // Check for soft delete status if it's an update
         var effectiveChangeType = DetermineEffectiveChangeType(changeType, category.Deleted);
@@ -168,16 +179,16 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
         var name = category.Names.Values.FirstOrDefault() ?? "Unknown";
         IDomainEventNotification notification = effectiveChangeType switch
         {
-            ChangeType.Insert => new CategoryCreatedNotification(Guid.Empty, category.Id, name, category.LastModified),
-            ChangeType.Update => new CategoryUpdatedNotification(Guid.Empty, category.Id, category.LastModified),
-            ChangeType.Delete => new CategoryDeletedNotification(Guid.Empty, category.Id, category.LastModified),
+            ChangeType.Insert => new CategoryCreatedNotification(eventId, category.Id, name, category.LastModified, category.Version),
+            ChangeType.Update => new CategoryUpdatedNotification(eventId, category.Id, category.LastModified, category.Version),
+            ChangeType.Delete => new CategoryDeletedNotification(eventId, category.Id, category.LastModified, category.Version),
             _ => throw new ArgumentOutOfRangeException(nameof(effectiveChangeType))
         };
 
         await NotifyAsync("Category", notification, token);
     }
 
-    async Task HandleBookChangeAsync(BookSearchProjection book, ChangeType changeType, CancellationToken token)
+    async Task HandleBookChangeAsync(BookSearchProjection book, ChangeType changeType, Guid eventId, CancellationToken token)
     {
         var effectiveChangeType = DetermineEffectiveChangeType(changeType, book.Deleted);
 
@@ -187,16 +198,16 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
         var timestamp = DateTimeOffset.UtcNow;
         IDomainEventNotification notification = effectiveChangeType switch
         {
-            ChangeType.Insert => new BookCreatedNotification(Guid.Empty, book.Id, book.Title, timestamp, book.Version),
-            ChangeType.Update => new BookUpdatedNotification(Guid.Empty, book.Id, book.Title, timestamp, book.Version),
-            ChangeType.Delete => new BookDeletedNotification(Guid.Empty, book.Id, timestamp),
+            ChangeType.Insert => new BookCreatedNotification(eventId, book.Id, book.Title, timestamp, book.Version),
+            ChangeType.Update => new BookUpdatedNotification(eventId, book.Id, book.Title, timestamp, book.Version),
+            ChangeType.Delete => new BookDeletedNotification(eventId, book.Id, timestamp, book.Version),
             _ => throw new ArgumentOutOfRangeException(nameof(effectiveChangeType))
         };
 
         await NotifyAsync("Book", notification, token);
     }
 
-    async Task HandleAuthorChangeAsync(AuthorProjection author, ChangeType changeType, CancellationToken token)
+    async Task HandleAuthorChangeAsync(AuthorProjection author, ChangeType changeType, Guid eventId, CancellationToken token)
     {
         var effectiveChangeType = DetermineEffectiveChangeType(changeType, author.Deleted);
 
@@ -204,16 +215,16 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
 
         IDomainEventNotification notification = effectiveChangeType switch
         {
-            ChangeType.Insert => new AuthorCreatedNotification(Guid.Empty, author.Id, author.Name, author.LastModified, author.Version),
-            ChangeType.Update => new AuthorUpdatedNotification(Guid.Empty, author.Id, author.Name, author.LastModified, author.Version),
-            ChangeType.Delete => new AuthorDeletedNotification(Guid.Empty, author.Id, author.LastModified),
+            ChangeType.Insert => new AuthorCreatedNotification(eventId, author.Id, author.Name, author.LastModified, author.Version),
+            ChangeType.Update => new AuthorUpdatedNotification(eventId, author.Id, author.Name, author.LastModified, author.Version),
+            ChangeType.Delete => new AuthorDeletedNotification(eventId, author.Id, author.LastModified, author.Version),
             _ => throw new ArgumentOutOfRangeException(nameof(effectiveChangeType))
         };
 
         await NotifyAsync("Author", notification, token);
     }
 
-    async Task HandlePublisherChangeAsync(PublisherProjection publisher, ChangeType changeType, CancellationToken token)
+    async Task HandlePublisherChangeAsync(PublisherProjection publisher, ChangeType changeType, Guid eventId, CancellationToken token)
     {
         var effectiveChangeType = DetermineEffectiveChangeType(changeType, publisher.Deleted);
 
@@ -221,49 +232,49 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
 
         IDomainEventNotification notification = effectiveChangeType switch
         {
-            ChangeType.Insert => new PublisherCreatedNotification(Guid.Empty, publisher.Id, publisher.Name, publisher.LastModified),
-            ChangeType.Update => new PublisherUpdatedNotification(Guid.Empty, publisher.Id, publisher.Name, publisher.LastModified),
-            ChangeType.Delete => new PublisherDeletedNotification(Guid.Empty, publisher.Id, publisher.LastModified),
+            ChangeType.Insert => new PublisherCreatedNotification(eventId, publisher.Id, publisher.Name, publisher.LastModified, publisher.Version),
+            ChangeType.Update => new PublisherUpdatedNotification(eventId, publisher.Id, publisher.Name, publisher.LastModified, publisher.Version),
+            ChangeType.Delete => new PublisherDeletedNotification(eventId, publisher.Id, publisher.LastModified, publisher.Version),
             _ => throw new ArgumentOutOfRangeException(nameof(effectiveChangeType))
         };
 
         await NotifyAsync("Publisher", notification, token);
     }
 
-    async Task HandleBookStatisticsChangeAsync(BookStatistics stats, ChangeType _, CancellationToken token)
+    async Task HandleBookStatisticsChangeAsync(BookStatistics stats, ChangeType _, Guid eventId, CancellationToken token)
     {
         Log.Infrastructure.ProcessingDocumentChange(_logger, "Update", nameof(BookStatistics));
         await InvalidateCacheTagsAsync(stats.Id, CacheTags.BookItemPrefix, CacheTags.BookList, token);
 
         // Emit BookUpdated so clients refetch the book (including new stats)
-        IDomainEventNotification notification = new BookUpdatedNotification(Guid.Empty, stats.Id, "Statistics Updated", DateTimeOffset.UtcNow, 0); // Stats don't have a specific book version
+        IDomainEventNotification notification = new BookUpdatedNotification(eventId, stats.Id, "Statistics Updated", DateTimeOffset.UtcNow, 0); // Stats don't have a specific book version
         await NotifyAsync("Book", notification, token);
     }
 
-    async Task HandleCategoryStatisticsChangeAsync(CategoryStatistics stats, ChangeType _, CancellationToken token)
+    async Task HandleCategoryStatisticsChangeAsync(CategoryStatistics stats, ChangeType _, Guid eventId, CancellationToken token)
     {
         Log.Infrastructure.ProcessingDocumentChange(_logger, "Update", nameof(CategoryStatistics));
         await InvalidateCacheTagsAsync(stats.Id, CacheTags.CategoryItemPrefix, CacheTags.CategoryList, token);
 
-        IDomainEventNotification notification = new CategoryUpdatedNotification(Guid.Empty, stats.Id, DateTimeOffset.UtcNow);
+        IDomainEventNotification notification = new CategoryUpdatedNotification(eventId, stats.Id, DateTimeOffset.UtcNow);
         await NotifyAsync("Category", notification, token);
     }
 
-    async Task HandleAuthorStatisticsChangeAsync(AuthorStatistics stats, ChangeType _, CancellationToken token)
+    async Task HandleAuthorStatisticsChangeAsync(AuthorStatistics stats, ChangeType _, Guid eventId, CancellationToken token)
     {
         Log.Infrastructure.ProcessingDocumentChange(_logger, "Update", nameof(AuthorStatistics));
         await InvalidateCacheTagsAsync(stats.Id, CacheTags.AuthorItemPrefix, CacheTags.AuthorList, token);
 
-        IDomainEventNotification notification = new AuthorUpdatedNotification(Guid.Empty, stats.Id, "Statistics Updated", DateTimeOffset.UtcNow);
+        IDomainEventNotification notification = new AuthorUpdatedNotification(eventId, stats.Id, "Statistics Updated", DateTimeOffset.UtcNow);
         await NotifyAsync("Author", notification, token);
     }
 
-    async Task HandlePublisherStatisticsChangeAsync(PublisherStatistics stats, ChangeType _, CancellationToken token)
+    async Task HandlePublisherStatisticsChangeAsync(PublisherStatistics stats, ChangeType _, Guid eventId, CancellationToken token)
     {
         Log.Infrastructure.ProcessingDocumentChange(_logger, "Update", nameof(PublisherStatistics));
         await InvalidateCacheTagsAsync(stats.Id, CacheTags.PublisherItemPrefix, CacheTags.PublisherList, token);
 
-        IDomainEventNotification notification = new PublisherUpdatedNotification(Guid.Empty, stats.Id, "Statistics Updated", DateTimeOffset.UtcNow);
+        IDomainEventNotification notification = new PublisherUpdatedNotification(eventId, stats.Id, "Statistics Updated", DateTimeOffset.UtcNow);
         await NotifyAsync("Publisher", notification, token);
     }
 

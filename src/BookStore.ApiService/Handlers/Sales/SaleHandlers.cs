@@ -5,6 +5,7 @@ using BookStore.ApiService.Infrastructure;
 using BookStore.ApiService.Infrastructure.Extensions;
 using Marten;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.Extensions.Caching.Hybrid;
 using Wolverine;
 
 namespace BookStore.ApiService.Handlers.Sales;
@@ -13,7 +14,8 @@ public static class SaleHandlers
 {
     public static async Task<IResult> Handle(
         ScheduleSale command,
-        IDocumentSession session)
+        IDocumentSession session,
+        HybridCache cache)
     {
         Instrumentation.SalesScheduled.Add(1, new System.Diagnostics.TagList { { "tenant_id", session.TenantId } });
         
@@ -51,7 +53,7 @@ public static class SaleHandlers
             if (currentVersion != expectedVersion.Value)
             {
                 // Diagnostic logging
-                try { System.IO.File.AppendAllText("debug_concurrency.log", $"[{DateTimeOffset.UtcNow}] ScheduleSale Mismatch: BookId={command.BookId} Expected={expectedVersion.Value} Actual={currentVersion} ETagHeader={command.ETag}\n"); } catch { }
+                try { System.IO.File.AppendAllText("/Users/antaoalmada/Projects/BookStore/debug_concurrency_sales.log", $"[{DateTimeOffset.UtcNow}] ScheduleSale Mismatch: BookId={command.BookId} Expected={expectedVersion.Value} Actual={currentVersion} ETagHeader={command.ETag}\n"); } catch { }
                 return ETagHelper.PreconditionFailed();
             }
 
@@ -59,17 +61,19 @@ public static class SaleHandlers
         }
         else
         {
-            // For SaleAggregate, we should probably always have a version since it's an update to an existing book
-            // But if it's the first sale, maybe version is needed too.
             _ = session.Events.Append(command.BookId, result.Value);
         }
+
+        // Invalidate cache immediately
+        await cache.RemoveByTagAsync([CacheTags.BookList, CacheTags.ForItem(CacheTags.BookItemPrefix, command.BookId)], default);
         
         return Results.NoContent();
     }
 
     public static async Task<IResult> Handle(
         CancelSale command,
-        IDocumentSession session)
+        IDocumentSession session,
+        HybridCache cache)
     {
         Instrumentation.SalesCanceled.Add(1, new System.Diagnostics.TagList { { "tenant_id", session.TenantId } });
         
@@ -100,16 +104,10 @@ public static class SaleHandlers
             return eventResult.ToProblemDetails();
         }
 
-        var expectedVersion = ETagHelper.ParseETag(command.ETag);
-        if (expectedVersion.HasValue)
-        {
-            _ = session.Events.Append(command.BookId, eventResult.Value);
-        }
-        else
-        {
-        var currentVersion = events.Max(e => e.Version);
         _ = session.Events.Append(command.BookId, eventResult.Value);
-        }
+
+        // Invalidate cache immediately
+        await cache.RemoveByTagAsync([CacheTags.BookList, CacheTags.ForItem(CacheTags.BookItemPrefix, command.BookId)], default);
 
         return Results.NoContent();
     }

@@ -54,9 +54,8 @@ public class PriceFilterRegressionTests
 
         if (discountPercentage > 0)
         {
-            var saleRequest = new ScheduleSaleRequest((decimal)discountPercentage, DateTimeOffset.UtcNow.AddSeconds(-5),
-                DateTimeOffset.UtcNow.AddDays(1));
-
+            var saleRequest = new ScheduleSaleRequest((decimal)discountPercentage, DateTimeOffset.UtcNow,
+                DateTimeOffset.UtcNow.AddMinutes(5));
             var bookResponse = await authClient.GetBookWithResponseAsync(bookId);
             var currentVersion = ParseETag(bookResponse.Headers.ETag?.Tag);
 
@@ -190,16 +189,36 @@ public class PriceFilterRegressionTests
 
         // 1. Apply 50% discount -> Price becomes 50.
         var saleRequest =
-            new ScheduleSaleRequest(50m, DateTimeOffset.UtcNow.AddSeconds(-5), DateTimeOffset.UtcNow.AddDays(1));
+            new ScheduleSaleRequest(50m, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddMinutes(5));
 
-        var initialBookResponse = await authClient.GetBookWithResponseAsync(bookId);
-        var initialVersion = ParseETag(initialBookResponse.Headers.ETag?.Tag);
+        // Fetch initial version with retries to ensure it's populated
+        long initialVersion = 0;
+        for (var i = 0; i < TestConstants.DefaultMaxRetries; i++)
+        {
+            var initialBookResponse = await authClient.GetBookWithResponseAsync(bookId);
+            var parsed = ParseETag(initialBookResponse.Headers.ETag?.ToString());
+            if (parsed > 0)
+            {
+                initialVersion = parsed;
+                break;
+            }
 
+            await Task.Delay(500);
+        }
+
+        Console.WriteLine(
+            $"[Test] Book {bookId} Created. InitialVersion={initialVersion}");
+
+        // Wait for ScheduleBookSale (version 2)
         _ = await TestHelpers.ExecuteAndWaitForEventAsync(bookId, "BookUpdated",
             async () => await authClient.ScheduleBookSaleAsync(bookId, saleRequest), TimeSpan.FromSeconds(10),
             minVersion: initialVersion + 1);
 
-        // Wait for projection
+        // Wait for ApplyBookDiscount side effect (version 3)
+        // This is scheduled to run at Sale.Start (which is UtcNow), so it should execute almost immediately
+        await Task.Delay(2000); // Give the scheduled command time to execute
+
+        // Wait for projection to catch up to version 3
         var foundBeforeUpdate = false;
         for (var i = 0; i < TestConstants.DefaultMaxRetries; i++)
         {
@@ -220,9 +239,8 @@ public class PriceFilterRegressionTests
         _ = await Assert.That(foundBeforeUpdate).IsTrue();
 
         // 2. Fetch book to get ETag and Current State
-        // Poll until the read model catches up with the version we know exists
-        // Poll until the read model catches up with the version we know exists
-        // +1 for ScheduleBookSale, +1 for immediate ApplyBookDiscount (side effect)
+        // Poll until the read model catches up with version 3
+        // +1 for ScheduleBookSale, +1 for ApplyBookDiscount (side effect)
         var expectedVersion = initialVersion + 2;
         Refit.IApiResponse<BookDto> response = null!;
         BookDto fetchedBook = null!;
@@ -232,7 +250,7 @@ public class PriceFilterRegressionTests
         {
             response = await authClient.GetBookWithResponseAsync(bookId);
             fetchedBook = response.Content!;
-            etagValue = response.Headers.ETag?.Tag;
+            etagValue = response.Headers.ETag?.ToString();
             var currentVersion = ParseETag(etagValue);
 
             if (currentVersion >= expectedVersion)
@@ -260,9 +278,7 @@ public class PriceFilterRegressionTests
             Prices = fetchedBook.Prices?.ToDictionary(k => k.Key, v => v.Value) ?? []
         };
 
-        _ = await TestHelpers.ExecuteAndWaitForEventAsync(bookId, "BookUpdated",
-            async () => await authClient.UpdateBookAsync(bookId, updateRequest, etagValue),
-            TimeSpan.FromSeconds(10));
+        await TestHelpers.UpdateBookAsync(authClient, bookId, updateRequest, etagValue!);
 
         // 4. Verify book is STILL found in the same price range
         var foundAfterUpdate = false;
