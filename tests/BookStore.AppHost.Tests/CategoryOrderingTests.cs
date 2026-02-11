@@ -34,7 +34,7 @@ public class CategoryOrderingTests
                     ["en"] = new CategoryTranslationDto(name)
                 }
             };
-            await TestHelpers.ExecuteAndWaitForEventAsync(
+            _ = await TestHelpers.ExecuteAndWaitForEventAsync(
                 createRequest.Id,
                 ["CategoryCreated", "CategoryUpdated"],
                 async () => await adminClient.CreateCategoryAsync(createRequest),
@@ -89,10 +89,11 @@ public class CategoryOrderingTests
                 Id = Guid.CreateVersion7(),
                 Translations = new Dictionary<string, CategoryTranslationDto>
                 {
-                    ["en"] = new CategoryTranslationDto(cat.EN), ["pt-PT"] = new CategoryTranslationDto(cat.PT)
+                    ["en"] = new CategoryTranslationDto(cat.EN),
+                    ["pt-PT"] = new CategoryTranslationDto(cat.PT)
                 }
             };
-            await TestHelpers.ExecuteAndWaitForEventAsync(
+            _ = await TestHelpers.ExecuteAndWaitForEventAsync(
                 createRequest.Id,
                 ["CategoryCreated", "CategoryUpdated"],
                 async () => await adminClient.CreateCategoryAsync(createRequest),
@@ -104,7 +105,10 @@ public class CategoryOrderingTests
         // Act - Request admin categories ordered by name in English
         var result = await adminClient.GetAllCategoriesAsync(new CategorySearchRequest
         {
-            SortBy = "name", SortOrder = "asc", Language = "en", PageSize = 100
+            SortBy = "name",
+            SortOrder = "asc",
+            Language = "en",
+            PageSize = 100
         });
 
         // Assert - Should be A-Category followed by C-Category
@@ -116,7 +120,10 @@ public class CategoryOrderingTests
         // Act - Request admin categories ordered by name in Portuguese
         result = await adminClient.GetAllCategoriesAsync(new CategorySearchRequest
         {
-            SortBy = "name", SortOrder = "asc", Language = "pt-PT", PageSize = 100
+            SortBy = "name",
+            SortOrder = "asc",
+            Language = "pt-PT",
+            PageSize = 100
         });
 
         // Assert - Should be A-Portuguese (which is Cat 1) followed by C-Portuguese (which is Cat 2)

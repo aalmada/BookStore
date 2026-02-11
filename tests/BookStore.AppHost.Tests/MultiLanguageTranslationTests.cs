@@ -20,7 +20,8 @@ public class MultiLanguageTranslationTests
             Name = authorName,
             Translations = new Dictionary<string, AuthorTranslationDto>
             {
-                ["en"] = new("English Bio"), ["pt"] = new("Biografia em Português")
+                ["en"] = new("English Bio"),
+                ["pt"] = new("Biografia em Português")
             }
         };
 
@@ -63,7 +64,8 @@ public class MultiLanguageTranslationTests
             Id = Guid.CreateVersion7(),
             Translations = new Dictionary<string, CategoryTranslationDto>
             {
-                ["en"] = new(englishName), ["pt"] = new("Categoria em Português")
+                ["en"] = new(englishName),
+                ["pt"] = new("Categoria em Português")
             }
         };
 
@@ -110,7 +112,8 @@ public class MultiLanguageTranslationTests
             Translations =
                 new Dictionary<string, BookTranslationDto>
                 {
-                    ["en"] = new("English Desc"), ["es"] = new("Descripción Original")
+                    ["en"] = new("English Desc"),
+                    ["es"] = new("Descripción Original")
                 },
             PublicationDate = new SharedModels.PartialDate(2024),
             AuthorIds = [],
@@ -139,7 +142,8 @@ public class MultiLanguageTranslationTests
             Prices = createRequest.Prices,
             Translations = new Dictionary<string, BookTranslationDto>
             {
-                ["en"] = new("English Updated"), ["es"] = new("Descripción Original")
+                ["en"] = new("English Updated"),
+                ["es"] = new("Descripción Original")
             }
         };
 

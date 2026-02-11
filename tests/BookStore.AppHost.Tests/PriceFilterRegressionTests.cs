@@ -67,7 +67,10 @@ public class PriceFilterRegressionTests
 
         var request = new BookSearchRequest
         {
-            Search = "PriceScenario", MinPrice = (decimal)minPrice, MaxPrice = (decimal)maxPrice, Currency = "USD"
+            Search = "PriceScenario",
+            MinPrice = (decimal)minPrice,
+            MaxPrice = (decimal)maxPrice,
+            Currency = "USD"
         };
         var list = await publicClient.GetBooksAsync(request);
         var matched = list.Items.Any(b => b.Id == bookId);
@@ -151,7 +154,7 @@ public class PriceFilterRegressionTests
 
         var book = await TestHelpers.CreateBookAsync(authClient, createRequest);
         var bookId = book.Id;
-        long initialVersion = ParseETag(book.ETag);
+        var initialVersion = ParseETag(book.ETag);
 
         // 1. Apply 50% discount -> Price becomes 50.
         var saleRequest =
@@ -178,7 +181,10 @@ public class PriceFilterRegressionTests
 
         var searchRequest = new SharedModels.BookSearchRequest
         {
-            Search = uniqueTitle, MinPrice = 40, MaxPrice = 60, Currency = "USD"
+            Search = uniqueTitle,
+            MinPrice = 40,
+            MaxPrice = 60,
+            Currency = "USD"
         };
         var searchList = await publicClient.GetBooksAsync(searchRequest);
         _ = await Assert.That(searchList.Items.Any(b => b.Id == bookId)).IsTrue();
@@ -210,7 +216,10 @@ public class PriceFilterRegressionTests
         var updatedTitle = uniqueTitle + " Updated";
         var searchRequestFinal = new BookSearchRequest
         {
-            Search = updatedTitle, MinPrice = 40, MaxPrice = 60, Currency = "USD"
+            Search = updatedTitle,
+            MinPrice = 40,
+            MaxPrice = 60,
+            Currency = "USD"
         };
         var searchListFinal = await publicClient.GetBooksAsync(searchRequestFinal);
         _ = await Assert.That(searchListFinal.Items.Any(b => b.Id == bookId)).IsTrue();
