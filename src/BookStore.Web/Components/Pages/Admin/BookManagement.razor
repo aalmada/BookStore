@@ -58,12 +58,12 @@
                 <MudMenu Icon="@Icons.Material.Filled.MoreVert" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" Dense="true">
                     @if (context.IsDeleted)
                     {
-                        <MudMenuItem Icon="@Icons.Material.Filled.Restore" OnClick="@(() => RestoreBook(context.Id))">Restore</MudMenuItem>
+                        <MudMenuItem Icon="@Icons.Material.Filled.Restore" OnClick="@(() => RestoreBook(context.Id, context.ETag))">Restore</MudMenuItem>
                     }
                     else
                     {
                         <MudMenuItem Icon="@Icons.Material.Filled.Edit" OnClick="@(() => EditBook(context))">Edit</MudMenuItem>
-                        <MudMenuItem Icon="@Icons.Material.Filled.Delete" OnClick="@(() => DeleteBook(context.Id))">Delete</MudMenuItem>
+                        <MudMenuItem Icon="@Icons.Material.Filled.Delete" OnClick="@(() => DeleteBook(context.Id, context.ETag))">Delete</MudMenuItem>
                     }
                 </MudMenu>
             </MudTd>
@@ -210,6 +210,7 @@
                 },
                 { x => x.IsEdit, true },
                 { x => x.BookId, book.Id },
+                { x => x.ETag, book.ETag },
                 { x => x.InitialAuthors, book.Authors.ToList() },
                 { x => x.InitialCategories, book.Categories.ToList() },
                 { x => x.InitialPublisher, book.Publisher }
@@ -225,11 +226,11 @@
         }
     }
 
-    private async Task DeleteBook(Guid id)
+    private async Task DeleteBook(Guid id, string? etag)
     {
         try
         {
-            await BooksClient.SoftDeleteBookAsync(id);
+            await BooksClient.SoftDeleteBookAsync(id, etag);
             Snackbar.Add("Book deleted.", Severity.Success);
             await _table.ReloadServerData();
         }
@@ -239,11 +240,11 @@
         }
     }
 
-    private async Task RestoreBook(Guid id)
+    private async Task RestoreBook(Guid id, string? etag)
     {
         try
         {
-            await BooksClient.RestoreBookAsync(id);
+            await BooksClient.RestoreBookAsync(id, etag: etag);
             Snackbar.Add("Book restored.", Severity.Success);
             await _table.ReloadServerData();
         }

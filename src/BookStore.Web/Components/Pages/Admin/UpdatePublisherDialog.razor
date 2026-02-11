@@ -53,7 +53,7 @@
 
         try
         {
-            await PublishersClient.UpdatePublisherAsync(Publisher.Id, _model);
+            await PublishersClient.UpdatePublisherAsync(Publisher.Id, _model, Publisher.ETag);
             Snackbar.Add($"Publisher {_model.Name} updated successfully.", Severity.Success);
             MudDialog.Close(DialogResult.Ok(true));
         }

@@ -130,6 +130,7 @@
     [Parameter] public CreateBookRequest Model { get; set; } = new();
     [Parameter] public bool IsEdit { get; set; }
     [Parameter] public Guid BookId { get; set; }
+    [Parameter] public string? ETag { get; set; }
     [Parameter] public List<AuthorDto> InitialAuthors { get; set; } = new();
     [Parameter] public List<CategoryDto> InitialCategories { get; set; } = new();
     [Parameter] public PublisherDto? InitialPublisher { get; set; }
@@ -334,7 +335,7 @@
                 };
                 updateRequest.AdditionalProperties["prices"] = _model.AdditionalProperties["prices"];
 
-                await BooksClient.UpdateBookAsync(BookId, updateRequest);
+                await BooksClient.UpdateBookAsync(BookId, updateRequest, ETag);
                 Snackbar.Add("Book updated successfully.", Severity.Success);
             }
             else

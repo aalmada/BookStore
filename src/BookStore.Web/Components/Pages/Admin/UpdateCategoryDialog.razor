@@ -157,7 +157,7 @@
             );
 
             var request = new UpdateCategoryRequest { Translations = updatedTranslations };
-            await CategoriesClient.UpdateCategoryAsync(Category.Id, request);
+            await CategoriesClient.UpdateCategoryAsync(Category.Id, request, Category.ETag);
 
             Snackbar.Add("Category updated successfully.", Severity.Success);
             MudDialog.Close(DialogResult.Ok(true));
