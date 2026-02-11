@@ -148,21 +148,9 @@ public class TenantUserIsolationTests
         var userCartClient = Refit.RestService.For<IShoppingCartClient>(userClient.Client);
 
         // Act - Add to cart
-        await userCartClient.AddToCartAsync(new AddToCartClientRequest(book.Id, 2));
-
-        // Assert - Cart should contain the item
-        await TestHelpers.WaitForConditionAsync(async () =>
-        {
-            try
-            {
-                var cart = await userCartClient.GetShoppingCartAsync();
-                return cart?.TotalItems == 2;
-            }
-            catch
-            {
-                return false;
-            }
-        }, TimeSpan.FromSeconds(5), "Cart was not populated after AddToCart");
+        _ = await TestHelpers.ExecuteAndWaitForEventAsync(userClient.UserId, "UserUpdated",
+            async () => await userCartClient.AddToCartAsync(new AddToCartClientRequest(book.Id, 2)),
+            TestConstants.DefaultEventTimeout);
 
         var finalCart = await userCartClient.GetShoppingCartAsync();
         _ = await Assert.That(finalCart).IsNotNull();
