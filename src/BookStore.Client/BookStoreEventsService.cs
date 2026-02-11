@@ -39,7 +39,13 @@ public class BookStoreEventsService : IAsyncDisposable
         { "UserVerified", typeof(UserVerifiedNotification) },
         { "UserUpdated", typeof(UserUpdatedNotification) },
         { "TenantCreated", typeof(TenantCreatedNotification) },
-        { "TenantUpdated", typeof(TenantUpdatedNotification) }
+        { "TenantUpdated", typeof(TenantUpdatedNotification) },
+        { "Ping", typeof(PingNotification) },
+        { "Connected", typeof(PingNotification) },
+        { "BookStatisticsUpdate", typeof(BookStatisticsUpdateNotification) },
+        { "AuthorStatisticsUpdate", typeof(AuthorStatisticsUpdateNotification) },
+        { "CategoryStatisticsUpdate", typeof(CategoryStatisticsUpdateNotification) },
+        { "PublisherStatisticsUpdate", typeof(PublisherStatisticsUpdateNotification) }
     };
 
     public BookStoreEventsService(
