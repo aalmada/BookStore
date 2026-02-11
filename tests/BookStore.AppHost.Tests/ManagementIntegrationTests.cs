@@ -17,12 +17,18 @@ public class ManagementIntegrationTests
         var categoriesClient = await TestHelpers.GetAuthenticatedClientAsync<ICategoriesClient>();
         var publishersClient = await TestHelpers.GetAuthenticatedClientAsync<IPublishersClient>();
 
+        var suffix = Guid.NewGuid().ToString()[..8];
+        var authorName = $"GetAll Auth {suffix}";
+        var catName = $"GetAll Cat {suffix}";
+        var pubName = $"GetAll Pub {suffix}";
+        var bookTitle = $"GetAll Book {suffix}";
+
         // Create random entities to ensure list is non-empty
         var author = await TestHelpers.CreateAuthorAsync(authorsClient,
             new CreateAuthorRequest
             {
                 Id = Guid.CreateVersion7(),
-                Name = $"Integration Author {Guid.NewGuid()}",
+                Name = authorName,
                 Translations = new Dictionary<string, AuthorTranslationDto> { ["en"] = new("Bio") }
             });
 
@@ -30,19 +36,16 @@ public class ManagementIntegrationTests
             new CreateCategoryRequest
             {
                 Id = Guid.CreateVersion7(),
-                Translations = new Dictionary<string, CategoryTranslationDto>
-                {
-                    ["en"] = new($"Integration Cat {Guid.NewGuid()}")
-                }
+                Translations = new Dictionary<string, CategoryTranslationDto> { ["en"] = new(catName) }
             });
 
         var publisher = await TestHelpers.CreatePublisherAsync(publishersClient,
-            new CreatePublisherRequest { Id = Guid.CreateVersion7(), Name = $"Integration Pub {Guid.NewGuid()}" });
+            new CreatePublisherRequest { Id = Guid.CreateVersion7(), Name = pubName });
 
         var createRequest = new CreateBookRequest
         {
             Id = Guid.CreateVersion7(),
-            Title = $"Integration Book {Guid.NewGuid()}",
+            Title = bookTitle,
             Isbn = "1234567890",
             Language = "en",
             Translations =
@@ -56,12 +59,15 @@ public class ManagementIntegrationTests
         var book = await TestHelpers.CreateBookAsync(client, createRequest);
 
         // Act
-        // Use search with empty params to get all (paged/list)
+        // Use search with empty params to get all (paged/list), 
+        // but in parallel we filter by our unique prefix to ensure isolation and avoid paging issues.
         var books = await client.GetAllBooksAdminAsync();
-        // Admin endpoints take SearchRequest only
-        var authors = await authorsClient.GetAllAuthorsAsync(new SharedModels.AuthorSearchRequest());
-        var categories = await categoriesClient.GetAllCategoriesAsync(new SharedModels.CategorySearchRequest());
-        var publishers = await publishersClient.GetAllPublishersAsync(new SharedModels.PublisherSearchRequest());
+        var authors =
+            await authorsClient.GetAllAuthorsAsync(new SharedModels.AuthorSearchRequest { Search = authorName });
+        var categories =
+            await categoriesClient.GetAllCategoriesAsync(new SharedModels.CategorySearchRequest { Search = catName });
+        var publishers =
+            await publishersClient.GetAllPublishersAsync(new SharedModels.PublisherSearchRequest { Search = pubName });
 
         // Assert
         _ = await Assert.That(books).IsNotNull();
@@ -177,58 +183,23 @@ public class ManagementIntegrationTests
     // Verification helpers
     async Task<bool> VerifyInAdminAuthorsAsync(IAuthorsClient client, string search, bool expected)
     {
-        await TestHelpers.WaitForConditionAsync(async () =>
-            {
-                try
-                {
-                    var response =
-                        await client.GetAllAuthorsAsync(new SharedModels.AuthorSearchRequest { Search = search });
-                    return (response?.Items.Any(a => a.Name == search) ?? false) == expected;
-                }
-                catch
-                {
-                    return false;
-                }
-            }, TestConstants.DefaultEventTimeout, $"Author {search} presence mismatch: expected {expected}");
-
+        var response = await client.GetAllAuthorsAsync(new SharedModels.AuthorSearchRequest { Search = search });
+        _ = await Assert.That((response?.Items.Any(a => a.Name == search) ?? false) == expected).IsTrue();
         return true;
     }
 
     async Task<bool> VerifyInAdminCategoriesAsync(ICategoriesClient client, string search, bool expected)
     {
-        await TestHelpers.WaitForConditionAsync(async () =>
-            {
-                try
-                {
-                    var response =
-                        await client.GetAllCategoriesAsync(new SharedModels.CategorySearchRequest { Search = search });
-                    return (response?.Items.Any(c => c.Translations["en"].Name == search) ?? false) == expected;
-                }
-                catch
-                {
-                    return false;
-                }
-            }, TestConstants.DefaultEventTimeout, $"Category {search} presence mismatch: expected {expected}");
-
+        var response = await client.GetAllCategoriesAsync(new SharedModels.CategorySearchRequest { Search = search });
+        _ = await Assert.That((response?.Items.Any(c => c.Translations["en"].Name == search) ?? false) == expected)
+            .IsTrue();
         return true;
     }
 
     async Task<bool> VerifyInAdminPublishersAsync(IPublishersClient client, string search, bool expected)
     {
-        await TestHelpers.WaitForConditionAsync(async () =>
-            {
-                try
-                {
-                    var response =
-                        await client.GetAllPublishersAsync(new SharedModels.PublisherSearchRequest { Search = search });
-                    return (response?.Items.Any(p => p.Name == search) ?? false) == expected;
-                }
-                catch
-                {
-                    return false;
-                }
-            }, TestConstants.DefaultEventTimeout, $"Publisher {search} presence mismatch: expected {expected}");
-
+        var response = await client.GetAllPublishersAsync(new SharedModels.PublisherSearchRequest { Search = search });
+        _ = await Assert.That((response?.Items.Any(p => p.Name == search) ?? false) == expected).IsTrue();
         return true;
     }
 }

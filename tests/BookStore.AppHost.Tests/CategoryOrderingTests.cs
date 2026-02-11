@@ -7,7 +7,6 @@ using TUnit.Core.Interfaces;
 
 namespace BookStore.AppHost.Tests;
 
-[NotInParallel]
 public class CategoryOrderingTests
 {
     string _prefix = "";

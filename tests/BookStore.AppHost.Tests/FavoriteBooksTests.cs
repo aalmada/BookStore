@@ -13,15 +13,16 @@ public class FavoriteBooksTests
     {
         // Arrange
         var adminClient = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
-        var client = await TestHelpers.CreateUserAndGetClientAsync<IBooksClient>();
+        var userClient = await TestHelpers.CreateUserAndGetClientAsync();
+        var client = RestService.For<IBooksClient>(userClient.Client);
 
         // Create 2 books
         var book1 = await TestHelpers.CreateBookAsync(adminClient, TestHelpers.GenerateFakeBookRequest());
         var book2 = await TestHelpers.CreateBookAsync(adminClient, TestHelpers.GenerateFakeBookRequest());
 
         // Add 2 to favorites
-        await TestHelpers.AddToFavoritesAsync(client, book1.Id);
-        await TestHelpers.AddToFavoritesAsync(client, book2.Id);
+        await TestHelpers.AddToFavoritesAsync(userClient.Client, book1.Id, userClient.UserId);
+        await TestHelpers.AddToFavoritesAsync(userClient.Client, book2.Id, userClient.UserId);
 
         // Act
         var response = await client.GetFavoriteBooksAsync(new OrderedPagedRequest());
@@ -43,7 +44,8 @@ public class FavoriteBooksTests
     public async Task GetFavoriteBooks_WhenNoFavorites_ShouldReturnEmpty()
     {
         // Arrange - Create a new authenticated user with no favorites
-        var client = await TestHelpers.CreateUserAndGetClientAsync<IBooksClient>();
+        var userClient = await TestHelpers.CreateUserAndGetClientAsync();
+        var client = RestService.For<IBooksClient>(userClient.Client);
 
         // Act
         var response = await client.GetFavoriteBooksAsync(new OrderedPagedRequest());
@@ -78,13 +80,14 @@ public class FavoriteBooksTests
     {
         // Arrange
         var adminClient = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
-        var client = await TestHelpers.CreateUserAndGetClientAsync<IBooksClient>();
+        var userClient = await TestHelpers.CreateUserAndGetClientAsync();
+        var client = RestService.For<IBooksClient>(userClient.Client);
 
         // Create and favorite at least 5 books
         for (var i = 0; i < 5; i++)
         {
             var book = await TestHelpers.CreateBookAsync(adminClient, TestHelpers.GenerateFakeBookRequest());
-            await TestHelpers.AddToFavoritesAsync(client, book.Id);
+            await TestHelpers.AddToFavoritesAsync(userClient.Client, book.Id, userClient.UserId);
         }
 
         // Act - Request first page with 3 items
@@ -103,7 +106,8 @@ public class FavoriteBooksTests
     {
         // Arrange
         var adminClient = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
-        var client = await TestHelpers.CreateUserAndGetClientAsync<IBooksClient>();
+        var userClient = await TestHelpers.CreateUserAndGetClientAsync();
+        var client = RestService.For<IBooksClient>(userClient.Client);
 
         // Create books with specific titles for sorting
         var requestA = TestHelpers.GenerateFakeBookRequest();
@@ -115,8 +119,8 @@ public class FavoriteBooksTests
         var bookZ = await TestHelpers.CreateBookAsync(adminClient, requestZ);
 
         // Add to favorites
-        await TestHelpers.AddToFavoritesAsync(client, bookA.Id);
-        await TestHelpers.AddToFavoritesAsync(client, bookZ.Id);
+        await TestHelpers.AddToFavoritesAsync(userClient.Client, bookA.Id, userClient.UserId);
+        await TestHelpers.AddToFavoritesAsync(userClient.Client, bookZ.Id, userClient.UserId);
 
         // Act - Sort by title descending
         var response =
@@ -141,36 +145,23 @@ public class FavoriteBooksTests
     {
         // Arrange
         var adminClient = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
-        var client = await TestHelpers.CreateUserAndGetClientAsync<IBooksClient>();
+        var userClient = await TestHelpers.CreateUserAndGetClientAsync();
+        var client = RestService.For<IBooksClient>(userClient.Client);
         var book = await TestHelpers.CreateBookAsync(adminClient, TestHelpers.GenerateFakeBookRequest());
 
         // Add to favorites
-        await TestHelpers.AddToFavoritesAsync(client, book.Id);
+        await TestHelpers.AddToFavoritesAsync(userClient.Client, book.Id, userClient.UserId);
 
-        // Verify it appears in favorites (wait for projection)
-        await TestHelpers.WaitForConditionAsync(async () =>
-        {
-            var response = await client.GetFavoriteBooksAsync(new OrderedPagedRequest());
-            var ids = response.Items.Select(b => b.Id).ToHashSet();
-            return ids.Contains(book.Id);
-        }, TimeSpan.FromSeconds(5), "Book did not appear in favorites");
-
+        // Verify it appears in favorites
         var response1 = await client.GetFavoriteBooksAsync(new OrderedPagedRequest());
         _ = await Assert.That(response1).IsNotNull();
         var favoriteIds1 = response1.Items.Select(b => b.Id).ToHashSet();
         _ = await Assert.That(favoriteIds1.Contains(book.Id)).IsTrue();
 
         // Act - Remove from favorites
-        await TestHelpers.RemoveFromFavoritesAsync(client, book.Id);
+        await TestHelpers.RemoveFromFavoritesAsync(userClient.Client, book.Id, userClient.UserId);
 
-        // Assert - Verify it no longer appears (wait for projection)
-        await TestHelpers.WaitForConditionAsync(async () =>
-        {
-            var response = await client.GetFavoriteBooksAsync(new OrderedPagedRequest());
-            var ids = response.Items.Select(b => b.Id).ToHashSet();
-            return !ids.Contains(book.Id);
-        }, TimeSpan.FromSeconds(5), "Book remained in favorites after removal");
-
+        // Assert - Verify it no longer appears
         var response2 = await client.GetFavoriteBooksAsync(new OrderedPagedRequest());
         _ = await Assert.That(response2).IsNotNull();
         var favoriteIds2 = response2.Items.Select(b => b.Id).ToHashSet();

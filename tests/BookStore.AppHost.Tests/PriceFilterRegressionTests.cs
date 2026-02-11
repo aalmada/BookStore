@@ -6,7 +6,6 @@ using SharedModels = BookStore.Shared.Models;
 
 namespace BookStore.AppHost.Tests;
 
-[NotInParallel]
 public class PriceFilterRegressionTests
 {
     /// <summary>
@@ -66,25 +65,21 @@ public class PriceFilterRegressionTests
                 minVersion: currentVersion + 1);
         }
 
-        // Wait for consistency and check
-        var matched = false;
-        await TestHelpers.WaitForConditionAsync(async () =>
+        var request = new BookSearchRequest
         {
-            var request = new BookSearchRequest
-            {
-                Search = "PriceScenario",
-                MinPrice = (decimal)minPrice,
-                MaxPrice = (decimal)maxPrice,
-                Currency = "USD"
-            };
+            Search = "PriceScenario", MinPrice = (decimal)minPrice, MaxPrice = (decimal)maxPrice, Currency = "USD"
+        };
+        var list = await publicClient.GetBooksAsync(request);
+        var matched = list.Items.Any(b => b.Id == bookId);
 
-            var list = await publicClient.GetBooksAsync(request);
-            matched = list.Items.Any(b => b.Id == bookId);
-
-            return matched == shouldMatch;
-        }, TestConstants.DefaultEventTimeout, "Search results did not match expected price filter scenario");
-
-        _ = await Assert.That(matched).IsEqualTo(shouldMatch);
+        if (shouldMatch)
+        {
+            _ = await Assert.That(matched).IsTrue();
+        }
+        else
+        {
+            _ = await Assert.That(matched).IsFalse();
+        }
     }
 
     /// <summary>
@@ -117,13 +112,8 @@ public class PriceFilterRegressionTests
 
         var book = await TestHelpers.CreateBookAsync(authClient, createRequest);
 
-        // Poll for search projection to update
-        await TestHelpers.WaitForConditionAsync(async () =>
-        {
-            var request = new BookSearchRequest { Search = uniqueTitle };
-            var c = await publicClient.GetBooksAsync(request);
-            return c != null && c.Items.Any(b => b.Title == uniqueTitle);
-        }, TestConstants.DefaultEventTimeout, "Book was not found in search results after creation");
+        var contentInitial = await publicClient.GetBooksAsync(new BookSearchRequest { Search = uniqueTitle });
+        _ = await Assert.That(contentInitial != null && contentInitial.Items.Any(b => b.Title == uniqueTitle)).IsTrue();
 
         var booksClient = publicClient;
         var requestNoMatch =
@@ -194,32 +184,16 @@ public class PriceFilterRegressionTests
             TimeSpan.FromSeconds(10),
             minVersion: initialVersion + 2);
 
-        // Wait for projection to catch up to version 3
-        await TestHelpers.WaitForConditionAsync(async () =>
+        var searchRequest = new SharedModels.BookSearchRequest
         {
-            var searchRequest = new SharedModels.BookSearchRequest
-            {
-                Search = uniqueTitle, MinPrice = 40, MaxPrice = 60, Currency = "USD"
-            };
-            var searchList = await publicClient.GetBooksAsync(searchRequest);
-            return searchList.Items.Any(b => b.Id == bookId);
-        }, TestConstants.DefaultEventTimeout, "Book was not found in search results with discount applied");
+            Search = uniqueTitle, MinPrice = 40, MaxPrice = 60, Currency = "USD"
+        };
+        var searchList = await publicClient.GetBooksAsync(searchRequest);
+        _ = await Assert.That(searchList.Items.Any(b => b.Id == bookId)).IsTrue();
 
-        // 2. Fetch book to get ETag and Current State
-        // Poll until the read model catches up with version 3
-        // +1 for ScheduleBookSale, +1 for ApplyBookDiscount (side effect)
-        var expectedVersion = initialVersion + 2;
-        Refit.IApiResponse<BookDto> response = null!;
-        BookDto fetchedBook = null!;
-        string? etagValue = null;
-
-        await TestHelpers.WaitForConditionAsync(async () =>
-        {
-            response = await authClient.GetBookWithResponseAsync(bookId);
-            fetchedBook = response.Content!;
-            etagValue = response.Headers.ETag?.ToString();
-            return ParseETag(etagValue) >= expectedVersion;
-        }, TestConstants.DefaultEventTimeout, "Read model did not reach expected version after discount");
+        var response = await authClient.GetBookWithResponseAsync(bookId);
+        var fetchedBook = response.Content!;
+        var etagValue = response.Headers.ETag?.ToString();
 
         // 3. Update book Title (should preserve prices and discount)
         var updateRequest = new UpdateBookRequest
@@ -242,15 +216,12 @@ public class PriceFilterRegressionTests
 
         // 4. Verify book is STILL found in the same price range
         var updatedTitle = uniqueTitle + " Updated";
-        await TestHelpers.WaitForConditionAsync(async () =>
+        var searchRequestFinal = new BookSearchRequest
         {
-            var searchRequest = new BookSearchRequest
-            {
-                Search = updatedTitle, MinPrice = 40, MaxPrice = 60, Currency = "USD"
-            };
-            var searchList = await publicClient.GetBooksAsync(searchRequest);
-            return searchList.Items.Any(b => b.Id == bookId);
-        }, TestConstants.DefaultEventTimeout, "Book was not found in search results after title update");
+            Search = updatedTitle, MinPrice = 40, MaxPrice = 60, Currency = "USD"
+        };
+        var searchListFinal = await publicClient.GetBooksAsync(searchRequestFinal);
+        _ = await Assert.That(searchListFinal.Items.Any(b => b.Id == bookId)).IsTrue();
     }
 
     static long ParseETag(string? etag)

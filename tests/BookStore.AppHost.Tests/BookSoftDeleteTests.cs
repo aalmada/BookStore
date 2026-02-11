@@ -5,7 +5,6 @@ using Refit;
 
 namespace BookStore.AppHost.Tests;
 
-[NotInParallel]
 public class BookSoftDeleteTests
 {
     [Test]
@@ -30,20 +29,6 @@ public class BookSoftDeleteTests
         // Perform Soft Delete
         var deletedBook = await TestHelpers.DeleteBookAsync(adminClient, createdBook);
 
-        // Wait for projection to process deletion
-        await TestHelpers.WaitForConditionAsync(async () =>
-        {
-            try
-            {
-                _ = await publicClient.GetBookAsync(bookId);
-                return false;
-            }
-            catch (ApiException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
-            {
-                return true;
-            }
-        }, TimeSpan.FromSeconds(10), "Book did not disappear from public API");
-
         // 3. Verify Public API returns 404
         try
         {
@@ -65,20 +50,6 @@ public class BookSoftDeleteTests
         // 5. Restore via Admin API
         createdBook = await TestHelpers.RestoreBookAsync(adminClient, bookId);
 
-        // 6. Verify Reappearance
-        await TestHelpers.WaitForConditionAsync(async () =>
-        {
-            try
-            {
-                _ = await publicClient.GetBookAsync(bookId);
-                return true;
-            }
-            catch (ApiException)
-            {
-                return false;
-            }
-        }, TimeSpan.FromSeconds(10), "Book did not reappear in public API");
-
         var restoredGet = await publicClient.GetBookAsync(bookId);
         _ = await Assert.That(restoredGet).IsNotNull();
     }
@@ -96,20 +67,6 @@ public class BookSoftDeleteTests
 
         // Soft Delete
         var deletedBook = await TestHelpers.DeleteBookAsync(adminClient, createdBook);
-
-        // Wait for projection
-        await TestHelpers.WaitForConditionAsync(async () =>
-        {
-            try
-            {
-                _ = await publicClient.GetBookAsync(bookId);
-                return false;
-            }
-            catch (ApiException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
-            {
-                return true;
-            }
-        }, TimeSpan.FromSeconds(10), "Book did not disappear from public API");
 
         // Act & Assert
 

@@ -35,25 +35,8 @@ public class LocalizationTests
 
         var createdBook = await TestHelpers.CreateBookAsync(adminClient, request);
 
-        BookDto? bookDto = null;
-
-        var publicHttpClient = TestHelpers.GetUnauthenticatedClient();
-        publicHttpClient.DefaultRequestHeaders.AcceptLanguage.Clear();
-        publicHttpClient.DefaultRequestHeaders.AcceptLanguage.Add(new StringWithQualityHeaderValue(acceptLanguage));
-        var publicClient = RestService.For<IBooksClient>(publicHttpClient);
-
-        await TestHelpers.WaitForConditionAsync(async () =>
-        {
-            try
-            {
-                bookDto = await publicClient.GetBookAsync(createdBook.Id);
-                return bookDto != null;
-            }
-            catch (ApiException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
-            {
-                return false;
-            }
-        }, TestConstants.DefaultEventTimeout, "Book was not available in public API after creation");
+        var publicClient = TestHelpers.GetUnauthenticatedClientWithLanguage<IBooksClient>(acceptLanguage);
+        var bookDto = await publicClient.GetBookAsync(createdBook.Id);
 
         // Assert
         _ = await Assert.That(bookDto).IsNotNull();
