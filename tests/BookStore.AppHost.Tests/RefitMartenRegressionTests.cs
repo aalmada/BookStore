@@ -54,7 +54,9 @@ public class RefitMartenRegressionTests
         // because it was trying to query the Dictionary directly.
         var response = await publicClient.GetBooksAsync(new BookSearchRequest
         {
-            Search = uniqueTitle, MinPrice = 5, MaxPrice = 15
+            Search = uniqueTitle,
+            MinPrice = 5,
+            MaxPrice = 15
         });
 
         // Assert
@@ -87,7 +89,9 @@ public class RefitMartenRegressionTests
         // Act
         var response = await publicClient.GetBooksAsync(new BookSearchRequest
         {
-            Search = uniqueTitle, MinPrice = 5, MaxPrice = 15
+            Search = uniqueTitle,
+            MinPrice = 5,
+            MaxPrice = 15
         });
 
         // Assert
@@ -161,7 +165,9 @@ public class RefitMartenRegressionTests
         // The system should now verify p.Currency == "USD" && p.Value <= maxPrice.
         var response = await publicClient.GetBooksAsync(new BookSearchRequest
         {
-            Search = uniqueTitle, MaxPrice = 15, Currency = "USD"
+            Search = uniqueTitle,
+            MaxPrice = 15,
+            Currency = "USD"
         });
 
         // Assert

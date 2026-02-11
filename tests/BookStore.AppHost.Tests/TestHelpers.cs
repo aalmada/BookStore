@@ -8,13 +8,13 @@ using Bogus;
 using BookStore.ApiService.Infrastructure.Tenant;
 using BookStore.Client;
 using BookStore.Shared.Models;
+using JasperFx;
 using Marten;
 using Refit;
 // Resolve ambiguities by preferring Client types
 using CreateBookRequest = BookStore.Client.CreateBookRequest;
 using SharedModels = BookStore.Shared.Models;
 using UpdateBookRequest = BookStore.Client.UpdateBookRequest;
-using JasperFx;
 
 namespace BookStore.AppHost.Tests;
 
@@ -44,47 +44,49 @@ public static class TestHelpers
     public static CreateBookRequest
         GenerateFakeBookRequest(Guid? publisherId = null, IEnumerable<Guid>? authorIds = null,
             IEnumerable<Guid>? categoryIds = null) => new()
-    {
-        Id = Guid.CreateVersion7(),
-        Title = _faker.Commerce.ProductName(),
-        Isbn = _faker.Commerce.Ean13(),
-        Language = "en",
-        Translations =
+            {
+                Id = Guid.CreateVersion7(),
+                Title = _faker.Commerce.ProductName(),
+                Isbn = _faker.Commerce.Ean13(),
+                Language = "en",
+                Translations =
             new Dictionary<string, BookTranslationDto>
             {
-                ["en"] = new(_faker.Lorem.Paragraph()), ["es"] = new(_faker.Lorem.Paragraph())
+                ["en"] = new(_faker.Lorem.Paragraph()),
+                ["es"] = new(_faker.Lorem.Paragraph())
             },
-        PublicationDate = new PartialDate(
+                PublicationDate = new PartialDate(
             _faker.Date.Past(10).Year,
             _faker.Random.Int(1, 12),
             _faker.Random.Int(1, 28)),
-        PublisherId = publisherId,
-        AuthorIds = [.. (authorIds ?? [])],
-        CategoryIds = [.. (categoryIds ?? [])],
-        Prices = new Dictionary<string, decimal> { ["USD"] = decimal.Parse(_faker.Commerce.Price(10, 100)) }
-    };
+                PublisherId = publisherId,
+                AuthorIds = [.. (authorIds ?? [])],
+                CategoryIds = [.. (categoryIds ?? [])],
+                Prices = new Dictionary<string, decimal> { ["USD"] = decimal.Parse(_faker.Commerce.Price(10, 100)) }
+            };
 
     public static UpdateBookRequest
         GenerateFakeUpdateBookRequest(Guid? publisherId = null, IEnumerable<Guid>? authorIds = null,
             IEnumerable<Guid>? categoryIds = null) => new()
-    {
-        Title = _faker.Commerce.ProductName(),
-        Isbn = _faker.Commerce.Ean13(),
-        Language = "en",
-        Translations =
+            {
+                Title = _faker.Commerce.ProductName(),
+                Isbn = _faker.Commerce.Ean13(),
+                Language = "en",
+                Translations =
             new Dictionary<string, BookTranslationDto>
             {
-                ["en"] = new(_faker.Lorem.Paragraph()), ["es"] = new(_faker.Lorem.Paragraph())
+                ["en"] = new(_faker.Lorem.Paragraph()),
+                ["es"] = new(_faker.Lorem.Paragraph())
             },
-        PublicationDate = new PartialDate(
+                PublicationDate = new PartialDate(
             _faker.Date.Past(10).Year,
             _faker.Random.Int(1, 12),
             _faker.Random.Int(1, 28)),
-        PublisherId = publisherId,
-        AuthorIds = [.. (authorIds ?? [])],
-        CategoryIds = [.. (categoryIds ?? [])],
-        Prices = new Dictionary<string, decimal> { ["USD"] = decimal.Parse(_faker.Commerce.Price(10, 100)) }
-    };
+                PublisherId = publisherId,
+                AuthorIds = [.. (authorIds ?? [])],
+                CategoryIds = [.. (categoryIds ?? [])],
+                Prices = new Dictionary<string, decimal> { ["USD"] = decimal.Parse(_faker.Commerce.Price(10, 100)) }
+            };
 
     /// <summary>
     /// Generates a fake author creation request with random data using Bogus.
@@ -96,7 +98,8 @@ public static class TestHelpers
         Name = _faker.Name.FullName(),
         Translations = new Dictionary<string, AuthorTranslationDto>
         {
-            ["en"] = new(_faker.Lorem.Paragraphs(2)), ["es"] = new(_faker.Lorem.Paragraphs(2))
+            ["en"] = new(_faker.Lorem.Paragraphs(2)),
+            ["es"] = new(_faker.Lorem.Paragraphs(2))
         }
     };
 
@@ -105,7 +108,8 @@ public static class TestHelpers
         Name = _faker.Name.FullName(),
         Translations = new Dictionary<string, AuthorTranslationDto>
         {
-            ["en"] = new(_faker.Lorem.Paragraphs(2)), ["es"] = new(_faker.Lorem.Paragraphs(2))
+            ["en"] = new(_faker.Lorem.Paragraphs(2)),
+            ["es"] = new(_faker.Lorem.Paragraphs(2))
         }
     };
 
@@ -118,7 +122,8 @@ public static class TestHelpers
         Id = Guid.CreateVersion7(),
         Translations = new Dictionary<string, CategoryTranslationDto>
         {
-            ["en"] = new(_faker.Commerce.Department()), ["es"] = new(_faker.Commerce.Department())
+            ["en"] = new(_faker.Commerce.Department()),
+            ["es"] = new(_faker.Commerce.Department())
         }
     };
 
@@ -130,7 +135,8 @@ public static class TestHelpers
     {
         Translations = new Dictionary<string, CategoryTranslationDto>
         {
-            ["en"] = new(_faker.Commerce.Department()), ["es"] = new(_faker.Commerce.Department())
+            ["en"] = new(_faker.Commerce.Department()),
+            ["es"] = new(_faker.Commerce.Department())
         }
     };
 
@@ -1276,7 +1282,7 @@ public static class TestHelpers
         return await client.GetBookAdminAsync(book.Id);
     }
 
-// Helper to accept generic object and cast if possible or use fake request
+    // Helper to accept generic object and cast if possible or use fake request
     public static async Task<BookDto> UpdateBookAsync(IBooksClient client, Guid bookId, object updatePayload,
         string etag)
     {
