@@ -68,33 +68,21 @@ public class PriceFilterRegressionTests
 
         // Wait for consistency and check
         var matched = false;
-        for (var i = 0; i < TestConstants.LongRetryCount; i++)
+        await TestHelpers.WaitForConditionAsync(async () =>
         {
-            try
+            var request = new BookSearchRequest
             {
-                var request = new SharedModels.BookSearchRequest
-                {
-                    Search = "PriceScenario",
-                    MinPrice = (decimal)minPrice,
-                    MaxPrice = (decimal)maxPrice,
-                    Currency = "USD"
-                };
+                Search = "PriceScenario",
+                MinPrice = (decimal)minPrice,
+                MaxPrice = (decimal)maxPrice,
+                Currency = "USD"
+            };
 
-                var list = await publicClient.GetBooksAsync(request);
-                matched = list.Items.Any(b => b.Id == bookId);
+            var list = await publicClient.GetBooksAsync(request);
+            matched = list.Items.Any(b => b.Id == bookId);
 
-                if (matched == shouldMatch)
-                {
-                    break;
-                }
-            }
-            catch
-            {
-                // Ignore errors during poll - we will retry or eventually fail the assert
-            }
-
-            await Task.Delay(500);
-        }
+            return matched == shouldMatch;
+        }, TestConstants.DefaultEventTimeout, "Search results did not match expected price filter scenario");
 
         _ = await Assert.That(matched).IsEqualTo(shouldMatch);
     }
@@ -130,28 +118,12 @@ public class PriceFilterRegressionTests
         var book = await TestHelpers.CreateBookAsync(authClient, createRequest);
 
         // Poll for search projection to update
-        var ready = false;
-        for (var i = 0; i < TestConstants.DefaultMaxRetries; i++)
+        await TestHelpers.WaitForConditionAsync(async () =>
         {
-            try
-            {
-                var request = new SharedModels.BookSearchRequest { Search = uniqueTitle };
-                var c = await publicClient.GetBooksAsync(request);
-                if (c != null && c.Items.Any(b => b.Title == uniqueTitle))
-                {
-                    ready = true;
-                    break;
-                }
-            }
-            catch
-            {
-                // Expected if projection hasn't finished yet
-            }
-
-            await Task.Delay(500);
-        }
-
-        _ = await Assert.That(ready).IsTrue();
+            var request = new BookSearchRequest { Search = uniqueTitle };
+            var c = await publicClient.GetBooksAsync(request);
+            return c != null && c.Items.Any(b => b.Title == uniqueTitle);
+        }, TestConstants.DefaultEventTimeout, "Book was not found in search results after creation");
 
         var booksClient = publicClient;
         var requestNoMatch =
@@ -196,18 +168,12 @@ public class PriceFilterRegressionTests
 
         // Fetch initial version with retries to ensure it's populated
         long initialVersion = 0;
-        for (var i = 0; i < TestConstants.DefaultMaxRetries; i++)
+        await TestHelpers.WaitForConditionAsync(async () =>
         {
             var initialBookResponse = await authClient.GetBookWithResponseAsync(bookId);
-            var parsed = ParseETag(initialBookResponse.Headers.ETag?.ToString());
-            if (parsed > 0)
-            {
-                initialVersion = parsed;
-                break;
-            }
-
-            await Task.Delay(500);
-        }
+            initialVersion = ParseETag(initialBookResponse.Headers.ETag?.ToString());
+            return initialVersion > 0;
+        }, TestConstants.DefaultEventTimeout, "Failed to fetch initial book version");
 
         Console.WriteLine(
             $"[Test] Book {bookId} Created. InitialVersion={initialVersion}");
@@ -219,30 +185,25 @@ public class PriceFilterRegressionTests
 
         // Wait for ApplyBookDiscount side effect (version 3)
         // This is scheduled to run at Sale.Start (which is UtcNow), so it should execute almost immediately
-        await Task.Delay(2000); // Give the scheduled command time to execute
+        // Instead of Delay, we should wait for the event that signals the discount was applied
+        _ = await TestHelpers.ExecuteAndWaitForEventAsync(bookId, "BookUpdated",
+            async () =>
+            {
+                /* The side effect is already triggered by Marten/Wolverine */
+            },
+            TimeSpan.FromSeconds(10),
+            minVersion: initialVersion + 2);
 
         // Wait for projection to catch up to version 3
-        var foundBeforeUpdate = false;
-        for (var i = 0; i < TestConstants.DefaultMaxRetries; i++)
+        await TestHelpers.WaitForConditionAsync(async () =>
         {
             var searchRequest = new SharedModels.BookSearchRequest
             {
-                Search = uniqueTitle,
-                MinPrice = 40,
-                MaxPrice = 60,
-                Currency = "USD"
+                Search = uniqueTitle, MinPrice = 40, MaxPrice = 60, Currency = "USD"
             };
             var searchList = await publicClient.GetBooksAsync(searchRequest);
-            if (searchList.Items.Any(b => b.Id == bookId))
-            {
-                foundBeforeUpdate = true;
-                break;
-            }
-
-            await Task.Delay(500);
-        }
-
-        _ = await Assert.That(foundBeforeUpdate).IsTrue();
+            return searchList.Items.Any(b => b.Id == bookId);
+        }, TestConstants.DefaultEventTimeout, "Book was not found in search results with discount applied");
 
         // 2. Fetch book to get ETag and Current State
         // Poll until the read model catches up with version 3
@@ -252,20 +213,13 @@ public class PriceFilterRegressionTests
         BookDto fetchedBook = null!;
         string? etagValue = null;
 
-        for (var i = 0; i < TestConstants.LongRetryCount; i++)
+        await TestHelpers.WaitForConditionAsync(async () =>
         {
             response = await authClient.GetBookWithResponseAsync(bookId);
             fetchedBook = response.Content!;
             etagValue = response.Headers.ETag?.ToString();
-            var currentVersion = ParseETag(etagValue);
-
-            if (currentVersion >= expectedVersion)
-            {
-                break;
-            }
-
-            await Task.Delay(500);
-        }
+            return ParseETag(etagValue) >= expectedVersion;
+        }, TestConstants.DefaultEventTimeout, "Read model did not reach expected version after discount");
 
         // 3. Update book Title (should preserve prices and discount)
         var updateRequest = new UpdateBookRequest
@@ -287,41 +241,16 @@ public class PriceFilterRegressionTests
         _ = await TestHelpers.UpdateBookAsync(authClient, bookId, updateRequest, etagValue!);
 
         // 4. Verify book is STILL found in the same price range
-        var foundAfterUpdate = false;
         var updatedTitle = uniqueTitle + " Updated";
-
-        for (var i = 0; i < TestConstants.LongRetryCount; i++)
+        await TestHelpers.WaitForConditionAsync(async () =>
         {
-            var searchRequest = new SharedModels.BookSearchRequest
+            var searchRequest = new BookSearchRequest
             {
-                Search = updatedTitle,
-                MinPrice = 40,
-                MaxPrice = 60,
-                Currency = "USD"
+                Search = updatedTitle, MinPrice = 40, MaxPrice = 60, Currency = "USD"
             };
             var searchList = await publicClient.GetBooksAsync(searchRequest);
-            if (searchList.Items.Any(b => b.Id == bookId))
-            {
-                foundAfterUpdate = true;
-                break;
-            }
-
-            if (i == TestConstants.LongRetryCount - 1)
-            {
-                // Diagnostic: search WITHOUT price filter
-                var isolationList =
-                    await publicClient.GetBooksAsync(new SharedModels.BookSearchRequest { Search = updatedTitle });
-                var foundWithoutFilter = isolationList.Items.Any(b => b.Id == bookId);
-                var details = string.Join("\n", isolationList.Items.Where(b => b.Id == bookId).Select(b =>
-                    $"Title: {b.Title}, Prices: {string.Join(", ", b.Prices?.Select(p => $"{p.Key}:{p.Value}") ?? [])}, CurrentPrices: {string.Join(", ", b.CurrentPrices?.Select(p => $"{p.Currency}:{p.Value}") ?? [])}, Discount: {b.ActiveSale?.Percentage}%"));
-
-                Console.WriteLine($"Search FAILED after update. Found without filter: {foundWithoutFilter}\n{details}");
-            }
-
-            await Task.Delay(500);
-        }
-
-        _ = await Assert.That(foundAfterUpdate).IsTrue();
+            return searchList.Items.Any(b => b.Id == bookId);
+        }, TestConstants.DefaultEventTimeout, "Book was not found in search results after title update");
     }
 
     static long ParseETag(string? etag)

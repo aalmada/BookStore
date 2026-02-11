@@ -154,24 +154,19 @@ public class AuthorCrudTests
         var author = await TestHelpers.CreateAuthorAsync(client, createRequest);
 
         // Retry policy for the GET check
-        var retries = 5;
         AuthorDto? authorDto = null;
-
-        while (retries-- > 0)
+        await TestHelpers.WaitForConditionAsync(async () =>
         {
             try
             {
-                // Public API returns AuthorDto (from Shared). 
                 authorDto = await publicClient.GetAuthorAsync(author!.Id, acceptLanguage);
-                break;
+                return authorDto != null;
             }
             catch (ApiException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
             {
-                // Wait for projection
+                return false;
             }
-
-            await Task.Delay(500);
-        }
+        }, TestConstants.DefaultEventTimeout, "Author was not available in public API after creation");
 
         // Assert
         _ = await Assert.That(authorDto).IsNotNull();

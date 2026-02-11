@@ -35,8 +35,6 @@ public class LocalizationTests
 
         var createdBook = await TestHelpers.CreateBookAsync(adminClient, request);
 
-        // Simple retry policy for the GET check
-        var retries = 5;
         BookDto? bookDto = null;
 
         var publicHttpClient = TestHelpers.GetUnauthenticatedClient();
@@ -44,20 +42,18 @@ public class LocalizationTests
         publicHttpClient.DefaultRequestHeaders.AcceptLanguage.Add(new StringWithQualityHeaderValue(acceptLanguage));
         var publicClient = RestService.For<IBooksClient>(publicHttpClient);
 
-        while (retries-- > 0)
+        await TestHelpers.WaitForConditionAsync(async () =>
         {
             try
             {
                 bookDto = await publicClient.GetBookAsync(createdBook.Id);
-                break;
+                return bookDto != null;
             }
             catch (ApiException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
             {
-                // Ignore 404 while projecting
+                return false;
             }
-
-            await Task.Delay(500);
-        }
+        }, TestConstants.DefaultEventTimeout, "Book was not available in public API after creation");
 
         // Assert
         _ = await Assert.That(bookDto).IsNotNull();

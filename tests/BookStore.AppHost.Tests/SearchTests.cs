@@ -33,18 +33,17 @@ public class SearchTests
         var publicClient = TestHelpers.GetUnauthenticatedClient<IBooksClient>();
         PagedListDto<BookDto>? searchResult = null;
 
-        // Retry loop in case of slight indexing delay
-        for (var i = 0; i < TestConstants.ShortRetryCount; i++)
+        await TestHelpers.WaitForConditionAsync(async () =>
         {
             var response = await publicClient.GetBooksAsync(new BookSearchRequest { Search = uniqueTitle });
             if (response != null && response.Items.Count > 0)
             {
                 searchResult = response;
-                break;
+                return true;
             }
 
-            await Task.Delay(500);
-        }
+            return false;
+        }, TestConstants.DefaultEventTimeout, "Book was not found in search results after creation");
 
         // Assert
         _ = await Assert.That(searchResult).IsNotNull();

@@ -124,10 +124,7 @@ public static class GlobalHooks
                 {
                     tenantSession.Store(new BookStore.ApiService.Models.Tenant
                     {
-                        Id = tenantId,
-                        Name = tenantName,
-                        IsEnabled = true,
-                        CreatedAt = DateTimeOffset.UtcNow
+                        Id = tenantId, Name = tenantName, IsEnabled = true, CreatedAt = DateTimeOffset.UtcNow
                     });
                 }
                 else
@@ -151,35 +148,21 @@ public static class GlobalHooks
 
         // Retry login mechanism (less aggressive now that we control seeding)
         HttpResponseMessage? loginResponse = null;
-        for (var i = 0; i < 30; i++)
+        await TestHelpers.WaitForConditionAsync(async () =>
         {
             try
             {
                 loginResponse = await httpClient.PostAsJsonAsync("/account/login",
                     new { Email = "admin@bookstore.com", Password = "Admin123!" });
-
-                if (loginResponse.IsSuccessStatusCode)
-                {
-                    break;
-                }
+                return loginResponse.IsSuccessStatusCode;
             }
-#pragma warning disable RCS1075 // Avoid empty catch clause
-            catch (Exception)
+            catch
             {
+                return false;
             }
-#pragma warning restore RCS1075
+        }, TimeSpan.FromSeconds(60), "Failed to authenticate admin user after startup");
 
-            await Task.Delay(TestConstants.DefaultRetryDelay);
-        }
-
-        if (loginResponse == null || !loginResponse.IsSuccessStatusCode)
-        {
-            var content = loginResponse != null ? await loginResponse.Content.ReadAsStringAsync() : "null";
-            throw new InvalidOperationException(
-                $"Failed to authenticate admin user after 15 attempts. Status: {loginResponse?.StatusCode}, Content: {content}");
-        }
-
-        var loginResult = await loginResponse.Content.ReadFromJsonAsync<LoginResponse>();
+        var loginResult = await loginResponse!.Content.ReadFromJsonAsync<LoginResponse>();
         if (loginResult == null || string.IsNullOrEmpty(loginResult.AccessToken))
         {
             throw new InvalidOperationException("Failed to retrieve access token");

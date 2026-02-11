@@ -54,9 +54,7 @@ public class RefitMartenRegressionTests
         // because it was trying to query the Dictionary directly.
         var response = await publicClient.GetBooksAsync(new BookSearchRequest
         {
-            Search = uniqueTitle,
-            MinPrice = 5,
-            MaxPrice = 15
+            Search = uniqueTitle, MinPrice = 5, MaxPrice = 15
         });
 
         // Assert
@@ -89,9 +87,7 @@ public class RefitMartenRegressionTests
         // Act
         var response = await publicClient.GetBooksAsync(new BookSearchRequest
         {
-            Search = uniqueTitle,
-            MinPrice = 5,
-            MaxPrice = 15
+            Search = uniqueTitle, MinPrice = 5, MaxPrice = 15
         });
 
         // Assert
@@ -165,9 +161,7 @@ public class RefitMartenRegressionTests
         // The system should now verify p.Currency == "USD" && p.Value <= maxPrice.
         var response = await publicClient.GetBooksAsync(new BookSearchRequest
         {
-            Search = uniqueTitle,
-            MaxPrice = 15,
-            Currency = "USD"
+            Search = uniqueTitle, MaxPrice = 15, Currency = "USD"
         });
 
         // Assert
@@ -282,44 +276,23 @@ public class RefitMartenRegressionTests
 
         var nameA = authorReqA.Name;
 
-        // Poll for consistency
-        var foundA = false;
-        for (var i = 0; i < 20; i++)
+        await TestHelpers.WaitForConditionAsync(async () =>
         {
             var listA = await publicClientA.GetAuthorsAsync(null, null);
-            if (listA.Items.Any(a => a.Name == nameA))
-            {
-                foundA = true;
-                break;
-            }
-
-            await Task.Delay(1000);
-        }
-
-        _ = await Assert.That(foundA).IsTrue();
+            return listA.Items.Any(a => a.Name == nameA);
+        }, TestConstants.DefaultEventTimeout, "Author A was not found in Tenant A");
 
         // 2. Get Authors from Tenant B. Should contain Author B, AND NOT Author A.
         var publicClientB = RestService.For<IAuthorsClient>(TestHelpers.GetUnauthenticatedClient(tenantB));
 
         var nameB = authorReqB.Name;
 
-        // Poll for Author B presence (wait for consistency)
-        var foundB = false;
-
         PagedListDto<AuthorDto>? listB = null;
-        for (var i = 0; i < 10; i++)
+        await TestHelpers.WaitForConditionAsync(async () =>
         {
             listB = await publicClientB.GetAuthorsAsync(null, null);
-            if (listB.Items.Any(a => a.Name == nameB))
-            {
-                foundB = true;
-                break;
-            }
-
-            await Task.Delay(500);
-        }
-
-        _ = await Assert.That(foundB).IsTrue();
+            return listB.Items.Any(a => a.Name == nameB);
+        }, TestConstants.DefaultEventTimeout, "Author B was not found in Tenant B");
 
         // Assert List B does NOT contain Author A.
         var containsAInB = listB!.Items.Any(a => a.Name == nameA);
