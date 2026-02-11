@@ -1,8 +1,8 @@
-using JasperFx.Events;
 using BookStore.ApiService.Events;
 using BookStore.Shared.Models;
-using Marten.Events;
+using JasperFx.Events;
 using Marten;
+using Marten.Events;
 using Marten.Events.Aggregation;
 
 namespace BookStore.ApiService.Projections;

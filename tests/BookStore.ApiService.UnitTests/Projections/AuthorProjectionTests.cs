@@ -21,9 +21,9 @@ public class AuthorProjectionTests
         );
 
         var mockEvent = Substitute.For<JasperFx.Events.IEvent<AuthorAdded>>();
-        mockEvent.Data.Returns(@event);
-        mockEvent.Timestamp.Returns(timestamp);
-        mockEvent.Version.Returns(1);
+        _ = mockEvent.Data.Returns(@event);
+        _ = mockEvent.Timestamp.Returns(timestamp);
+        _ = mockEvent.Version.Returns(1);
 
         // Act
         var projection = AuthorProjection.Create(mockEvent);
@@ -57,9 +57,9 @@ public class AuthorProjectionTests
         );
 
         var mockEvent = Substitute.For<JasperFx.Events.IEvent<AuthorUpdated>>();
-        mockEvent.Data.Returns(@event);
-        mockEvent.Timestamp.Returns(timestamp);
-        mockEvent.Version.Returns(2);
+        _ = mockEvent.Data.Returns(@event);
+        _ = mockEvent.Timestamp.Returns(timestamp);
+        _ = mockEvent.Version.Returns(2);
 
         // Act
         projection.Apply(mockEvent);

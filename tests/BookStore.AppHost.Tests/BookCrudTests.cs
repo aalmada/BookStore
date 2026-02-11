@@ -118,7 +118,7 @@ public class BookCrudTests
         _ = await Assert.That(deleteEtag).IsNotNull();
 
         // Soft delete book
-        await TestHelpers.DeleteBookAsync(client, createdBook.Id, deleteEtag!);
+        _ = await TestHelpers.DeleteBookAsync(client, createdBook.Id, deleteEtag!);
 
         // Act
         createdBook = await TestHelpers.RestoreBookAsync(client, createdBook.Id);

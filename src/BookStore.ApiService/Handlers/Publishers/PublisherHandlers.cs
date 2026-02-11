@@ -39,7 +39,6 @@ public static class PublisherHandlers
     public static async Task<IResult> Handle(
         UpdatePublisher command,
         IDocumentSession session,
-        IHttpContextAccessor httpContextAccessor,
         HybridCache cache,
         ILogger logger)
     {
@@ -55,7 +54,7 @@ public static class PublisherHandlers
         var expectedVersion = ETagHelper.ParseETag(command.ETag);
         if (expectedVersion.HasValue && aggregate.Version != expectedVersion.Value)
         {
-             return ETagHelper.PreconditionFailed();
+            return ETagHelper.PreconditionFailed();
         }
 
         var eventResult = aggregate.UpdateEvent(command.Name);
@@ -75,7 +74,6 @@ public static class PublisherHandlers
     public static async Task<IResult> Handle(
         SoftDeletePublisher command,
         IDocumentSession session,
-        IHttpContextAccessor httpContextAccessor,
         HybridCache cache,
         ILogger logger)
     {
@@ -91,7 +89,7 @@ public static class PublisherHandlers
         var expectedVersion = ETagHelper.ParseETag(command.ETag);
         if (expectedVersion.HasValue && aggregate.Version != expectedVersion.Value)
         {
-             return ETagHelper.PreconditionFailed();
+            return ETagHelper.PreconditionFailed();
         }
 
         var eventResult = aggregate.SoftDeleteEvent();
@@ -111,7 +109,6 @@ public static class PublisherHandlers
     public static async Task<IResult> Handle(
         RestorePublisher command,
         IDocumentSession session,
-        IHttpContextAccessor httpContextAccessor,
         HybridCache cache,
         ILogger logger)
     {
@@ -127,7 +124,7 @@ public static class PublisherHandlers
         var expectedVersion = ETagHelper.ParseETag(command.ETag);
         if (expectedVersion.HasValue && aggregate.Version != expectedVersion.Value)
         {
-             return ETagHelper.PreconditionFailed();
+            return ETagHelper.PreconditionFailed();
         }
 
         var eventResult = aggregate.RestoreEvent();

@@ -62,7 +62,8 @@ public class AuthorHandlerTests : HandlerTestBase
             Guid.CreateVersion7(),
             "Robert C. Martin Updated",
             new Dictionary<string, AuthorTranslationDto> { ["en"] = new AuthorTranslationDto("Uncle Bob Updated") }
-        ) { ETag = "test-etag" };
+        )
+        { ETag = "test-etag" };
 
         // Mock Stream State
         _ = Session.Events.FetchStreamStateAsync(command.Id).Returns(new Marten.Events.StreamState { Version = 1 });
@@ -75,7 +76,7 @@ public class AuthorHandlerTests : HandlerTestBase
 
         // Act
         var result =
-            await AuthorHandlers.Handle(command, Session, HttpContextAccessor, LocalizationOptions, Cache, Logger,
+            await AuthorHandlers.Handle(command, Session, LocalizationOptions, Cache,
                 CancellationToken.None);
 
         // Assert
@@ -104,8 +105,7 @@ public class AuthorHandlerTests : HandlerTestBase
         _ = Session.Events.AggregateStreamAsync<AuthorAggregate>(id).Returns(existingAggregate);
 
         // Act
-        var result = await AuthorHandlers.Handle(command, Session, HttpContextAccessor, Cache, Logger,
-            CancellationToken.None);
+        var result = await AuthorHandlers.Handle(command, Session, Logger);
 
         // Assert
         _ = await Assert.That(result).IsTypeOf<Microsoft.AspNetCore.Http.HttpResults.NoContent>();
@@ -133,8 +133,7 @@ public class AuthorHandlerTests : HandlerTestBase
         _ = Session.Events.AggregateStreamAsync<AuthorAggregate>(id).Returns(existingAggregate);
 
         // Act
-        var result = await AuthorHandlers.Handle(command, Session, HttpContextAccessor, Cache, Logger,
-            CancellationToken.None);
+        var result = await AuthorHandlers.Handle(command, Session, Logger);
 
         // Assert
         _ = await Assert.That(result).IsTypeOf<Microsoft.AspNetCore.Http.HttpResults.NoContent>();

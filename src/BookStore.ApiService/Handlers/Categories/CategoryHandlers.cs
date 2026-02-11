@@ -69,7 +69,6 @@ public static class CategoryHandlers
     public static async Task<IResult> Handle(
         UpdateCategory command,
         IDocumentSession session,
-        IHttpContextAccessor httpContextAccessor,
         HybridCache cache,
         ILogger<UpdateCategory> logger)
     {
@@ -103,10 +102,10 @@ public static class CategoryHandlers
         Log.Categories.CategoryUpdating(logger, command.Id, 0);
 
         var expectedVersion = ETagHelper.ParseETag(command.ETag);
-        
+
         if (expectedVersion.HasValue && aggregate.Version != expectedVersion.Value)
         {
-             return ETagHelper.PreconditionFailed();
+            return ETagHelper.PreconditionFailed();
         }
 
         var translations = command.Translations.ToDictionary(
@@ -130,7 +129,6 @@ public static class CategoryHandlers
     public static async Task<IResult> Handle(
         SoftDeleteCategory command,
         IDocumentSession session,
-        IHttpContextAccessor httpContextAccessor,
         HybridCache cache,
         ILogger<SoftDeleteCategory> logger)
     {
@@ -144,10 +142,10 @@ public static class CategoryHandlers
         }
 
         var expectedVersion = ETagHelper.ParseETag(command.ETag);
-        
+
         if (expectedVersion.HasValue && aggregate.Version != expectedVersion.Value)
         {
-             return ETagHelper.PreconditionFailed();
+            return ETagHelper.PreconditionFailed();
         }
 
         var eventResult = aggregate.SoftDeleteEvent();
@@ -167,7 +165,6 @@ public static class CategoryHandlers
     public static async Task<IResult> Handle(
         RestoreCategory command,
         IDocumentSession session,
-        IHttpContextAccessor httpContextAccessor,
         HybridCache cache,
         ILogger<RestoreCategory> logger)
     {
@@ -181,10 +178,10 @@ public static class CategoryHandlers
         }
 
         var expectedVersion = ETagHelper.ParseETag(command.ETag);
-        
+
         if (expectedVersion.HasValue && aggregate.Version != expectedVersion.Value)
         {
-             return ETagHelper.PreconditionFailed();
+            return ETagHelper.PreconditionFailed();
         }
 
         var eventResult = aggregate.RestoreEvent();

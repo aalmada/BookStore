@@ -21,7 +21,7 @@ public class AuthorCrudTests
         var createAuthorRequest = TestHelpers.GenerateFakeAuthorRequest();
 
         // 1. Create Author
-        await TestHelpers.ExecuteAndWaitForEventAsync(
+        _ = await TestHelpers.ExecuteAndWaitForEventAsync(
             createAuthorRequest.Id,
             ["AuthorCreated", "AuthorUpdated"],
             async () => await client.CreateAuthorAsync(createAuthorRequest),

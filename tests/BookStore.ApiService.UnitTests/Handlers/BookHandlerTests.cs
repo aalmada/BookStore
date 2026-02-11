@@ -8,7 +8,6 @@ using JasperFx.Events;
 using Marten.Events;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.Extensions.Logging;
 
 namespace BookStore.ApiService.UnitTests.Handlers;
 
@@ -134,7 +133,7 @@ public class BookHandlerTests : HandlerTestBase
             .Returns(Task.FromResult<Marten.Events.StreamState?>(null));
 
         // Act
-        var result = await BookHandlers.Handle(command, Session, HttpContextAccessor, LocalizationOptions,
+        var result = await BookHandlers.Handle(command, Session, LocalizationOptions,
             CurrencyOptions, Cache, Logger);
 
         // Assert

@@ -18,7 +18,7 @@ public static class SaleHandlers
         HybridCache cache)
     {
         Instrumentation.SalesScheduled.Add(1, new System.Diagnostics.TagList { { "tenant_id", session.TenantId } });
-        
+
         // Manually project SaleAggregate to avoid Marten exceptions on unknown events
         var events = await session.Events.FetchStreamAsync(command.BookId);
         if (events == null || events.Count == 0)
@@ -53,7 +53,12 @@ public static class SaleHandlers
             if (currentVersion != expectedVersion.Value)
             {
                 // Diagnostic logging
-                try { System.IO.File.AppendAllText("/Users/antaoalmada/Projects/BookStore/debug_concurrency_sales.log", $"[{DateTimeOffset.UtcNow}] ScheduleSale Mismatch: BookId={command.BookId} Expected={expectedVersion.Value} Actual={currentVersion} ETagHeader={command.ETag}\n"); } catch { }
+                try
+                {
+                    System.IO.File.AppendAllText("/Users/antaoalmada/Projects/BookStore/debug_concurrency_sales.log", $"[{DateTimeOffset.UtcNow}] ScheduleSale Mismatch: BookId={command.BookId} Expected={expectedVersion.Value} Actual={currentVersion} ETagHeader={command.ETag}\n");
+                }
+                catch { }
+
                 return ETagHelper.PreconditionFailed();
             }
 
@@ -66,7 +71,7 @@ public static class SaleHandlers
 
         // Invalidate cache immediately
         await cache.RemoveByTagAsync([CacheTags.BookList, CacheTags.ForItem(CacheTags.BookItemPrefix, command.BookId)], default);
-        
+
         return Results.NoContent();
     }
 
@@ -76,7 +81,7 @@ public static class SaleHandlers
         HybridCache cache)
     {
         Instrumentation.SalesCanceled.Add(1, new System.Diagnostics.TagList { { "tenant_id", session.TenantId } });
-        
+
         // Manually project SaleAggregate
         var events = await session.Events.FetchStreamAsync(command.BookId);
         if (events == null || events.Count == 0)

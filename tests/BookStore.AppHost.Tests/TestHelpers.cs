@@ -46,47 +46,49 @@ public static class TestHelpers
     public static CreateBookRequest
         GenerateFakeBookRequest(Guid? publisherId = null, IEnumerable<Guid>? authorIds = null,
             IEnumerable<Guid>? categoryIds = null) => new()
-    {
-        Id = Guid.CreateVersion7(),
-        Title = _faker.Commerce.ProductName(),
-        Isbn = _faker.Commerce.Ean13(),
-        Language = "en",
-        Translations =
+            {
+                Id = Guid.CreateVersion7(),
+                Title = _faker.Commerce.ProductName(),
+                Isbn = _faker.Commerce.Ean13(),
+                Language = "en",
+                Translations =
             new Dictionary<string, BookTranslationDto>
             {
-                ["en"] = new(_faker.Lorem.Paragraph()), ["es"] = new(_faker.Lorem.Paragraph())
+                ["en"] = new(_faker.Lorem.Paragraph()),
+                ["es"] = new(_faker.Lorem.Paragraph())
             },
-        PublicationDate = new PartialDate(
+                PublicationDate = new PartialDate(
             _faker.Date.Past(10).Year,
             _faker.Random.Int(1, 12),
             _faker.Random.Int(1, 28)),
-        PublisherId = publisherId,
-        AuthorIds = (authorIds ?? []).ToList(),
-        CategoryIds = (categoryIds ?? []).ToList(),
-        Prices = new Dictionary<string, decimal> { ["USD"] = decimal.Parse(_faker.Commerce.Price(10, 100)) }
-    };
+                PublisherId = publisherId,
+                AuthorIds = [.. (authorIds ?? [])],
+                CategoryIds = [.. (categoryIds ?? [])],
+                Prices = new Dictionary<string, decimal> { ["USD"] = decimal.Parse(_faker.Commerce.Price(10, 100)) }
+            };
 
     public static UpdateBookRequest
         GenerateFakeUpdateBookRequest(Guid? publisherId = null, IEnumerable<Guid>? authorIds = null,
             IEnumerable<Guid>? categoryIds = null) => new()
-    {
-        Title = _faker.Commerce.ProductName(),
-        Isbn = _faker.Commerce.Ean13(),
-        Language = "en",
-        Translations =
+            {
+                Title = _faker.Commerce.ProductName(),
+                Isbn = _faker.Commerce.Ean13(),
+                Language = "en",
+                Translations =
             new Dictionary<string, BookTranslationDto>
             {
-                ["en"] = new(_faker.Lorem.Paragraph()), ["es"] = new(_faker.Lorem.Paragraph())
+                ["en"] = new(_faker.Lorem.Paragraph()),
+                ["es"] = new(_faker.Lorem.Paragraph())
             },
-        PublicationDate = new PartialDate(
+                PublicationDate = new PartialDate(
             _faker.Date.Past(10).Year,
             _faker.Random.Int(1, 12),
             _faker.Random.Int(1, 28)),
-        PublisherId = publisherId,
-        AuthorIds = (authorIds ?? []).ToList(),
-        CategoryIds = (categoryIds ?? []).ToList(),
-        Prices = new Dictionary<string, decimal> { ["USD"] = decimal.Parse(_faker.Commerce.Price(10, 100)) }
-    };
+                PublisherId = publisherId,
+                AuthorIds = [.. (authorIds ?? [])],
+                CategoryIds = [.. (categoryIds ?? [])],
+                Prices = new Dictionary<string, decimal> { ["USD"] = decimal.Parse(_faker.Commerce.Price(10, 100)) }
+            };
 
     /// <summary>
     /// Generates a fake author creation request with random data using Bogus.
@@ -98,7 +100,8 @@ public static class TestHelpers
         Name = _faker.Name.FullName(),
         Translations = new Dictionary<string, AuthorTranslationDto>
         {
-            ["en"] = new(_faker.Lorem.Paragraphs(2)), ["es"] = new(_faker.Lorem.Paragraphs(2))
+            ["en"] = new(_faker.Lorem.Paragraphs(2)),
+            ["es"] = new(_faker.Lorem.Paragraphs(2))
         }
     };
 
@@ -107,7 +110,8 @@ public static class TestHelpers
         Name = _faker.Name.FullName(),
         Translations = new Dictionary<string, AuthorTranslationDto>
         {
-            ["en"] = new(_faker.Lorem.Paragraphs(2)), ["es"] = new(_faker.Lorem.Paragraphs(2))
+            ["en"] = new(_faker.Lorem.Paragraphs(2)),
+            ["es"] = new(_faker.Lorem.Paragraphs(2))
         }
     };
 
@@ -120,7 +124,8 @@ public static class TestHelpers
         Id = Guid.CreateVersion7(),
         Translations = new Dictionary<string, CategoryTranslationDto>
         {
-            ["en"] = new(_faker.Commerce.Department()), ["es"] = new(_faker.Commerce.Department())
+            ["en"] = new(_faker.Commerce.Department()),
+            ["es"] = new(_faker.Commerce.Department())
         }
     };
 
@@ -132,7 +137,8 @@ public static class TestHelpers
     {
         Translations = new Dictionary<string, CategoryTranslationDto>
         {
-            ["en"] = new(_faker.Commerce.Department()), ["es"] = new(_faker.Commerce.Department())
+            ["en"] = new(_faker.Commerce.Department()),
+            ["es"] = new(_faker.Commerce.Department())
         }
     };
 
@@ -339,8 +345,8 @@ public static class TestHelpers
         Func<Task> action,
         TimeSpan timeout,
         long minVersion = 0,
-        DateTimeOffset? minTimestamp = null) =>
-        (await ExecuteAndWaitForEventWithVersionAsync(entityId, eventType, action, timeout, minVersion, minTimestamp))
+        DateTimeOffset? minTimestamp = null)
+        => (await ExecuteAndWaitForEventWithVersionAsync(entityId, eventType, action, timeout, minVersion, minTimestamp))
         .Success;
 
     public static async Task<EventResult> ExecuteAndWaitForEventWithVersionAsync(
@@ -349,8 +355,8 @@ public static class TestHelpers
         Func<Task> action,
         TimeSpan timeout,
         long minVersion = 0,
-        DateTimeOffset? minTimestamp = null) =>
-        await ExecuteAndWaitForEventWithVersionAsync(entityId, [eventType], action, timeout, minVersion, minTimestamp);
+        DateTimeOffset? minTimestamp = null)
+        => await ExecuteAndWaitForEventWithVersionAsync(entityId, [eventType], action, timeout, minVersion, minTimestamp);
 
     public record EventResult(bool Success, long Version);
 
@@ -360,8 +366,8 @@ public static class TestHelpers
         Func<Task> action,
         TimeSpan timeout,
         long minVersion = 0,
-        DateTimeOffset? minTimestamp = null) =>
-        (await ExecuteAndWaitForEventWithVersionAsync(entityId, eventTypes, action, timeout, minVersion, minTimestamp))
+        DateTimeOffset? minTimestamp = null)
+        => (await ExecuteAndWaitForEventWithVersionAsync(entityId, eventTypes, action, timeout, minVersion, minTimestamp))
         .Success;
 
     public static async Task<EventResult> ExecuteAndWaitForEventWithVersionAsync(
@@ -445,7 +451,6 @@ public static class TestHelpers
                                     }
                                 }
 
-
                                 long version = 0;
                                 if (doc.RootElement.TryGetProperty("version", out var vProp) &&
                                     vProp.ValueKind == JsonValueKind.Number)
@@ -511,7 +516,6 @@ public static class TestHelpers
         {
             return result;
         }
-
 
         return result;
     }
@@ -1181,15 +1185,12 @@ public static class TestHelpers
     }
 
     public static async Task RateBookAsync(IBooksClient client, Guid bookId, int rating, Guid expectedEntityId,
-        string expectedEvent)
-    {
-        await ExecuteAndWaitForEventAsync(
+        string expectedEvent) => await ExecuteAndWaitForEventAsync(
             expectedEntityId,
             expectedEvent,
             () => client.RateBookAsync(bookId, new RateBookRequest(rating)),
             TimeSpan.FromSeconds(10), // Increased timeout
             minTimestamp: DateTimeOffset.UtcNow); // Use current time to avoid stale events
-    }
 
     public static async Task RemoveRatingAsync(HttpClient client, Guid bookId, Guid? expectedEntityId = null,
         string expectedEvent = "UserUpdated")
@@ -1212,15 +1213,12 @@ public static class TestHelpers
     }
 
     public static async Task RemoveRatingAsync(IBooksClient client, Guid bookId, Guid expectedEntityId,
-        string expectedEvent)
-    {
-        await ExecuteAndWaitForEventAsync(
+        string expectedEvent) => await ExecuteAndWaitForEventAsync(
             expectedEntityId,
             expectedEvent,
             () => client.RemoveBookRatingAsync(bookId),
             TimeSpan.FromSeconds(10),
             minTimestamp: DateTimeOffset.UtcNow);
-    }
 
     public static async Task AddToFavoritesAsync(HttpClient client, Guid bookId, Guid? expectedEntityId = null,
         string expectedEvent = "UserUpdated")
@@ -1370,7 +1368,7 @@ public static class TestHelpers
         return await client.GetBookAdminAsync(book.Id);
     }
 
-// Helper to accept generic object and cast if possible or use fake request
+    // Helper to accept generic object and cast if possible or use fake request
     public static async Task<BookDto> UpdateBookAsync(IBooksClient client, Guid bookId, object updatePayload,
         string etag)
     {
@@ -1478,7 +1476,7 @@ public static class TestHelpers
         var received = await ExecuteAndWaitForEventWithVersionAsync(
             bookId,
             ["BookUpdated", "BookRestored"],
-            async () => { await client.RestoreBookAsync(bookId, apiVersion: "1.0", etag: currentETag); },
+            async () => await client.RestoreBookAsync(bookId, apiVersion: "1.0", etag: currentETag),
             TestConstants.DefaultEventTimeout,
             minVersion: version + 1,
             minTimestamp: DateTimeOffset.UtcNow);

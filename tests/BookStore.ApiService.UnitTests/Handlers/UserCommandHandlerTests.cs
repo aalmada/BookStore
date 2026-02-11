@@ -4,8 +4,8 @@ using BookStore.ApiService.Messages.Commands;
 using BookStore.ApiService.Projections;
 using BookStore.Shared.Messages.Events;
 using Marten;
-using NSubstitute;
 using Microsoft.Extensions.Caching.Hybrid;
+using NSubstitute;
 
 #pragma warning disable CS8602 // Dereference of a possibly null reference - Exception.Message is never null for our test scenarios
 

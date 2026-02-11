@@ -121,13 +121,11 @@ public static partial class BookHandlers
     public static async Task<IResult> Handle(
         UpdateBook command,
         IDocumentSession session,
-        IHttpContextAccessor contextAccessor,
         IOptions<LocalizationOptions> localizationOptions,
         IOptions<CurrencyOptions> currencyOptions,
         HybridCache cache,
         ILogger logger)
     {
-        var context = contextAccessor.HttpContext!;
         // Validate language code
         if (!CultureValidator.IsValidCultureCode(command.Language))
         {
@@ -224,7 +222,6 @@ public static partial class BookHandlers
     public static async Task<IResult> Handle(
         SoftDeleteBook command,
         IDocumentSession session,
-        IHttpContextAccessor contextAccessor,
         HybridCache cache,
         ILogger logger)
     {
@@ -258,15 +255,12 @@ public static partial class BookHandlers
         return Results.NoContent();
     }
 
-
-
     /// <summary>
     /// Handle RestoreBook command with ETag validation
     /// </summary>
     public static async Task<IResult> Handle(
         RestoreBook command,
         IDocumentSession session,
-        IHttpContextAccessor contextAccessor,
         HybridCache cache,
         ILogger logger)
     {
@@ -293,7 +287,7 @@ public static partial class BookHandlers
         }
 
         _ = session.Events.Append(command.Id, eventResult.Value);
-        
+
         // Invalidate cache immediately to prevent stale reads during test polling
         await cache.RemoveByTagAsync([CacheTags.BookList, CacheTags.ForItem(CacheTags.BookItemPrefix, command.Id)], default);
 

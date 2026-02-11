@@ -46,9 +46,9 @@ public class BookSearchProjectionTests
         _ = session.Query<AuthorProjection>().Returns(authorQuery);
 
         var mockEvent = Substitute.For<JasperFx.Events.IEvent<BookAdded>>();
-        mockEvent.Data.Returns(@event);
-        mockEvent.Timestamp.Returns(DateTimeOffset.UtcNow);
-        mockEvent.Version.Returns(1);
+        _ = mockEvent.Data.Returns(@event);
+        _ = mockEvent.Timestamp.Returns(DateTimeOffset.UtcNow);
+        _ = mockEvent.Version.Returns(1);
 
         // Act
         var projection = BookSearchProjection.Create(mockEvent, session);
@@ -101,9 +101,9 @@ public class BookSearchProjectionTests
         _ = session.Query<AuthorProjection>().Returns(authorQuery);
 
         var mockEvent = Substitute.For<JasperFx.Events.IEvent<BookUpdated>>();
-        mockEvent.Data.Returns(@event);
-        mockEvent.Timestamp.Returns(DateTimeOffset.UtcNow);
-        mockEvent.Version.Returns(2);
+        _ = mockEvent.Data.Returns(@event);
+        _ = mockEvent.Timestamp.Returns(DateTimeOffset.UtcNow);
+        _ = mockEvent.Version.Returns(2);
 
         // Act
         _ = projection.Apply(mockEvent, session);
@@ -139,9 +139,9 @@ public class BookSearchProjectionTests
         var @event = new BookSaleScheduled(projection.Id, sale);
 
         var mockEvent = Substitute.For<JasperFx.Events.IEvent<BookSaleScheduled>>();
-        mockEvent.Data.Returns(@event);
-        mockEvent.Timestamp.Returns(DateTimeOffset.UtcNow);
-        mockEvent.Version.Returns(2);
+        _ = mockEvent.Data.Returns(@event);
+        _ = mockEvent.Timestamp.Returns(DateTimeOffset.UtcNow);
+        _ = mockEvent.Version.Returns(2);
 
         // Act
         projection.Apply(mockEvent);
@@ -165,9 +165,9 @@ public class BookSearchProjectionTests
         var @event = new BookSaleScheduled(projection.Id, newSale);
 
         var mockEvent = Substitute.For<JasperFx.Events.IEvent<BookSaleScheduled>>();
-        mockEvent.Data.Returns(@event);
-        mockEvent.Timestamp.Returns(DateTimeOffset.UtcNow);
-        mockEvent.Version.Returns(3);
+        _ = mockEvent.Data.Returns(@event);
+        _ = mockEvent.Timestamp.Returns(DateTimeOffset.UtcNow);
+        _ = mockEvent.Version.Returns(3);
 
         // Act
         projection.Apply(mockEvent);
@@ -191,9 +191,9 @@ public class BookSearchProjectionTests
         var @event = new BookSaleCancelled(projection.Id, start);
 
         var mockEvent = Substitute.For<JasperFx.Events.IEvent<BookSaleCancelled>>();
-        mockEvent.Data.Returns(@event);
-        mockEvent.Timestamp.Returns(DateTimeOffset.UtcNow);
-        mockEvent.Version.Returns(4);
+        _ = mockEvent.Data.Returns(@event);
+        _ = mockEvent.Timestamp.Returns(DateTimeOffset.UtcNow);
+        _ = mockEvent.Version.Returns(4);
 
         // Act
         projection.Apply(mockEvent);
@@ -218,9 +218,9 @@ public class BookSearchProjectionTests
         var @event = new BookDiscountUpdated(id, 20m); // 20% discount
 
         var mockEvent = Substitute.For<JasperFx.Events.IEvent<BookDiscountUpdated>>();
-        mockEvent.Data.Returns(@event);
-        mockEvent.Timestamp.Returns(DateTimeOffset.UtcNow);
-        mockEvent.Version.Returns(2);
+        _ = mockEvent.Data.Returns(@event);
+        _ = mockEvent.Timestamp.Returns(DateTimeOffset.UtcNow);
+        _ = mockEvent.Version.Returns(2);
 
         // Act
         projection.Apply(mockEvent);
@@ -247,9 +247,9 @@ public class BookSearchProjectionTests
         var @event = new BookDiscountUpdated(id, 0m);
 
         var mockEvent = Substitute.For<JasperFx.Events.IEvent<BookDiscountUpdated>>();
-        mockEvent.Data.Returns(@event);
-        mockEvent.Timestamp.Returns(DateTimeOffset.UtcNow);
-        mockEvent.Version.Returns(2);
+        _ = mockEvent.Data.Returns(@event);
+        _ = mockEvent.Timestamp.Returns(DateTimeOffset.UtcNow);
+        _ = mockEvent.Version.Returns(2);
 
         // Act
         projection.Apply(mockEvent);
@@ -286,9 +286,9 @@ public class BookSearchProjectionTests
         );
 
         var mockEvent = Substitute.For<JasperFx.Events.IEvent<BookUpdated>>();
-        mockEvent.Data.Returns(@event);
-        mockEvent.Timestamp.Returns(DateTimeOffset.UtcNow);
-        mockEvent.Version.Returns(2);
+        _ = mockEvent.Data.Returns(@event);
+        _ = mockEvent.Timestamp.Returns(DateTimeOffset.UtcNow);
+        _ = mockEvent.Version.Returns(2);
 
         // Act
         _ = projection.Apply(mockEvent, Substitute.For<IQuerySession>());
