@@ -127,7 +127,8 @@ static void RegisterScopedRefitClients(
             new BookStore.Client.Infrastructure.BookStoreHeaderHandler() { InnerHandler = networkHandler };
         var tenantHandler = new TenantHeaderHandler(tenantService) { InnerHandler = headerHandler };
         var authHandler = new AuthorizationMessageHandler(
-            tokenService, tenantService, httpContextAccessor, correlationService) { InnerHandler = tenantHandler };
+            tokenService, tenantService, httpContextAccessor, correlationService)
+        { InnerHandler = tenantHandler };
 
         // Wrap with resilience handler: Resilience -> Auth -> Tenant -> Network
         var resilienceHandler = new ResilienceHandler(resiliencePipeline) { InnerHandler = authHandler };

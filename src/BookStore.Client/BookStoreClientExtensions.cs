@@ -43,14 +43,14 @@ public static class BookStoreClientExtensions
     }
 
     // Helper to register client with standard configuration
-    private static IHttpClientBuilder AddClient<T>(this IServiceCollection services, Uri baseAddress, Action<IHttpClientBuilder>? configureClient = null) where T : class
+    static IHttpClientBuilder AddClient<T>(this IServiceCollection services, Uri baseAddress, Action<IHttpClientBuilder>? configureClient = null) where T : class
     {
         var builder = services.AddRefitClient<T>()
             .ConfigureHttpClient(c => c.BaseAddress = baseAddress)
             .AddHttpMessageHandler<BookStore.Client.Infrastructure.BookStoreHeaderHandler>()
             .AddHttpMessageHandler<BookStore.Client.Infrastructure.BookStoreErrorHandler>();
 
-        builder.AddStandardResilienceHandler();
+        _ = builder.AddStandardResilienceHandler();
 
         configureClient?.Invoke(builder);
         return builder;
