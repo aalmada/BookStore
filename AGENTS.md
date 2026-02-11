@@ -12,6 +12,7 @@
 ✅ record BookAdded(...)          ❌ record AddBook(...)
 ✅ namespace BookStore.X;         ❌ namespace BookStore.X { }
 ✅ [Test] async Task (TUnit)      ❌ [Fact] (xUnit)
+✅ WaitForConditionAsync          ❌ Task.Delay / Thread.Sleep
 ```
 
 ## Common Mistakes
@@ -19,6 +20,7 @@
 - ❌ Forgetting SSE notification → Add to `MartenCommitListener`
 - ❌ Missing cache invalidation → Call `RemoveByTagAsync` after mutations
 - ❌ Using xUnit/NUnit → Use TUnit with `await Assert.That(...)`
+- ❌ Hardcoded `Task.Delay` in tests → Use `TestHelpers.WaitForConditionAsync` or SSE listeners
 
 ## Project Layout
 | Path | Purpose |
@@ -62,3 +64,9 @@
 | SSE/Real-time | `docs/guides/real-time-notifications.md` |
 | Testing | `docs/guides/testing-guide.md`, `docs/guides/integration-testing-guide.md` |
 | Deployment | `docs/guides/aspire-deployment-guide.md` |
+
+## Integration Testing Guidelines
+- **Avoid `Task.Delay`**: Never use hardcoded delays to wait for eventual consistency.
+- **Use SSE Listeners**: Use `TestHelpers.ExecuteAndWaitForEventAsync` to wait for specific domain events.
+- **Polling Utility**: Use `TestHelpers.WaitForConditionAsync` for polling the read side or search index.
+- **Shared Helpers**: Prefer `TestHelpers.CreateBookAsync` etc., which already handle SSE/polling correctly.

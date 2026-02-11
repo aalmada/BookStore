@@ -35,11 +35,14 @@ public class CategoryOrderingTests
                     ["en"] = new CategoryTranslationDto(name)
                 }
             };
-            await adminClient.CreateCategoryAsync(createRequest);
+            await TestHelpers.ExecuteAndWaitForEventAsync(
+                createRequest.Id,
+                ["CategoryCreated", "CategoryUpdated"],
+                async () => await adminClient.CreateCategoryAsync(createRequest),
+                TestConstants.DefaultEventTimeout);
         }
 
-        // Wait for projections to catch up
-        await Task.Delay(TestConstants.DefaultProjectionDelay);
+        // Removed Task.Delay(TestConstants.DefaultProjectionDelay) as we now wait for each creation.
 
         // Act - Request public categories ordered by name asc
         var publicHttpClient = TestHelpers.GetUnauthenticatedClient();
@@ -87,23 +90,22 @@ public class CategoryOrderingTests
                 Id = Guid.CreateVersion7(),
                 Translations = new Dictionary<string, CategoryTranslationDto>
                 {
-                    ["en"] = new CategoryTranslationDto(cat.EN),
-                    ["pt-PT"] = new CategoryTranslationDto(cat.PT)
+                    ["en"] = new CategoryTranslationDto(cat.EN), ["pt-PT"] = new CategoryTranslationDto(cat.PT)
                 }
             };
-            await adminClient.CreateCategoryAsync(createRequest);
+            await TestHelpers.ExecuteAndWaitForEventAsync(
+                createRequest.Id,
+                ["CategoryCreated", "CategoryUpdated"],
+                async () => await adminClient.CreateCategoryAsync(createRequest),
+                TestConstants.DefaultEventTimeout);
         }
 
-        // Wait for projections
-        await Task.Delay(2000);
+        // Removed Task.Delay(2000) as we now wait for each creation.
 
         // Act - Request admin categories ordered by name in English
         var result = await adminClient.GetAllCategoriesAsync(new CategorySearchRequest
         {
-            SortBy = "name",
-            SortOrder = "asc",
-            Language = "en",
-            PageSize = 100
+            SortBy = "name", SortOrder = "asc", Language = "en", PageSize = 100
         });
 
         // Assert - Should be A-Category followed by C-Category
@@ -115,10 +117,7 @@ public class CategoryOrderingTests
         // Act - Request admin categories ordered by name in Portuguese
         result = await adminClient.GetAllCategoriesAsync(new CategorySearchRequest
         {
-            SortBy = "name",
-            SortOrder = "asc",
-            Language = "pt-PT",
-            PageSize = 100
+            SortBy = "name", SortOrder = "asc", Language = "pt-PT", PageSize = 100
         });
 
         // Assert - Should be A-Portuguese (which is Cat 1) followed by C-Portuguese (which is Cat 2)

@@ -13,6 +13,8 @@
 ## Rules
 - **TUnit only** (not xUnit/NUnit) - Use `[Test]` and `await Assert.That(...)`
 - Use `DistributedApplicationTestingBuilder` from Aspire
-- Use `TestHelpers.ExecuteAndWaitForEventAsync()` for SSE verification
-- Use `Bogus` via `TestHelpers.GenerateFake*Request()` for test data
+- **Avoid `Task.Delay`** - Never use hardcoded delays to wait for eventual consistency
+- **SSE Verification** - Use `TestHelpers.ExecuteAndWaitForEventAsync()`
+- **Polling Utility** - Use `TestHelpers.WaitForConditionAsync()` for read-side checks
+- **Bogus** - Use `TestHelpers.GenerateFake*Request()` for test data
 - Naming: `{Feature}Tests.cs` (e.g., `BookCrudTests.cs`)

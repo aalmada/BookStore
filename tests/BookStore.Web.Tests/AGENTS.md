@@ -11,6 +11,7 @@
 
 ## Rules
 - **TUnit only** (not xUnit/NUnit) - Use `[Test]` and `await Assert.That(...)`
+- **Avoid `Task.Delay`** - Use mocks and direct execution
 - Test `QueryInvalidationService`, `OptimisticUpdateService` in isolation
 - Mock API clients (`IBooksClient`, `IAuthorsClient`)
 - Naming: `{ServiceName}Tests.cs`

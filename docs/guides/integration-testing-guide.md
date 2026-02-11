@@ -186,59 +186,20 @@ The standard resilience handler (circuit breaker, retry policies) is disabled in
 // });
 ```
 
-## Writing Integration Tests
+### 4. Eventual Consistency & Polling
 
-### Basic CRUD Test Pattern
+The system uses asynchronous projections, which means data written to the search index or read store may not be available immediately. 
 
-```csharp
-[Test]
-public async Task CreateBook_EndToEndFlow_ShouldReturnOk()
-{
-    // Arrange
-    var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
-    var createBookRequest = TestDataGenerators.GenerateFakeBookRequest();
+**Avoid `Task.Delay`**: Never use hardcoded delays to wait for eventual consistency. They are unreliable and slow down the test suite.
 
-    // Act
-    var createResponse = await httpClient.PostAsJsonAsync("/api/admin/books", createBookRequest);
-
-    // Assert
-    _ = await Assert.That(createResponse.IsSuccessStatusCode).IsTrue();
-}
-```
-
-### Error Scenario Test Pattern
+**Use `WaitForConditionAsync`**: Use this utility to poll until a condition is met.
 
 ```csharp
-[Test]
-public async Task CreateBook_WithoutAuth_ShouldReturnUnauthorized()
+await TestHelpers.WaitForConditionAsync(async () =>
 {
-    // Arrange
-    var httpClient = TestHelpers.GetUnauthenticatedClient();
-    var createBookRequest = TestDataGenerators.GenerateFakeBookRequest();
-
-    // Act
-    var createResponse = await httpClient.PostAsJsonAsync("/api/admin/books", createBookRequest);
-
-    // Assert
-    _ = await Assert.That(createResponse.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
-}
-```
-
-### Public API Test Pattern
-
-```csharp
-[Test]
-public async Task GetBooks_PublicEndpoint_ShouldReturnOk()
-{
-    // Arrange
-    var httpClient = TestHelpers.GetUnauthenticatedClient();
-
-    // Act
-    var response = await httpClient.GetAsync("/api/books");
-
-    // Assert
-    _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-}
+    var response = await publicClient.GetBooksAsync(new BookSearchRequest { Search = uniqueTitle });
+    return response.Items.Any(b => b.Title == uniqueTitle);
+}, TestConstants.DefaultEventTimeout, "Book was not found in search results");
 ```
 
 ## Server-Sent Events (SSE) Testing

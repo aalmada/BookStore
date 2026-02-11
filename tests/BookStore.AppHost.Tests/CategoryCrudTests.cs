@@ -138,23 +138,19 @@ public class CategoryCrudTests
         var publicClient =
             RestService.For<IGetCategoryEndpoint>(
                 TestHelpers.GetUnauthenticatedClient(StorageConstants.DefaultTenantId));
-        var retries = 5;
         CategoryDto? categoryDto = null;
-
-        while (retries-- > 0)
+        await TestHelpers.WaitForConditionAsync(async () =>
         {
             try
             {
                 categoryDto = await publicClient.GetCategoryAsync(createdCategory!.Id, acceptLanguage: acceptLanguage);
-                break;
+                return categoryDto != null;
             }
             catch (ApiException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
             {
-                // Wait for projection
+                return false;
             }
-
-            await Task.Delay(500);
-        }
+        }, TestConstants.DefaultEventTimeout, "Category was not available in public API after creation");
 
         // Assert
         _ = await Assert.That(categoryDto).IsNotNull();

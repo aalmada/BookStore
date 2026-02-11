@@ -177,76 +177,58 @@ public class ManagementIntegrationTests
     // Verification helpers
     async Task<bool> VerifyInAdminAuthorsAsync(IAuthorsClient client, string search, bool expected)
     {
-        for (var i = 0; i < TestConstants.ShortRetryCount; i++)
-        {
-            try
+        await TestHelpers.WaitForConditionAsync(async () =>
             {
-                var response =
-                    await client.GetAllAuthorsAsync(new SharedModels.AuthorSearchRequest { Search = search });
-                var found = response?.Items.Any(a => a.Name == search) ?? false;
-                if (found == expected)
+                try
                 {
-                    return true;
+                    var response =
+                        await client.GetAllAuthorsAsync(new SharedModels.AuthorSearchRequest { Search = search });
+                    return (response?.Items.Any(a => a.Name == search) ?? false) == expected;
                 }
-            }
-            catch
-            {
-                // Ignore exceptions during retry - expected during eventual consistency delay
-            }
+                catch
+                {
+                    return false;
+                }
+            }, TestConstants.DefaultEventTimeout, $"Author {search} presence mismatch: expected {expected}");
 
-            await Task.Delay(500);
-        }
-
-        return false;
+        return true;
     }
 
     async Task<bool> VerifyInAdminCategoriesAsync(ICategoriesClient client, string search, bool expected)
     {
-        for (var i = 0; i < TestConstants.ShortRetryCount; i++)
-        {
-            try
+        await TestHelpers.WaitForConditionAsync(async () =>
             {
-                var response =
-                    await client.GetAllCategoriesAsync(new SharedModels.CategorySearchRequest { Search = search });
-                var found = response?.Items.Any(c => c.Translations["en"].Name == search) ?? false;
-                if (found == expected)
+                try
                 {
-                    return true;
+                    var response =
+                        await client.GetAllCategoriesAsync(new SharedModels.CategorySearchRequest { Search = search });
+                    return (response?.Items.Any(c => c.Translations["en"].Name == search) ?? false) == expected;
                 }
-            }
-            catch
-            {
-                // Ignore exceptions during retry - expected during eventual consistency delay
-            }
+                catch
+                {
+                    return false;
+                }
+            }, TestConstants.DefaultEventTimeout, $"Category {search} presence mismatch: expected {expected}");
 
-            await Task.Delay(500);
-        }
-
-        return false;
+        return true;
     }
 
     async Task<bool> VerifyInAdminPublishersAsync(IPublishersClient client, string search, bool expected)
     {
-        for (var i = 0; i < TestConstants.ShortRetryCount; i++)
-        {
-            try
+        await TestHelpers.WaitForConditionAsync(async () =>
             {
-                var response =
-                    await client.GetAllPublishersAsync(new SharedModels.PublisherSearchRequest { Search = search });
-                var found = response?.Items.Any(p => p.Name == search) ?? false;
-                if (found == expected)
+                try
                 {
-                    return true;
+                    var response =
+                        await client.GetAllPublishersAsync(new SharedModels.PublisherSearchRequest { Search = search });
+                    return (response?.Items.Any(p => p.Name == search) ?? false) == expected;
                 }
-            }
-            catch
-            {
-                // Ignore exceptions during retry - expected during eventual consistency delay
-            }
+                catch
+                {
+                    return false;
+                }
+            }, TestConstants.DefaultEventTimeout, $"Publisher {search} presence mismatch: expected {expected}");
 
-            await Task.Delay(500);
-        }
-
-        return false;
+        return true;
     }
 }

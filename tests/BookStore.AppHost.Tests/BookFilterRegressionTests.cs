@@ -49,21 +49,11 @@ public class BookFilterRegressionTests
         // Search in correct tenant
         var tenantClient = RestService.For<IBooksClient>(TestHelpers.GetUnauthenticatedClient(tenantId));
 
-        // Poll for consistency (Book projection)
-        var foundInTenant = false;
-        for (var i = 0; i < TestConstants.DefaultMaxRetries; i++)
+        await TestHelpers.WaitForConditionAsync(async () =>
         {
             var list = await tenantClient.GetBooksAsync(new BookSearchRequest { AuthorId = authorId });
-            if (list != null && list.Items.Any(b => b.Id == book.Id))
-            {
-                foundInTenant = true;
-                break;
-            }
-
-            await Task.Delay(500);
-        }
-
-        _ = await Assert.That(foundInTenant).IsTrue();
+            return list != null && list.Items.Any(b => b.Id == book.Id);
+        }, TestConstants.DefaultEventTimeout, "Book was not found in non-default tenant after creation");
 
         // Search in WRONG tenant (Default)
         var defaultTenantClient = RestService.For<IBooksClient>(TestHelpers.GetUnauthenticatedClient());
@@ -110,29 +100,16 @@ public class BookFilterRegressionTests
         // Wait for projection
         _ = await TestHelpers.CreateBookAsync(authClient, createRequest);
 
-        // Poll wait for search index/projection availability
-        var ready = false;
-        for (var i = 0; i < TestConstants.DefaultMaxRetries; i++)
+        await TestHelpers.WaitForConditionAsync(async () =>
         {
             var c = await publicClient.GetBooksAsync(new BookSearchRequest { Search = uniqueTitle });
-            if (c != null && c.Items.Any(b => b.Title == uniqueTitle))
-            {
-                ready = true;
-                break;
-            }
-
-            await Task.Delay(500);
-        }
-
-        _ = await Assert.That(ready).IsTrue();
+            return c != null && c.Items.Any(b => b.Title == uniqueTitle);
+        }, TestConstants.DefaultEventTimeout, "Book was not found in search results after creation");
 
         // Execute Search
         var request = new BookSearchRequest
         {
-            Search = uniqueTitle,
-            Currency = currency,
-            MinPrice = (decimal?)minPrice,
-            MaxPrice = (decimal?)maxPrice
+            Search = uniqueTitle, Currency = currency, MinPrice = (decimal?)minPrice, MaxPrice = (decimal?)maxPrice
         };
 
         var content = await publicClient.GetBooksAsync(request);
@@ -176,9 +153,7 @@ public class BookFilterRegressionTests
         // Verify initially NOT found with MaxPrice=40 (Price is 50)
         var preSaleList = await publicClient.GetBooksAsync(new BookSearchRequest
         {
-            Search = uniqueTitle,
-            MaxPrice = 40,
-            Currency = "USD"
+            Search = uniqueTitle, MaxPrice = 40, Currency = "USD"
         });
         _ = await Assert.That(preSaleList!.Items.Any(b => b.Title == uniqueTitle)).IsFalse();
 
@@ -196,27 +171,15 @@ public class BookFilterRegressionTests
         // Refresh book to get new ETag if we needed it later (not needed here but good practice)
         book = await authClient.GetBookAsync(bookId);
 
-        // Poll for search projection to update with Sale
-        var foundOnSale = false;
-        for (var i = 0; i < TestConstants.LongRetryCount * 1.5; i++)
+        await TestHelpers.WaitForConditionAsync(async () =>
         {
             // Search with MaxPrice=40. Desired price is 25.
             var list = await publicClient.GetBooksAsync(new BookSearchRequest
             {
-                Search = uniqueTitle,
-                MaxPrice = 40,
-                Currency = "USD"
+                Search = uniqueTitle, MaxPrice = 40, Currency = "USD"
             });
 
-            if (list != null && list.Items.Any(b => b.Id == bookId))
-            {
-                foundOnSale = true;
-                break;
-            }
-
-            await Task.Delay((int)TestConstants.DefaultRetryDelay.TotalMilliseconds);
-        }
-
-        _ = await Assert.That(foundOnSale).IsTrue();
+            return list != null && list.Items.Any(b => b.Id == bookId);
+        }, TestConstants.DefaultEventTimeout, "Book was not found with discounted price in search results");
     }
 }

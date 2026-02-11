@@ -20,8 +20,7 @@ public class MultiLanguageTranslationTests
             Name = authorName,
             Translations = new Dictionary<string, AuthorTranslationDto>
             {
-                ["en"] = new("English Bio"),
-                ["pt"] = new("Biografia em Português")
+                ["en"] = new("English Bio"), ["pt"] = new("Biografia em Português")
             }
         };
 
@@ -67,8 +66,7 @@ public class MultiLanguageTranslationTests
             Id = Guid.CreateVersion7(),
             Translations = new Dictionary<string, CategoryTranslationDto>
             {
-                ["en"] = new(englishName),
-                ["pt"] = new("Categoria em Português")
+                ["en"] = new(englishName), ["pt"] = new("Categoria em Português")
             }
         };
 
@@ -119,8 +117,7 @@ public class MultiLanguageTranslationTests
             Translations =
                 new Dictionary<string, BookTranslationDto>
                 {
-                    ["en"] = new("English Desc"),
-                    ["es"] = new("Descripción Original")
+                    ["en"] = new("English Desc"), ["es"] = new("Descripción Original")
                 },
             PublicationDate = new SharedModels.PartialDate(2024),
             AuthorIds = [],
@@ -149,8 +146,7 @@ public class MultiLanguageTranslationTests
             Prices = createRequest.Prices,
             Translations = new Dictionary<string, BookTranslationDto>
             {
-                ["en"] = new("English Updated"),
-                ["es"] = new("Descripción Original")
+                ["en"] = new("English Updated"), ["es"] = new("Descripción Original")
             }
         };
 
@@ -169,19 +165,15 @@ public class MultiLanguageTranslationTests
         _ = await Assert.That(bookEs.Description).IsEqualTo("Descripción Original");
     }
 
-    async Task<T> RetryUntilFoundAsync<T>(Func<Task<T?>> func, int maxRetries = 10)
+    async Task<T> RetryUntilFoundAsync<T>(Func<Task<T?>> func)
     {
-        for (var i = 0; i < maxRetries; i++)
+        T? result = default;
+        await TestHelpers.WaitForConditionAsync(async () =>
         {
-            var result = await func();
-            if (result != null)
-            {
-                return result;
-            }
+            result = await func();
+            return result != null;
+        }, TestConstants.DefaultEventTimeout, "Item not found after retries");
 
-            await Task.Delay(500);
-        }
-
-        throw new Exception("Item not found after retries");
+        return result!;
     }
 }
