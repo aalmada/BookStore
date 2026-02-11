@@ -62,6 +62,10 @@ public class QueryInvalidationService
                 yield return "Books"; // Cover shown in list
                 yield return $"Book:{n.EntityId}";
                 break;
+            case BookStatisticsUpdateNotification n:
+                yield return "Books";
+                yield return $"Book:{n.EntityId}";
+                break;
 
             case AuthorCreatedNotification n:
                 yield return "Authors";
@@ -77,17 +81,23 @@ public class QueryInvalidationService
                 yield return "Books";
                 yield return $"Author:{n.EntityId}";
                 break;
+            case AuthorStatisticsUpdateNotification n:
+                yield return "Authors";
+                yield return $"Author:{n.EntityId}";
+                break;
 
             case CategoryCreatedNotification:
             case CategoryUpdatedNotification:
             case CategoryDeletedNotification:
             case CategoryRestoredNotification:
+            case CategoryStatisticsUpdateNotification:
                 yield return "Categories";
                 break;
 
             case PublisherCreatedNotification:
             case PublisherUpdatedNotification:
             case PublisherDeletedNotification:
+            case PublisherStatisticsUpdateNotification:
                 yield return "Publishers";
                 break;
 

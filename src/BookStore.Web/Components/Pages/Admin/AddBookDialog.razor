@@ -339,6 +339,7 @@
             }
             else
             {
+                _model.Id = Guid.CreateVersion7();
                 await BooksClient.CreateBookAsync(_model);
                 Snackbar.Add("Book created successfully.", Severity.Success);
             }

@@ -14,6 +14,7 @@ public class AuthorHandlerTests : HandlerTestBase
     {
         // Arrange
         var command = new CreateAuthor(
+            Guid.CreateVersion7(),
             "Robert C. Martin",
             new Dictionary<string, AuthorTranslationDto> { ["en"] = new AuthorTranslationDto("Uncle Bob") }
         );
@@ -38,6 +39,7 @@ public class AuthorHandlerTests : HandlerTestBase
     {
         // Arrange
         var command = new CreateAuthor(
+            Guid.CreateVersion7(),
             "Robert C. Martin",
             new Dictionary<string, AuthorTranslationDto> { [invalidCulture] = new AuthorTranslationDto("Uncle Bob") }
         );

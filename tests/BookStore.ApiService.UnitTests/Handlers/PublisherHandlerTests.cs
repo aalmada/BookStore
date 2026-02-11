@@ -15,7 +15,7 @@ public class PublisherHandlerTests : HandlerTestBase
     public async Task CreatePublisherHandler_ShouldStartStreamWithPublisherAddedEvent()
     {
         // Arrange
-        var command = new CreatePublisher("O'Reilly Media");
+        var command = new CreatePublisher(Guid.CreateVersion7(), "O'Reilly Media");
 
         // Act
         var result = await PublisherHandlers.Handle(command, Session, Cache, Logger);

@@ -25,6 +25,7 @@ public class BookValidationTests
 
         var request = new CreateBookRequest
         {
+            Id = Guid.CreateVersion7(),
             Title = title,
             Isbn = _faker.Commerce.Ean13(),
             Language = language,

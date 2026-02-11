@@ -39,6 +39,7 @@
 
         try
         {
+            _model.Id = Guid.CreateVersion7();
             await PublishersClient.CreatePublisherAsync(_model);
             Snackbar.Add($"Publisher {_model.Name} created successfully.", Severity.Success);
             MudDialog.Close(DialogResult.Ok(true));

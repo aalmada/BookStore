@@ -109,7 +109,11 @@
                 kvp => new CategoryTranslationDto(kvp.Value)
             );
 
-            var request = new CreateCategoryRequest { Translations = translations };
+            var request = new CreateCategoryRequest
+            {
+                Id = Guid.CreateVersion7(),
+                Translations = translations
+            };
             await CategoriesClient.CreateCategoryAsync(request);
 
             var englishName = _translations["en"];

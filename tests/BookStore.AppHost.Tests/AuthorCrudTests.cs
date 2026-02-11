@@ -22,7 +22,7 @@ public class AuthorCrudTests
 
         // 1. Create Author
         await TestHelpers.ExecuteAndWaitForEventAsync(
-            Guid.Empty,
+            createAuthorRequest.Id,
             ["AuthorCreated", "AuthorUpdated"],
             async () => await client.CreateAuthorAsync(createAuthorRequest),
             TestConstants.DefaultEventTimeout);
@@ -41,6 +41,7 @@ public class AuthorCrudTests
         var client = await TestHelpers.GetAuthenticatedClientAsync<IAuthorsClient>();
         var request = new CreateAuthorRequest
         {
+            Id = Guid.CreateVersion7(),
             Name = invalidName, // Invalid
             Translations = new Dictionary<string, AuthorTranslationDto> { ["en"] = new("Biography") }
         };
@@ -139,6 +140,7 @@ public class AuthorCrudTests
 
         var createRequest = new CreateAuthorRequest
         {
+            Id = Guid.CreateVersion7(),
             Name = "Global Author Name",
             Translations = new Dictionary<string, AuthorTranslationDto>
             {

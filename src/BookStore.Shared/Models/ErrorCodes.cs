@@ -5,6 +5,7 @@ public static class ErrorCodes
     // Book Codes
     public static class Books
     {
+        public const string IdRequired = "ERR_BOOK_ID_REQUIRED";
         public const string TitleRequired = "ERR_BOOK_TITLE_REQUIRED";
         public const string TitleTooLong = "ERR_BOOK_TITLE_TOO_LONG";
         public const string IsbnEmpty = "ERR_BOOK_ISBN_EMPTY";
@@ -35,6 +36,7 @@ public static class ErrorCodes
     // Author Codes
     public static class Authors
     {
+        public const string IdRequired = "ERR_AUTHOR_ID_REQUIRED";
         public const string NameRequired = "ERR_AUTHOR_NAME_REQUIRED";
         public const string NameTooLong = "ERR_AUTHOR_NAME_TOO_LONG";
         public const string TranslationsRequired = "ERR_AUTHOR_TRANSLATIONS_REQUIRED";
@@ -54,6 +56,7 @@ public static class ErrorCodes
         public const string TranslationsRequired = "ERR_CATEGORY_TRANSLATIONS_REQUIRED";
         public const string TranslationLanguageInvalid = "ERR_CATEGORY_TRANSLATION_LANGUAGE_INVALID";
         public const string TranslationValueRequired = "ERR_CATEGORY_TRANSLATION_VALUE_REQUIRED";
+        public const string IdRequired = "ERR_CATEGORY_ID_REQUIRED";
         public const string NameRequired = "ERR_CATEGORY_NAME_REQUIRED";
         public const string NameTooLong = "ERR_CATEGORY_NAME_TOO_LONG";
         public const string AlreadyDeleted = "ERR_CATEGORY_ALREADY_DELETED";
@@ -65,6 +68,7 @@ public static class ErrorCodes
     // Publisher Codes
     public static class Publishers
     {
+        public const string IdRequired = "ERR_PUBLISHER_ID_REQUIRED";
         public const string NameRequired = "ERR_PUBLISHER_NAME_REQUIRED";
         public const string NameTooLong = "ERR_PUBLISHER_NAME_TOO_LONG";
         public const string AlreadyDeleted = "ERR_PUBLISHER_ALREADY_DELETED";

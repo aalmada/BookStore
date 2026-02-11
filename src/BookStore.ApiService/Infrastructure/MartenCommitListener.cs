@@ -130,7 +130,9 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
             case PublisherStatistics stats:
                 await HandlePublisherStatisticsChangeAsync(stats, changeType, eventId, token);
                 break;
-
+            default:
+                Log.Infrastructure.CacheInvalidationNotImplemented(_logger, document.GetType().Name);
+                break;
         }
     }
 
@@ -246,8 +248,7 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
         Log.Infrastructure.ProcessingDocumentChange(_logger, "Update", nameof(BookStatistics));
         await InvalidateCacheTagsAsync(stats.Id, CacheTags.BookItemPrefix, CacheTags.BookList, token);
 
-        // Emit BookUpdated so clients refetch the book (including new stats)
-        IDomainEventNotification notification = new BookUpdatedNotification(eventId, stats.Id, "Statistics Updated", DateTimeOffset.UtcNow, 0); // Stats don't have a specific book version
+        IDomainEventNotification notification = new BookStatisticsUpdateNotification(eventId, stats.Id, DateTimeOffset.UtcNow, 0);
         await NotifyAsync("Book", notification, token);
     }
 
@@ -256,7 +257,7 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
         Log.Infrastructure.ProcessingDocumentChange(_logger, "Update", nameof(CategoryStatistics));
         await InvalidateCacheTagsAsync(stats.Id, CacheTags.CategoryItemPrefix, CacheTags.CategoryList, token);
 
-        IDomainEventNotification notification = new CategoryUpdatedNotification(eventId, stats.Id, DateTimeOffset.UtcNow);
+        IDomainEventNotification notification = new CategoryStatisticsUpdateNotification(eventId, stats.Id, DateTimeOffset.UtcNow, 0);
         await NotifyAsync("Category", notification, token);
     }
 
@@ -265,7 +266,7 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
         Log.Infrastructure.ProcessingDocumentChange(_logger, "Update", nameof(AuthorStatistics));
         await InvalidateCacheTagsAsync(stats.Id, CacheTags.AuthorItemPrefix, CacheTags.AuthorList, token);
 
-        IDomainEventNotification notification = new AuthorUpdatedNotification(eventId, stats.Id, "Statistics Updated", DateTimeOffset.UtcNow);
+        IDomainEventNotification notification = new AuthorStatisticsUpdateNotification(eventId, stats.Id, DateTimeOffset.UtcNow, 0);
         await NotifyAsync("Author", notification, token);
     }
 
@@ -274,7 +275,7 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
         Log.Infrastructure.ProcessingDocumentChange(_logger, "Update", nameof(PublisherStatistics));
         await InvalidateCacheTagsAsync(stats.Id, CacheTags.PublisherItemPrefix, CacheTags.PublisherList, token);
 
-        IDomainEventNotification notification = new PublisherUpdatedNotification(eventId, stats.Id, "Statistics Updated", DateTimeOffset.UtcNow);
+        IDomainEventNotification notification = new PublisherStatisticsUpdateNotification(eventId, stats.Id, DateTimeOffset.UtcNow, 0);
         await NotifyAsync("Publisher", notification, token);
     }
 

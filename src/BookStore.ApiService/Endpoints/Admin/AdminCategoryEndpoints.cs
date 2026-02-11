@@ -16,8 +16,11 @@ using Wolverine;
 
 namespace BookStore.ApiService.Commands
 {
-    public record CreateCategoryRequest(
-        IReadOnlyDictionary<string, CategoryTranslationDto>? Translations);
+    public record CreateCategoryRequest
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("id")] public Guid Id { get; init; }
+        [System.Text.Json.Serialization.JsonPropertyName("translations")] public IReadOnlyDictionary<string, CategoryTranslationDto>? Translations { get; init; }
+    }
 
     public record UpdateCategoryRequest(
         IReadOnlyDictionary<string, CategoryTranslationDto>? Translations);
@@ -134,7 +137,7 @@ namespace BookStore.ApiService.Endpoints.Admin
             CancellationToken cancellationToken)
         {
             var translations = request.Translations ?? (IReadOnlyDictionary<string, CategoryTranslationDto>)ImmutableDictionary<string, CategoryTranslationDto>.Empty;
-            var command = new Commands.CreateCategory(translations);
+            var command = new Commands.CreateCategory(request.Id, translations);
             return bus.InvokeAsync<IResult>(command, new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
         }
 

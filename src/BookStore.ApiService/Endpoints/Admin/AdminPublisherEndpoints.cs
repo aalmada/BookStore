@@ -13,7 +13,11 @@ using Wolverine;
 
 namespace BookStore.ApiService.Commands
 {
-    public record CreatePublisherRequest(string Name);
+    public record CreatePublisherRequest
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("id")] public Guid Id { get; init; }
+        [System.Text.Json.Serialization.JsonPropertyName("name")] public string Name { get; init; } = default!;
+    }
     public record UpdatePublisherRequest(string Name);
 }
 
@@ -90,7 +94,7 @@ namespace BookStore.ApiService.Endpoints.Admin
             [FromServices] ITenantContext tenantContext,
             CancellationToken cancellationToken)
         {
-            var command = new Commands.CreatePublisher(request.Name);
+            var command = new Commands.CreatePublisher(request.Id, request.Name);
             return bus.InvokeAsync<IResult>(command, new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
         }
 

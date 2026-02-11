@@ -68,6 +68,7 @@ public class RedisNotificationService : INotificationService, IDisposable
                 if (notification != null)
                 {
                     // Broadcast to all local SSE subscribers
+                    Log.Notifications.BroadcastingToLocal(_logger, notification.EventType, notification.EntityId);
                     await BroadcastToLocalSubscribersAsync(notification);
                 }
             }
@@ -105,6 +106,7 @@ public class RedisNotificationService : INotificationService, IDisposable
         if (_redis?.IsConnected == true)
         {
             var json = JsonSerializer.Serialize(notification, typeof(IDomainEventNotification));
+            Log.Notifications.PublishingToRedis(_logger, json);
             _ = await _redis.GetSubscriber().PublishAsync(RedisChannel.Literal(ChannelName), json);
 
             Log.Notifications.PublishedToRedis(_logger, notification.EventType, notification.EntityId);

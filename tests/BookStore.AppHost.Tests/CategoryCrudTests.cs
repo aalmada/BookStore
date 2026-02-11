@@ -89,6 +89,7 @@ public class CategoryCrudTests
         var client = await TestHelpers.GetAuthenticatedClientAsync<ICategoriesClient>();
         var request = new CreateCategoryRequest
         {
+            Id = Guid.CreateVersion7(),
             Translations = new Dictionary<string, CategoryTranslationDto> { ["en"] = new(invalidName!) }
         };
 
@@ -121,6 +122,7 @@ public class CategoryCrudTests
 
         var createRequest = new CreateCategoryRequest
         {
+            Id = Guid.CreateVersion7(),
             Translations = new Dictionary<string, CategoryTranslationDto>
             {
                 ["en"] = new("Default Name"),

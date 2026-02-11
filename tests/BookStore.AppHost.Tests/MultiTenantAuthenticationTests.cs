@@ -184,6 +184,7 @@ public class MultiTenantAuthenticationTests : IDisposable
 
         var request = new CreateBookRequest
         {
+            Id = Guid.CreateVersion7(),
             Title = bookData.title,
             Isbn = bookData.isbn,
             Language = bookData.originalLanguage,
