@@ -18,6 +18,12 @@ public class BookStoreEventsService : IAsyncDisposable
     CancellationTokenSource? _cts;
     Task? _listenerTask;
 
+    /// <summary>
+    /// Gets or sets the delay before attempting to reconnect to the SSE stream.
+    /// Default is 5 seconds.
+    /// </summary>
+    public TimeSpan RetryDelay { get; set; } = TimeSpan.FromSeconds(5);
+
     public event Action<IDomainEventNotification>? OnNotificationReceived;
 
     static readonly Dictionary<string, Type> _eventTypeMapping = InitializeEventTypeMapping();
@@ -117,7 +123,7 @@ public class BookStoreEventsService : IAsyncDisposable
             catch (Exception ex)
             {
                 Log.SseStreamError(_logger, ex);
-                await Task.Delay(5000, token);
+                await Task.Delay(RetryDelay, token);
             }
         }
     }

@@ -3,8 +3,12 @@ using Refit;
 
 namespace BookStore.Client;
 
+/// <summary>
+/// Client for user identity and account management.
+/// </summary>
 public interface IIdentityClient
 {
+
     /// <summary>
     /// Login with email and password
     /// </summary>

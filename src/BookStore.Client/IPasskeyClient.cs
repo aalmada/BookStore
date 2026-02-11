@@ -3,11 +3,15 @@ using Refit;
 
 namespace BookStore.Client;
 
+/// <summary>
+/// Client for managing WebAuthn Passkeys.
+/// </summary>
 public interface IPasskeyClient
 {
     /// <summary>
-    /// Get Passkey creation options (attestation challenge)
+    /// Get Passkey creation options (attestation challenge).
     /// </summary>
+
     [Post("/account/attestation/options")]
     Task<PasskeyCreationOptionsResponse> GetPasskeyCreationOptionsAsync(
         [Body] PasskeyCreationRequest request,

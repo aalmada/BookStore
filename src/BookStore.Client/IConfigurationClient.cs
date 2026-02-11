@@ -12,11 +12,12 @@ public interface IConfigurationClient
     /// Get localization configuration (default culture and supported cultures)
     /// </summary>
     [Get("/api/config/localization")]
-    Task<LocalizationConfigDto> GetLocalizationConfigAsync();
+    Task<LocalizationConfigDto> GetLocalizationConfigAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Get currency configuration (default currency and supported currencies)
+    /// Get currency configuration (default currency and supported currencies).
     /// </summary>
     [Get("/api/config/currency")]
-    Task<CurrencyConfigDto> GetCurrencyConfigAsync();
+    Task<CurrencyConfigDto> GetCurrencyConfigAsync(CancellationToken cancellationToken = default);
 }
+
