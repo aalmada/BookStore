@@ -18,8 +18,8 @@ namespace BookStore.ApiService.Commands
 {
     public record CreateCategoryRequest
     {
-        [System.Text.Json.Serialization.JsonPropertyName("id")] public Guid Id { get; init; }
-        [System.Text.Json.Serialization.JsonPropertyName("translations")] public IReadOnlyDictionary<string, CategoryTranslationDto>? Translations { get; init; }
+        public Guid Id { get; init; }
+        public IReadOnlyDictionary<string, CategoryTranslationDto>? Translations { get; init; }
     }
 
     public record UpdateCategoryRequest(

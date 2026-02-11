@@ -142,17 +142,7 @@ public class UpdateTests
             }
         };
 
-        // Act
-        try
-        {
-            book = await TestHelpers.UpdateBookAsync(client, book.Id, updateRequest, etag!);
-        }
-        catch (ApiException ex)
-        {
-            Console.WriteLine($"[TEST DEBUG] ApiException Caught: {ex.StatusCode}");
-            Console.WriteLine($"[TEST DEBUG] Response Content: {ex.Content}");
-            throw;
-        }
+        book = await TestHelpers.UpdateBookAsync(client, book.Id, updateRequest, etag!);
 
         // Assert
         var enClient = TestHelpers.GetUnauthenticatedClientWithLanguage<IGetBookEndpoint>("en");

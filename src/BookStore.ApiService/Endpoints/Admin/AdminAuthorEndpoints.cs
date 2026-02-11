@@ -16,9 +16,9 @@ namespace BookStore.ApiService.Commands
 {
     public record CreateAuthorRequest
     {
-        [System.Text.Json.Serialization.JsonPropertyName("id")] public Guid Id { get; init; }
-        [System.Text.Json.Serialization.JsonPropertyName("name")] public string Name { get; init; } = default!;
-        [System.Text.Json.Serialization.JsonPropertyName("translations")] public IReadOnlyDictionary<string, AuthorTranslationDto>? Translations { get; init; }
+        public Guid Id { get; init; }
+        public string Name { get; init; } = default!;
+        public IReadOnlyDictionary<string, AuthorTranslationDto>? Translations { get; init; }
     }
     public record UpdateAuthorRequest(string Name, IReadOnlyDictionary<string, AuthorTranslationDto>? Translations);
 }

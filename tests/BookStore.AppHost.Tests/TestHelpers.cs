@@ -407,7 +407,6 @@ public static class TestHelpers
                     }
 
                     var received = $"Type: {item.EventType}, Data: {item.Data}";
-                    Console.WriteLine($"[TestHelpers] Received SSE: {received}");
                     receivedEvents.Add(received);
 
                     if (eventTypes.Contains(item.EventType))
@@ -428,8 +427,6 @@ public static class TestHelpers
                                     }
                                     else
                                     {
-                                        Console.WriteLine(
-                                            $"[TestHelpers] Received event {item.EventType} for {receivedId} but version mismatch");
                                         continue;
                                     }
                                 }
@@ -444,11 +441,10 @@ public static class TestHelpers
                                     }
                                     else
                                     {
-                                        Console.WriteLine(
-                                            $"[TestHelpers] Received event {item.EventType} for {receivedId} but timestamp mismatch");
                                         continue;
                                     }
                                 }
+
 
                                 long version = 0;
                                 if (doc.RootElement.TryGetProperty("version", out var vProp) &&
@@ -457,14 +453,6 @@ public static class TestHelpers
                                     version = vProp.GetInt64();
                                 }
 
-                                Guid eventIdSse = Guid.Empty;
-                                if (doc.RootElement.TryGetProperty("eventId", out var eProp))
-                                {
-                                    eventIdSse = eProp.GetGuid();
-                                }
-
-                                Console.WriteLine(
-                                    $"[TestHelpers] MATCH FOUND: {item.EventType} for {receivedId} (Version: {version}, EventId: {eventIdSse})");
                                 _ = tcs.TrySetResult(new EventResult(true, version));
                                 return;
                             }
@@ -494,9 +482,8 @@ public static class TestHelpers
         {
             await action();
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            Console.WriteLine($"[TestHelpers] Action failed with exception: {ex}");
             throw;
         }
 
@@ -514,10 +501,10 @@ public static class TestHelpers
         {
             await listenTask; // Ensure cleanup logic runs and we catch any final exceptions
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            // Valid to ignore here during cleanup, but log for visibility
-            Console.WriteLine($"[TestHelpers] SSE cleanup info: {ex.Message}");
+            // Valid to ignore here during cleanup
+            await Task.CompletedTask;
         }
 
         if (result.Success)
@@ -525,9 +512,6 @@ public static class TestHelpers
             return result;
         }
 
-        var message =
-            $"Timed out waiting for {string.Join(" OR ", eventTypes)} (EntityId: {entityId}). Received {receivedEvents.Count} events: {string.Join(", ", receivedEvents.Take(20))}";
-        Console.WriteLine($"[TestHelpers] {message}");
 
         return result;
     }
