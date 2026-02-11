@@ -1,4 +1,5 @@
 @page "/admin/tenants"
+@using BookStore.Client
 @using Microsoft.AspNetCore.Authorization
 @using BookStore.Shared.Models
 @using BookStore.Shared.Notifications
@@ -248,7 +249,8 @@
             Name = tenant.Name,
             Tagline = tenant.Tagline,
             ThemePrimaryColor = tenant.ThemePrimaryColor ?? "#594AE2",
-            IsEnabled = tenant.IsEnabled
+            IsEnabled = tenant.IsEnabled,
+            ETag = tenant.ETag
         };
         _isDialogVisible = true;
     }
@@ -271,7 +273,7 @@
                     Tagline: _model.Tagline,
                     ThemePrimaryColor: _model.ThemePrimaryColor,
                     IsEnabled: _model.IsEnabled
-                ));
+                ), _model.ETag);
                 Snackbar.Add("Tenant updated successfully", Severity.Success);
             }
             else
@@ -328,6 +330,7 @@
         public bool IsEnabled { get; set; }
         public string? AdminEmail { get; set; }
         public string? AdminPassword { get; set; }
+        public string? ETag { get; set; }
     }
 
 }

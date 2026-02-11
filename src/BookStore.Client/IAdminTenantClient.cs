@@ -12,5 +12,5 @@ public interface IAdminTenantClient
     Task CreateTenantAsync([Body] CreateTenantCommand command);
 
     [Put("/api/admin/tenants/{id}")]
-    Task UpdateTenantAsync(string id, [Body] UpdateTenantCommand command);
+    Task UpdateTenantAsync(string id, [Body] UpdateTenantCommand command, [Header("If-Match")] string? etag = null);
 }

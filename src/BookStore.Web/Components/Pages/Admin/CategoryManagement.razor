@@ -158,7 +158,7 @@
         {
             try
             {
-                await CategoriesClient.SoftDeleteCategoryAsync(category.Id);
+                await CategoriesClient.SoftDeleteCategoryAsync(category.Id, category.ETag);
                 Snackbar.Add($"Category {category.Name} deleted successfully.", Severity.Success);
                 await _table.ReloadServerData();
             }

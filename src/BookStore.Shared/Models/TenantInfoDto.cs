@@ -1,3 +1,3 @@
 namespace BookStore.Shared.Models;
 
-public record TenantInfoDto(string Id, string Name, string? Tagline, string? ThemePrimaryColor, bool IsEnabled = true);
+public record TenantInfoDto(string Id, string Name, string? Tagline, string? ThemePrimaryColor, bool IsEnabled = true, string? ETag = null);
