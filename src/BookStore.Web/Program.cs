@@ -98,11 +98,11 @@ static void RegisterScopedRefitClients(
     _ = services.AddScoped<TenantService>();
     _ = services.AddTransient<TenantHeaderHandler>();
 
-    // Register ITenantClient separately (No TenantHeaderHandler to prevent circular dep)
-    _ = services.AddScoped<ITenantClient>(_ =>
+    // Register ITenantsClient separately (No TenantHeaderHandler to prevent circular dep)
+    _ = services.AddScoped<ITenantsClient>(_ =>
     {
         var httpClient = new HttpClient { BaseAddress = baseAddress };
-        return RestService.For<ITenantClient>(httpClient);
+        return RestService.For<ITenantsClient>(httpClient);
     });
 
     // Register IConfigurationClient separately (No auth required for public config endpoints)
@@ -127,8 +127,7 @@ static void RegisterScopedRefitClients(
             new BookStore.Client.Infrastructure.BookStoreHeaderHandler() { InnerHandler = networkHandler };
         var tenantHandler = new TenantHeaderHandler(tenantService) { InnerHandler = headerHandler };
         var authHandler = new AuthorizationMessageHandler(
-            tokenService, tenantService, httpContextAccessor, correlationService)
-        { InnerHandler = tenantHandler };
+            tokenService, tenantService, httpContextAccessor, correlationService) { InnerHandler = tenantHandler };
 
         // Wrap with resilience handler: Resilience -> Auth -> Tenant -> Network
         var resilienceHandler = new ResilienceHandler(resiliencePipeline) { InnerHandler = authHandler };
@@ -145,8 +144,7 @@ static void RegisterScopedRefitClients(
     AddScopedClient<ISystemClient>();
     AddScopedClient<IIdentityClient>();
     AddScopedClient<IPasskeyClient>();
-    AddScopedClient<IAdminTenantClient>();
-    AddScopedClient<IAdminUserClient>();
+    AddScopedClient<IUsersClient>();
     AddScopedClient<ISalesClient>();
 }
 

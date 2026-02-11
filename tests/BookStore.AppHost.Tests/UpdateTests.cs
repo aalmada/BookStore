@@ -23,8 +23,7 @@ public class UpdateTests
             Name = $"Updated Author {Guid.NewGuid()}",
             Translations = new Dictionary<string, AuthorTranslationDto>
             {
-                ["en"] = new("Updated Biography EN"),
-                ["pt-PT"] = new("Biografia Atualizada PT")
+                ["en"] = new("Updated Biography EN"), ["pt-PT"] = new("Biografia Atualizada PT")
             }
         };
 
@@ -36,7 +35,7 @@ public class UpdateTests
         _ = await Assert.That(updatedAuthorAdmin.Name).IsEqualTo(updateRequest.Name);
 
         // Verify translations via public API
-        var publicClient = RestService.For<IGetAuthorEndpoint>(TestHelpers.GetUnauthenticatedClient());
+        var publicClient = RestService.For<IAuthorsClient>(TestHelpers.GetUnauthenticatedClient());
 
         var enAuthor = await publicClient.GetAuthorAsync(author.Id, "en");
         var ptAuthor = await publicClient.GetAuthorAsync(author.Id, "pt-PT");
@@ -57,8 +56,7 @@ public class UpdateTests
         {
             Translations = new Dictionary<string, CategoryTranslationDto>
             {
-                ["en"] = new("Updated Category EN"),
-                ["es"] = new("Categoría Actualizada ES")
+                ["en"] = new("Updated Category EN"), ["es"] = new("Categoría Actualizada ES")
             }
         };
 
@@ -66,7 +64,7 @@ public class UpdateTests
         category = await TestHelpers.UpdateCategoryAsync(client, category, updateRequest);
 
         // Assert
-        var publicClient = RestService.For<IGetCategoryEndpoint>(TestHelpers.GetUnauthenticatedClient());
+        var publicClient = RestService.For<ICategoriesClient>(TestHelpers.GetUnauthenticatedClient());
 
         var enCat = await publicClient.GetCategoryAsync(category.Id, null, "en");
         var esCat = await publicClient.GetCategoryAsync(category.Id, null, "es");
@@ -89,7 +87,7 @@ public class UpdateTests
         publisher = await TestHelpers.UpdatePublisherAsync(client, publisher, updateRequest);
 
         // Assert
-        var publicClient = RestService.For<IGetPublisherEndpoint>(TestHelpers.GetUnauthenticatedClient());
+        var publicClient = RestService.For<IPublishersClient>(TestHelpers.GetUnauthenticatedClient());
 
         var updatedPub = await publicClient.GetPublisherAsync(publisher.Id);
         _ = await Assert.That(updatedPub.Name).IsEqualTo(updateRequest.Name);
@@ -139,16 +137,15 @@ public class UpdateTests
             Prices = new Dictionary<string, decimal> { ["USD"] = 19.99m },
             Translations = new Dictionary<string, BookTranslationDto>
             {
-                ["en"] = new("New English Description"),
-                ["pt-PT"] = new("Nova Descrição em Português")
+                ["en"] = new("New English Description"), ["pt-PT"] = new("Nova Descrição em Português")
             }
         };
 
         book = await TestHelpers.UpdateBookAsync(client, book.Id, updateRequest, etag!);
 
         // Assert
-        var enClient = TestHelpers.GetUnauthenticatedClientWithLanguage<IGetBookEndpoint>("en");
-        var ptClient = TestHelpers.GetUnauthenticatedClientWithLanguage<IGetBookEndpoint>("pt-PT");
+        var enClient = TestHelpers.GetUnauthenticatedClientWithLanguage<IBooksClient>("en");
+        var ptClient = TestHelpers.GetUnauthenticatedClientWithLanguage<IBooksClient>("pt-PT");
 
         var enBook = await enClient.GetBookAsync(book.Id);
         var ptBook = await ptClient.GetBookAsync(book.Id);

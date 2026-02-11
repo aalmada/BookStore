@@ -73,7 +73,7 @@ public class TenantSecurityTests
 
         // 1. Success path: Default Tenant Admin (GlobalHooks.AdminAccessToken) accessing Default Tenant endpoint
         var client =
-            RestService.For<IAdminTenantClient>(TestHelpers.GetAuthenticatedClient(GlobalHooks.AdminAccessToken));
+            RestService.For<ITenantsClient>(TestHelpers.GetAuthenticatedClient(GlobalHooks.AdminAccessToken));
 
         // Act
         var result = await client.GetAllTenantsAdminAsync();

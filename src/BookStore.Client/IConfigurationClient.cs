@@ -1,3 +1,4 @@
+using BookStore.Shared.Models;
 using Refit;
 
 namespace BookStore.Client;
@@ -5,8 +6,17 @@ namespace BookStore.Client;
 /// <summary>
 /// Client for retrieving application configuration
 /// </summary>
-public interface IConfigurationClient :
-    IGetLocalizationConfigEndpoint,
-    IGetCurrencyConfigEndpoint
+public interface IConfigurationClient
 {
+    /// <summary>
+    /// Get localization configuration (default culture and supported cultures)
+    /// </summary>
+    [Get("/api/config/localization")]
+    Task<LocalizationConfigDto> GetLocalizationConfigAsync();
+
+    /// <summary>
+    /// Get currency configuration (default currency and supported currencies)
+    /// </summary>
+    [Get("/api/config/currency")]
+    Task<CurrencyConfigDto> GetCurrencyConfigAsync();
 }

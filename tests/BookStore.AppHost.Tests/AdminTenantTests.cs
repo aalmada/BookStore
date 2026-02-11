@@ -20,7 +20,7 @@ public class AdminTenantTests
         }
 
         var client =
-            RestService.For<IAdminTenantClient>(TestHelpers.GetAuthenticatedClient(GlobalHooks.AdminAccessToken!));
+            RestService.For<ITenantsClient>(TestHelpers.GetAuthenticatedClient(GlobalHooks.AdminAccessToken!));
 
         // Arrange
         var command = new CreateTenantCommand(
@@ -50,7 +50,7 @@ public class AdminTenantTests
         }
 
         var client =
-            RestService.For<IAdminTenantClient>(TestHelpers.GetAuthenticatedClient(GlobalHooks.AdminAccessToken!));
+            RestService.For<ITenantsClient>(TestHelpers.GetAuthenticatedClient(GlobalHooks.AdminAccessToken!));
 
         // Arrange
         var command = new CreateTenantCommand(
@@ -80,7 +80,7 @@ public class AdminTenantTests
         }
 
         var client =
-            RestService.For<IAdminTenantClient>(TestHelpers.GetAuthenticatedClient(GlobalHooks.AdminAccessToken!));
+            RestService.For<ITenantsClient>(TestHelpers.GetAuthenticatedClient(GlobalHooks.AdminAccessToken!));
 
         // Arrange
         var tenantId = $"valid-tenant-{Guid.NewGuid():N}";
@@ -107,7 +107,7 @@ public class AdminTenantTests
         }
 
         var client =
-            RestService.For<IAdminTenantClient>(TestHelpers.GetAuthenticatedClient(GlobalHooks.AdminAccessToken!));
+            RestService.For<ITenantsClient>(TestHelpers.GetAuthenticatedClient(GlobalHooks.AdminAccessToken!));
 
         // Arrange
         var tenantId = $"verify-tenant-{Guid.NewGuid():N}";

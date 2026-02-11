@@ -41,7 +41,7 @@ public class PublisherCrudTests
 
         // Verify update in public API (data should be consistent now)
         var publicClient =
-            RestService.For<IGetPublisherEndpoint>(
+            RestService.For<IPublishersClient>(
                 TestHelpers.GetUnauthenticatedClient(StorageConstants.DefaultTenantId));
         var updatedPublisher = await publicClient.GetPublisherAsync(createdPublisher.Id);
         _ = await Assert.That(updatedPublisher!.Name).IsEqualTo(updateRequest.Name);
@@ -61,7 +61,7 @@ public class PublisherCrudTests
         // Verify it's gone from public API
         // Verify it's gone from public API
         var publicClient =
-            Refit.RestService.For<IGetPublisherEndpoint>(
+            Refit.RestService.For<IPublishersClient>(
                 TestHelpers.GetUnauthenticatedClient(StorageConstants.DefaultTenantId));
         try
         {

@@ -21,32 +21,39 @@ public static class BookStoreClientExtensions
         Uri baseAddress,
         Action<IHttpClientBuilder>? configureClient = null)
     {
-        // Helper to register client with optional configuration
-        IHttpClientBuilder AddClient<T>() where T : class
-        {
-            var builder = services.AddRefitClient<T>()
-                .ConfigureHttpClient(c => c.BaseAddress = baseAddress)
-                .AddHttpMessageHandler<BookStore.Client.Infrastructure.BookStoreHeaderHandler>();
-
-            configureClient?.Invoke(builder);
-            return builder;
-        }
-
-        // Register the handler
+        // Register the handlers
         _ = services.AddTransient<BookStore.Client.Infrastructure.BookStoreHeaderHandler>();
+        _ = services.AddTransient<BookStore.Client.Infrastructure.BookStoreErrorHandler>();
 
         // Aggregated clients
-        _ = AddClient<IBooksClient>();
-        _ = AddClient<IAuthorsClient>();
-        _ = AddClient<ICategoriesClient>();
-        _ = AddClient<IPublishersClient>();
-        _ = AddClient<IShoppingCartClient>();
-        _ = AddClient<ISystemClient>();
-        _ = AddClient<IIdentityClient>();
-        _ = AddClient<ITenantClient>();
-        _ = AddClient<IPasskeyClient>();
+        _ = services.AddClient<IBooksClient>(baseAddress, configureClient);
+        _ = services.AddClient<IAuthorsClient>(baseAddress, configureClient);
+        _ = services.AddClient<ICategoriesClient>(baseAddress, configureClient);
+        _ = services.AddClient<IPublishersClient>(baseAddress, configureClient);
+        _ = services.AddClient<IShoppingCartClient>(baseAddress, configureClient);
+        _ = services.AddClient<ISystemClient>(baseAddress, configureClient);
+        _ = services.AddClient<IIdentityClient>(baseAddress, configureClient);
+        _ = services.AddClient<ITenantsClient>(baseAddress, configureClient);
+        _ = services.AddClient<IUsersClient>(baseAddress, configureClient);
+        _ = services.AddClient<IPasskeyClient>(baseAddress, configureClient);
+        _ = services.AddClient<ISalesClient>(baseAddress, configureClient);
+        _ = services.AddClient<IConfigurationClient>(baseAddress, configureClient);
 
         return services;
+    }
+
+    // Helper to register client with standard configuration
+    private static IHttpClientBuilder AddClient<T>(this IServiceCollection services, Uri baseAddress, Action<IHttpClientBuilder>? configureClient = null) where T : class
+    {
+        var builder = services.AddRefitClient<T>()
+            .ConfigureHttpClient(c => c.BaseAddress = baseAddress)
+            .AddHttpMessageHandler<BookStore.Client.Infrastructure.BookStoreHeaderHandler>()
+            .AddHttpMessageHandler<BookStore.Client.Infrastructure.BookStoreErrorHandler>();
+
+        builder.AddStandardResilienceHandler();
+
+        configureClient?.Invoke(builder);
+        return builder;
     }
 
     /// <summary>

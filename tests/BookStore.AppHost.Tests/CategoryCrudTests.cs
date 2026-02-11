@@ -44,7 +44,7 @@ public class CategoryCrudTests
         // But need to set Accept-Language headers to verify specific translations
 
         var publicClient =
-            RestService.For<IGetCategoryEndpoint>(
+            RestService.For<ICategoriesClient>(
                 TestHelpers.GetUnauthenticatedClient(StorageConstants.DefaultTenantId));
         var expectedName = updateRequest.Translations["en"].Name;
 
@@ -66,7 +66,7 @@ public class CategoryCrudTests
         // Verify it's gone from public API
         // Verify it's gone from public API
         var publicClient =
-            RestService.For<IGetCategoryEndpoint>(
+            RestService.For<ICategoriesClient>(
                 TestHelpers.GetUnauthenticatedClient(StorageConstants.DefaultTenantId));
         try
         {
@@ -134,7 +134,7 @@ public class CategoryCrudTests
         _ = await Assert.That(createdCategory).IsNotNull();
 
         var publicClient =
-            RestService.For<IGetCategoryEndpoint>(
+            RestService.For<ICategoriesClient>(
                 TestHelpers.GetUnauthenticatedClient(StorageConstants.DefaultTenantId));
         var categoryDto = await publicClient.GetCategoryAsync(createdCategory!.Id, acceptLanguage: acceptLanguage);
 

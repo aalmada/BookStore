@@ -145,7 +145,7 @@ public class ManagementIntegrationTests
         var adminAuthor = paged.Items.First(a => a.Id == author.Id);
 
         // Act - Soft delete
-        await ((ISoftDeleteAuthorEndpoint)authorsClient).SoftDeleteAuthorAsync(author.Id, adminAuthor.ETag);
+        await authorsClient.SoftDeleteAuthorAsync(author.Id, adminAuthor.ETag);
 
         // Note: AuthorDto doesn't expose IsDeleted property like BookDto does,
         // so we can't verify the deleted state through the API.

@@ -20,33 +20,22 @@ public class BookStoreEventsService : IAsyncDisposable
 
     public event Action<IDomainEventNotification>? OnNotificationReceived;
 
-    static readonly Dictionary<string, Type> _eventTypeMapping = new(StringComparer.OrdinalIgnoreCase)
+    static readonly Dictionary<string, Type> _eventTypeMapping = InitializeEventTypeMapping();
+
+    static Dictionary<string, Type> InitializeEventTypeMapping()
     {
-        { "BookCreated", typeof(BookCreatedNotification) },
-        { "BookUpdated", typeof(BookUpdatedNotification) },
-        { "BookDeleted", typeof(BookDeletedNotification) },
-        { "AuthorCreated", typeof(AuthorCreatedNotification) },
-        { "AuthorUpdated", typeof(AuthorUpdatedNotification) },
-        { "AuthorDeleted", typeof(AuthorDeletedNotification) },
-        { "CategoryCreated", typeof(CategoryCreatedNotification) },
-        { "CategoryUpdated", typeof(CategoryUpdatedNotification) },
-        { "CategoryDeleted", typeof(CategoryDeletedNotification) },
-        { "CategoryRestored", typeof(CategoryRestoredNotification) },
-        { "PublisherCreated", typeof(PublisherCreatedNotification) },
-        { "PublisherUpdated", typeof(PublisherUpdatedNotification) },
-        { "PublisherDeleted", typeof(PublisherDeletedNotification) },
-        { "BookCoverUpdated", typeof(BookCoverUpdatedNotification) },
-        { "UserVerified", typeof(UserVerifiedNotification) },
-        { "UserUpdated", typeof(UserUpdatedNotification) },
-        { "TenantCreated", typeof(TenantCreatedNotification) },
-        { "TenantUpdated", typeof(TenantUpdatedNotification) },
-        { "Ping", typeof(PingNotification) },
-        { "Connected", typeof(PingNotification) },
-        { "BookStatisticsUpdate", typeof(BookStatisticsUpdateNotification) },
-        { "AuthorStatisticsUpdate", typeof(AuthorStatisticsUpdateNotification) },
-        { "CategoryStatisticsUpdate", typeof(CategoryStatisticsUpdateNotification) },
-        { "PublisherStatisticsUpdate", typeof(PublisherStatisticsUpdateNotification) }
-    };
+        var mapping = typeof(IDomainEventNotification).Assembly.GetTypes()
+            .Where(t => (t.IsClass || t.IsValueType) && !t.IsAbstract && typeof(IDomainEventNotification).IsAssignableFrom(t))
+            .ToDictionary(
+                t => t.Name.EndsWith("Notification") ? t.Name[..^"Notification".Length] : t.Name,
+                t => t,
+                StringComparer.OrdinalIgnoreCase);
+
+        // Add special mappings/aliases
+        mapping["Connected"] = typeof(PingNotification);
+
+        return mapping;
+    }
 
     public BookStoreEventsService(
         HttpClient httpClient,

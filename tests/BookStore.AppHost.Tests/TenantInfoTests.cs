@@ -10,7 +10,7 @@ public class TenantInfoTests
     [Test]
     public async Task GetTenantInfo_ReturnsCorrectName()
     {
-        var client = RestService.For<ITenantClient>(TestHelpers.GetUnauthenticatedClient());
+        var client = RestService.For<ITenantsClient>(TestHelpers.GetUnauthenticatedClient());
 
         // 1. Get info for "acme"
         var acmeInfo = await client.GetTenantAsync("acme");
@@ -28,7 +28,7 @@ public class TenantInfoTests
     [Test]
     public async Task GetTenantInfo_InvalidId_ReturnsNotFound()
     {
-        var client = RestService.For<ITenantClient>(TestHelpers.GetUnauthenticatedClient());
+        var client = RestService.For<ITenantsClient>(TestHelpers.GetUnauthenticatedClient());
 
         var exception = await Assert.That(async () => await client.GetTenantAsync("invalid-tenant-id"))
             .Throws<ApiException>();

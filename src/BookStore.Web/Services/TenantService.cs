@@ -14,7 +14,7 @@ namespace BookStore.Web.Services;
 /// </summary>
 public class TenantService : IDisposable
 {
-    readonly ITenantClient _tenantClient;
+    readonly ITenantsClient _tenantClient;
     readonly NavigationManager _navigation;
     readonly ILocalStorageService _localStorage;
     readonly IJSRuntime _js;
@@ -23,7 +23,7 @@ public class TenantService : IDisposable
 
     bool _isSubscribed;
 
-    public TenantService(ITenantClient tenantClient, NavigationManager navigation, ILocalStorageService localStorage,
+    public TenantService(ITenantsClient tenantClient, NavigationManager navigation, ILocalStorageService localStorage,
         IJSRuntime js)
     {
         _tenantClient = tenantClient;

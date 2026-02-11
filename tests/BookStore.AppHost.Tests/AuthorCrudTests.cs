@@ -135,7 +135,7 @@ public class AuthorCrudTests
         // Arrange
         var client = await TestHelpers.GetAuthenticatedClientAsync<IAuthorsClient>();
         var publicClient =
-            RestService.For<IGetAuthorEndpoint>(TestHelpers.GetUnauthenticatedClient(StorageConstants.DefaultTenantId));
+            RestService.For<IAuthorsClient>(TestHelpers.GetUnauthenticatedClient(StorageConstants.DefaultTenantId));
 
         var createRequest = new CreateAuthorRequest
         {

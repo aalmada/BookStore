@@ -14,7 +14,7 @@ namespace BookStore.Web.Tests.Services;
 
 public class TenantServiceTests : BunitTestContext
 {
-    ITenantClient _tenantClient = null!;
+    ITenantsClient _tenantClient = null!;
     ILocalStorageService _localStorage = null!;
     IJSRuntime _js = null!;
     TenantService _sut = null!;
@@ -22,7 +22,7 @@ public class TenantServiceTests : BunitTestContext
     [Before(Test)]
     public void Setup()
     {
-        _tenantClient = Substitute.For<ITenantClient>();
+        _tenantClient = Substitute.For<ITenantsClient>();
         _localStorage = Substitute.For<ILocalStorageService>();
         _js = Substitute.For<IJSRuntime>();
 
@@ -95,7 +95,8 @@ public class TenantServiceTests : BunitTestContext
     public async Task SetTenantAsync_ShouldFallbackToDefault_OnError()
     {
         // Arrange
-        _ = _tenantClient.GetTenantAsync("invalid").Returns(Task.FromException<TenantInfoDto>(new Exception("Not found")));
+        _ = _tenantClient.GetTenantAsync("invalid")
+            .Returns(Task.FromException<TenantInfoDto>(new Exception("Not found")));
 
         var defaultInfo = new TenantInfoDto("default", "Default", null, null, true);
         _ = _tenantClient.GetTenantAsync(Arg.Any<string>()).Returns(x =>

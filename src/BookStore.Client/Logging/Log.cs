@@ -43,4 +43,9 @@ public static partial class Log
         Level = LogLevel.Error,
         Message = "Error processing individual SSE message.")]
     public static partial void SseProcessingError(ILogger logger, Exception ex);
+
+    [LoggerMessage(
+        Level = LogLevel.Error,
+        Message = "API Error: {Method} {Url} returned {StatusCode}. Content: {Content}")]
+    public static partial void ApiError(ILogger logger, HttpMethod method, Uri? url, System.Net.HttpStatusCode statusCode, string content);
 }

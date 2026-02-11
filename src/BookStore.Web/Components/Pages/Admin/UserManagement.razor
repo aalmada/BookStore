@@ -2,7 +2,7 @@
 @using Microsoft.AspNetCore.Authorization
 @using BookStore.Shared.Notifications
 @implements IDisposable
-@inject IAdminUserClient UserClient
+@inject IUsersClient UserClient
 @inject AuthenticationStateProvider AuthStateProvider
 @inject ISnackbar Snackbar
 @inject BookStoreEventsService EventsService

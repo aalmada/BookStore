@@ -22,7 +22,7 @@ public class AdminUserTests
     {
         // Arrange
         var adminLogin = await TestHelpers.LoginAsAdminAsync(StorageConstants.DefaultTenantId);
-        var client = RestService.For<IAdminUserClient>(TestHelpers.GetAuthenticatedClient(adminLogin!.AccessToken));
+        var client = RestService.For<IUsersClient>(TestHelpers.GetAuthenticatedClient(adminLogin!.AccessToken));
 
         // Act
         var result = await client.GetUsersAsync();
@@ -43,7 +43,7 @@ public class AdminUserTests
     {
         // Arrange
         var adminLogin = await TestHelpers.LoginAsAdminAsync(StorageConstants.DefaultTenantId);
-        var client = RestService.For<IAdminUserClient>(TestHelpers.GetAuthenticatedClient(adminLogin!.AccessToken));
+        var client = RestService.For<IUsersClient>(TestHelpers.GetAuthenticatedClient(adminLogin!.AccessToken));
         var identityClient =
             RestService.For<IIdentityClient>(TestHelpers.GetUnauthenticatedClient(StorageConstants.DefaultTenantId));
 
@@ -70,7 +70,7 @@ public class AdminUserTests
     {
         // Arrange
         var adminLogin = await TestHelpers.LoginAsAdminAsync(StorageConstants.DefaultTenantId);
-        var client = RestService.For<IAdminUserClient>(TestHelpers.GetAuthenticatedClient(adminLogin!.AccessToken));
+        var client = RestService.For<IUsersClient>(TestHelpers.GetAuthenticatedClient(adminLogin!.AccessToken));
 
         var result = await client.GetUsersAsync();
         var users = result.Items;
@@ -89,7 +89,7 @@ public class AdminUserTests
     {
         // Arrange
         var adminLogin = await TestHelpers.LoginAsAdminAsync(StorageConstants.DefaultTenantId);
-        var client = RestService.For<IAdminUserClient>(TestHelpers.GetAuthenticatedClient(adminLogin!.AccessToken));
+        var client = RestService.For<IUsersClient>(TestHelpers.GetAuthenticatedClient(adminLogin!.AccessToken));
 
         var result = await client.GetUsersAsync();
         var users = result.Items;
@@ -109,7 +109,7 @@ public class AdminUserTests
     {
         // Arrange
         var adminLogin = await TestHelpers.LoginAsAdminAsync(StorageConstants.DefaultTenantId);
-        var client = RestService.For<IAdminUserClient>(TestHelpers.GetAuthenticatedClient(adminLogin!.AccessToken));
+        var client = RestService.For<IUsersClient>(TestHelpers.GetAuthenticatedClient(adminLogin!.AccessToken));
         var identityClient =
             RestService.For<IIdentityClient>(TestHelpers.GetUnauthenticatedClient(StorageConstants.DefaultTenantId));
 
@@ -137,7 +137,7 @@ public class AdminUserTests
     {
         // Arrange
         var adminLogin = await TestHelpers.LoginAsAdminAsync(StorageConstants.DefaultTenantId);
-        var client = RestService.For<IAdminUserClient>(TestHelpers.GetAuthenticatedClient(adminLogin!.AccessToken));
+        var client = RestService.For<IUsersClient>(TestHelpers.GetAuthenticatedClient(adminLogin!.AccessToken));
         var identityClient =
             RestService.For<IIdentityClient>(TestHelpers.GetUnauthenticatedClient(StorageConstants.DefaultTenantId));
 
@@ -160,7 +160,7 @@ public class AdminUserTests
     {
         // Arrange
         var adminLogin = await TestHelpers.LoginAsAdminAsync(StorageConstants.DefaultTenantId);
-        var client = RestService.For<IAdminUserClient>(TestHelpers.GetAuthenticatedClient(adminLogin!.AccessToken));
+        var client = RestService.For<IUsersClient>(TestHelpers.GetAuthenticatedClient(adminLogin!.AccessToken));
         var identityClient =
             RestService.For<IIdentityClient>(TestHelpers.GetUnauthenticatedClient(StorageConstants.DefaultTenantId));
 
@@ -190,7 +190,7 @@ public class AdminUserTests
 
         var loginResponse = await identityClient.LoginAsync(new LoginRequest(userEmail, password));
         var userClient =
-            RestService.For<IAdminUserClient>(TestHelpers.GetAuthenticatedClient(loginResponse.AccessToken));
+            RestService.For<IUsersClient>(TestHelpers.GetAuthenticatedClient(loginResponse.AccessToken));
 
         // Act & Assert
         var exception = await Assert.That(async () => await userClient.GetUsersAsync()).Throws<ApiException>();
@@ -202,7 +202,7 @@ public class AdminUserTests
     {
         // Arrange
         var adminLogin = await TestHelpers.LoginAsAdminAsync(StorageConstants.DefaultTenantId);
-        var client = RestService.For<IAdminUserClient>(TestHelpers.GetAuthenticatedClient(adminLogin!.AccessToken));
+        var client = RestService.For<IUsersClient>(TestHelpers.GetAuthenticatedClient(adminLogin!.AccessToken));
         var identityClient =
             RestService.For<IIdentityClient>(TestHelpers.GetUnauthenticatedClient(StorageConstants.DefaultTenantId));
 
@@ -231,7 +231,7 @@ public class AdminUserTests
     {
         // Arrange
         var adminLogin = await TestHelpers.LoginAsAdminAsync(StorageConstants.DefaultTenantId);
-        var client = RestService.For<IAdminUserClient>(TestHelpers.GetAuthenticatedClient(adminLogin!.AccessToken));
+        var client = RestService.For<IUsersClient>(TestHelpers.GetAuthenticatedClient(adminLogin!.AccessToken));
 
         // Act
         var result = await client.GetUsersAsync(page: 1, pageSize: 1);

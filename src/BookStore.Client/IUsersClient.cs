@@ -3,7 +3,7 @@ using Refit;
 
 namespace BookStore.Client;
 
-public interface IAdminUserClient
+public interface IUsersClient
 {
     [Get("/api/admin/users")]
     Task<PagedListDto<UserAdminDto>> GetUsersAsync(
