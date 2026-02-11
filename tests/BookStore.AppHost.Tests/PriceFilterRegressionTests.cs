@@ -151,19 +151,11 @@ public class PriceFilterRegressionTests
 
         var book = await TestHelpers.CreateBookAsync(authClient, createRequest);
         var bookId = book.Id;
+        long initialVersion = ParseETag(book.ETag);
 
         // 1. Apply 50% discount -> Price becomes 50.
         var saleRequest =
             new ScheduleSaleRequest(50m, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddMinutes(5));
-
-        // Fetch initial version with retries to ensure it's populated
-        long initialVersion = 0;
-        await TestHelpers.WaitForConditionAsync(async () =>
-        {
-            var initialBookResponse = await authClient.GetBookWithResponseAsync(bookId);
-            initialVersion = ParseETag(initialBookResponse.Headers.ETag?.ToString());
-            return initialVersion > 0;
-        }, TestConstants.DefaultEventTimeout, "Failed to fetch initial book version");
 
         Console.WriteLine(
             $"[Test] Book {bookId} Created. InitialVersion={initialVersion}");

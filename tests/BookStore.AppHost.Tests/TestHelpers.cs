@@ -154,22 +154,7 @@ public static class TestHelpers
             throw new Exception("Failed to receive CategoryCreated event.");
         }
 
-        // Poll until available in read side
-        CategoryDto? finalCategory = null;
-        await WaitForConditionAsync(async () =>
-        {
-            try
-            {
-                finalCategory = await client.GetCategoryAsync(request.Id);
-                return finalCategory != null;
-            }
-            catch
-            {
-                return false;
-            }
-        }, TestConstants.DefaultEventTimeout, "Category was not available in read side after creation");
-
-        return finalCategory!;
+        return await client.GetCategoryAsync(request.Id);
     }
 
     public static async Task<CategoryDto> UpdateCategoryAsync(ICategoriesClient client, CategoryDto category,
@@ -597,21 +582,7 @@ public static class TestHelpers
             throw new Exception("Failed to create book or receive BookUpdated event.");
         }
 
-        // SSE received means async projection is active. In parallel tests, we might receive 
-        // SSE for a different book, so poll with retry to ensure our book is projected.
-        BookDto? fetchedBook = null;
-        await WaitForConditionAsync(async () =>
-        {
-            var getResponse = await httpClient.GetAsync($"/api/books/{entityId}");
-            if (getResponse.IsSuccessStatusCode)
-            {
-                fetchedBook = await getResponse.Content.ReadFromJsonAsync<BookDto>();
-                return true;
-            }
-
-            return false;
-        }, TestConstants.DefaultEventTimeout, "Book was not available in read side after creation");
-        return fetchedBook!;
+        return (await httpClient.GetFromJsonAsync<BookDto>($"/api/books/{entityId}"))!;
     }
 
     public static async Task<AuthorDto> CreateAuthorAsync(IAuthorsClient client,
@@ -635,22 +606,7 @@ public static class TestHelpers
             throw new Exception("Failed to receive AuthorCreated event.");
         }
 
-        // Poll until available in read side
-        AuthorDto? finalAuthor = null;
-        await WaitForConditionAsync(async () =>
-        {
-            try
-            {
-                finalAuthor = await client.GetAuthorAsync(createAuthorRequest.Id);
-                return finalAuthor != null;
-            }
-            catch
-            {
-                return false;
-            }
-        }, TestConstants.DefaultEventTimeout, "Author was not available in read side after creation");
-
-        return finalAuthor!;
+        return await client.GetAuthorAsync(createAuthorRequest.Id);
     }
 
     public static async Task<AuthorDto> UpdateAuthorAsync(IAuthorsClient client, AuthorDto author,
@@ -809,22 +765,7 @@ public static class TestHelpers
             throw new Exception("Failed to receive BookCreated event.");
         }
 
-        // Poll until available in read side
-        BookDto? finalBook = null;
-        await WaitForConditionAsync(async () =>
-        {
-            try
-            {
-                finalBook = await client.GetBookAsync(createBookRequest.Id);
-                return finalBook != null;
-            }
-            catch
-            {
-                return false;
-            }
-        }, TestConstants.DefaultEventTimeout, "Book was not available in read side after creation");
-
-        return finalBook!;
+        return await client.GetBookAsync(createBookRequest.Id);
     }
 
     public static async Task<PublisherDto> CreatePublisherAsync(IPublishersClient client,
@@ -848,25 +789,8 @@ public static class TestHelpers
             throw new Exception("Failed to receive PublisherCreated event.");
         }
 
-        // Poll until available in read side
-        PublisherDto? finalPublisher = null;
-        await WaitForConditionAsync(async () =>
-        {
-            try
-            {
-                var publishers =
-                    await client.GetAllPublishersAsync(
-                        new PublisherSearchRequest { Search = request.Name });
-                finalPublisher = publishers?.Items.FirstOrDefault(p => p.Id == request.Id);
-                return finalPublisher != null;
-            }
-            catch
-            {
-                return false;
-            }
-        }, TestConstants.DefaultEventTimeout, "Publisher was not available in read side after creation");
-
-        return finalPublisher!;
+        var result = await client.GetAllPublishersAsync(new PublisherSearchRequest { Search = request.Name });
+        return result!.Items.First(p => p.Id == request.Id);
     }
 
     public static async Task<PublisherDto> UpdatePublisherAsync(IPublishersClient client, PublisherDto publisher,
