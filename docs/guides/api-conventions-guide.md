@@ -156,10 +156,11 @@ options.UseDefaultSerialization(
 
 ✅ **Correct**:
 ```csharp
-public record CreateBook(...)
-{
-    public Guid Id { get; init; } = Guid.CreateVersion7();
-}
+public record CreateBook(
+    Guid Id, // ✅ Assigned by client (UUIDv7)
+    string Title,
+    string? Isbn,
+    IReadOnlyList<Guid> AuthorIds);
 
 var bookId = Guid.CreateVersion7();
 ```
@@ -210,6 +211,7 @@ public record BookDto(
 
 // Commands
 public record CreateBook(
+    Guid Id,
     string Title,
     string? Isbn,
     IReadOnlyList<Guid> AuthorIds); // ✅ Use IReadOnlyList for collections
@@ -373,7 +375,9 @@ The API uses the following standard headers:
 |--------|----------|-------------|---------|
 | `Accept-Language` | No | Preferred language for localized content | `pt-PT`, `en-US` |
 | `If-None-Match` | No | ETag for conditional requests (caching) | `"5"` |
-| `If-Match` | No | ETag for optimistic concurrency control | `"5"` |
+| `If-Match` | **Yes*** | ETag for optimistic concurrency control | `"5"` |
+
+*\* Mandatory for all write operations (PUT, DELETE, Restore). Missing header results in 428 Precondition Required.*
 
 #### Response Headers
 
@@ -469,11 +473,11 @@ Accept-Language: pt-PT
 
 The API uses a **5-step fallback** strategy via `LocalizationHelper`:
 
-1. **Exact culture match** - e.g., "pt-PT"
-2. **Two-letter user culture** - e.g., "pt" from "pt-PT"
-3. **Default culture** - configured in `LocalizationOptions`
-4. **Two-letter default culture** - e.g., "en" from "en-US"
-5. **Fallback value** - empty string or "Unknown"
+1.  **Exact culture match** - e.g., "pt-PT"
+2.  **Two-letter user culture** - e.g., "pt" from "pt-PT"
+3.  **Default culture** - configured in `LocalizationOptions`
+4.  **Two-letter default culture** - e.g., "en" from "en-US"
+5.  **Fallback value** - empty string or "Unknown"
 
 This ensures users always see content, even if their preferred language isn't available.
 

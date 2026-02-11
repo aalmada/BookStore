@@ -3,10 +3,13 @@
 ## Overview
 
 The Book Store API implements **ETags (Entity Tags)** for:
-1. **Optimistic Concurrency Control** - Prevent conflicting updates
-2. **HTTP Caching** - Reduce bandwidth and improve performance
+1. **Optimistic Concurrency Control** (Mandatory for writes)
+2. **HTTP Caching** (Reduced bandwidth)
 
 ETags are generated from Marten's event stream versions, ensuring they accurately reflect the current state of resources.
+
+> [!IMPORTANT]
+> **ETags are mandatory** for all state-changing operations (PUT, DELETE, POST restore). If the `If-Match` header is missing, the server will return a `428 Precondition Required` error.
 
 ## How ETags Work
 
@@ -136,6 +139,23 @@ If-Match: "5"
 HTTP/1.1 204 No Content
 ETag: "6"
 ```
+
+## Error Handling
+
+### 412 Precondition Failed
+
+**Cause**: The `If-Match` ETag doesn't match the current resource version. This happens when someone else has modified the resource since you last fetched it.
+
+**Client Action**:
+1. Notify user that the resource was modified.
+2. Fetch the latest version.
+3. Ask user to review changes and resubmit.
+
+### 428 Precondition Required
+
+**Cause**: The `If-Match` header is missing from a state-changing request (PUT, DELETE, etc.).
+
+**Client Action**: Ensure the `If-Match` header is included with the correct ETag obtained from a previous GET request.
 
 ## Client Implementation Examples
 
@@ -329,37 +349,7 @@ If-None-Match: "5"
 # Response: 200 OK, ETag: "6", Full body (content changed)
 ```
 
-## Error Handling
-
-### 412 Precondition Failed
-
-**Cause**: The `If-Match` ETag doesn't match the current resource version
-
-**Client Action**:
-1. Notify user that the resource was modified
-2. Fetch the latest version
-3. Ask user to review changes and resubmit
-
-**Example**:
-```typescript
-try {
-  await updateBook(id, data, etag);
-} catch (error) {
-  if (error.status === 412) {
-    // Fetch latest version
-    const { book, etag: newETag } = await getBook(id);
-    
-    // Show user the conflict
-    showConflictDialog({
-      yourChanges: data,
-      currentVersion: book,
-      onResolve: (resolved) => updateBook(id, resolved, newETag)
-    });
-  }
-}
-```
-
-## Best Practices
+## Summary
 
 ### For Clients
 

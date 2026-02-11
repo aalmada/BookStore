@@ -8,7 +8,8 @@ The application automatically sends **Server-Sent Events (SSE)** notifications w
 2. **Event stored** - The corresponding domain event (e.g., `BookAdded`) is appended to the Marten event store.
 3. **Projection updates** - The **Async Daemon** processes the event and updates the relevant read model (projection).
 4. **Notification sent** - A `ProjectionCommitListener` detects the projection change and triggers an SSE notification.
-5. **Clients receive** - All connected clients receive the update in real-time.
+5. **Causation ID Propagation** - The SSE message includes the `EventId` of the original domain event, which the client uses as the `CausationId` for subsequent requests, ensuring a complete async trace.
+6. **Clients receive** - All connected clients receive the update in real-time.
 
 ## Data Flow
 
@@ -21,7 +22,7 @@ sequenceDiagram
     participant Listener as ProjectionCommitListener
     participant SSE as SSE Stream
     
-    Client->>API: 1. POST /api/admin/books (Create)
+    Client->>API: 1. POST /api/admin/books (Create with Client-ID)
     API->>Marten: 2. Append BookAdded event
     Marten-->>API: 3. Event stored
     API-->>Client: 4. HTTP 201 Created
@@ -112,17 +113,33 @@ eventSource.addEventListener('BookUpdated', (event) => {
 
 ### Blazor (C#)
 
-In the Blazor frontend, we use a shared service to listen for these events and trigger UI state updates.
+In the Blazor frontend, we use `BookStoreEventsService` which leverages the native .NET 10 `SseParser` for robust, high-performance stream processing.
 
 ```csharp
 // BookStoreEventsService.cs
-var request = new HttpRequestMessage(HttpMethod.Get, "api/notifications/stream");
-request.SetBrowserResponseStreamingEnabled(true);
+using System.Net.ServerSentEvents;
 
-using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
-using var stream = await response.Content.ReadAsStreamAsync();
-await foreach (var sseEvent in ParseSseStream(stream))
+// ...
+using var response = await _httpClient.GetAsync("/api/notifications/stream", 
+    HttpCompletionOption.ResponseHeadersRead, token);
+using var stream = await response.Content.ReadAsStreamAsync(token);
+
+await foreach (var item in SseParser.Create(stream).EnumerateAsync(token))
 {
-    // Handle event...
+    var notification = DeserializeNotification(item.EventType, item.Data);
+    // ...
 }
 ```
+
+#### Causation Tracking
+
+The client automatically extracts the `EventId` from the notification and updates its context:
+
+```csharp
+if (notification.EventId != Guid.Empty)
+{
+    _clientContext.UpdateCausationId(notification.EventId.ToString());
+}
+```
+
+This ensures that any subsequent command sent by the client is logically linked to the event that triggered the UI update, closing the loop in the asynchronous architecture.

@@ -136,10 +136,14 @@ private static Task<IResult> CreateBook(request, IMessageBus bus)
 // Handler: Pure business logic
 public static IResult Handle(CreateBook cmd, IDocumentSession session)
 {
-    var @event = BookAggregate.Create(...);
+    // ID is provided by the client, allowing for:
+    // 1. Idempotency: Retries won't create duplicates
+    // 2. Immediate local state: Client knows the ID before server responds
+    // 3. Robust tracing: Command ID linked to future SSE notifications
+    var @event = BookAggregate.Create(cmd.Id, ...);
     session.Events.StartStream(cmd.Id, @event);
     // Wolverine auto-commits
-    return Results.Created(...);
+    return Results.Created($"/api/books/{cmd.Id}");
 }
 ```
 
@@ -438,15 +442,15 @@ sequenceDiagram
 - Maintain referential integrity
 - Audit trail
 
-### 5. ETags for Concurrency
+### 5. Mandatory ETags for Concurrency
 
 **Why**:
 
 - Standard HTTP mechanism
 - Works with any client
 - Natural fit with stream versions
-- Natural fit with stream versions
-- Prevents lost updates
+- **Mandatory for all writes** (prevents lost updates)
+- Enforced via middleware (428 Precondition Required if missing)
 
 ### 6. Identity Stored as Documents (Not Event Sourced)
 
