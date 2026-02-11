@@ -28,14 +28,12 @@ public class ErrorScenarioTests
 
         var createBookRequest = new CreateBookRequest
         {
+            Id = Guid.CreateVersion7(),
             Title = "", // Invalid: empty title
             Isbn = "invalid-isbn", // Invalid: bad ISBN format (handled by validation?)
             Language = "en",
             Translations =
-                new Dictionary<string, BookTranslationDto>
-                {
-                    ["en"] = new BookTranslationDto("Test description")
-                },
+                new Dictionary<string, BookTranslationDto> { ["en"] = new BookTranslationDto("Test description") },
             PublicationDate = new PartialDate(2026, 1, 1),
             PublisherId = null,
             AuthorIds = [],

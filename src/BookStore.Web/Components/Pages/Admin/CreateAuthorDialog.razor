@@ -125,6 +125,7 @@
                 kvp => new AuthorTranslationDto(kvp.Value)
             );
 
+            _model.Id = Guid.CreateVersion7();
             await AuthorsClient.CreateAuthorAsync(_model);
             Snackbar.Add($"Author {_model.Name} created successfully.", Severity.Success);
             MudDialog.Close(DialogResult.Ok(true));

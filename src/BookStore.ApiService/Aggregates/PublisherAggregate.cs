@@ -40,6 +40,11 @@ public class PublisherAggregate : ISoftDeleted
     // Command methods
     public static Result<PublisherAdded> CreateEvent(Guid id, string name)
     {
+        if (id == Guid.Empty)
+        {
+            return Result.Failure<PublisherAdded>(Error.Validation(ErrorCodes.Publishers.IdRequired, "Publisher ID is required and cannot be empty"));
+        }
+
         var nameResult = ValidateName(name);
         if (nameResult.IsFailure)
         {

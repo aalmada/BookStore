@@ -44,6 +44,11 @@ public class CategoryAggregate : ISoftDeleted
     // Command methods
     public static Result<CategoryAdded> CreateEvent(Guid id, Dictionary<string, CategoryTranslation> translations)
     {
+        if (id == Guid.Empty)
+        {
+            return Result.Failure<CategoryAdded>(Error.Validation(ErrorCodes.Categories.IdRequired, "Category ID is required and cannot be empty"));
+        }
+
         var translationsResult = ValidateTranslations(translations);
         if (translationsResult.IsFailure)
         {

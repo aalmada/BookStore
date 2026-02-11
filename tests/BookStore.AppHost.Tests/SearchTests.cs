@@ -15,6 +15,7 @@ public class SearchTests
         // Create a book with a unique title using proper request model
         var createRequest = new CreateBookRequest
         {
+            Id = Guid.CreateVersion7(),
             Title = uniqueTitle,
             Isbn = "978-3-16-148410-0",
             Language = "en",

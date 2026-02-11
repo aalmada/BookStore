@@ -139,19 +139,6 @@ public static class AuthorHandlers
 
             _ = session.Events.Append(command.Id, eventResult.Value);
 
-
-            try
-            {
-                await session.SaveChangesAsync(cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                System.IO.File.AppendAllText("debug_concurrency.log", $"UpdateAuthor SaveChanges Exception: {ex.GetType().Name} - {ex.Message}\n");
-                throw;
-            }
-
-
-
             // Invalidate cache
             await cache.RemoveByTagAsync([CacheTags.AuthorList, CacheTags.ForItem(CacheTags.AuthorItemPrefix, command.Id)], cancellationToken);
 
@@ -190,17 +177,6 @@ public static class AuthorHandlers
 
         _ = session.Events.Append(command.Id, eventResult.Value);
 
-
-        try
-        {
-            await session.SaveChangesAsync(cancellationToken);
-        }
-        catch (Exception ex)
-        {
-             System.IO.File.AppendAllText("debug_concurrency.log", $"SoftDeleteAuthor SaveChanges Exception: {ex.GetType().Name} - {ex.Message}\n");
-             throw;
-        }
-
         return Results.NoContent();
     }
 
@@ -235,16 +211,6 @@ public static class AuthorHandlers
         }
 
         _ = session.Events.Append(command.Id, eventResult.Value);
-
-        try
-        {
-            await session.SaveChangesAsync(cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            System.IO.File.AppendAllText("debug_concurrency.log", $"AuthorHandler (SoftDelete/Restore) TraceId={httpContextAccessor.HttpContext?.TraceIdentifier} Exception: {ex.GetType().Name} - {ex.Message}\nInner: {ex.InnerException?.Message}\nStack: {ex.StackTrace}\n");
-            throw;
-        }
 
         return Results.NoContent();
     }

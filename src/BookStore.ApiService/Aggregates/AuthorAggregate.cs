@@ -48,6 +48,11 @@ public class AuthorAggregate : ISoftDeleted
     // Command methods
     public static Result<AuthorAdded> CreateEvent(Guid id, string name, Dictionary<string, AuthorTranslation> translations)
     {
+        if (id == Guid.Empty)
+        {
+            return Result.Failure<AuthorAdded>(Error.Validation(ErrorCodes.Authors.IdRequired, "Author ID is required and cannot be empty"));
+        }
+
         var nameResult = ValidateName(name);
         if (nameResult.IsFailure)
         {

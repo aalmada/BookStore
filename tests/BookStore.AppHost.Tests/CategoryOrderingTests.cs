@@ -29,6 +29,7 @@ public class CategoryOrderingTests
         {
             var createRequest = new CreateCategoryRequest
             {
+                Id = Guid.CreateVersion7(),
                 Translations = new Dictionary<string, CategoryTranslationDto>
                 {
                     ["en"] = new CategoryTranslationDto(name)
@@ -83,6 +84,7 @@ public class CategoryOrderingTests
         {
             var createRequest = new CreateCategoryRequest
             {
+                Id = Guid.CreateVersion7(),
                 Translations = new Dictionary<string, CategoryTranslationDto>
                 {
                     ["en"] = new CategoryTranslationDto(cat.EN), ["pt-PT"] = new CategoryTranslationDto(cat.PT)

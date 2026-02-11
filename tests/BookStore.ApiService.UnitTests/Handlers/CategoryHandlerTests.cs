@@ -16,6 +16,7 @@ public class CategoryHandlerTests : HandlerTestBase
     {
         // Arrange
         var command = new CreateCategory(
+            Guid.CreateVersion7(),
             new Dictionary<string, CategoryTranslationDto> { ["en"] = new CategoryTranslationDto("Technology") }
         );
 
@@ -40,6 +41,7 @@ public class CategoryHandlerTests : HandlerTestBase
         var name = new string('a', nameLength);
 
         var command = new CreateCategory(
+            Guid.CreateVersion7(),
             new Dictionary<string, CategoryTranslationDto> { [culture] = new CategoryTranslationDto(name) }
         );
 
@@ -60,8 +62,7 @@ public class CategoryHandlerTests : HandlerTestBase
         var command = new UpdateCategory(
             Guid.CreateVersion7(),
             new Dictionary<string, CategoryTranslationDto> { ["en"] = new CategoryTranslationDto("Technology Updated") }
-        )
-        { ETag = "test-etag" };
+        ) { ETag = "test-etag" };
 
         // Mock Stream State
         _ = Session.Events.FetchStreamStateAsync(command.Id).Returns(new Marten.Events.StreamState { Version = 1 });

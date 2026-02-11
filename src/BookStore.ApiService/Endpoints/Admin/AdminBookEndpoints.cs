@@ -15,16 +15,19 @@ using Wolverine;
 
 namespace BookStore.ApiService.Commands
 {
-    public record CreateBookRequest(
-        string Title,
-        string? Isbn,
-        string Language,
-        IReadOnlyDictionary<string, BookTranslationDto>? Translations,
-        PartialDate? PublicationDate,
-        Guid? PublisherId,
-        IReadOnlyList<Guid> AuthorIds,
-        IReadOnlyList<Guid> CategoryIds,
-        IReadOnlyDictionary<string, decimal>? Prices = null);
+    public record CreateBookRequest
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("id")] public Guid Id { get; init; }
+        [System.Text.Json.Serialization.JsonPropertyName("title")] public string Title { get; init; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("isbn")] public string? Isbn { get; init; }
+        [System.Text.Json.Serialization.JsonPropertyName("language")] public string Language { get; init; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("translations")] public IReadOnlyDictionary<string, BookTranslationDto>? Translations { get; init; }
+        [System.Text.Json.Serialization.JsonPropertyName("publicationDate")] public PartialDate? PublicationDate { get; init; }
+        [System.Text.Json.Serialization.JsonPropertyName("publisherId")] public Guid? PublisherId { get; init; }
+        [System.Text.Json.Serialization.JsonPropertyName("authorIds")] public IReadOnlyList<Guid>? AuthorIds { get; init; }
+        [System.Text.Json.Serialization.JsonPropertyName("categoryIds")] public IReadOnlyList<Guid>? CategoryIds { get; init; }
+        [System.Text.Json.Serialization.JsonPropertyName("prices")] public IReadOnlyDictionary<string, decimal>? Prices { get; init; }
+    }
 
     public record UpdateBookRequest(
         string Title,
@@ -77,7 +80,6 @@ namespace BookStore.ApiService.Endpoints.Admin
             return group.RequireAuthorization("Admin");
         }
 
-        // Wolverine approach: Endpoint just creates command and invokes it via message bus
         static Task<IResult> CreateBook(
             [FromBody] Commands.CreateBookRequest request,
             [FromServices] IMessageBus bus,
@@ -85,6 +87,7 @@ namespace BookStore.ApiService.Endpoints.Admin
             CancellationToken cancellationToken)
         {
             var command = new Commands.CreateBook(
+                request.Id,
                 request.Title,
                 request.Isbn,
                 request.Language,

@@ -14,7 +14,12 @@ using Wolverine;
 
 namespace BookStore.ApiService.Commands
 {
-    public record CreateAuthorRequest(string Name, IReadOnlyDictionary<string, AuthorTranslationDto>? Translations);
+    public record CreateAuthorRequest
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("id")] public Guid Id { get; init; }
+        [System.Text.Json.Serialization.JsonPropertyName("name")] public string Name { get; init; } = default!;
+        [System.Text.Json.Serialization.JsonPropertyName("translations")] public IReadOnlyDictionary<string, AuthorTranslationDto>? Translations { get; init; }
+    }
     public record UpdateAuthorRequest(string Name, IReadOnlyDictionary<string, AuthorTranslationDto>? Translations);
 }
 
@@ -132,7 +137,7 @@ namespace BookStore.ApiService.Endpoints.Admin
             [FromServices] ITenantContext tenantContext,
             CancellationToken cancellationToken)
         {
-            var command = new Commands.CreateAuthor(request.Name, request.Translations);
+            var command = new Commands.CreateAuthor(request.Id, request.Name, request.Translations);
             return bus.InvokeAsync<IResult>(command, new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
         }
 

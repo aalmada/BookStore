@@ -102,5 +102,17 @@ public static partial class Log
             Level = LogLevel.Debug,
             Message = "Failed to send heartbeat ping")]
         public static partial void FailedToSendHeartbeat(ILogger logger, Exception ex);
+
+        [LoggerMessage(
+            EventId = 6017,
+            Level = LogLevel.Information,
+            Message = "Broadcasting {EventType} for {EntityId} to local subscribers")]
+        public static partial void BroadcastingToLocal(ILogger logger, string eventType, Guid entityId);
+
+        [LoggerMessage(
+            EventId = 6018,
+            Level = LogLevel.Information,
+            Message = "Publishing to Redis: {Json}")]
+        public static partial void PublishingToRedis(ILogger logger, string json);
     }
 }

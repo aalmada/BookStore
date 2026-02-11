@@ -47,6 +47,7 @@ public static class TestHelpers
         GenerateFakeBookRequest(Guid? publisherId = null, IEnumerable<Guid>? authorIds = null,
             IEnumerable<Guid>? categoryIds = null) => new()
     {
+        Id = Guid.CreateVersion7(),
         Title = _faker.Commerce.ProductName(),
         Isbn = _faker.Commerce.Ean13(),
         Language = "en",
@@ -93,6 +94,7 @@ public static class TestHelpers
     /// <returns>A CreateAuthorRequest with randomized name and biography in English and Spanish.</returns>
     public static CreateAuthorRequest GenerateFakeAuthorRequest() => new()
     {
+        Id = Guid.CreateVersion7(),
         Name = _faker.Name.FullName(),
         Translations = new Dictionary<string, AuthorTranslationDto>
         {
@@ -115,6 +117,7 @@ public static class TestHelpers
     /// <returns>A CreateCategoryRequest with randomized name and description in English and Spanish.</returns>
     public static CreateCategoryRequest GenerateFakeCategoryRequest() => new()
     {
+        Id = Guid.CreateVersion7(),
         Translations = new Dictionary<string, CategoryTranslationDto>
         {
             ["en"] = new(_faker.Commerce.Department()), ["es"] = new(_faker.Commerce.Department())
@@ -135,9 +138,8 @@ public static class TestHelpers
 
     public static async Task<CategoryDto> CreateCategoryAsync(ICategoriesClient client, CreateCategoryRequest request)
     {
-        CategoryDto? createdCategory = null;
         var received = await ExecuteAndWaitForEventAsync(
-            Guid.Empty,
+            request.Id,
             ["CategoryCreated", "CategoryUpdated"],
             async () =>
             {
@@ -146,14 +148,12 @@ public static class TestHelpers
                 {
                     throw response.Error;
                 }
-
-                createdCategory = response.Content;
             },
             TestConstants.DefaultEventTimeout);
 
-        if (!received || createdCategory == null)
+        if (!received)
         {
-            throw new Exception("Failed to create category or receive event.");
+            throw new Exception("Failed to receive CategoryCreated event.");
         }
 
         // Poll until available in read side
@@ -162,7 +162,7 @@ public static class TestHelpers
         {
             try
             {
-                finalCategory = await client.GetCategoryAsync(createdCategory.Id);
+                finalCategory = await client.GetCategoryAsync(request.Id);
                 return finalCategory != null;
             }
             catch
@@ -263,7 +263,7 @@ public static class TestHelpers
     /// </summary>
     /// <returns>A CreatePublisherRequest with a randomized company name.</returns>
     public static CreatePublisherRequest GenerateFakePublisherRequest()
-        => new() { Name = _faker.Company.CompanyName() };
+        => new() { Id = Guid.CreateVersion7(), Name = _faker.Company.CompanyName() };
 
     public static HttpClient GetAuthenticatedClient(string accessToken)
     {
@@ -581,10 +581,15 @@ public static class TestHelpers
 
     public static async Task<BookDto> CreateBookAsync(HttpClient httpClient, object createBookRequest)
     {
-        BookDto? createdBook = null;
+        // Try to get Id from the request object if it's one of ours
+        var entityId = Guid.Empty;
+        if (createBookRequest is CreateBookRequest req)
+        {
+            entityId = req.Id;
+        }
 
         var received = await ExecuteAndWaitForEventAsync(
-            Guid.Empty,
+            entityId,
             [
                 "BookCreated", "BookUpdated"
             ], // Async projections may report as Update regardless of Insert/Update
@@ -596,11 +601,15 @@ public static class TestHelpers
                 }
 
                 _ = createResponse.EnsureSuccessStatusCode();
-                createdBook = await createResponse.Content.ReadFromJsonAsync<BookDto>();
+                if (entityId == Guid.Empty)
+                {
+                    var createdBook = await createResponse.Content.ReadFromJsonAsync<BookDto>();
+                    entityId = createdBook?.Id ?? Guid.Empty;
+                }
             },
             TestConstants.DefaultEventTimeout);
 
-        if (!received || createdBook == null)
+        if (!received || entityId == Guid.Empty)
         {
             throw new Exception("Failed to create book or receive BookUpdated event.");
         }
@@ -613,7 +622,7 @@ public static class TestHelpers
 
         for (var i = 0; i < maxRetries; i++)
         {
-            var getResponse = await httpClient.GetAsync($"/api/books/{createdBook.Id}");
+            var getResponse = await httpClient.GetAsync($"/api/books/{entityId}");
             if (getResponse.IsSuccessStatusCode)
             {
                 fetchedBook = await getResponse.Content.ReadFromJsonAsync<BookDto>();
@@ -630,16 +639,14 @@ public static class TestHelpers
         {
         }
 
-        return fetchedBook ?? createdBook!;
+        return fetchedBook ?? (await httpClient.GetFromJsonAsync<BookDto>($"/api/books/{entityId}"))!;
     }
 
     public static async Task<AuthorDto> CreateAuthorAsync(IAuthorsClient client,
         CreateAuthorRequest createAuthorRequest)
     {
-        AuthorDto? createdAuthor = null;
-
         var received = await ExecuteAndWaitForEventAsync(
-            Guid.Empty,
+            createAuthorRequest.Id,
             ["AuthorCreated", "AuthorUpdated"],
             async () =>
             {
@@ -648,14 +655,12 @@ public static class TestHelpers
                 {
                     throw response.Error;
                 }
-
-                createdAuthor = response.Content;
             },
             TestConstants.DefaultEventTimeout);
 
-        if (!received || createdAuthor == null)
+        if (!received)
         {
-            throw new Exception("Failed to create author or receive AuthorCreated event.");
+            throw new Exception("Failed to receive AuthorCreated event.");
         }
 
         // Poll until available in read side
@@ -664,7 +669,7 @@ public static class TestHelpers
         {
             try
             {
-                finalAuthor = await client.GetAuthorAsync(createdAuthor.Id);
+                finalAuthor = await client.GetAuthorAsync(createAuthorRequest.Id);
                 return finalAuthor != null;
             }
             catch
@@ -814,10 +819,8 @@ public static class TestHelpers
 
     public static async Task<BookDto> CreateBookAsync(IBooksClient client, CreateBookRequest createBookRequest)
     {
-        Guid? createdId = null;
-
         var received = await ExecuteAndWaitForEventAsync(
-            Guid.Empty,
+            createBookRequest.Id,
             ["BookCreated", "BookUpdated"],
             async () =>
             {
@@ -826,23 +829,12 @@ public static class TestHelpers
                 {
                     throw response.Error;
                 }
-
-                // Extract ID from Location header: /api/books/{id}
-                var location = response.Headers.Location;
-                if (location != null)
-                {
-                    var segments = location.ToString().TrimEnd('/').Split('/');
-                    if (Guid.TryParse(segments.Last(), out var id))
-                    {
-                        createdId = id;
-                    }
-                }
             },
             TestConstants.DefaultEventTimeout);
 
-        if (!received || createdId == null)
+        if (!received)
         {
-            throw new Exception("Failed to create book or receive BookCreated event, or extract ID.");
+            throw new Exception("Failed to receive BookCreated event.");
         }
 
         // Poll until available in read side
@@ -851,7 +843,7 @@ public static class TestHelpers
         {
             try
             {
-                finalBook = await client.GetBookAsync(createdId.Value);
+                finalBook = await client.GetBookAsync(createBookRequest.Id);
                 return finalBook != null;
             }
             catch
@@ -866,9 +858,8 @@ public static class TestHelpers
     public static async Task<PublisherDto> CreatePublisherAsync(IPublishersClient client,
         CreatePublisherRequest request)
     {
-        PublisherDto? createdPublisher = null;
         var received = await ExecuteAndWaitForEventAsync(
-            Guid.Empty,
+            request.Id,
             ["PublisherCreated", "PublisherUpdated"],
             async () =>
             {
@@ -877,14 +868,12 @@ public static class TestHelpers
                 {
                     throw response.Error;
                 }
-
-                createdPublisher = response.Content;
             },
             TestConstants.DefaultEventTimeout);
 
-        if (!received || createdPublisher == null)
+        if (!received)
         {
-            throw new Exception("Failed to create publisher or receive event.");
+            throw new Exception("Failed to receive PublisherCreated event.");
         }
 
         // Poll until available in read side
@@ -896,7 +885,7 @@ public static class TestHelpers
                 var publishers =
                     await client.GetAllPublishersAsync(
                         new PublisherSearchRequest { Search = request.Name });
-                finalPublisher = publishers?.Items.FirstOrDefault(p => p.Id == createdPublisher.Id);
+                finalPublisher = publishers?.Items.FirstOrDefault(p => p.Id == request.Id);
                 return finalPublisher != null;
             }
             catch

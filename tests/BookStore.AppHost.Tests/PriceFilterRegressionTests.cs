@@ -38,6 +38,7 @@ public class PriceFilterRegressionTests
 
         var createRequest = new CreateBookRequest
         {
+            Id = Guid.CreateVersion7(),
             Title = uniqueTitle,
             Isbn = "978-0-00-000000-0",
             Language = "en",
@@ -114,6 +115,7 @@ public class PriceFilterRegressionTests
         // USD=10, EUR=200. Range [50, 150]. No single currency fits.
         var createRequest = new CreateBookRequest
         {
+            Id = Guid.CreateVersion7(),
             Title = uniqueTitle,
             Isbn = "978-0-00-000000-0",
             Language = "en",
@@ -173,6 +175,7 @@ public class PriceFilterRegressionTests
         var uniqueTitle = $"UpdateResetsDiscount-{Guid.NewGuid()}";
         var createRequest = new CreateBookRequest
         {
+            Id = Guid.CreateVersion7(),
             Title = uniqueTitle,
             Isbn = "978-0-00-000000-0",
             Language = "en",

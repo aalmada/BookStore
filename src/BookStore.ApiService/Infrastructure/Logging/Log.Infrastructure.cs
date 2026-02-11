@@ -206,5 +206,14 @@ public static partial class Log
             ILogger logger,
             Guid userId,
             int count);
+
+        [LoggerMessage(
+            Level = LogLevel.Information,
+            Message = "Creating {NotificationType} for book {BookId}, version {Version}")]
+        public static partial void CreatingBookNotification(
+            ILogger logger,
+            string notificationType,
+            Guid bookId,
+            long version);
     }
 }

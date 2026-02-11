@@ -96,6 +96,11 @@ public class BookAggregate : ISoftDeleted
         Dictionary<string, decimal> prices)
     {
         // Validation with Result pattern
+        if (id == Guid.Empty)
+        {
+            return Result.Failure<BookAdded>(Error.Validation(ErrorCodes.Books.IdRequired, "Book ID is required and cannot be empty"));
+        }
+
         var titleResult = ValidateTitle(title);
         if (titleResult.IsFailure)
         {

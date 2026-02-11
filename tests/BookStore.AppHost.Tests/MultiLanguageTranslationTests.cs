@@ -16,6 +16,7 @@ public class MultiLanguageTranslationTests
 
         var createRequest = new CreateAuthorRequest
         {
+            Id = Guid.CreateVersion7(),
             Name = authorName,
             Translations = new Dictionary<string, AuthorTranslationDto>
             {
@@ -62,6 +63,7 @@ public class MultiLanguageTranslationTests
 
         var createRequest = new CreateCategoryRequest
         {
+            Id = Guid.CreateVersion7(),
             Translations = new Dictionary<string, CategoryTranslationDto>
             {
                 ["en"] = new(englishName), ["pt"] = new("Categoria em Português")
@@ -108,6 +110,7 @@ public class MultiLanguageTranslationTests
 
         var createRequest = new CreateBookRequest
         {
+            Id = Guid.CreateVersion7(),
             Title = title,
             Isbn = "978-1-23-456789-0",
             Language = "en",

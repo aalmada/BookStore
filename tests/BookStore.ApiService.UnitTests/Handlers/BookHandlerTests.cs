@@ -24,6 +24,7 @@ public class BookHandlerTests : HandlerTestBase
     {
         // Arrange
         var command = new CreateBook(
+            Guid.CreateVersion7(),
             "Clean Code",
             "978-0132350884",
             "en",
@@ -63,6 +64,7 @@ public class BookHandlerTests : HandlerTestBase
         var description = new string('a', descLength);
 
         var command = new CreateBook(
+            Guid.CreateVersion7(),
             "Clean Code",
             "978-0132350884",
             language,
@@ -89,6 +91,7 @@ public class BookHandlerTests : HandlerTestBase
     {
         // Arrange
         var command = new CreateBook(
+            Guid.CreateVersion7(),
             "Clean Code",
             "978-0132350884",
             "en",

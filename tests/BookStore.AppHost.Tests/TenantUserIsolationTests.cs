@@ -27,6 +27,7 @@ public class TenantUserIsolationTests
         // Use Refit to create book
         var createRequest = new CreateBookRequest
         {
+            Id = Guid.CreateVersion7(),
             Title = $"TenantBook-{Guid.NewGuid()}",
             Isbn = "1234567890",
             Language = "en",
@@ -74,6 +75,7 @@ public class TenantUserIsolationTests
 
         var createRequest = new CreateBookRequest
         {
+            Id = Guid.CreateVersion7(),
             Title = $"FavBook-{Guid.NewGuid()}",
             Isbn = "1234567890",
             Language = "en",
@@ -124,6 +126,7 @@ public class TenantUserIsolationTests
 
         var createRequest = new CreateBookRequest
         {
+            Id = Guid.CreateVersion7(),
             Title = $"CartBook-{Guid.NewGuid()}",
             Isbn = "1234567890",
             Language = "en",
@@ -185,6 +188,7 @@ public class TenantUserIsolationTests
 
             var createRequest = new CreateBookRequest
             {
+                Id = Guid.CreateVersion7(),
                 Title = $"IsoBook-{tid}-{Guid.NewGuid()}",
                 Isbn = "1234567890",
                 Language = "en",

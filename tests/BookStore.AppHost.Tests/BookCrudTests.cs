@@ -191,17 +191,17 @@ public class BookCrudTests
         var user2Client = await CreateAuthenticatedUserAsync();
 
         // Act & Assert: User 1 likes book
-        await TestHelpers.AddToFavoritesAsync(user1Client, createdBook.Id, createdBook.Id, "BookUpdated");
+        await TestHelpers.AddToFavoritesAsync(user1Client, createdBook.Id, createdBook.Id, "BookStatisticsUpdate");
         var bookDto1 = await anonClient.GetBookAsync(createdBook.Id);
         _ = await Assert.That(bookDto1!.LikeCount).IsEqualTo(1);
 
         // Act & Assert: User 2 likes book
-        await TestHelpers.AddToFavoritesAsync(user2Client, createdBook.Id, createdBook.Id, "BookUpdated");
+        await TestHelpers.AddToFavoritesAsync(user2Client, createdBook.Id, createdBook.Id, "BookStatisticsUpdate");
         var bookDto2 = await anonClient.GetBookAsync(createdBook.Id);
         _ = await Assert.That(bookDto2!.LikeCount).IsEqualTo(2);
 
         // Act & Assert: User 1 unlikes book
-        await TestHelpers.RemoveFromFavoritesAsync(user1Client, createdBook.Id, createdBook.Id, "BookUpdated");
+        await TestHelpers.RemoveFromFavoritesAsync(user1Client, createdBook.Id, createdBook.Id, "BookStatisticsUpdate");
         var bookDto3 = await anonClient.GetBookAsync(createdBook.Id);
         _ = await Assert.That(bookDto3!.LikeCount).IsEqualTo(1);
     }

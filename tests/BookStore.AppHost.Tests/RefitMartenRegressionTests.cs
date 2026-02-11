@@ -38,6 +38,7 @@ public class RefitMartenRegressionTests
         var uniqueTitle = $"PriceTest-{Guid.NewGuid()}";
         var createRequest = new CreateBookRequest
         {
+            Id = Guid.CreateVersion7(),
             Title = uniqueTitle,
             Isbn = "978-0-00-000000-0",
             Language = "en",
@@ -72,6 +73,7 @@ public class RefitMartenRegressionTests
         var uniqueTitle = $"OutOfRange-{Guid.NewGuid()}";
         var createRequest = new CreateBookRequest
         {
+            Id = Guid.CreateVersion7(),
             Title = uniqueTitle,
             Isbn = "978-0-00-000000-0",
             Language = "en",
@@ -103,6 +105,7 @@ public class RefitMartenRegressionTests
         _ = await TestHelpers.CreateBookAsync(authClient,
             new CreateBookRequest
             {
+                Id = Guid.CreateVersion7(),
                 Title = uniqueTitle,
                 Isbn = "978-0-00-000000-0",
                 Language = "en",
@@ -138,6 +141,7 @@ public class RefitMartenRegressionTests
         var uniqueTitle = $"CurrencyMismatch-{Guid.NewGuid()}";
         var createRequest = new CreateBookRequest
         {
+            Id = Guid.CreateVersion7(),
             Title = uniqueTitle,
             Isbn = "978-0-00-000000-0",
             Language = "en",

@@ -6,11 +6,9 @@ namespace BookStore.ApiService.Commands;
 /// Command to create a new author
 /// </summary>
 public record CreateAuthor(
+    Guid Id,
     string Name,
-    IReadOnlyDictionary<string, AuthorTranslationDto>? Translations)
-{
-    public Guid Id { get; init; } = Guid.CreateVersion7();
-}
+    IReadOnlyDictionary<string, AuthorTranslationDto>? Translations);
 
 /// <summary>
 /// Command to update an existing author

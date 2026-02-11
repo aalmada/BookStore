@@ -97,6 +97,7 @@ public class BookFilterRegressionTests
         // Create book with: USD=10, EUR=50
         var createRequest = new CreateBookRequest
         {
+            Id = Guid.CreateVersion7(),
             Title = uniqueTitle,
             Isbn = "978-0-00-000000-0",
             Language = "en",
@@ -156,6 +157,7 @@ public class BookFilterRegressionTests
         // Create book with Price=50 USD
         var createRequest = new CreateBookRequest
         {
+            Id = Guid.CreateVersion7(),
             Title = uniqueTitle,
             Isbn = "978-0-00-000000-0",
             Language = "en",

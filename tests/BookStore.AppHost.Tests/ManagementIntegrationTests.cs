@@ -21,6 +21,7 @@ public class ManagementIntegrationTests
         var author = await TestHelpers.CreateAuthorAsync(authorsClient,
             new CreateAuthorRequest
             {
+                Id = Guid.CreateVersion7(),
                 Name = $"Integration Author {Guid.NewGuid()}",
                 Translations = new Dictionary<string, AuthorTranslationDto> { ["en"] = new("Bio") }
             });
@@ -28,6 +29,7 @@ public class ManagementIntegrationTests
         var category = await TestHelpers.CreateCategoryAsync(categoriesClient,
             new CreateCategoryRequest
             {
+                Id = Guid.CreateVersion7(),
                 Translations = new Dictionary<string, CategoryTranslationDto>
                 {
                     ["en"] = new($"Integration Cat {Guid.NewGuid()}")
@@ -35,10 +37,11 @@ public class ManagementIntegrationTests
             });
 
         var publisher = await TestHelpers.CreatePublisherAsync(publishersClient,
-            new CreatePublisherRequest { Name = $"Integration Pub {Guid.NewGuid()}" });
+            new CreatePublisherRequest { Id = Guid.CreateVersion7(), Name = $"Integration Pub {Guid.NewGuid()}" });
 
         var createRequest = new CreateBookRequest
         {
+            Id = Guid.CreateVersion7(),
             Title = $"Integration Book {Guid.NewGuid()}",
             Isbn = "1234567890",
             Language = "en",
@@ -91,15 +94,18 @@ public class ManagementIntegrationTests
         _ = await TestHelpers.CreateAuthorAsync(authorsClient,
             new CreateAuthorRequest
             {
+                Id = Guid.CreateVersion7(),
                 Name = authorName,
                 Translations = new Dictionary<string, AuthorTranslationDto> { ["en"] = new("Bio") }
             });
         _ = await TestHelpers.CreateCategoryAsync(categoriesClient,
             new CreateCategoryRequest
             {
+                Id = Guid.CreateVersion7(),
                 Translations = new Dictionary<string, CategoryTranslationDto> { ["en"] = new(catName) }
             });
-        _ = await TestHelpers.CreatePublisherAsync(publishersClient, new CreatePublisherRequest { Name = pubName });
+        _ = await TestHelpers.CreatePublisherAsync(publishersClient,
+            new CreatePublisherRequest { Id = Guid.CreateVersion7(), Name = pubName });
 
         // Act & Assert
         _ = await VerifyInAdminAuthorsAsync(authorsClient, authorName, true);
@@ -118,6 +124,7 @@ public class ManagementIntegrationTests
         var author = await TestHelpers.CreateAuthorAsync(authorsClient,
             new CreateAuthorRequest
             {
+                Id = Guid.CreateVersion7(),
                 Name = authorName,
                 Translations = new Dictionary<string, AuthorTranslationDto> { ["en"] = new("Bio") }
             });
@@ -127,7 +134,8 @@ public class ManagementIntegrationTests
         _ = await Assert.That(initialAuthor).IsNotNull();
 
         // Get ETag from Admin API (since public GetAuthor might not have it)
-        var paged = await authorsClient.GetAllAuthorsAsync(new SharedModels.AuthorSearchRequest { Search = authorName });
+        var paged = await authorsClient.GetAllAuthorsAsync(
+            new SharedModels.AuthorSearchRequest { Search = authorName });
         var adminAuthor = paged.Items.First(a => a.Id == author.Id);
 
         // Act - Soft delete

@@ -6,10 +6,8 @@ namespace BookStore.ApiService.Commands;
 /// Command to create a new category
 /// </summary>
 public record CreateCategory(
-    IReadOnlyDictionary<string, CategoryTranslationDto> Translations)
-{
-    public Guid Id { get; init; } = Guid.CreateVersion7();
-}
+    Guid Id,
+    IReadOnlyDictionary<string, CategoryTranslationDto> Translations);
 
 /// <summary>
 /// Command to update an existing category

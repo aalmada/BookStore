@@ -6,6 +6,7 @@ namespace BookStore.ApiService.Commands;
 /// Command to create a new book
 /// </summary>
 public record CreateBook(
+    Guid Id,
     string Title,
     string? Isbn,
     string Language,
@@ -14,13 +15,7 @@ public record CreateBook(
     Guid? PublisherId,
     IReadOnlyList<Guid> AuthorIds,
     IReadOnlyList<Guid> CategoryIds,
-    IReadOnlyDictionary<string, decimal>? Prices = null)
-{
-    /// <summary>
-    /// Unique identifier for the book (generated automatically)
-    /// </summary>
-    public Guid Id { get; init; } = Guid.CreateVersion7();
-}
+    IReadOnlyDictionary<string, decimal>? Prices = null);
 
 /// <summary>
 /// Command to update an existing book

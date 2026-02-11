@@ -5,10 +5,7 @@ namespace BookStore.ApiService.Commands;
 /// <summary>
 /// Command to create a new publisher
 /// </summary>
-public record CreatePublisher(string Name)
-{
-    public Guid Id { get; init; } = Guid.CreateVersion7();
-}
+public record CreatePublisher(Guid Id, string Name);
 
 /// <summary>
 /// Command to update an existing publisher

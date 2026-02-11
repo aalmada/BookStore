@@ -10,16 +10,20 @@ namespace BookStore.Shared.Notifications;
 [JsonDerivedType(typeof(BookCreatedNotification), "BookCreated")]
 [JsonDerivedType(typeof(BookUpdatedNotification), "BookUpdated")]
 [JsonDerivedType(typeof(BookDeletedNotification), "BookDeleted")]
+[JsonDerivedType(typeof(BookStatisticsUpdateNotification), "BookStatisticsUpdate")]
 [JsonDerivedType(typeof(AuthorCreatedNotification), "AuthorCreated")]
 [JsonDerivedType(typeof(AuthorUpdatedNotification), "AuthorUpdated")]
 [JsonDerivedType(typeof(AuthorDeletedNotification), "AuthorDeleted")]
+[JsonDerivedType(typeof(AuthorStatisticsUpdateNotification), "AuthorStatisticsUpdate")]
 [JsonDerivedType(typeof(CategoryCreatedNotification), "CategoryCreated")]
 [JsonDerivedType(typeof(CategoryUpdatedNotification), "CategoryUpdated")]
 [JsonDerivedType(typeof(CategoryDeletedNotification), "CategoryDeleted")]
 [JsonDerivedType(typeof(CategoryRestoredNotification), "CategoryRestored")]
+[JsonDerivedType(typeof(CategoryStatisticsUpdateNotification), "CategoryStatisticsUpdate")]
 [JsonDerivedType(typeof(PublisherCreatedNotification), "PublisherCreated")]
 [JsonDerivedType(typeof(PublisherUpdatedNotification), "PublisherUpdated")]
 [JsonDerivedType(typeof(PublisherDeletedNotification), "PublisherDeleted")]
+[JsonDerivedType(typeof(PublisherStatisticsUpdateNotification), "PublisherStatisticsUpdate")]
 [JsonDerivedType(typeof(BookCoverUpdatedNotification), "BookCoverUpdated")]
 [JsonDerivedType(typeof(UserVerifiedNotification), "UserVerified")]
 [JsonDerivedType(typeof(UserUpdatedNotification), "UserUpdated")]
@@ -274,4 +278,52 @@ public record TenantUpdatedNotification(
 {
     public string EventType => "TenantUpdated";
     Guid IDomainEventNotification.EntityId => Guid.Empty;
+}
+
+/// <summary>
+/// Notification when book statistics are updated
+/// </summary>
+public record BookStatisticsUpdateNotification(
+    Guid EventId,
+    Guid EntityId,
+    DateTimeOffset Timestamp,
+    long Version = 0) : IDomainEventNotification
+{
+    public string EventType => "BookStatisticsUpdate";
+}
+
+/// <summary>
+/// Notification when category statistics are updated
+/// </summary>
+public record CategoryStatisticsUpdateNotification(
+    Guid EventId,
+    Guid EntityId,
+    DateTimeOffset Timestamp,
+    long Version = 0) : IDomainEventNotification
+{
+    public string EventType => "CategoryStatisticsUpdate";
+}
+
+/// <summary>
+/// Notification when author statistics are updated
+/// </summary>
+public record AuthorStatisticsUpdateNotification(
+    Guid EventId,
+    Guid EntityId,
+    DateTimeOffset Timestamp,
+    long Version = 0) : IDomainEventNotification
+{
+    public string EventType => "AuthorStatisticsUpdate";
+}
+
+/// <summary>
+/// Notification when publisher statistics are updated
+/// </summary>
+public record PublisherStatisticsUpdateNotification(
+    Guid EventId,
+    Guid EntityId,
+    DateTimeOffset Timestamp,
+    long Version = 0) : IDomainEventNotification
+{
+    public string EventType => "PublisherStatisticsUpdate";
 }
