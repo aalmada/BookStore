@@ -1,5 +1,5 @@
-using JasperFx.Events;
 using BookStore.ApiService.Events;
+using JasperFx.Events;
 using Marten.Events;
 using Marten.Events.Aggregation;
 

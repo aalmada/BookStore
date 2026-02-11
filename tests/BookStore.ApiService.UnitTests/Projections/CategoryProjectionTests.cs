@@ -20,9 +20,9 @@ public class CategoryProjectionTests
         );
 
         var mockEvent = Substitute.For<JasperFx.Events.IEvent<CategoryAdded>>();
-        mockEvent.Data.Returns(@event);
-        mockEvent.Timestamp.Returns(timestamp);
-        mockEvent.Version.Returns(1);
+        _ = mockEvent.Data.Returns(@event);
+        _ = mockEvent.Timestamp.Returns(timestamp);
+        _ = mockEvent.Version.Returns(1);
 
         // Act
         var projection = CategoryProjection.Create(mockEvent);
@@ -41,7 +41,8 @@ public class CategoryProjectionTests
         // Arrange
         var projection = new CategoryProjection
         {
-            Id = Guid.NewGuid(), Names = new Dictionary<string, string> { ["en"] = "Old Tech" }
+            Id = Guid.NewGuid(),
+            Names = new Dictionary<string, string> { ["en"] = "Old Tech" }
         };
 
         var timestamp = DateTimeOffset.UtcNow;
@@ -52,9 +53,9 @@ public class CategoryProjectionTests
         );
 
         var mockEvent = Substitute.For<JasperFx.Events.IEvent<CategoryUpdated>>();
-        mockEvent.Data.Returns(@event);
-        mockEvent.Timestamp.Returns(timestamp);
-        mockEvent.Version.Returns(2);
+        _ = mockEvent.Data.Returns(@event);
+        _ = mockEvent.Timestamp.Returns(timestamp);
+        _ = mockEvent.Version.Returns(2);
 
         // Act
         projection.Apply(mockEvent);

@@ -62,7 +62,8 @@ public class CategoryHandlerTests : HandlerTestBase
         var command = new UpdateCategory(
             Guid.CreateVersion7(),
             new Dictionary<string, CategoryTranslationDto> { ["en"] = new CategoryTranslationDto("Technology Updated") }
-        ) { ETag = "test-etag" };
+        )
+        { ETag = "test-etag" };
 
         // Mock Stream State
         _ = Session.Events.FetchStreamStateAsync(command.Id).Returns(new Marten.Events.StreamState { Version = 1 });
@@ -75,7 +76,7 @@ public class CategoryHandlerTests : HandlerTestBase
 
         // Act
         var result =
-            await CategoryHandlers.Handle(command, Session, HttpContextAccessor, Cache, GetLogger<UpdateCategory>());
+            await CategoryHandlers.Handle(command, Session, Cache, GetLogger<UpdateCategory>());
 
         // Assert
         _ = await Assert.That(result).IsTypeOf<NoContent>();
@@ -103,7 +104,7 @@ public class CategoryHandlerTests : HandlerTestBase
         _ = Session.Events.AggregateStreamAsync<CategoryAggregate>(id).Returns(existingAggregate);
 
         // Act
-        var result = await CategoryHandlers.Handle(command, Session, HttpContextAccessor, Cache,
+        var result = await CategoryHandlers.Handle(command, Session, Cache,
             GetLogger<SoftDeleteCategory>());
 
         // Assert
@@ -133,7 +134,7 @@ public class CategoryHandlerTests : HandlerTestBase
 
         // Act
         var result =
-            await CategoryHandlers.Handle(command, Session, HttpContextAccessor, Cache, GetLogger<RestoreCategory>());
+            await CategoryHandlers.Handle(command, Session, Cache, GetLogger<RestoreCategory>());
 
         // Assert
         _ = await Assert.That(result).IsTypeOf<NoContent>();

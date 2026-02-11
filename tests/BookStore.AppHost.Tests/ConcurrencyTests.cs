@@ -1,6 +1,6 @@
+using System.Net;
 using BookStore.Client;
 using TUnit.Assertions.Extensions;
-using System.Net;
 
 namespace BookStore.AppHost.Tests;
 

@@ -1,6 +1,6 @@
+using System.Net;
 using BookStore.Client;
 using TUnit.Assertions.Extensions;
-using System.Net;
 
 namespace BookStore.AppHost.Tests;
 
@@ -18,7 +18,7 @@ public class CategoryConcurrencyTests
         // Get initial state and ETag
         var response = await client.GetCategoryWithResponseAsync(category.Id);
         var etag = response.Headers.ETag?.Tag;
-        await Assert.That(etag).IsNotNull();
+        _ = await Assert.That(etag).IsNotNull();
 
         var updateRequest1 = TestHelpers.GenerateFakeUpdateCategoryRequest();
         var updateRequest2 = TestHelpers.GenerateFakeUpdateCategoryRequest();
@@ -30,7 +30,7 @@ public class CategoryConcurrencyTests
         var failResponse = await client.UpdateCategoryWithResponseAsync(category.Id, updateRequest2, etag);
 
         // Assert
-        await Assert.That((int)failResponse.StatusCode).IsEqualTo((int)HttpStatusCode.PreconditionFailed);
+        _ = await Assert.That((int)failResponse.StatusCode).IsEqualTo((int)HttpStatusCode.PreconditionFailed);
     }
 
     [Test]
@@ -44,7 +44,7 @@ public class CategoryConcurrencyTests
         // Get initial state and ETag
         var response = await client.GetCategoryWithResponseAsync(category.Id);
         var etag = response.Headers.ETag?.Tag;
-        await Assert.That(etag).IsNotNull();
+        _ = await Assert.That(etag).IsNotNull();
 
         var updateRequest = TestHelpers.GenerateFakeUpdateCategoryRequest();
 
@@ -55,7 +55,7 @@ public class CategoryConcurrencyTests
         var deleteResponse = await client.SoftDeleteCategoryWithResponseAsync(category.Id, etag);
 
         // Assert
-        await Assert.That((int)deleteResponse.StatusCode).IsEqualTo((int)HttpStatusCode.PreconditionFailed);
+        _ = await Assert.That((int)deleteResponse.StatusCode).IsEqualTo((int)HttpStatusCode.PreconditionFailed);
     }
 
     [Test]
@@ -69,7 +69,7 @@ public class CategoryConcurrencyTests
         // Get initial state and ETag
         var response = await client.GetCategoryWithResponseAsync(category.Id);
         var etag = response.Headers.ETag?.Tag;
-        await Assert.That(etag).IsNotNull();
+        _ = await Assert.That(etag).IsNotNull();
 
         var updateRequest = TestHelpers.GenerateFakeUpdateCategoryRequest();
 
@@ -80,6 +80,6 @@ public class CategoryConcurrencyTests
         var updateResponse = await client.UpdateCategoryWithResponseAsync(category.Id, updateRequest, etag);
 
         // Assert
-        await Assert.That((int)updateResponse.StatusCode).IsEqualTo((int)HttpStatusCode.PreconditionFailed);
+        _ = await Assert.That((int)updateResponse.StatusCode).IsEqualTo((int)HttpStatusCode.PreconditionFailed);
     }
 }

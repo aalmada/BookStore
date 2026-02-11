@@ -27,7 +27,6 @@ public class BookAggregate : ISoftDeleted
     public CoverImageFormat CoverFormat { get; private set; } = CoverImageFormat.None;
     public long Version { get; private set; }
 
-
     // Marten uses this for rehydration
     void Apply(BookAdded @event)
     {

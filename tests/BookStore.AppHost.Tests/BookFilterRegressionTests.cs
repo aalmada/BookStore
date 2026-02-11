@@ -129,7 +129,10 @@ public class BookFilterRegressionTests
         // Execute Search
         var request = new BookSearchRequest
         {
-            Search = uniqueTitle, Currency = currency, MinPrice = (decimal?)minPrice, MaxPrice = (decimal?)maxPrice
+            Search = uniqueTitle,
+            Currency = currency,
+            MinPrice = (decimal?)minPrice,
+            MaxPrice = (decimal?)maxPrice
         };
 
         var content = await publicClient.GetBooksAsync(request);
@@ -173,7 +176,9 @@ public class BookFilterRegressionTests
         // Verify initially NOT found with MaxPrice=40 (Price is 50)
         var preSaleList = await publicClient.GetBooksAsync(new BookSearchRequest
         {
-            Search = uniqueTitle, MaxPrice = 40, Currency = "USD"
+            Search = uniqueTitle,
+            MaxPrice = 40,
+            Currency = "USD"
         });
         _ = await Assert.That(preSaleList!.Items.Any(b => b.Title == uniqueTitle)).IsFalse();
 
@@ -198,7 +203,9 @@ public class BookFilterRegressionTests
             // Search with MaxPrice=40. Desired price is 25.
             var list = await publicClient.GetBooksAsync(new BookSearchRequest
             {
-                Search = uniqueTitle, MaxPrice = 40, Currency = "USD"
+                Search = uniqueTitle,
+                MaxPrice = 40,
+                Currency = "USD"
             });
 
             if (list != null && list.Items.Any(b => b.Id == bookId))

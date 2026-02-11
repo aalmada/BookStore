@@ -1,20 +1,19 @@
-using Refit;
 using System.Threading;
 using System.Threading.Tasks;
 using BookStore.Shared.Models;
+using Refit;
 
 #nullable enable annotations
 
-namespace BookStore.Client
-{
-    public interface IGetCategoryAdminEndpoint
-    {
-        [Headers("Accept: application/json")]
-        [Get("/api/admin/categories/{id}")]
-        Task<AdminCategoryDto> GetCategoryAdminAsync(System.Guid id, CancellationToken cancellationToken = default);
+namespace BookStore.Client;
 
-        [Headers("Accept: application/json")]
-        [Get("/api/admin/categories/{id}")]
-        Task<IApiResponse<AdminCategoryDto>> GetCategoryAdminWithResponseAsync(System.Guid id, CancellationToken cancellationToken = default);
-    }
+public interface IGetCategoryAdminEndpoint
+{
+    [Headers("Accept: application/json")]
+    [Get("/api/admin/categories/{id}")]
+    Task<AdminCategoryDto> GetCategoryAdminAsync(System.Guid id, CancellationToken cancellationToken = default);
+
+    [Headers("Accept: application/json")]
+    [Get("/api/admin/categories/{id}")]
+    Task<IApiResponse<AdminCategoryDto>> GetCategoryAdminWithResponseAsync(System.Guid id, CancellationToken cancellationToken = default);
 }

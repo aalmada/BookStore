@@ -1,6 +1,6 @@
+using System.Net;
 using BookStore.Client;
 using TUnit.Assertions.Extensions;
-using System.Net;
 
 namespace BookStore.AppHost.Tests;
 
@@ -18,7 +18,7 @@ public class BookConcurrencyTests
         // Get initial state and ETag
         var response = await client.GetBookWithResponseAsync(book.Id);
         var etag = response.Headers.ETag?.Tag;
-        await Assert.That(etag).IsNotNull();
+        _ = await Assert.That(etag).IsNotNull();
 
         var updateRequest1 = TestHelpers.GenerateFakeUpdateBookRequest(book.Publisher?.Id,
             book.Authors.Select(a => a.Id), book.Categories.Select(c => c.Id));
@@ -32,7 +32,7 @@ public class BookConcurrencyTests
         var failResponse = await client.UpdateBookWithResponseAsync(book.Id, updateRequest2, etag);
 
         // Assert
-        await Assert.That((int)failResponse.StatusCode).IsEqualTo((int)HttpStatusCode.PreconditionFailed);
+        _ = await Assert.That((int)failResponse.StatusCode).IsEqualTo((int)HttpStatusCode.PreconditionFailed);
     }
 
     [Test]
@@ -46,7 +46,7 @@ public class BookConcurrencyTests
         // Get initial state and ETag
         var response = await client.GetBookWithResponseAsync(book.Id);
         var etag = response.Headers.ETag?.Tag;
-        await Assert.That(etag).IsNotNull();
+        _ = await Assert.That(etag).IsNotNull();
 
         var updateRequest = TestHelpers.GenerateFakeUpdateBookRequest(book.Publisher?.Id,
             book.Authors.Select(a => a.Id), book.Categories.Select(c => c.Id));
@@ -58,7 +58,7 @@ public class BookConcurrencyTests
         var deleteResponse = await client.SoftDeleteBookWithResponseAsync(book.Id, etag);
 
         // Assert
-        await Assert.That((int)deleteResponse.StatusCode).IsEqualTo((int)HttpStatusCode.PreconditionFailed);
+        _ = await Assert.That((int)deleteResponse.StatusCode).IsEqualTo((int)HttpStatusCode.PreconditionFailed);
     }
 
     [Test]
@@ -72,7 +72,7 @@ public class BookConcurrencyTests
         // Get initial state and ETag
         var response = await client.GetBookWithResponseAsync(book.Id);
         var etag = response.Headers.ETag?.Tag;
-        await Assert.That(etag).IsNotNull();
+        _ = await Assert.That(etag).IsNotNull();
 
         var updateRequest = TestHelpers.GenerateFakeUpdateBookRequest(book.Publisher?.Id,
             book.Authors.Select(a => a.Id), book.Categories.Select(c => c.Id));
@@ -84,6 +84,6 @@ public class BookConcurrencyTests
         var updateResponse = await client.UpdateBookWithResponseAsync(book.Id, updateRequest, etag);
 
         // Assert
-        await Assert.That((int)updateResponse.StatusCode).IsEqualTo((int)HttpStatusCode.PreconditionFailed);
+        _ = await Assert.That((int)updateResponse.StatusCode).IsEqualTo((int)HttpStatusCode.PreconditionFailed);
     }
 }

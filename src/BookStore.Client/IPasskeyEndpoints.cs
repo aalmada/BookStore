@@ -59,14 +59,14 @@ public interface IListPasskeysEndpoint
         CancellationToken cancellationToken = default);
 }
 
-    public interface IDeletePasskeyEndpoint
-    {
-        /// <summary>
-        /// Delete a passkey by ID
-        /// </summary>
-        [Delete("/account/passkeys/{id}")]
-        Task DeletePasskeyAsync(
-            string id,
-            [Header("If-Match")] string? etag = null,
-            CancellationToken cancellationToken = default);
-    }
+public interface IDeletePasskeyEndpoint
+{
+    /// <summary>
+    /// Delete a passkey by ID
+    /// </summary>
+    [Delete("/account/passkeys/{id}")]
+    Task DeletePasskeyAsync(
+        string id,
+        [Header("If-Match")] string? etag = null,
+        CancellationToken cancellationToken = default);
+}

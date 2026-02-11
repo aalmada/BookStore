@@ -33,10 +33,10 @@ public static class BookCoverHandlers
         }
 
         var expectedVersion = ETagHelper.ParseETag(command.ETag);
-        
+
         if (expectedVersion.HasValue && aggregate.Version != expectedVersion.Value)
         {
-             return (ETagHelper.PreconditionFailed(), null!);
+            return (ETagHelper.PreconditionFailed(), null!);
         }
 
         using var imageStream = new MemoryStream(command.Content);
@@ -53,7 +53,7 @@ public static class BookCoverHandlers
 
         // Update aggregate with format enum (URL will be generated dynamically by API endpoints)
         var @event = aggregate.UpdateCoverImage(format);
-        
+
         _ = session.Events.Append(command.BookId, @event.Value);
 
         await session.SaveChangesAsync();

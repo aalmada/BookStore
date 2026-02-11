@@ -71,7 +71,10 @@ public static class ETagHelper
     /// </summary>
     public static long? ParseETag(string? etag)
     {
-        if (string.IsNullOrEmpty(etag)) return null;
+        if (string.IsNullOrEmpty(etag))
+        {
+            return null;
+        }
 
         // Strip quotes if present
         var cleanETag = etag.Trim('"');
@@ -88,12 +91,9 @@ public static class ETagHelper
 
 public static class ETagResultExtensions
 {
-    public static IResult WithETag(this IResult result, string etag)
-    {
-        return new ETagResult(result, etag);
-    }
+    public static IResult WithETag(this IResult result, string etag) => new ETagResult(result, etag);
 
-    private sealed class ETagResult(IResult inner, string etag) : IResult
+    sealed class ETagResult(IResult inner, string etag) : IResult
     {
         public Task ExecuteAsync(HttpContext httpContext)
         {

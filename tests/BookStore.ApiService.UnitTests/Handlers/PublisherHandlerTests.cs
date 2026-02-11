@@ -2,7 +2,6 @@ using BookStore.ApiService.Aggregates;
 using BookStore.ApiService.Commands;
 using BookStore.ApiService.Events;
 using BookStore.ApiService.Handlers.Publishers;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Extensions.Logging;
 
@@ -44,7 +43,7 @@ public class PublisherHandlerTests : HandlerTestBase
         _ = Session.Events.AggregateStreamAsync<PublisherAggregate>(command.Id).Returns(existingAggregate);
 
         // Act
-        var result = await PublisherHandlers.Handle(command, Session, HttpContextAccessor, Cache, Logger);
+        var result = await PublisherHandlers.Handle(command, Session, Cache, Logger);
 
         // Assert
         _ = await Assert.That(result).IsTypeOf<NoContent>();
@@ -71,7 +70,7 @@ public class PublisherHandlerTests : HandlerTestBase
         _ = Session.Events.AggregateStreamAsync<PublisherAggregate>(id).Returns(existingAggregate);
 
         // Act
-        var result = await PublisherHandlers.Handle(command, Session, HttpContextAccessor, Cache, Logger);
+        var result = await PublisherHandlers.Handle(command, Session, Cache, Logger);
 
         // Assert
         _ = await Assert.That(result).IsTypeOf<NoContent>();
@@ -98,7 +97,7 @@ public class PublisherHandlerTests : HandlerTestBase
         _ = Session.Events.AggregateStreamAsync<PublisherAggregate>(id).Returns(existingAggregate);
 
         // Act
-        var result = await PublisherHandlers.Handle(command, Session, HttpContextAccessor, Cache, Logger);
+        var result = await PublisherHandlers.Handle(command, Session, Cache, Logger);
 
         // Assert
         _ = await Assert.That(result).IsTypeOf<NoContent>();

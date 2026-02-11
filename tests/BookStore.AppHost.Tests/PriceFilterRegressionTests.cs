@@ -1,7 +1,7 @@
 using System.Globalization;
-using TUnit;
 using BookStore.Client;
 using BookStore.Shared.Models;
+using TUnit;
 using SharedModels = BookStore.Shared.Models;
 
 namespace BookStore.AppHost.Tests;
@@ -227,7 +227,10 @@ public class PriceFilterRegressionTests
         {
             var searchRequest = new SharedModels.BookSearchRequest
             {
-                Search = uniqueTitle, MinPrice = 40, MaxPrice = 60, Currency = "USD"
+                Search = uniqueTitle,
+                MinPrice = 40,
+                MaxPrice = 60,
+                Currency = "USD"
             };
             var searchList = await publicClient.GetBooksAsync(searchRequest);
             if (searchList.Items.Any(b => b.Id == bookId))
@@ -281,7 +284,7 @@ public class PriceFilterRegressionTests
             Prices = fetchedBook.Prices?.ToDictionary(k => k.Key, v => v.Value) ?? []
         };
 
-        await TestHelpers.UpdateBookAsync(authClient, bookId, updateRequest, etagValue!);
+        _ = await TestHelpers.UpdateBookAsync(authClient, bookId, updateRequest, etagValue!);
 
         // 4. Verify book is STILL found in the same price range
         var foundAfterUpdate = false;
@@ -291,7 +294,10 @@ public class PriceFilterRegressionTests
         {
             var searchRequest = new SharedModels.BookSearchRequest
             {
-                Search = updatedTitle, MinPrice = 40, MaxPrice = 60, Currency = "USD"
+                Search = updatedTitle,
+                MinPrice = 40,
+                MaxPrice = 60,
+                Currency = "USD"
             };
             var searchList = await publicClient.GetBooksAsync(searchRequest);
             if (searchList.Items.Any(b => b.Id == bookId))
@@ -318,11 +324,19 @@ public class PriceFilterRegressionTests
         _ = await Assert.That(foundAfterUpdate).IsTrue();
     }
 
-    private static long ParseETag(string? etag)
+    static long ParseETag(string? etag)
     {
-        if (string.IsNullOrEmpty(etag)) return 0;
+        if (string.IsNullOrEmpty(etag))
+        {
+            return 0;
+        }
+
         var trimmed = etag.Trim();
-        if (trimmed.StartsWith("W/", StringComparison.OrdinalIgnoreCase)) trimmed = trimmed[2..];
+        if (trimmed.StartsWith("W/", StringComparison.OrdinalIgnoreCase))
+        {
+            trimmed = trimmed[2..];
+        }
+
         trimmed = trimmed.Trim('"');
         return long.TryParse(trimmed, out var version) ? version : 0;
     }

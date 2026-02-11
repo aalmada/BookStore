@@ -49,7 +49,7 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
         Log.Infrastructure.AfterCommitAsync(_logger, inserted, updated, deleted);
 
         // Try to capture causation/correlation ID for event propagation
-        Guid eventId = Guid.Empty;
+        var eventId = Guid.Empty;
         if (Guid.TryParse(session.CausationId, out var causationGuid))
         {
             eventId = causationGuid;

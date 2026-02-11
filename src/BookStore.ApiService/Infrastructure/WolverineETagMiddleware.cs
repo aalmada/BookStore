@@ -12,7 +12,10 @@ public static class WolverineETagMiddleware
     public static void Before(IMessageContext context, IHttpContextAccessor httpContextAccessor)
     {
         var httpContext = httpContextAccessor.HttpContext;
-        if (httpContext == null) return;
+        if (httpContext == null)
+        {
+            return;
+        }
 
         var message = context.Envelope?.Message;
         if (message is IHaveETag command)
