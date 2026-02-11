@@ -29,12 +29,9 @@ public class MultiLanguageTranslationTests
         _ = await Assert.That(author).IsNotNull();
 
         // 2. Verify all translations are returned in Admin API
-        var authorInList = await RetryUntilFoundAsync(async () =>
-        {
-            var pagedAuthors =
-                await client.GetAllAuthorsAsync(new SharedModels.AuthorSearchRequest { Search = authorName });
-            return pagedAuthors.Items.FirstOrDefault(a => a.Id == author.Id);
-        });
+        var pagedAuthors =
+            await client.GetAllAuthorsAsync(new SharedModels.AuthorSearchRequest { Search = authorName });
+        var authorInList = pagedAuthors.Items.First(a => a.Id == author.Id);
 
         _ = await Assert.That(authorInList.Translations.Count).IsEqualTo(2);
 
@@ -73,13 +70,9 @@ public class MultiLanguageTranslationTests
         var category = await TestHelpers.CreateCategoryAsync(client, createRequest);
         _ = await Assert.That(category).IsNotNull();
 
-        var categoryInList = await RetryUntilFoundAsync(async () =>
-        {
-            var pagedCategories =
-                await client.GetAllCategoriesAsync(
-                    new SharedModels.CategorySearchRequest { Search = englishName });
-            return pagedCategories.Items.FirstOrDefault(c => c.Id == category.Id);
-        });
+        var pagedCategories =
+            await client.GetAllCategoriesAsync(new SharedModels.CategorySearchRequest { Search = englishName });
+        var categoryInList = pagedCategories.Items.First(c => c.Id == category.Id);
 
         _ = await Assert.That(categoryInList.Translations.Count).IsEqualTo(2);
 
@@ -163,17 +156,5 @@ public class MultiLanguageTranslationTests
         var publicClientEs = TestHelpers.GetUnauthenticatedClientWithLanguage<IBooksClient>("es");
         var bookEs = await publicClientEs.GetBookAsync(book.Id);
         _ = await Assert.That(bookEs.Description).IsEqualTo("Descripción Original");
-    }
-
-    async Task<T> RetryUntilFoundAsync<T>(Func<Task<T?>> func)
-    {
-        T? result = default;
-        await TestHelpers.WaitForConditionAsync(async () =>
-        {
-            result = await func();
-            return result != null;
-        }, TestConstants.DefaultEventTimeout, "Item not found after retries");
-
-        return result!;
     }
 }

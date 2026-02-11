@@ -4,7 +4,6 @@ using TUnit.Assertions.Extensions;
 
 namespace BookStore.AppHost.Tests;
 
-[NotInParallel]
 public class CategoryConcurrencyTests
 {
     [Test]

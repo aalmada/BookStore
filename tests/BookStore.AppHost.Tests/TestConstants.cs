@@ -15,17 +15,17 @@ public static class TestConstants
     /// <summary>
     /// Default delay to allow for asynchronous projections to complete.
     /// </summary>
-    public static readonly TimeSpan DefaultProjectionDelay = TimeSpan.FromSeconds(2);
+    public static readonly TimeSpan DefaultProjectionDelay = TimeSpan.FromMilliseconds(500);
 
     /// <summary>
     /// Default delay between retries.
     /// </summary>
-    public static readonly TimeSpan DefaultRetryDelay = TimeSpan.FromSeconds(1);
+    public static readonly TimeSpan DefaultRetryDelay = TimeSpan.FromMilliseconds(100);
 
     /// <summary>
     /// Default polling interval for checking recurring conditions.
     /// </summary>
-    public static readonly TimeSpan DefaultPollingInterval = TimeSpan.FromMilliseconds(500);
+    public static readonly TimeSpan DefaultPollingInterval = TimeSpan.FromMilliseconds(50);
 
     /// <summary>
     /// Default timeout for SSE streams to prevent premature closure.

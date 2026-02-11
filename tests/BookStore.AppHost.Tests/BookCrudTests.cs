@@ -11,7 +11,6 @@ using UpdateBookRequest = BookStore.Client.UpdateBookRequest;
 
 namespace BookStore.AppHost.Tests;
 
-[NotInParallel]
 public class BookCrudTests
 {
     [Test]

@@ -49,11 +49,8 @@ public class BookFilterRegressionTests
         // Search in correct tenant
         var tenantClient = RestService.For<IBooksClient>(TestHelpers.GetUnauthenticatedClient(tenantId));
 
-        await TestHelpers.WaitForConditionAsync(async () =>
-        {
-            var list = await tenantClient.GetBooksAsync(new BookSearchRequest { AuthorId = authorId });
-            return list != null && list.Items.Any(b => b.Id == book.Id);
-        }, TestConstants.DefaultEventTimeout, "Book was not found in non-default tenant after creation");
+        var list = await tenantClient.GetBooksAsync(new BookSearchRequest { AuthorId = authorId });
+        _ = await Assert.That(list != null && list.Items.Any(b => b.Id == book.Id)).IsTrue();
 
         // Search in WRONG tenant (Default)
         var defaultTenantClient = RestService.For<IBooksClient>(TestHelpers.GetUnauthenticatedClient());
@@ -100,11 +97,8 @@ public class BookFilterRegressionTests
         // Wait for projection
         _ = await TestHelpers.CreateBookAsync(authClient, createRequest);
 
-        await TestHelpers.WaitForConditionAsync(async () =>
-        {
-            var c = await publicClient.GetBooksAsync(new BookSearchRequest { Search = uniqueTitle });
-            return c != null && c.Items.Any(b => b.Title == uniqueTitle);
-        }, TestConstants.DefaultEventTimeout, "Book was not found in search results after creation");
+        var contentInitial = await publicClient.GetBooksAsync(new BookSearchRequest { Search = uniqueTitle });
+        _ = await Assert.That(contentInitial != null && contentInitial.Items.Any(b => b.Title == uniqueTitle)).IsTrue();
 
         // Execute Search
         var request = new BookSearchRequest
@@ -171,15 +165,12 @@ public class BookFilterRegressionTests
         // Refresh book to get new ETag if we needed it later (not needed here but good practice)
         book = await authClient.GetBookAsync(bookId);
 
-        await TestHelpers.WaitForConditionAsync(async () =>
+        // Search with MaxPrice=40. Desired price is 25.
+        var listFinal = await publicClient.GetBooksAsync(new BookSearchRequest
         {
-            // Search with MaxPrice=40. Desired price is 25.
-            var list = await publicClient.GetBooksAsync(new BookSearchRequest
-            {
-                Search = uniqueTitle, MaxPrice = 40, Currency = "USD"
-            });
+            Search = uniqueTitle, MaxPrice = 40, Currency = "USD"
+        });
 
-            return list != null && list.Items.Any(b => b.Id == bookId);
-        }, TestConstants.DefaultEventTimeout, "Book was not found with discounted price in search results");
+        _ = await Assert.That(listFinal != null && listFinal.Items.Any(b => b.Id == bookId)).IsTrue();
     }
 }

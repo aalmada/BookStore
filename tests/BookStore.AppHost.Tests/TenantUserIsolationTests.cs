@@ -44,8 +44,8 @@ public class TenantUserIsolationTests
             async () => book = await tenantAdminBooksClient.CreateBookAsync(createRequest),
             TestConstants.DefaultEventTimeout);
 
-        var userHttpClient = await TestHelpers.CreateUserAndGetClientAsync(tenantId);
-        var userBooksClient = Refit.RestService.For<IBooksClient>(userHttpClient);
+        var userClient = await TestHelpers.CreateUserAndGetClientAsync(tenantId);
+        var userBooksClient = Refit.RestService.For<IBooksClient>(userClient.Client);
 
         // Act - Rate the book
         var rating = 5;
@@ -92,8 +92,8 @@ public class TenantUserIsolationTests
             async () => book = await tenantAdminBooksClient.CreateBookAsync(createRequest),
             TestConstants.DefaultEventTimeout);
 
-        var userHttpClient = await TestHelpers.CreateUserAndGetClientAsync(tenantId);
-        var userBooksClient = Refit.RestService.For<IBooksClient>(userHttpClient);
+        var userClient = await TestHelpers.CreateUserAndGetClientAsync(tenantId);
+        var userBooksClient = Refit.RestService.For<IBooksClient>(userClient.Client);
 
         // Act
         // Act
@@ -143,9 +143,9 @@ public class TenantUserIsolationTests
             async () => book = await tenantAdminBooksClient.CreateBookAsync(createRequest),
             TestConstants.DefaultEventTimeout);
 
-        var userHttpClient = await TestHelpers.CreateUserAndGetClientAsync(tenantId);
+        var userClient = await TestHelpers.CreateUserAndGetClientAsync(tenantId);
         // Need Cart Client
-        var userCartClient = Refit.RestService.For<IShoppingCartClient>(userHttpClient);
+        var userCartClient = Refit.RestService.For<IShoppingCartClient>(userClient.Client);
 
         // Act - Add to cart
         await userCartClient.AddToCartAsync(new AddToCartClientRequest(book.Id, 2));
@@ -180,7 +180,7 @@ public class TenantUserIsolationTests
         var adminClient = await TestHelpers.GetAuthenticatedClientAsync();
 
         // Helper to setup tenant and create book
-        async Task<(SharedModels.BookDto book, HttpClient userClient)> SetupTenantAsync(string tid)
+        async Task<(SharedModels.BookDto book, TestHelpers.UserClient userClient)> SetupTenantAsync(string tid)
         {
             var login = await TestHelpers.LoginAsAdminAsync(adminClient, tid);
             var tClient = await TestHelpers.GetTenantClientAsync(tid, login!.AccessToken);
@@ -209,11 +209,11 @@ public class TenantUserIsolationTests
             return (createdBook, uClient);
         }
 
-        var (book1, user1HttpClient) = await SetupTenantAsync(tenant1);
-        var (book2, user2HttpClient) = await SetupTenantAsync(tenant2);
+        var (book1, user1ClientInfo) = await SetupTenantAsync(tenant1);
+        var (book2, user2ClientInfo) = await SetupTenantAsync(tenant2);
 
-        var user1Client = Refit.RestService.For<IBooksClient>(user1HttpClient);
-        var user2Client = Refit.RestService.For<IBooksClient>(user2HttpClient);
+        var user1Client = Refit.RestService.For<IBooksClient>(user1ClientInfo.Client);
+        var user2Client = Refit.RestService.For<IBooksClient>(user2ClientInfo.Client);
 
         // Act - User1 rates book1, User2 rates book2
         _ = await TestHelpers.ExecuteAndWaitForEventAsync(book1.Id, "BookUpdated",

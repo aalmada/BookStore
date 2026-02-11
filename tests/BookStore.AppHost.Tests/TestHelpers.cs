@@ -1485,7 +1485,7 @@ public static class TestHelpers
                     return;
                 }
 
-                await Task.Delay(500, cts.Token);
+                await Task.Delay(TestConstants.DefaultPollingInterval, cts.Token);
             }
         }
         catch (OperationCanceledException)
@@ -1589,13 +1589,13 @@ public static class TestHelpers
                 return null;
             }
 
-            await Task.Delay(500); // Wait before retry
+            await Task.Delay(TestConstants.DefaultPollingInterval); // Wait before retry
         }
 
         return null;
     }
 
-    public static async Task<HttpClient> CreateUserAndGetClientAsync(string? tenantId = null)
+    public static async Task<UserClient> CreateUserAndGetClientAsync(string? tenantId = null)
     {
         var app = GlobalHooks.App!;
         var publicClient = app.CreateHttpClient("apiservice");
@@ -1629,19 +1629,24 @@ public static class TestHelpers
         var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
         _ = handler.ReadJwtToken(tokenResponse!.AccessToken);
 
+        var userId = Guid.Parse(handler.ReadJwtToken(tokenResponse!.AccessToken).Claims.First(c => c.Type == "sub")
+            .Value);
+
         // Create authenticated client
         var authenticatedClient = app.CreateHttpClient("apiservice");
         authenticatedClient.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", tokenResponse.AccessToken);
         authenticatedClient.DefaultRequestHeaders.Add("X-Tenant-ID", actualTenantId);
 
-        return authenticatedClient;
+        return new UserClient(authenticatedClient, userId);
     }
+
+    public record UserClient(HttpClient Client, Guid UserId);
 
     public static async Task<T> CreateUserAndGetClientAsync<T>(string? tenantId = null)
     {
-        var httpClient = await CreateUserAndGetClientAsync(tenantId);
-        return RestService.For<T>(httpClient);
+        var userClient = await CreateUserAndGetClientAsync(tenantId);
+        return RestService.For<T>(userClient.Client);
     }
 
     public record LoginResponse(string AccessToken, string RefreshToken);

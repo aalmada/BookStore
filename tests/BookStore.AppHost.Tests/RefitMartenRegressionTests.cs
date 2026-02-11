@@ -276,23 +276,16 @@ public class RefitMartenRegressionTests
 
         var nameA = authorReqA.Name;
 
-        await TestHelpers.WaitForConditionAsync(async () =>
-        {
-            var listA = await publicClientA.GetAuthorsAsync(null, null);
-            return listA.Items.Any(a => a.Name == nameA);
-        }, TestConstants.DefaultEventTimeout, "Author A was not found in Tenant A");
+        var listA = await publicClientA.GetAuthorsAsync(null, null);
+        _ = await Assert.That(listA.Items.Any(a => a.Name == nameA)).IsTrue();
 
         // 2. Get Authors from Tenant B. Should contain Author B, AND NOT Author A.
         var publicClientB = RestService.For<IAuthorsClient>(TestHelpers.GetUnauthenticatedClient(tenantB));
 
         var nameB = authorReqB.Name;
 
-        PagedListDto<AuthorDto>? listB = null;
-        await TestHelpers.WaitForConditionAsync(async () =>
-        {
-            listB = await publicClientB.GetAuthorsAsync(null, null);
-            return listB.Items.Any(a => a.Name == nameB);
-        }, TestConstants.DefaultEventTimeout, "Author B was not found in Tenant B");
+        var listB = await publicClientB.GetAuthorsAsync(null, null);
+        _ = await Assert.That(listB.Items.Any(a => a.Name == nameB)).IsTrue();
 
         // Assert List B does NOT contain Author A.
         var containsAInB = listB!.Items.Any(a => a.Name == nameA);

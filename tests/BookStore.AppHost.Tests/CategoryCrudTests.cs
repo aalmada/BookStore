@@ -9,7 +9,6 @@ using TUnit.Core.Interfaces;
 
 namespace BookStore.AppHost.Tests;
 
-[NotInParallel]
 public class CategoryCrudTests
 {
     [Test]
@@ -134,23 +133,10 @@ public class CategoryCrudTests
         var createdCategory = await TestHelpers.CreateCategoryAsync(client, createRequest);
         _ = await Assert.That(createdCategory).IsNotNull();
 
-        // Retry policy for the GET check (eventual consistency)
         var publicClient =
             RestService.For<IGetCategoryEndpoint>(
                 TestHelpers.GetUnauthenticatedClient(StorageConstants.DefaultTenantId));
-        CategoryDto? categoryDto = null;
-        await TestHelpers.WaitForConditionAsync(async () =>
-        {
-            try
-            {
-                categoryDto = await publicClient.GetCategoryAsync(createdCategory!.Id, acceptLanguage: acceptLanguage);
-                return categoryDto != null;
-            }
-            catch (ApiException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
-            {
-                return false;
-            }
-        }, TestConstants.DefaultEventTimeout, "Category was not available in public API after creation");
+        var categoryDto = await publicClient.GetCategoryAsync(createdCategory!.Id, acceptLanguage: acceptLanguage);
 
         // Assert
         _ = await Assert.That(categoryDto).IsNotNull();

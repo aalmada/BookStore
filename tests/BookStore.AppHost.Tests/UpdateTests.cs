@@ -8,7 +8,6 @@ using UpdatePublisherRequest = BookStore.Client.UpdatePublisherRequest;
 
 namespace BookStore.AppHost.Tests;
 
-[NotInParallel]
 public class UpdateTests
 {
     [Test]
@@ -24,8 +23,7 @@ public class UpdateTests
             Name = $"Updated Author {Guid.NewGuid()}",
             Translations = new Dictionary<string, AuthorTranslationDto>
             {
-                ["en"] = new("Updated Biography EN"),
-                ["pt-PT"] = new("Biografia Atualizada PT")
+                ["en"] = new("Updated Biography EN"), ["pt-PT"] = new("Biografia Atualizada PT")
             }
         };
 
@@ -58,8 +56,7 @@ public class UpdateTests
         {
             Translations = new Dictionary<string, CategoryTranslationDto>
             {
-                ["en"] = new("Updated Category EN"),
-                ["es"] = new("Categoría Actualizada ES")
+                ["en"] = new("Updated Category EN"), ["es"] = new("Categoría Actualizada ES")
             }
         };
 
@@ -140,8 +137,7 @@ public class UpdateTests
             Prices = new Dictionary<string, decimal> { ["USD"] = 19.99m },
             Translations = new Dictionary<string, BookTranslationDto>
             {
-                ["en"] = new("New English Description"),
-                ["pt-PT"] = new("Nova Descrição em Português")
+                ["en"] = new("New English Description"), ["pt-PT"] = new("Nova Descrição em Português")
             }
         };
 

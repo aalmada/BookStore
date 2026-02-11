@@ -9,7 +9,6 @@ using Weasel.Core;
 
 namespace BookStore.AppHost.Tests;
 
-[NotInParallel]
 public class AdminTenantTests
 {
     [Test]

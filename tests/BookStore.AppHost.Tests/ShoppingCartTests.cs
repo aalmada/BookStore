@@ -5,7 +5,6 @@ using Refit;
 
 namespace BookStore.AppHost.Tests;
 
-[NotInParallel]
 public class ShoppingCartTests
 {
     [Test]

@@ -10,7 +10,6 @@ using UpdateAuthorRequest = BookStore.Client.UpdateAuthorRequest;
 
 namespace BookStore.AppHost.Tests;
 
-[NotInParallel]
 public class AuthorCrudTests
 {
     [Test]
@@ -153,20 +152,8 @@ public class AuthorCrudTests
         // Act
         var author = await TestHelpers.CreateAuthorAsync(client, createRequest);
 
-        // Retry policy for the GET check
-        AuthorDto? authorDto = null;
-        await TestHelpers.WaitForConditionAsync(async () =>
-        {
-            try
-            {
-                authorDto = await publicClient.GetAuthorAsync(author!.Id, acceptLanguage);
-                return authorDto != null;
-            }
-            catch (ApiException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
-            {
-                return false;
-            }
-        }, TestConstants.DefaultEventTimeout, "Author was not available in public API after creation");
+        // Assert
+        var authorDto = await publicClient.GetAuthorAsync(author!.Id, acceptLanguage);
 
         // Assert
         _ = await Assert.That(authorDto).IsNotNull();
