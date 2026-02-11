@@ -17,16 +17,16 @@ namespace BookStore.ApiService.Commands
 {
     public record CreateBookRequest
     {
-        [System.Text.Json.Serialization.JsonPropertyName("id")] public Guid Id { get; init; }
-        [System.Text.Json.Serialization.JsonPropertyName("title")] public string Title { get; init; } = default!;
-        [System.Text.Json.Serialization.JsonPropertyName("isbn")] public string? Isbn { get; init; }
-        [System.Text.Json.Serialization.JsonPropertyName("language")] public string Language { get; init; } = default!;
-        [System.Text.Json.Serialization.JsonPropertyName("translations")] public IReadOnlyDictionary<string, BookTranslationDto>? Translations { get; init; }
-        [System.Text.Json.Serialization.JsonPropertyName("publicationDate")] public PartialDate? PublicationDate { get; init; }
-        [System.Text.Json.Serialization.JsonPropertyName("publisherId")] public Guid? PublisherId { get; init; }
-        [System.Text.Json.Serialization.JsonPropertyName("authorIds")] public IReadOnlyList<Guid>? AuthorIds { get; init; }
-        [System.Text.Json.Serialization.JsonPropertyName("categoryIds")] public IReadOnlyList<Guid>? CategoryIds { get; init; }
-        [System.Text.Json.Serialization.JsonPropertyName("prices")] public IReadOnlyDictionary<string, decimal>? Prices { get; init; }
+        public Guid Id { get; init; }
+        public string Title { get; init; } = default!;
+        public string? Isbn { get; init; }
+        public string Language { get; init; } = default!;
+        public IReadOnlyDictionary<string, BookTranslationDto>? Translations { get; init; }
+        public PartialDate? PublicationDate { get; init; }
+        public Guid? PublisherId { get; init; }
+        public IReadOnlyList<Guid>? AuthorIds { get; init; }
+        public IReadOnlyList<Guid>? CategoryIds { get; init; }
+        public IReadOnlyDictionary<string, decimal>? Prices { get; init; }
     }
 
     public record UpdateBookRequest(

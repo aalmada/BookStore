@@ -15,8 +15,8 @@ namespace BookStore.ApiService.Commands
 {
     public record CreatePublisherRequest
     {
-        [System.Text.Json.Serialization.JsonPropertyName("id")] public Guid Id { get; init; }
-        [System.Text.Json.Serialization.JsonPropertyName("name")] public string Name { get; init; } = default!;
+        public Guid Id { get; init; }
+        public string Name { get; init; } = default!;
     }
     public record UpdatePublisherRequest(string Name);
 }

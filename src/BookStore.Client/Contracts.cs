@@ -32,14 +32,11 @@ namespace BookStore.Client
     public partial class CreateAuthorRequest
     {
 
-        [System.Text.Json.Serialization.JsonPropertyName("id")]
         public System.Guid Id { get; set; }
 
-        [System.Text.Json.Serialization.JsonPropertyName("name")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string Name { get; set; }
 
-        [System.Text.Json.Serialization.JsonPropertyName("translations")]
         public System.Collections.Generic.IDictionary<string, AuthorTranslationDto> Translations { get; set; }
 
         private System.Collections.Generic.IDictionary<string, object> _additionalProperties;
@@ -57,38 +54,28 @@ namespace BookStore.Client
     public partial class CreateBookRequest
     {
 
-        [System.Text.Json.Serialization.JsonPropertyName("id")]
         public System.Guid Id { get; set; }
 
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string Title { get; set; }
 
-        [System.Text.Json.Serialization.JsonPropertyName("isbn")]
         public string Isbn { get; set; }
 
-        [System.Text.Json.Serialization.JsonPropertyName("language")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string Language { get; set; }
 
-        [System.Text.Json.Serialization.JsonPropertyName("translations")]
         public System.Collections.Generic.IDictionary<string, BookTranslationDto> Translations { get; set; }
 
-        [System.Text.Json.Serialization.JsonPropertyName("publicationDate")]
         public PartialDate PublicationDate { get; set; }
 
-        [System.Text.Json.Serialization.JsonPropertyName("publisherId")]
         public System.Guid? PublisherId { get; set; }
 
-        [System.Text.Json.Serialization.JsonPropertyName("authorIds")]
         [System.ComponentModel.DataAnnotations.Required]
         public System.Collections.Generic.ICollection<System.Guid> AuthorIds { get; set; } = new System.Collections.ObjectModel.Collection<System.Guid>();
 
-        [System.Text.Json.Serialization.JsonPropertyName("categoryIds")]
         [System.ComponentModel.DataAnnotations.Required]
         public System.Collections.Generic.ICollection<System.Guid> CategoryIds { get; set; } = new System.Collections.ObjectModel.Collection<System.Guid>();
 
-        [System.Text.Json.Serialization.JsonPropertyName("prices")]
         public System.Collections.Generic.IDictionary<string, decimal> Prices { get; set; } = new System.Collections.Generic.Dictionary<string, decimal>();
 
         private System.Collections.Generic.IDictionary<string, object> _additionalProperties;
@@ -106,10 +93,8 @@ namespace BookStore.Client
     public partial class CreateCategoryRequest
     {
 
-        [System.Text.Json.Serialization.JsonPropertyName("id")]
         public System.Guid Id { get; set; }
 
-        [System.Text.Json.Serialization.JsonPropertyName("translations")]
         public System.Collections.Generic.IDictionary<string, CategoryTranslationDto> Translations { get; set; }
 
         private System.Collections.Generic.IDictionary<string, object> _additionalProperties;
@@ -127,10 +112,8 @@ namespace BookStore.Client
     public partial class CreatePublisherRequest
     {
 
-        [System.Text.Json.Serialization.JsonPropertyName("id")]
         public System.Guid Id { get; set; }
 
-        [System.Text.Json.Serialization.JsonPropertyName("name")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string Name { get; set; }
 
@@ -149,11 +132,9 @@ namespace BookStore.Client
     public partial class ProjectionStatusResponse
     {
 
-        [System.Text.Json.Serialization.JsonPropertyName("status")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string Status { get; set; }
 
-        [System.Text.Json.Serialization.JsonPropertyName("message")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string Message { get; set; }
 
@@ -172,7 +153,6 @@ namespace BookStore.Client
     public partial class RebuildResponse
     {
 
-        [System.Text.Json.Serialization.JsonPropertyName("message")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string Message { get; set; }
 
@@ -191,11 +171,9 @@ namespace BookStore.Client
     public partial class UpdateAuthorRequest
     {
 
-        [System.Text.Json.Serialization.JsonPropertyName("name")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string Name { get; set; }
 
-        [System.Text.Json.Serialization.JsonPropertyName("translations")]
         public System.Collections.Generic.IDictionary<string, AuthorTranslationDto> Translations { get; set; }
 
         private System.Collections.Generic.IDictionary<string, object> _additionalProperties;
@@ -213,31 +191,23 @@ namespace BookStore.Client
     public partial class UpdateBookRequest
     {
 
-        [System.Text.Json.Serialization.JsonPropertyName("title")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string Title { get; set; }
 
-        [System.Text.Json.Serialization.JsonPropertyName("isbn")]
         public string Isbn { get; set; }
 
-        [System.Text.Json.Serialization.JsonPropertyName("language")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string Language { get; set; }
 
-        [System.Text.Json.Serialization.JsonPropertyName("translations")]
         public System.Collections.Generic.IDictionary<string, BookTranslationDto> Translations { get; set; }
 
-        [System.Text.Json.Serialization.JsonPropertyName("publicationDate")]
         public PartialDate PublicationDate { get; set; }
 
-        [System.Text.Json.Serialization.JsonPropertyName("publisherId")]
         public System.Guid? PublisherId { get; set; }
 
-        [System.Text.Json.Serialization.JsonPropertyName("authorIds")]
         [System.ComponentModel.DataAnnotations.Required]
         public System.Collections.Generic.ICollection<System.Guid> AuthorIds { get; set; } = new System.Collections.ObjectModel.Collection<System.Guid>();
 
-        [System.Text.Json.Serialization.JsonPropertyName("categoryIds")]
         [System.ComponentModel.DataAnnotations.Required]
         public System.Collections.Generic.ICollection<System.Guid> CategoryIds { get; set; } = new System.Collections.ObjectModel.Collection<System.Guid>();
 
@@ -256,7 +226,6 @@ namespace BookStore.Client
     public partial class UpdateCategoryRequest
     {
 
-        [System.Text.Json.Serialization.JsonPropertyName("translations")]
         public System.Collections.Generic.IDictionary<string, CategoryTranslationDto> Translations { get; set; }
 
         private System.Collections.Generic.IDictionary<string, object> _additionalProperties;
@@ -274,7 +243,6 @@ namespace BookStore.Client
     public partial class UpdatePublisherRequest
     {
 
-        [System.Text.Json.Serialization.JsonPropertyName("name")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string Name { get; set; }
 
@@ -292,53 +260,43 @@ namespace BookStore.Client
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class RegisterPasskeyRequest
     {
-        [System.Text.Json.Serialization.JsonPropertyName("credentialJson")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string CredentialJson { get; set; }
 
-        [System.Text.Json.Serialization.JsonPropertyName("email")]
         public string Email { get; set; }
 
-        [System.Text.Json.Serialization.JsonPropertyName("userId")]
         public string UserId { get; set; }
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PasskeyCreationRequest
     {
-        [System.Text.Json.Serialization.JsonPropertyName("email")]
         public string Email { get; set; }
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PasskeyLoginOptionsRequest
     {
-        [System.Text.Json.Serialization.JsonPropertyName("email")]
         public string Email { get; set; }
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PasskeyCreationOptionsResponse
     {
-        [System.Text.Json.Serialization.JsonPropertyName("options")]
         public object Options { get; set; }
 
-        [System.Text.Json.Serialization.JsonPropertyName("userId")]
         public string UserId { get; set; }
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class PasskeyInfo
     {
-        [System.Text.Json.Serialization.JsonPropertyName("id")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string Id { get; set; }
 
-        [System.Text.Json.Serialization.JsonPropertyName("name")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string Name { get; set; }
 
-        [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
         public System.DateTimeOffset? CreatedAt { get; set; }
     }
 }
