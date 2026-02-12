@@ -238,7 +238,7 @@ public static class PasskeyEndpoints
                     {
                         Log.Users.RegistrationFailed(logger, request.Email, "Passkey Registration: User already exists (masked)");
 
-                        // Return success message. 
+                        // Return success message.
                         // Note: If email verification is required, we might trigger a "Password Reset" or "Account Exists" email here in a real app.
                         // For now, we mimic the success response.
                         return Results.Ok(new { Message = "Registration successful. Please check your email to verify your account." });
@@ -402,7 +402,7 @@ public static class PasskeyEndpoints
                                 if (userStore is IUserPasskeyStore<ApplicationUser> passkeyStore)
                                 {
                                     var userPasskeys = await passkeyStore.GetPasskeysAsync(user, cancellationToken);
-                                    
+
                                     // Extract credential ID from the assertion
                                     byte[]? credentialId = null;
                                     if (doc.RootElement.TryGetProperty("id", out var credIdElement))

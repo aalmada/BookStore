@@ -63,11 +63,11 @@ Changed from `Computed` to `DuplicatedField` to create tenant-scoped unique inde
    ```bash
    # Stop Aspire
    aspire stop
-   
+
    # Clear PostgreSQL data
    docker volume rm bookstore_postgres-data
    # OR manually drop the database
-   
+
    # Restart Aspire
    aspire run
    ```
@@ -85,7 +85,7 @@ Changed from `Computed` to `DuplicatedField` to create tenant-scoped unique inde
 
 1. **Audit existing users** for duplicates:
    ```sql
-   SELECT tenant_id, 
+   SELECT tenant_id,
           data->>'normalizedEmail' as email,
           COUNT(*) as count
    FROM public.mt_doc_applicationuser
@@ -112,7 +112,7 @@ If duplicate users exist in production:
 ```sql
 -- 1. Find duplicates
 WITH duplicates AS (
-  SELECT 
+  SELECT
     tenant_id,
     data->>'normalizedEmail' as email,
     jsonb_agg(
@@ -143,10 +143,10 @@ DROP INDEX IF EXISTS mt_doc_applicationuser_uidx_normalized_email;
 DROP INDEX IF EXISTS mt_doc_applicationuser_uidx_normalized_user_name;
 
 -- Create new tenant-scoped unique indexes
-CREATE UNIQUE INDEX mt_doc_applicationuser_uidx_normalized_email 
+CREATE UNIQUE INDEX mt_doc_applicationuser_uidx_normalized_email
   ON public.mt_doc_applicationuser (tenant_id, (data->>'normalizedEmail'));
 
-CREATE UNIQUE INDEX mt_doc_applicationuser_uidx_normalized_user_name 
+CREATE UNIQUE INDEX mt_doc_applicationuser_uidx_normalized_user_name
   ON public.mt_doc_applicationuser (tenant_id, (data->>'normalizedUserName'));
 ```
 

@@ -8,8 +8,8 @@ A critical security audit of the passkey authentication system revealed **three 
 
 ### 🔴 CRITICAL: Missing Email Uniqueness Check (CVE-Equivalent)
 
-**Impact**: High  
-**Affected**: User Registration Flow  
+**Impact**: High
+**Affected**: User Registration Flow
 
 The `attestation/result` endpoint checked for user ID conflicts but **not email conflicts** before creating users. This allowed:
 - Multiple users with the same email in the same tenant
@@ -20,8 +20,8 @@ The `attestation/result` endpoint checked for user ID conflicts but **not email 
 
 ### 🔴 CRITICAL: Global Unique Index Instead of Tenant-Scoped
 
-**Impact**: High  
-**Affected**: Database Schema  
+**Impact**: High
+**Affected**: Database Schema
 
 The unique index on `NormalizedEmail` was **global** instead of **tenant-scoped**:
 ```sql
@@ -36,8 +36,8 @@ CREATE UNIQUE INDEX ON mt_doc_applicationuser (tenant_id, (data->>'normalizedEma
 
 ### 🟡 HIGH: Anti-Enumeration Logic Creating Wrong User IDs
 
-**Impact**: Medium  
-**Affected**: Registration Options Flow  
+**Impact**: Medium
+**Affected**: Registration Options Flow
 
 When a duplicate email was detected in `attestation/options`, the code generated options with a **new random user ID** instead of the existing user's ID. This caused:
 - Passkey bound to non-existent user ID
@@ -67,9 +67,9 @@ When a duplicate email was detected in `attestation/options`, the code generated
 
 ## Testing
 
-✅ **Build Status**: All projects compile successfully  
-✅ **Code Analysis**: No analyzer warnings  
-✅ **Logging**: Proper structured logging with LoggerMessage delegates  
+✅ **Build Status**: All projects compile successfully
+✅ **Code Analysis**: No analyzer warnings
+✅ **Logging**: Proper structured logging with LoggerMessage delegates
 
 ## Required Actions
 
@@ -146,12 +146,12 @@ When a duplicate email was detected in `attestation/options`, the code generated
 
 ## Tested Scenarios
 
-✅ New user registration with passkey  
-✅ Duplicate email registration attempt (properly masked)  
-✅ Passkey login with correct credentials  
-✅ Passkey login with wrong user handle (rejected)  
-✅ Multi-tenant isolation (same email in different tenants)  
-✅ Build and compilation  
+✅ New user registration with passkey
+✅ Duplicate email registration attempt (properly masked)
+✅ Passkey login with correct credentials
+✅ Passkey login with wrong user handle (rejected)
+✅ Multi-tenant isolation (same email in different tenants)
+✅ Build and compilation
 
 ## Code Review Checklist
 
@@ -167,6 +167,6 @@ When a duplicate email was detected in `attestation/options`, the code generated
 
 ---
 
-**Last Updated**: 2026-02-12  
-**Audited By**: GitHub Copilot (Claude Sonnet 4.5)  
+**Last Updated**: 2026-02-12
+**Audited By**: GitHub Copilot (Claude Sonnet 4.5)
 **Status**: ✅ **FIXED** - Ready for Review & Deployment

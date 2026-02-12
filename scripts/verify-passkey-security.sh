@@ -35,7 +35,7 @@ if command -v psql &> /dev/null; then
     # Set PGPASSWORD if available in environment, otherwise skip
     if [ -n "$PGPASSWORD" ]; then
         DUPLICATES=$(psql -h localhost -U postgres -d bookstore -t -c "$QUERY" 2>/dev/null | wc -l)
-        
+
         if [ "$DUPLICATES" -eq 0 ]; then
             echo -e "${GREEN}✅ No duplicate users found${NC}"
         else
@@ -56,10 +56,10 @@ echo ""
 echo -e "${YELLOW}3. Checking database indexes...${NC}"
 if command -v psql &> /dev/null && [ -n "$PGPASSWORD" ]; then
     INDEX_QUERY="SELECT indexname, indexdef FROM pg_indexes WHERE tablename = 'mt_doc_applicationuser' AND indexname LIKE '%email%';"
-    
+
     echo "Checking unique index structure..."
     INDEXES=$(psql -h localhost -U postgres -d bookstore -t -c "$INDEX_QUERY" 2>/dev/null)
-    
+
     if echo "$INDEXES" | grep -q "tenant_id"; then
         echo -e "${GREEN}✅ Indexes are tenant-scoped${NC}"
     else
