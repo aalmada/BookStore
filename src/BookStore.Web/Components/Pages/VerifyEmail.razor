@@ -1,6 +1,7 @@
 @page "/verify-email"
 @using BookStore.Web.Services
 @inject AuthenticationService AuthService
+@inject TenantService TenantService
 @inject NavigationManager Navigation
 
 <MudContainer MaxWidth="MaxWidth.Small" Class="mt-8">
@@ -34,6 +35,8 @@
 
     [SupplyParameterFromQuery] public string? Code { get; set; }
 
+    [SupplyParameterFromQuery(Name = "tenant")] public string? TenantId { get; set; }
+
     private bool _isLoading = true;
     private bool _isSuccess = false;
 
@@ -44,6 +47,17 @@
             _isLoading = false;
             _isSuccess = false;
             return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(TenantId))
+        {
+            var tenantResult = await TenantService.SetTenantAsync(TenantId);
+            if (tenantResult.IsFailure)
+            {
+                _isLoading = false;
+                _isSuccess = false;
+                return;
+            }
         }
 
         // Delay slightly for UX/visual feedback

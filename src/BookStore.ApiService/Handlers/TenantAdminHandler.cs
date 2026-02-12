@@ -46,7 +46,8 @@ public static class TenantAdminHandler
                     adminUser.Id,
                     adminUser.Email!,
                     code,
-                    adminUser.UserName!));
+                    adminUser.UserName!,
+                    command.TenantId));
             }
 
             await session.SaveChangesAsync(ct);

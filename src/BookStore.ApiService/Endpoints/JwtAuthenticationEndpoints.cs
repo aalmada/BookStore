@@ -156,7 +156,8 @@ public static class JwtAuthenticationEndpoints
         {
             UserName = request.Email,
             Email = request.Email,
-            EmailConfirmed = !verificationRequired
+            EmailConfirmed = !verificationRequired,
+            LockoutEnabled = true
         };
 
         var result = await userManager.CreateAsync(user, request.Password);
@@ -179,7 +180,12 @@ public static class JwtAuthenticationEndpoints
         if (verificationRequired)
         {
             var code = await userManager.GenerateEmailConfirmationTokenAsync(user);
-            await bus.PublishAsync(new Messages.Commands.SendUserVerificationEmail(user.Id, user.Email!, code, user.UserName!));
+            await bus.PublishAsync(new Messages.Commands.SendUserVerificationEmail(
+                user.Id,
+                user.Email!,
+                code,
+                user.UserName!,
+                tenantContext.TenantId));
 
             return Results.Ok(new { message = "Registration successful. Please check your email to verify your account." });
         }
@@ -251,6 +257,7 @@ public static class JwtAuthenticationEndpoints
         Wolverine.IMessageBus bus,
         IOptions<Infrastructure.Email.EmailOptions> emailOptions,
         IWebHostEnvironment env,
+        ITenantContext tenantContext,
         ILogger<Program> logger)
     {
         if (string.IsNullOrWhiteSpace(request.Email))
@@ -293,7 +300,12 @@ public static class JwtAuthenticationEndpoints
         }
 
         var code = await userManager.GenerateEmailConfirmationTokenAsync(user);
-        await bus.PublishAsync(new Messages.Commands.SendUserVerificationEmail(user.Id, user.Email!, code, user.UserName!));
+        await bus.PublishAsync(new Messages.Commands.SendUserVerificationEmail(
+            user.Id,
+            user.Email!,
+            code,
+            user.UserName!,
+            tenantContext.TenantId));
 
         // Update the timestamp
         user.LastVerificationEmailSent = DateTimeOffset.UtcNow;

@@ -44,6 +44,7 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
         var inserted = commit.Inserted.Count();
         var updated = commit.Updated.Count();
         var deleted = commit.Deleted.Count();
+        var tenantId = session.TenantId ?? JasperFx.StorageConstants.DefaultTenantId;
 
         // High-visibility console log for debugging
         Log.Infrastructure.AfterCommitAsync(_logger, inserted, updated, deleted);
@@ -62,9 +63,9 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
         try
         {
             // Process all document changes with consistent error handling
-            await ProcessDocumentChangesAsync(commit.Inserted, ChangeType.Insert, eventId, token);
-            await ProcessDocumentChangesAsync(commit.Updated, ChangeType.Update, eventId, token);
-            await ProcessDocumentChangesAsync(commit.Deleted, ChangeType.Delete, eventId, token);
+            await ProcessDocumentChangesAsync(commit.Inserted, ChangeType.Insert, eventId, tenantId, token);
+            await ProcessDocumentChangesAsync(commit.Updated, ChangeType.Update, eventId, tenantId, token);
+            await ProcessDocumentChangesAsync(commit.Deleted, ChangeType.Delete, eventId, tenantId, token);
         }
         catch (Exception ex)
         {
@@ -77,14 +78,14 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
         // Sync hook not used
     }
 
-    async Task ProcessDocumentChangesAsync(IEnumerable<object> documents, ChangeType changeType, Guid eventId, CancellationToken token)
+    async Task ProcessDocumentChangesAsync(IEnumerable<object> documents, ChangeType changeType, Guid eventId, string tenantId, CancellationToken token)
     {
         foreach (var doc in documents)
         {
             try
             {
                 Log.Infrastructure.ProcessingDocumentChange(_logger, changeType.ToString(), doc.GetType().Name);
-                await ProcessDocumentChangeAsync(doc, changeType, eventId, token);
+                await ProcessDocumentChangeAsync(doc, changeType, eventId, tenantId, token);
             }
             catch (Exception ex)
             {
@@ -93,42 +94,42 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
         }
     }
 
-    async Task ProcessDocumentChangeAsync(object document, ChangeType changeType, Guid eventId, CancellationToken token)
+    async Task ProcessDocumentChangeAsync(object document, ChangeType changeType, Guid eventId, string tenantId, CancellationToken token)
     {
         switch (document)
         {
             case CategoryProjection category:
-                await HandleCategoryChangeAsync(category, changeType, eventId, token);
+                await HandleCategoryChangeAsync(category, changeType, eventId, tenantId, token);
                 break;
             case BookSearchProjection book:
-                await HandleBookChangeAsync(book, changeType, eventId, token);
+                await HandleBookChangeAsync(book, changeType, eventId, tenantId, token);
                 break;
             case AuthorProjection author:
-                await HandleAuthorChangeAsync(author, changeType, eventId, token);
+                await HandleAuthorChangeAsync(author, changeType, eventId, tenantId, token);
                 break;
             case PublisherProjection publisher:
-                await HandlePublisherChangeAsync(publisher, changeType, eventId, token);
+                await HandlePublisherChangeAsync(publisher, changeType, eventId, tenantId, token);
                 break;
             case UserProfile profile:
-                await HandleUserProfileChangeAsync(profile, changeType, eventId, token);
+                await HandleUserProfileChangeAsync(profile, changeType, eventId, tenantId, token);
                 break;
             case ApplicationUser user:
-                await HandleUserDocumentChangeAsync(user, changeType, eventId, token);
+                await HandleUserDocumentChangeAsync(user, changeType, eventId, tenantId, token);
                 break;
             case Models.Tenant tenant:
-                await HandleTenantChangeAsync(tenant, changeType, eventId, token);
+                await HandleTenantChangeAsync(tenant, changeType, eventId, tenantId, token);
                 break;
             case BookStatistics stats:
-                await HandleBookStatisticsChangeAsync(stats, changeType, eventId, token);
+                await HandleBookStatisticsChangeAsync(stats, changeType, eventId, tenantId, token);
                 break;
             case CategoryStatistics stats:
-                await HandleCategoryStatisticsChangeAsync(stats, changeType, eventId, token);
+                await HandleCategoryStatisticsChangeAsync(stats, changeType, eventId, tenantId, token);
                 break;
             case AuthorStatistics stats:
-                await HandleAuthorStatisticsChangeAsync(stats, changeType, eventId, token);
+                await HandleAuthorStatisticsChangeAsync(stats, changeType, eventId, tenantId, token);
                 break;
             case PublisherStatistics stats:
-                await HandlePublisherStatisticsChangeAsync(stats, changeType, eventId, token);
+                await HandlePublisherStatisticsChangeAsync(stats, changeType, eventId, tenantId, token);
                 break;
             default:
                 Log.Infrastructure.CacheInvalidationNotImplemented(_logger, document.GetType().Name);
@@ -136,27 +137,27 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
         }
     }
 
-    async Task HandleUserProfileChangeAsync(UserProfile profile, ChangeType _, Guid eventId, CancellationToken token)
+    async Task HandleUserProfileChangeAsync(UserProfile profile, ChangeType _, Guid eventId, string tenantId, CancellationToken token)
     {
         Log.Infrastructure.DebugHandleUserChange(_logger, profile.Id, profile.FavoriteBookIds?.Count ?? -1);
 
         var timestamp = DateTimeOffset.UtcNow;
         IDomainEventNotification notification = new UserUpdatedNotification(eventId, profile.Id, timestamp, profile.FavoriteBookIds?.Count ?? 0);
 
-        await NotifyAsync("User", notification, token);
+        await NotifyAsync("User", notification, tenantId, token);
     }
 
-    async Task HandleUserDocumentChangeAsync(ApplicationUser user, ChangeType changeType, Guid eventId, CancellationToken token)
+    async Task HandleUserDocumentChangeAsync(ApplicationUser user, ChangeType changeType, Guid eventId, string tenantId, CancellationToken token)
     {
         Log.Infrastructure.ProcessingDocumentChange(_logger, changeType.ToString(), nameof(ApplicationUser));
 
         var timestamp = DateTimeOffset.UtcNow;
         IDomainEventNotification notification = new UserUpdatedNotification(eventId, user.Id, timestamp, user.Roles.Count);
 
-        await NotifyAsync("User", notification, token);
+        await NotifyAsync("User", notification, tenantId, token);
     }
 
-    async Task HandleTenantChangeAsync(Models.Tenant tenant, ChangeType changeType, Guid eventId, CancellationToken token)
+    async Task HandleTenantChangeAsync(Models.Tenant tenant, ChangeType changeType, Guid eventId, string tenantId, CancellationToken token)
     {
         Log.Infrastructure.ProcessingDocumentChange(_logger, changeType.ToString(), nameof(Tenant));
 
@@ -168,10 +169,10 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
             _ => new TenantUpdatedNotification(eventId, tenant.Id, tenant.Name, timestamp) // Fallback
         };
 
-        await NotifyAsync("Tenant", notification, token);
+        await NotifyAsync("Tenant", notification, tenantId, token);
     }
 
-    async Task HandleCategoryChangeAsync(CategoryProjection category, ChangeType changeType, Guid eventId, CancellationToken token)
+    async Task HandleCategoryChangeAsync(CategoryProjection category, ChangeType changeType, Guid eventId, string tenantId, CancellationToken token)
     {
         // Check for soft delete status if it's an update
         var effectiveChangeType = DetermineEffectiveChangeType(changeType, category.Deleted);
@@ -187,10 +188,10 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
             _ => throw new ArgumentOutOfRangeException(nameof(effectiveChangeType))
         };
 
-        await NotifyAsync("Category", notification, token);
+        await NotifyAsync("Category", notification, tenantId, token);
     }
 
-    async Task HandleBookChangeAsync(BookSearchProjection book, ChangeType changeType, Guid eventId, CancellationToken token)
+    async Task HandleBookChangeAsync(BookSearchProjection book, ChangeType changeType, Guid eventId, string tenantId, CancellationToken token)
     {
         var effectiveChangeType = DetermineEffectiveChangeType(changeType, book.Deleted);
 
@@ -206,10 +207,10 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
             _ => throw new ArgumentOutOfRangeException(nameof(effectiveChangeType))
         };
 
-        await NotifyAsync("Book", notification, token);
+        await NotifyAsync("Book", notification, tenantId, token);
     }
 
-    async Task HandleAuthorChangeAsync(AuthorProjection author, ChangeType changeType, Guid eventId, CancellationToken token)
+    async Task HandleAuthorChangeAsync(AuthorProjection author, ChangeType changeType, Guid eventId, string tenantId, CancellationToken token)
     {
         var effectiveChangeType = DetermineEffectiveChangeType(changeType, author.Deleted);
 
@@ -223,10 +224,10 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
             _ => throw new ArgumentOutOfRangeException(nameof(effectiveChangeType))
         };
 
-        await NotifyAsync("Author", notification, token);
+        await NotifyAsync("Author", notification, tenantId, token);
     }
 
-    async Task HandlePublisherChangeAsync(PublisherProjection publisher, ChangeType changeType, Guid eventId, CancellationToken token)
+    async Task HandlePublisherChangeAsync(PublisherProjection publisher, ChangeType changeType, Guid eventId, string tenantId, CancellationToken token)
     {
         var effectiveChangeType = DetermineEffectiveChangeType(changeType, publisher.Deleted);
 
@@ -240,43 +241,43 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
             _ => throw new ArgumentOutOfRangeException(nameof(effectiveChangeType))
         };
 
-        await NotifyAsync("Publisher", notification, token);
+        await NotifyAsync("Publisher", notification, tenantId, token);
     }
 
-    async Task HandleBookStatisticsChangeAsync(BookStatistics stats, ChangeType _, Guid eventId, CancellationToken token)
+    async Task HandleBookStatisticsChangeAsync(BookStatistics stats, ChangeType _, Guid eventId, string tenantId, CancellationToken token)
     {
         Log.Infrastructure.ProcessingDocumentChange(_logger, "Update", nameof(BookStatistics));
         await InvalidateCacheTagsAsync(stats.Id, CacheTags.BookItemPrefix, CacheTags.BookList, token);
 
         IDomainEventNotification notification = new BookStatisticsUpdateNotification(eventId, stats.Id, DateTimeOffset.UtcNow, 0);
-        await NotifyAsync("Book", notification, token);
+        await NotifyAsync("Book", notification, tenantId, token);
     }
 
-    async Task HandleCategoryStatisticsChangeAsync(CategoryStatistics stats, ChangeType _, Guid eventId, CancellationToken token)
+    async Task HandleCategoryStatisticsChangeAsync(CategoryStatistics stats, ChangeType _, Guid eventId, string tenantId, CancellationToken token)
     {
         Log.Infrastructure.ProcessingDocumentChange(_logger, "Update", nameof(CategoryStatistics));
         await InvalidateCacheTagsAsync(stats.Id, CacheTags.CategoryItemPrefix, CacheTags.CategoryList, token);
 
         IDomainEventNotification notification = new CategoryStatisticsUpdateNotification(eventId, stats.Id, DateTimeOffset.UtcNow, 0);
-        await NotifyAsync("Category", notification, token);
+        await NotifyAsync("Category", notification, tenantId, token);
     }
 
-    async Task HandleAuthorStatisticsChangeAsync(AuthorStatistics stats, ChangeType _, Guid eventId, CancellationToken token)
+    async Task HandleAuthorStatisticsChangeAsync(AuthorStatistics stats, ChangeType _, Guid eventId, string tenantId, CancellationToken token)
     {
         Log.Infrastructure.ProcessingDocumentChange(_logger, "Update", nameof(AuthorStatistics));
         await InvalidateCacheTagsAsync(stats.Id, CacheTags.AuthorItemPrefix, CacheTags.AuthorList, token);
 
         IDomainEventNotification notification = new AuthorStatisticsUpdateNotification(eventId, stats.Id, DateTimeOffset.UtcNow, 0);
-        await NotifyAsync("Author", notification, token);
+        await NotifyAsync("Author", notification, tenantId, token);
     }
 
-    async Task HandlePublisherStatisticsChangeAsync(PublisherStatistics stats, ChangeType _, Guid eventId, CancellationToken token)
+    async Task HandlePublisherStatisticsChangeAsync(PublisherStatistics stats, ChangeType _, Guid eventId, string tenantId, CancellationToken token)
     {
         Log.Infrastructure.ProcessingDocumentChange(_logger, "Update", nameof(PublisherStatistics));
         await InvalidateCacheTagsAsync(stats.Id, CacheTags.PublisherItemPrefix, CacheTags.PublisherList, token);
 
         IDomainEventNotification notification = new PublisherStatisticsUpdateNotification(eventId, stats.Id, DateTimeOffset.UtcNow, 0);
-        await NotifyAsync("Publisher", notification, token);
+        await NotifyAsync("Publisher", notification, tenantId, token);
     }
 
     static ChangeType DetermineEffectiveChangeType(ChangeType changeType, bool isDeleted)
@@ -302,10 +303,10 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
         Log.Infrastructure.CacheInvalidated(_logger, itemTag, collectionTag);
     }
 
-    async Task NotifyAsync(string entityType, IDomainEventNotification notification, CancellationToken token)
+    async Task NotifyAsync(string entityType, IDomainEventNotification notification, string tenantId, CancellationToken token)
     {
         Log.Infrastructure.SendingNotification(_logger, notification.GetType().Name, entityType);
-        await _notificationService.NotifyAsync(notification, token);
+        await _notificationService.NotifyAsync(notification, tenantId, token);
     }
 
     enum ChangeType

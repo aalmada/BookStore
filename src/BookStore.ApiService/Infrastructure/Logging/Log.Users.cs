@@ -162,5 +162,31 @@ public static partial class Log
             Message = "Resend verification successful for {Email}")]
         public static partial void ResendVerificationSuccessful(ILogger logger, string email);
 
+        // Passkey Security Audit Logging
+        [LoggerMessage(
+            Level = LogLevel.Debug,
+            Message = "Passkey login options requested for non-existent email: {Email}")]
+        public static partial void PasskeyOptionsUserNotFound(ILogger logger, string email);
+
+        [LoggerMessage(
+            Level = LogLevel.Debug,
+            Message = "Passkey login options requested for user without passkeys: {Email}")]
+        public static partial void PasskeyOptionsNoPasskeys(ILogger logger, string email);
+
+        [LoggerMessage(
+            Level = LogLevel.Debug,
+            Message = "Generating passkey options for user {UserId} ({Email}) with {Count} passkey(s)")]
+        public static partial void PasskeyOptionsGenerated(ILogger logger, Guid userId, string email, int count);
+
+        [LoggerMessage(
+            Level = LogLevel.Warning,
+            Message = "Passkey credential {CredentialId} does not belong to user {UserId}. Possible attack or database inconsistency.")]
+        public static partial void PasskeyCredentialMismatch(ILogger logger, string credentialId, string userId);
+
+        [LoggerMessage(
+            Level = LogLevel.Information,
+            Message = "Passkey login successful for user {UserId} using credential {CredentialId}")]
+        public static partial void PasskeyLoginSuccessfulWithCredential(ILogger logger, string userId, string credentialId);
+
     }
 }

@@ -22,7 +22,7 @@ public class EmailHandlers(
 
         Log.Email.ProcessingVerificationEmail(logger, command.Email);
 
-        var verificationLink = $"{settings.BaseUrl}/verify-email?userId={Uri.EscapeDataString(command.UserId.ToString())}&code={Uri.EscapeDataString(command.VerificationCode)}";
+        var verificationLink = $"{settings.BaseUrl}/verify-email?tenant={Uri.EscapeDataString(command.TenantId)}&userId={Uri.EscapeDataString(command.UserId.ToString())}&code={Uri.EscapeDataString(command.VerificationCode)}";
         var (subject, body) = templateService.GetVerificationEmail(command.UserName, verificationLink);
 
         await emailService.SendAccountVerificationEmailAsync(command.Email, subject, body);

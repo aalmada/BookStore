@@ -237,8 +237,10 @@ public static class MartenConfigurationExtensions
 
         // ApplicationUser indexes (Identity)
         _ = options.Schema.For<ApplicationUser>()
-            .UniqueIndex(UniqueIndexType.Computed, x => x.NormalizedEmail!)
-            .UniqueIndex(UniqueIndexType.Computed, x => x.NormalizedUserName!)
+            // SECURITY FIX: Use DuplicatedField to create tenant-scoped unique indexes
+            // This ensures email/username uniqueness PER TENANT, not globally
+            .UniqueIndex(UniqueIndexType.DuplicatedField, x => x.NormalizedEmail!)
+            .UniqueIndex(UniqueIndexType.DuplicatedField, x => x.NormalizedUserName!)
             .Index(x => x.NormalizedEmail)
             .Index(x => x.NormalizedUserName)
             .GinIndexJsonData()

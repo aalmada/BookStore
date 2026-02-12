@@ -27,7 +27,8 @@ public class EmailHandlersTests
             Guid.CreateVersion7(),
             "test@example.com",
             "VERIFY123",
-            "TestUser");
+            "TestUser",
+            "tenant-1");
 
         // Act
         await handler.Handle(command);
@@ -57,7 +58,7 @@ public class EmailHandlersTests
         var userName = "Test User";
         var code = "ABC-123";
 
-        var command = new SendUserVerificationEmail(userId, email, code, userName);
+        var command = new SendUserVerificationEmail(userId, email, code, userName, "tenant-1");
 
         // Act
         await handler.Handle(command);
@@ -69,6 +70,7 @@ public class EmailHandlersTests
             Arg.Is<string>(body =>
                 body.Contains(userName) &&
                 body.Contains("verify-email") &&
+                body.Contains("tenant=tenant-1") &&
                 body.Contains(userId.ToString()) &&
                 body.Contains(code))
         );
@@ -91,7 +93,7 @@ public class EmailHandlersTests
         // Create special characters in code
         var code = "ABC+123/456==";
 
-        var command = new SendUserVerificationEmail(userId, "test@example.com", code, "User");
+        var command = new SendUserVerificationEmail(userId, "test@example.com", code, "User", "tenant-1");
 
         // Act
         await handler.Handle(command);

@@ -16,7 +16,8 @@ namespace BookStore.ApiService.Infrastructure.Notifications;
 /// </summary>
 public class RedisNotificationService : INotificationService, IDisposable
 {
-    readonly ConcurrentDictionary<Guid, Channel<SseItem<IDomainEventNotification>>> _subscribers = new();
+    readonly ConcurrentDictionary<string, ConcurrentDictionary<Guid, Channel<SseItem<IDomainEventNotification>>>> _subscribers = new();
+    readonly ConcurrentDictionary<string, bool> _redisSubscriptions = new(StringComparer.OrdinalIgnoreCase);
     readonly IConnectionMultiplexer? _redis;
     readonly ILogger<RedisNotificationService> _logger;
     const string ChannelName = "bookstore:notifications";
@@ -28,9 +29,6 @@ public class RedisNotificationService : INotificationService, IDisposable
         _redis = redis;
         _logger = logger;
 
-        // Subscribe to Redis pub/sub channel
-        InitializeRedisSubscription();
-
         // Start a background heartbeat to verify connectivity
         _ = Task.Run(async () =>
         {
@@ -39,7 +37,7 @@ public class RedisNotificationService : INotificationService, IDisposable
                 await Task.Delay(10000);
                 try
                 {
-                    await NotifyAsync(new PingNotification());
+                    await NotifyAsync(new PingNotification(), JasperFx.StorageConstants.DefaultTenantId);
                 }
                 catch (Exception ex)
                 {
@@ -49,7 +47,7 @@ public class RedisNotificationService : INotificationService, IDisposable
         });
     }
 
-    void InitializeRedisSubscription()
+    void EnsureRedisSubscription(string tenantId)
     {
         if (_redis == null || !_redis.IsConnected)
         {
@@ -57,7 +55,14 @@ public class RedisNotificationService : INotificationService, IDisposable
             return;
         }
 
-        _redis.GetSubscriber().Subscribe(RedisChannel.Literal(ChannelName), async (channel, message) =>
+        if (!_redisSubscriptions.TryAdd(tenantId, true))
+        {
+            return;
+        }
+
+        var channelName = GetTenantChannelName(tenantId);
+
+        _redis.GetSubscriber().Subscribe(RedisChannel.Literal(channelName), async (channel, message) =>
         {
             try
             {
@@ -69,7 +74,7 @@ public class RedisNotificationService : INotificationService, IDisposable
                 {
                     // Broadcast to all local SSE subscribers
                     Log.Notifications.BroadcastingToLocal(_logger, notification.EventType, notification.EntityId);
-                    await BroadcastToLocalSubscribersAsync(notification);
+                    await BroadcastToLocalSubscribersAsync(notification, tenantId);
                 }
             }
             catch (Exception ex)
@@ -78,15 +83,20 @@ public class RedisNotificationService : INotificationService, IDisposable
             }
         });
 
-        Log.Notifications.SubscribedToRedis(_logger, ChannelName);
+        Log.Notifications.SubscribedToRedis(_logger, channelName);
     }
 
-    async ValueTask BroadcastToLocalSubscribersAsync(IDomainEventNotification notification)
+    async ValueTask BroadcastToLocalSubscribersAsync(IDomainEventNotification notification, string tenantId)
     {
         var sseItem = new SseItem<IDomainEventNotification>(notification, notification.EventType);
         Log.Notifications.NotifyAsync(_logger, notification.EventType, notification.EntityId);
 
-        foreach (var subscriber in _subscribers)
+        if (!_subscribers.TryGetValue(tenantId, out var tenantSubscribers))
+        {
+            return;
+        }
+
+        foreach (var subscriber in tenantSubscribers)
         {
             try
             {
@@ -95,19 +105,19 @@ public class RedisNotificationService : INotificationService, IDisposable
             catch (Exception ex)
             {
                 Log.Notifications.FailedToSend(_logger, ex, subscriber.Key);
-                _ = _subscribers.TryRemove(subscriber.Key, out _);
+                _ = tenantSubscribers.TryRemove(subscriber.Key, out _);
             }
         }
     }
 
-    public async ValueTask NotifyAsync(IDomainEventNotification notification, CancellationToken ct = default)
+    public async ValueTask NotifyAsync(IDomainEventNotification notification, string tenantId, CancellationToken ct = default)
     {
         // Publish to Redis (will be received by all instances including this one)
         if (_redis?.IsConnected == true)
         {
             var json = JsonSerializer.Serialize(notification, typeof(IDomainEventNotification));
             Log.Notifications.PublishingToRedis(_logger, json);
-            _ = await _redis.GetSubscriber().PublishAsync(RedisChannel.Literal(ChannelName), json);
+            _ = await _redis.GetSubscriber().PublishAsync(RedisChannel.Literal(GetTenantChannelName(tenantId)), json);
 
             Log.Notifications.PublishedToRedis(_logger, notification.EventType, notification.EntityId);
         }
@@ -115,13 +125,16 @@ public class RedisNotificationService : INotificationService, IDisposable
         {
             // Fallback: notify local subscribers directly if Redis unavailable
             Log.Notifications.RedisFallback(_logger);
-            await BroadcastToLocalSubscribersAsync(notification);
+            await BroadcastToLocalSubscribersAsync(notification, tenantId);
         }
     }
 
     public async IAsyncEnumerable<SseItem<IDomainEventNotification>> Subscribe(
+        string tenantId,
         [EnumeratorCancellation] CancellationToken ct)
     {
+        EnsureRedisSubscription(tenantId);
+
         var id = Guid.CreateVersion7();
         var channel = Channel.CreateUnbounded<SseItem<IDomainEventNotification>>(new UnboundedChannelOptions
         {
@@ -129,8 +142,9 @@ public class RedisNotificationService : INotificationService, IDisposable
             SingleWriter = false // Multiple writers (Redis + fallback)
         });
 
-        _ = _subscribers.TryAdd(id, channel);
-        Log.Notifications.ClientSubscribed(_logger, id, _subscribers.Count);
+        var tenantSubscribers = _subscribers.GetOrAdd(tenantId, _ => new ConcurrentDictionary<Guid, Channel<SseItem<IDomainEventNotification>>>());
+        _ = tenantSubscribers.TryAdd(id, channel);
+        Log.Notifications.ClientSubscribed(_logger, id, tenantSubscribers.Count);
 
         try
         {
@@ -142,8 +156,8 @@ public class RedisNotificationService : INotificationService, IDisposable
         }
         finally
         {
-            _ = _subscribers.TryRemove(id, out _);
-            Log.Notifications.ClientUnsubscribed(_logger, id, _subscribers.Count);
+            _ = tenantSubscribers.TryRemove(id, out _);
+            Log.Notifications.ClientUnsubscribed(_logger, id, tenantSubscribers.Count);
         }
     }
 
@@ -153,8 +167,12 @@ public class RedisNotificationService : INotificationService, IDisposable
         {
             if (_redis is { IsConnected: true })
             {
-                _redis.GetSubscriber().Unsubscribe(RedisChannel.Literal(ChannelName));
-                Log.Notifications.UnsubscribedFromRedis(_logger, ChannelName);
+                foreach (var tenantId in _redisSubscriptions.Keys)
+                {
+                    var channelName = GetTenantChannelName(tenantId);
+                    _redis.GetSubscriber().Unsubscribe(RedisChannel.Literal(channelName));
+                    Log.Notifications.UnsubscribedFromRedis(_logger, channelName);
+                }
             }
         }
         catch (ObjectDisposedException)
@@ -167,4 +185,6 @@ public class RedisNotificationService : INotificationService, IDisposable
             Log.Notifications.FailedToUnsubscribeFromRedis(_logger, ex);
         }
     }
+
+    static string GetTenantChannelName(string tenantId) => $"{ChannelName}:{tenantId}";
 }

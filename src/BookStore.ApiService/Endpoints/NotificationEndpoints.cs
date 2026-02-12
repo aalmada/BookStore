@@ -15,7 +15,11 @@ public static class NotificationEndpoints
             .WithSummary("Subscribe to real-time notifications via SSE")
             .Produces(StatusCodes.Status200OK, contentType: "text/event-stream");
 
-        _ = group.MapPost("/test-notification", async (string type, Guid id, INotificationService service) =>
+        _ = group.MapPost("/test-notification", async (
+            string type,
+            Guid id,
+            INotificationService service,
+            BookStore.ApiService.Infrastructure.Tenant.ITenantContext tenantContext) =>
         {
             IDomainEventNotification notification = type.ToLowerInvariant() switch
             {
@@ -26,7 +30,7 @@ public static class NotificationEndpoints
                 _ => new PingNotification()
             };
 
-            await service.NotifyAsync(notification);
+            await service.NotifyAsync(notification, tenantContext.TenantId);
             return Results.Ok($"Sent {notification.EventType} for {id}");
         })
         .WithName("SendTestNotification")
@@ -37,13 +41,14 @@ public static class NotificationEndpoints
 
     static IResult GetNotificationStream(
         INotificationService notificationService,
+        BookStore.ApiService.Infrastructure.Tenant.ITenantContext tenantContext,
         ILogger<INotificationService> logger,
         CancellationToken cancellationToken)
     {
         Log.Notifications.ClientConnected(logger);
 
         Log.Notifications.CreatingSubscription(logger);
-        var stream = notificationService.Subscribe(cancellationToken);
+        var stream = notificationService.Subscribe(tenantContext.TenantId, cancellationToken);
 
         // Wrap stream to send immediate initial event to force header flush
         var streamWithInit = EmitInitialEvent(stream);

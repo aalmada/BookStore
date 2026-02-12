@@ -135,6 +135,11 @@ public static class ApplicationServicesExtensions
                 // Require email confirmation for login
                 options.SignIn.RequireConfirmedEmail = true;
 
+                // Lockout policy for brute-force protection
+                options.Lockout.AllowedForNewUsers = true;
+                options.Lockout.MaxFailedAccessAttempts = 5;
+                options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+
             })
             .AddUserStore<Identity.MartenUserStore>()
             .AddSignInManager() // This registers SignInManager and IPasskeyHandler

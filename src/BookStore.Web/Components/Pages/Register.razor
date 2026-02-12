@@ -2,10 +2,7 @@
 @using BookStore.Web.Services
 @inject AuthenticationService AuthService
 @inject PasskeyService PasskeyService
-@inject JwtAuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Navigation
-@inject BookStoreEventsService EventsService
-@implements IDisposable
 @inject IJSRuntime JS
 @using Microsoft.JSInterop
 @using BookStore.Shared.Validation
@@ -330,35 +327,6 @@
         {
             isLoading = false;
         }
-    }
-
-    protected override void OnInitialized()
-    {
-        EventsService.OnNotificationReceived += HandleNotification;
-        EventsService.StartListening();
-    }
-
-    void HandleNotification(BookStore.Shared.Notifications.IDomainEventNotification notification)
-    {
-        if (notification is BookStore.Shared.Notifications.UserVerifiedNotification userVerified)
-        {
-            if (userVerified.Email.Equals(email, StringComparison.OrdinalIgnoreCase))
-            {
-                InvokeAsync(async () =>
-                {
-                    registrationSuccess = true;
-                    requiresVerification = false;
-                    StateHasChanged();
-                    await Task.Delay(2000);
-                    Navigation.NavigateTo("/login");
-                });
-            }
-        }
-    }
-
-    public void Dispose()
-    {
-        EventsService.OnNotificationReceived -= HandleNotification;
     }
 
     void ValidatePasswordStrength()

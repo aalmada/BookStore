@@ -4,6 +4,8 @@ using BookStore.ApiService.Infrastructure.Logging;
 using BookStore.ApiService.Infrastructure.Tenant;
 using BookStore.ApiService.Models;
 using BookStore.Shared.Infrastructure;
+using BookStore.Shared.Messages.Events;
+using Marten;
 using BookStore.Shared.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -53,15 +55,6 @@ public static class PasskeyEndpoints
                 return Result.Failure(Error.Validation(ErrorCodes.Passkey.EmailRequired, "Email is required for new registration.")).ToProblemDetails();
             }
 
-            var conflictingUser = await userManager.FindByEmailAsync(request.Email);
-            if (conflictingUser is not null)
-            {
-                // Security: Don't return BadRequest to prevent user enumeration.
-                // Instead, proceed to generate options for a dummy user.
-                // The registration will fail at the "attestation/result" step (masked),
-                // effectively hiding the user's existence.
-            }
-
             // Create a temporary user entity for the purpose of generating options
             // The Client will sign this.
             var newUserId = Guid.CreateVersion7().ToString();
@@ -91,6 +84,7 @@ public static class PasskeyEndpoints
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
             IUserStore<ApplicationUser> userStore,
+            [FromServices] IDocumentSession session,
             ITenantContext tenantContext,
             BookStore.ApiService.Services.JwtTokenService tokenService,
             Wolverine.IMessageBus bus,
@@ -184,15 +178,15 @@ public static class PasskeyEndpoints
                 var userIdSource = "none";
                 string? newUserIdString = null;
 
-                if (!string.IsNullOrEmpty(request.UserId))
-                {
-                    newUserIdString = request.UserId;
-                    userIdSource = "request.UserId";
-                }
-                else if (!string.IsNullOrEmpty(passedUserId))
+                if (!string.IsNullOrEmpty(passedUserId))
                 {
                     newUserIdString = passedUserId;
                     userIdSource = "passedUserId (from userHandle)";
+                }
+                else if (!string.IsNullOrEmpty(request.UserId))
+                {
+                    newUserIdString = request.UserId;
+                    userIdSource = "request.UserId";
                 }
                 else
                 {
@@ -215,6 +209,15 @@ public static class PasskeyEndpoints
                     return Result.Failure(Error.Conflict(ErrorCodes.Passkey.IdAlreadyExists, "User ID already exists.")).ToProblemDetails();
                 }
 
+                // SECURITY FIX: Check if email already exists to prevent duplicate users
+                var conflictingUserByEmail = await userManager.FindByEmailAsync(request.Email);
+                if (conflictingUserByEmail != null)
+                {
+                    // Mask the error to prevent email enumeration
+                    Log.Users.RegistrationFailed(logger, request.Email, "Passkey Registration: User already exists (masked)");
+                    return Results.Ok(new { Message = "Registration successful. Please check your email to verify your account." });
+                }
+
                 Log.Users.PasskeyCreatingNewUser(logger, newUserGuid, userIdSource);
 
                 var newUser = new ApplicationUser
@@ -222,7 +225,8 @@ public static class PasskeyEndpoints
                     Id = newUserGuid,
                     UserName = request.Email,
                     Email = request.Email,
-                    EmailConfirmed = !verificationRequired
+                    EmailConfirmed = !verificationRequired,
+                    LockoutEnabled = true
                 };
 
                 // Create the user in DB
@@ -266,11 +270,22 @@ public static class PasskeyEndpoints
                 if (verificationRequired)
                 {
                     var code = await userManager.GenerateEmailConfirmationTokenAsync(newUser);
-                    await bus.PublishAsync(new Messages.Commands.SendUserVerificationEmail(newUser.Id, newUser.Email!, code, newUser.UserName!));
+                    await bus.PublishAsync(new Messages.Commands.SendUserVerificationEmail(
+                        newUser.Id,
+                        newUser.Email!,
+                        code,
+                        newUser.UserName!,
+                        tenantContext.TenantId));
 
                     // Don't auto-login when verification is required
                     return Results.Ok(new { Message = "Registration successful. Please check your email to verify your account." });
                 }
+
+                // Initialize UserProfile stream for immediate access
+                _ = session.Events.StartStream<BookStore.ApiService.Projections.UserProfile>(
+                    newUser.Id,
+                    new UserProfileCreated(newUser.Id));
+                await session.SaveChangesAsync(cancellationToken);
 
                 // Auto Login - Issue Token (only when verification is not required)
                 // Build claims and generate tokens
@@ -299,6 +314,7 @@ public static class PasskeyEndpoints
             SignInManager<ApplicationUser> signInManager,
             UserManager<ApplicationUser> userManager,
             IUserStore<ApplicationUser> userStore,
+            ILogger<Program> logger,
             CancellationToken cancellationToken) =>
         {
             ApplicationUser? user = null;
@@ -313,6 +329,7 @@ public static class PasskeyEndpoints
             // If user doesn't exist, return generic error
             if (user == null)
             {
+                Log.Users.PasskeyOptionsUserNotFound(logger, request.Email ?? "(no email)");
                 return Result.Failure(Error.Validation(ErrorCodes.Passkey.UserNotFound, genericError)).ToProblemDetails();
             }
 
@@ -322,8 +339,12 @@ public static class PasskeyEndpoints
                 var passkeys = await passkeyStore.GetPasskeysAsync(user, cancellationToken);
                 if (passkeys.Count == 0)
                 {
+                    Log.Users.PasskeyOptionsNoPasskeys(logger, request.Email ?? "(no email)");
                     return Result.Failure(Error.Validation(ErrorCodes.Passkey.UserNotFound, genericError)).ToProblemDetails();
                 }
+
+                // SECURITY: Log passkey details for debugging (credential IDs are not sensitive)
+                Log.Users.PasskeyOptionsGenerated(logger, user.Id, user.Email ?? "(no email)", passkeys.Count);
             }
 
             // Generate options (assertion challenge)
@@ -377,6 +398,35 @@ public static class PasskeyEndpoints
                             var user = await userManager.FindByIdAsync(userId);
                             if (user != null)
                             {
+                                // SECURITY: Verify the passkey actually belongs to this user
+                                if (userStore is IUserPasskeyStore<ApplicationUser> passkeyStore)
+                                {
+                                    var userPasskeys = await passkeyStore.GetPasskeysAsync(user, cancellationToken);
+                                    
+                                    // Extract credential ID from the assertion
+                                    byte[]? credentialId = null;
+                                    if (doc.RootElement.TryGetProperty("id", out var credIdElement))
+                                    {
+                                        var idString = credIdElement.GetString();
+                                        if (!string.IsNullOrEmpty(idString))
+                                        {
+                                            credentialId = Microsoft.AspNetCore.WebUtilities.Base64UrlTextEncoder.Decode(idString);
+                                        }
+                                    }
+
+                                    if (credentialId != null)
+                                    {
+                                        var matchingPasskey = userPasskeys.FirstOrDefault(p => p.CredentialId.SequenceEqual(credentialId));
+                                        if (matchingPasskey == null)
+                                        {
+                                            Log.Users.PasskeyCredentialMismatch(logger, Convert.ToBase64String(credentialId), userId);
+                                            return Result.Failure(Error.Unauthorized(ErrorCodes.Passkey.AssertionFailed, "Invalid passkey assertion.")).ToProblemDetails();
+                                        }
+
+                                        Log.Users.PasskeyLoginSuccessfulWithCredential(logger, userId, Convert.ToBase64String(credentialId));
+                                    }
+                                }
+
                                 // Issue tokens
                                 // Check if user is allowed to sign in
                                 if (!await signInManager.CanSignInAsync(user))
