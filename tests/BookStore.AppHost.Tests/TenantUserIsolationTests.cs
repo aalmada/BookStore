@@ -98,7 +98,7 @@ public class TenantUserIsolationTests
         // Act
         // Act
         // AddBookToFavoritesAsync ?
-        _ = await TestHelpers.ExecuteAndWaitForEventAsync(Guid.Empty, "UserUpdated",
+        _ = await TestHelpers.ExecuteAndWaitForEventAsync(userClient.UserId, "UserUpdated",
             async () => await userBooksClient.AddBookToFavoritesAsync(book.Id),
             TestConstants.DefaultEventTimeout);
 
