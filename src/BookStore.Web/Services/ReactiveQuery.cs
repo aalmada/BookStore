@@ -11,12 +11,13 @@ namespace BookStore.Web.Services;
 /// <typeparam name="T">The type of data being fetched.</typeparam>
 public class ReactiveQuery<T> : IDisposable
 {
-    readonly Func<Task<T>> _queryFn;
+    readonly Func<CancellationToken, Task<T>> _queryFn;
     readonly BookStoreEventsService _eventsService;
     readonly QueryInvalidationService _invalidationService;
     readonly Action _onStateChanged;
     readonly ILogger _logger;
     readonly HashSet<string> _queryKeys;
+    CancellationTokenSource? _cts;
 
     /// <summary>
     /// Gets the current data.
@@ -44,7 +45,7 @@ public class ReactiveQuery<T> : IDisposable
     public bool IsError => Error != null;
 
     public ReactiveQuery(
-        Func<Task<T>> queryFn,
+        Func<CancellationToken, Task<T>> queryFn,
         BookStoreEventsService eventsService,
         QueryInvalidationService invalidationService,
         IEnumerable<string> queryKeys,
@@ -62,11 +63,32 @@ public class ReactiveQuery<T> : IDisposable
         _eventsService.OnNotificationReceived += HandleNotification;
     }
 
+    long _version;
+    bool _isDisposed;
+
     /// <summary>
     /// Executes the query function and updates the state.
     /// </summary>
-    public async Task LoadAsync(bool silent = false)
+    public async Task LoadAsync(bool silent = false, CancellationToken cancellationToken = default)
     {
+        if (_isDisposed)
+        {
+            return;
+        }
+
+        var currentVersion = Interlocked.Increment(ref _version);
+
+        // Cancel previous load if any
+        if (_cts != null)
+        {
+            await _cts.CancelAsync();
+            _cts.Dispose();
+        }
+
+        // Create a new CTS for this load attempt, linked to the caller's token
+        var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        _cts = cts;
+
         // Only set IsLoading to true if we don't have data, or if not silent.
         // This prevents flickering when refreshing data in the background.
         if (!silent || Data == null)
@@ -80,18 +102,38 @@ public class ReactiveQuery<T> : IDisposable
 
         try
         {
-            Data = await _queryFn();
+            var data = await _queryFn(cts.Token);
+
+            // Only update data if this is still the latest request
+            if (Interlocked.Read(ref _version) == currentVersion)
+            {
+                Data = data;
+                Error = null;
+            }
+        }
+        catch (OperationCanceledException) when (cts.IsCancellationRequested)
+        {
+            // Ignore cancellation of our own load
+            Log.QueryLoadCancelled(_logger, string.Join(", ", _queryKeys));
         }
         catch (Exception ex)
         {
-            Log.QueryLoadFailed(_logger, ex);
-            Error = ex.Message;
+            // Only update error if this is still the latest request
+            if (Interlocked.Read(ref _version) == currentVersion)
+            {
+                Log.QueryLoadFailed(_logger, ex);
+                Error = ex.Message;
+            }
         }
         finally
         {
-            IsLoading = false;
-            IsFetching = false;
-            _onStateChanged();
+            // Only update state flags if this was the latest load attempt
+            if (Interlocked.Read(ref _version) == currentVersion)
+            {
+                IsLoading = false;
+                IsFetching = false;
+                _onStateChanged();
+            }
         }
     }
 
@@ -133,5 +175,19 @@ public class ReactiveQuery<T> : IDisposable
         }
     }
 
-    public void Dispose() => _eventsService.OnNotificationReceived -= HandleNotification;
+    public void Dispose()
+    {
+        if (_isDisposed)
+        {
+            return;
+        }
+
+        _isDisposed = true;
+
+        _ = Interlocked.Increment(ref _version); // Ensure no more state updates
+
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _eventsService.OnNotificationReceived -= HandleNotification;
+    }
 }

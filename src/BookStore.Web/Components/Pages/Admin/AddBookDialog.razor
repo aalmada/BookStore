@@ -8,6 +8,7 @@
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 
+@implements IDisposable
 <MudDialog>
     <TitleContent>
         <MudText Typo="Typo.h6">
@@ -151,6 +152,8 @@
     private string _selectedLanguage = "en-US";
     private string _currentDescription = "";
     private Dictionary<string, string> _translations = new();
+    private readonly CancellationTokenSource _cts = new();
+    private bool _disposed;
 
     protected override void OnInitialized()
     {
@@ -335,13 +338,13 @@
                 };
                 updateRequest.AdditionalProperties["prices"] = _model.AdditionalProperties["prices"];
 
-                await BooksClient.UpdateBookAsync(BookId, updateRequest, ETag);
+                await BooksClient.UpdateBookAsync(BookId, updateRequest, ETag, _cts.Token);
                 Snackbar.Add("Book updated successfully.", Severity.Success);
             }
             else
             {
                 _model.Id = Guid.CreateVersion7();
-                await BooksClient.CreateBookAsync(_model);
+                await BooksClient.CreateBookAsync(_model, _cts.Token);
                 Snackbar.Add("Book created successfully.", Severity.Success);
             }
 
@@ -354,4 +357,14 @@
     }
 
     private void Cancel() => MudDialog.Cancel();
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+
+        _cts.Cancel();
+        _cts.Dispose();
+    }
+
 }

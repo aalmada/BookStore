@@ -13,11 +13,12 @@ public class AuthenticationService(
     TokenService tokenService,
     TenantService tenantService)
 {
-    public async Task<Result> ConfirmEmailAsync(string userId, string code)
+    public async Task<Result> ConfirmEmailAsync(string userId, string code,
+        CancellationToken cancellationToken = default)
     {
         try
         {
-            await identityClient.ConfirmEmailAsync(userId, code);
+            await identityClient.ConfirmEmailAsync(userId, code, cancellationToken);
             return Result.Success();
         }
         catch (Refit.ApiException ex)
@@ -30,11 +31,11 @@ public class AuthenticationService(
         }
     }
 
-    public async Task<Result> ResendVerificationEmailAsync(string email)
+    public async Task<Result> ResendVerificationEmailAsync(string email, CancellationToken cancellationToken = default)
     {
         try
         {
-            await identityClient.ResendVerificationAsync(new ResendVerificationRequest(email));
+            await identityClient.ResendVerificationAsync(new ResendVerificationRequest(email), cancellationToken);
             return Result.Success();
         }
         catch (Refit.ApiException ex)
@@ -50,13 +51,15 @@ public class AuthenticationService(
     /// <summary>
     /// Login with email and password (JWT token-based)
     /// </summary>
-    public async Task<Result<LoginResponse>> LoginAsync(string email, string password)
+    public async Task<Result<LoginResponse>> LoginAsync(string email, string password,
+        CancellationToken cancellationToken = default)
     {
         try
         {
             var request = new LoginRequest(email, password);
             // useCookies=false - we want JWT tokens, not cookies
-            var response = await identityClient.LoginAsync(request, useCookies: false);
+            var response =
+                await identityClient.LoginAsync(request, useCookies: false, cancellationToken: cancellationToken);
 
             return Result.Success(response);
         }
@@ -73,7 +76,8 @@ public class AuthenticationService(
     /// <summary>
     /// Register a new user
     /// </summary>
-    public async Task<Result> RegisterAsync(string email, string password)
+    public async Task<Result> RegisterAsync(string email, string password,
+        CancellationToken cancellationToken = default)
     {
         // Validate password strength
         var validationError = ValidatePassword(password);
@@ -85,7 +89,7 @@ public class AuthenticationService(
         try
         {
             var request = new RegisterRequest(email, password);
-            _ = await identityClient.RegisterAsync(request);
+            _ = await identityClient.RegisterAsync(request, cancellationToken);
             return Result.Success();
         }
         catch (Refit.ApiException ex)
@@ -101,13 +105,13 @@ public class AuthenticationService(
     /// <summary>
     /// Logout the current user and invalidate refresh token on server
     /// </summary>
-    public async Task LogoutAsync()
+    public async Task LogoutAsync(CancellationToken cancellationToken = default)
     {
         try
         {
             var currentTenant = tenantService.CurrentTenantId;
             var refreshToken = tokenService.GetRefreshToken(currentTenant);
-            await identityClient.LogoutAsync(new LogoutRequest(refreshToken));
+            await identityClient.LogoutAsync(new LogoutRequest(refreshToken), cancellationToken);
         }
         catch
         {
@@ -120,7 +124,8 @@ public class AuthenticationService(
     /// </summary>
     static string? ValidatePassword(string password) => PasswordValidator.GetFirstError(password);
 
-    public async Task<Result> ChangePasswordAsync(string currentPassword, string newPassword)
+    public async Task<Result> ChangePasswordAsync(string currentPassword, string newPassword,
+        CancellationToken cancellationToken = default)
     {
         var validationError = ValidatePassword(newPassword);
         if (validationError != null)
@@ -136,7 +141,8 @@ public class AuthenticationService(
 
         try
         {
-            await identityClient.ChangePasswordAsync(new ChangePasswordRequest(currentPassword, newPassword));
+            await identityClient.ChangePasswordAsync(new ChangePasswordRequest(currentPassword, newPassword),
+                cancellationToken);
             return Result.Success();
         }
         catch (Refit.ApiException ex)
@@ -149,7 +155,7 @@ public class AuthenticationService(
         }
     }
 
-    public async Task<Result> AddPasswordAsync(string newPassword)
+    public async Task<Result> AddPasswordAsync(string newPassword, CancellationToken cancellationToken = default)
     {
         var validationError = ValidatePassword(newPassword);
         if (validationError != null)
@@ -159,7 +165,7 @@ public class AuthenticationService(
 
         try
         {
-            await identityClient.AddPasswordAsync(new AddPasswordRequest(newPassword));
+            await identityClient.AddPasswordAsync(new AddPasswordRequest(newPassword), cancellationToken);
             return Result.Success();
         }
         catch (Refit.ApiException ex)
@@ -172,11 +178,11 @@ public class AuthenticationService(
         }
     }
 
-    public async Task<Result> RemovePasswordAsync()
+    public async Task<Result> RemovePasswordAsync(CancellationToken cancellationToken = default)
     {
         try
         {
-            await identityClient.RemovePasswordAsync(new RemovePasswordRequest());
+            await identityClient.RemovePasswordAsync(new RemovePasswordRequest(), cancellationToken);
             return Result.Success();
         }
         catch (Refit.ApiException ex)
@@ -189,11 +195,11 @@ public class AuthenticationService(
         }
     }
 
-    public async Task<bool> HasPasswordAsync()
+    public async Task<bool> HasPasswordAsync(CancellationToken cancellationToken = default)
     {
         try
         {
-            var response = await identityClient.GetPasswordStatusAsync();
+            var response = await identityClient.GetPasswordStatusAsync(cancellationToken);
             return response.HasPassword;
         }
         catch

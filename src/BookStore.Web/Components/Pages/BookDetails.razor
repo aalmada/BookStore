@@ -10,7 +10,7 @@
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthStateProvider
 @inject ISnackbar Snackbar
-@implements IAsyncDisposable
+@implements IDisposable
 @rendermode InteractiveServer
 @inject CatalogService CatalogService
 @inject CurrencyService CurrencyService
@@ -307,6 +307,8 @@
 
     [CascadingParameter] private Task<AuthenticationState> AuthStateTask { get; set; } = default!;
     private System.Security.Claims.ClaimsPrincipal? user;
+    private readonly CancellationTokenSource _cts = new();
+    private bool _disposed;
     private int quantity = 1;
 
     private async Task AddToCartAsync()
@@ -315,7 +317,7 @@
 
         try
         {
-            await CartClient.AddToCartAsync(new BookStore.Client.AddToCartClientRequest(book.Id, quantity));
+            await CartClient.AddToCartAsync(new BookStore.Client.AddToCartClientRequest(book.Id, quantity), _cts.Token);
             Snackbar.Add($"Added {quantity} copy(ies) to cart", Severity.Success);
             quantity = 1; // Reset quantity
         }
@@ -340,6 +342,7 @@
 
     protected override async Task OnParametersSetAsync()
     {
+        if (_disposed) return;
         // Reload when ID parameter changes
         // Note: queryFn captures 'Id', so we need to reload if Id changes.
         // But ReactiveQuery caches the function. We strictly should allow updating the function or creating new query.
@@ -350,7 +353,7 @@
             // But we need to check if it actually changed to avoid loop?
             // Actually OnParametersSetAsync runs on standard parameter set.
             // We'll manage checking inside InitializeQueryAsync logic or just re-init.
-            await InitializeQueryAsync();
+            await InitializeQueryAsync(_cts.Token);
         }
 
         var authState = await AuthStateTask;
@@ -361,23 +364,23 @@
             user = newUser;
             if (user.Identity?.IsAuthenticated == true && bookQuery != null)
             {
-                await bookQuery.LoadAsync(silent: true);
+                await bookQuery.LoadAsync(silent: true, cancellationToken: _cts.Token);
             }
         }
     }
 
-    private async Task InitializeQueryAsync()
+    private async Task InitializeQueryAsync(CancellationToken cancellationToken = default)
     {
         // Dispose previous if exists
         bookQuery?.Dispose();
 
         bookQuery = new ReactiveQuery<BookDto?>(
-            queryFn: async () =>
+            queryFn: async ct =>
             {
                 try
                 {
                     return await BooksClient.GetBookAsync(
-                        id: Id);
+                        id: Id, cancellationToken: ct);
                 }
                 catch (Refit.ApiException apiEx) when (apiEx.StatusCode == System.Net.HttpStatusCode.NotFound)
                 {
@@ -387,20 +390,20 @@
             eventsService: EventsService,
             invalidationService: InvalidationService,
             queryKeys: new[] { $"Book:{Id}", "User" },
-            onStateChanged: StateHasChanged,
+            onStateChanged: () => InvokeAsync(StateHasChanged),
             logger: Logger
         );
 
-        await bookQuery.LoadAsync();
+        await bookQuery.LoadAsync(cancellationToken: cancellationToken);
         UpdateBreadcrumbs();
     }
 
-    private async Task<BookDto?> FetchBookAsync()
+    private async Task<BookDto?> FetchBookAsync(CancellationToken cancellationToken)
     {
         try
         {
             return await BooksClient.GetBookAsync(
-                id: Id);
+                id: Id, cancellationToken: cancellationToken);
         }
         catch (Refit.ApiException apiEx) when (apiEx.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
@@ -422,9 +425,10 @@
 
     private async Task RetryLoad()
     {
+        if (_disposed) return;
         if (bookQuery != null)
         {
-            await bookQuery.LoadAsync();
+            await bookQuery.LoadAsync(cancellationToken: _cts.Token);
             UpdateBreadcrumbs();
         }
     }
@@ -445,7 +449,8 @@
                 {
                     IsFavorite = oldState,
                     LikeCount = oldState ? current.LikeCount + 1 : current.LikeCount - 1
-                }));
+                }),
+            cancellationToken: _cts.Token);
     }
 
     private async Task RateBookAsync(int rating)
@@ -464,7 +469,8 @@
                 : current with
                 {
                     UserRating = oldRating
-                }));
+                }),
+            cancellationToken: _cts.Token);
     }
 
     private async Task RemoveRatingAsync()
@@ -483,7 +489,8 @@
                 : current with
                 {
                     UserRating = oldRating
-                }));
+                }),
+            cancellationToken: _cts.Token);
     }
 
     private async Task DeleteBookAsync()
@@ -500,9 +507,9 @@
 
         try
         {
-            await BooksClient.SoftDeleteBookAsync(currentBook.Id);
+            await BooksClient.SoftDeleteBookAsync(currentBook.Id, cancellationToken: _cts.Token);
             Snackbar.Add("Book deleted", Severity.Success);
-            if (bookQuery != null) await bookQuery.LoadAsync();
+            if (bookQuery != null) await bookQuery.LoadAsync(cancellationToken: _cts.Token);
         }
         catch (Exception ex)
         {
@@ -518,9 +525,9 @@
 
         try
         {
-            await BooksClient.RestoreBookAsync(currentBook.Id);
+            await BooksClient.RestoreBookAsync(currentBook.Id, cancellationToken: _cts.Token);
             Snackbar.Add("Book restored", Severity.Success);
-            if (bookQuery != null) await bookQuery.LoadAsync();
+            if (bookQuery != null) await bookQuery.LoadAsync(cancellationToken: _cts.Token);
         }
         catch (Exception ex)
         {
@@ -532,8 +539,13 @@
     // Inject EventsService which wasn't injected before
     [Inject] private BookStoreEventsService EventsService { get; set; } = default!;
 
-    public async ValueTask DisposeAsync()
+    public void Dispose()
     {
+        if (_disposed) return;
+        _disposed = true;
+
+        _cts.Cancel();
+        _cts.Dispose();
         bookQuery?.Dispose();
         CurrencyService.OnCurrencyChanged -= StateHasChanged;
     }

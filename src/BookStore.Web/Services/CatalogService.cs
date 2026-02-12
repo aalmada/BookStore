@@ -18,7 +18,8 @@ public class CatalogService
         _logger = logger;
     }
 
-    public async Task ToggleFavoriteAsync(BookDto book, Action<bool> setOptimistic, Action<bool> setRollback)
+    public async Task ToggleFavoriteAsync(BookDto book, Action<bool> setOptimistic, Action<bool> setRollback,
+        CancellationToken cancellationToken = default)
     {
         var originalState = book.IsFavorite;
 
@@ -29,12 +30,12 @@ public class CatalogService
         {
             if (originalState)
             {
-                await _booksClient.RemoveBookFromFavoritesAsync(book.Id);
+                await _booksClient.RemoveBookFromFavoritesAsync(book.Id, cancellationToken: cancellationToken);
                 _ = _snackbar.Add("Removed from favorites", Severity.Success);
             }
             else
             {
-                await _booksClient.AddBookToFavoritesAsync(book.Id);
+                await _booksClient.AddBookToFavoritesAsync(book.Id, cancellationToken: cancellationToken);
                 _ = _snackbar.Add("Added to favorites", Severity.Success);
             }
         }
@@ -47,7 +48,8 @@ public class CatalogService
         }
     }
 
-    public async Task RateBookAsync(BookDto book, int rating, Action<int> setOptimistic, Action<int> setRollback)
+    public async Task RateBookAsync(BookDto book, int rating, Action<int> setOptimistic, Action<int> setRollback,
+        CancellationToken cancellationToken = default)
     {
         var previousRating = book.UserRating;
 
@@ -56,7 +58,8 @@ public class CatalogService
 
         try
         {
-            await _booksClient.RateBookAsync(book.Id, new BookStore.Client.RateBookRequest(rating));
+            await _booksClient.RateBookAsync(book.Id, new BookStore.Client.RateBookRequest(rating),
+                cancellationToken: cancellationToken);
             _ = _snackbar.Add($"Rated {rating} stars", Severity.Success);
         }
         catch (Exception ex)
@@ -68,7 +71,8 @@ public class CatalogService
         }
     }
 
-    public async Task RemoveRatingAsync(BookDto book, Action setOptimistic, Action<int> setRollback)
+    public async Task RemoveRatingAsync(BookDto book, Action setOptimistic, Action<int> setRollback,
+        CancellationToken cancellationToken = default)
     {
         if (book.UserRating == 0)
         {
@@ -82,7 +86,7 @@ public class CatalogService
 
         try
         {
-            await _booksClient.RemoveBookRatingAsync(book.Id);
+            await _booksClient.RemoveBookRatingAsync(book.Id, cancellationToken: cancellationToken);
             _ = _snackbar.Add("Rating removed", Severity.Success);
         }
         catch (Exception ex)

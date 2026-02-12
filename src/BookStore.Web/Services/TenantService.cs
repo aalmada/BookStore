@@ -76,30 +76,30 @@ public class TenantService : IDisposable
     public bool IsLoading { get; private set; }
     public List<TenantInfoDto> AvailableTenants { get; private set; } = [];
 
-    public async Task InitializeAsync()
+    public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
         // Priority 1: Check URL parameter
         var uri = _navigation.ToAbsoluteUri(_navigation.Uri);
         var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
 
-        _ = await RefreshAvailableTenantsAsync();
+        _ = await RefreshAvailableTenantsAsync(cancellationToken);
 
         if (query.TryGetValue("tenant", out var tenantId) && !string.IsNullOrWhiteSpace(tenantId))
         {
-            _ = await SetTenantAsync(tenantId.ToString());
+            _ = await SetTenantAsync(tenantId.ToString(), cancellationToken);
         }
         else
         {
             // Priority 2: Load from localStorage
-            var savedTenant = await _localStorage.GetItemAsStringAsync("selected-tenant");
+            var savedTenant = await _localStorage.GetItemAsStringAsync("selected-tenant", cancellationToken);
             if (!string.IsNullOrEmpty(savedTenant))
             {
-                _ = await SetTenantAsync(savedTenant);
+                _ = await SetTenantAsync(savedTenant, cancellationToken);
             }
             else
             {
                 // Priority 3: Default tenant
-                _ = await SetTenantAsync(MultiTenancyConstants.DefaultTenantId);
+                _ = await SetTenantAsync(MultiTenancyConstants.DefaultTenantId, cancellationToken);
             }
         }
     }
@@ -110,31 +110,31 @@ public class TenantService : IDisposable
         OnChange?.Invoke();
     }
 
-    async Task CheckUrlAndSetTenantAsync()
+    async Task CheckUrlAndSetTenantAsync(CancellationToken cancellationToken = default)
     {
         var uri = _navigation.ToAbsoluteUri(_navigation.Uri);
         var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
 
         if (query.TryGetValue("tenant", out var tenantId))
         {
-            _ = await SetTenantAsync(tenantId.ToString());
+            _ = await SetTenantAsync(tenantId.ToString(), cancellationToken);
         }
         else
         {
             // Load from localStorage if no URL parameter
-            var savedTenant = await _localStorage.GetItemAsStringAsync("selected-tenant");
+            var savedTenant = await _localStorage.GetItemAsStringAsync("selected-tenant", cancellationToken);
             if (!string.IsNullOrEmpty(savedTenant))
             {
-                _ = await SetTenantAsync(savedTenant);
+                _ = await SetTenantAsync(savedTenant, cancellationToken);
             }
             else
             {
-                _ = await SetTenantAsync(MultiTenancyConstants.DefaultTenantId);
+                _ = await SetTenantAsync(MultiTenancyConstants.DefaultTenantId, cancellationToken);
             }
         }
     }
 
-    public async Task<Result> SetTenantAsync(string tenantId)
+    public async Task<Result> SetTenantAsync(string tenantId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(tenantId))
         {
@@ -153,14 +153,14 @@ public class TenantService : IDisposable
 
         try
         {
-            var info = await _tenantClient.GetTenantAsync(tenantId);
+            var info = await _tenantClient.GetTenantAsync(tenantId, cancellationToken);
             CurrentTenantName = info.Name;
             CurrentTenantTagline = info.Tagline ?? "Discover your next great read from our curated collection";
             CurrentTenantPrimaryColor =
                 !string.IsNullOrEmpty(info.ThemePrimaryColor) ? info.ThemePrimaryColor : "#594AE2";
 
             // Save to localStorage
-            await _localStorage.SetItemAsStringAsync("selected-tenant", tenantId);
+            await _localStorage.SetItemAsStringAsync("selected-tenant", tenantId, cancellationToken);
 
             // Save to cookie for server-side middleware (SSR)
             try
@@ -184,7 +184,7 @@ public class TenantService : IDisposable
             if (tenantId != MultiTenancyConstants.DefaultTenantId)
             {
                 // If not already on default, redirect to default
-                _ = await SetTenantAsync(MultiTenancyConstants.DefaultTenantId);
+                _ = await SetTenantAsync(MultiTenancyConstants.DefaultTenantId, cancellationToken);
             }
             else
             {
@@ -200,7 +200,7 @@ public class TenantService : IDisposable
         {
             if (tenantId != MultiTenancyConstants.DefaultTenantId)
             {
-                _ = await SetTenantAsync(MultiTenancyConstants.DefaultTenantId);
+                _ = await SetTenantAsync(MultiTenancyConstants.DefaultTenantId, cancellationToken);
             }
 
             return Result.Failure(Error.Failure("ERR_TENANT_SWITCH_FAILED", ex.Message));
@@ -212,11 +212,11 @@ public class TenantService : IDisposable
         }
     }
 
-    public async Task<Result> RefreshAvailableTenantsAsync()
+    public async Task<Result> RefreshAvailableTenantsAsync(CancellationToken cancellationToken = default)
     {
         try
         {
-            AvailableTenants = await _tenantClient.GetTenantsAsync();
+            AvailableTenants = await _tenantClient.GetTenantsAsync(cancellationToken);
             OnChange?.Invoke();
             return Result.Success();
         }
@@ -232,11 +232,11 @@ public class TenantService : IDisposable
         }
     }
 
-    public async Task<List<TenantInfoDto>> GetAvailableTenantsAsync()
+    public async Task<List<TenantInfoDto>> GetAvailableTenantsAsync(CancellationToken cancellationToken = default)
     {
         if (AvailableTenants.Count == 0)
         {
-            _ = await RefreshAvailableTenantsAsync();
+            _ = await RefreshAvailableTenantsAsync(cancellationToken);
         }
 
         return AvailableTenants;

@@ -18,12 +18,14 @@ public class PasskeyService
         _logger = logger;
     }
 
-    public async Task<Result<string>> GetCreationOptionsAsync(string? email = null)
+    public async Task<Result<string>> GetCreationOptionsAsync(string? email = null,
+        CancellationToken cancellationToken = default)
     {
         try
         {
             var response =
-                await _passkeyClient.GetPasskeyCreationOptionsAsync(new PasskeyCreationRequest { Email = email });
+                await _passkeyClient.GetPasskeyCreationOptionsAsync(new PasskeyCreationRequest { Email = email },
+                    cancellationToken);
             // Return the entire response (with both 'options' and 'userId')
             // The frontend needs the userId to pass back during registration
             var responseJson = System.Text.Json.JsonSerializer.Serialize(response);
@@ -41,12 +43,14 @@ public class PasskeyService
         }
     }
 
-    public async Task<Result<string>> GetLoginOptionsAsync(string? email = null)
+    public async Task<Result<string>> GetLoginOptionsAsync(string? email = null,
+        CancellationToken cancellationToken = default)
     {
         try
         {
             var response =
-                await _passkeyClient.GetPasskeyLoginOptionsAsync(new PasskeyLoginOptionsRequest { Email = email });
+                await _passkeyClient.GetPasskeyLoginOptionsAsync(
+                    new BookStore.Client.PasskeyLoginOptionsRequest { Email = email }, cancellationToken);
             return Result.Success(System.Text.Json.JsonSerializer.Serialize(response));
         }
         catch (ApiException ex)
@@ -62,16 +66,13 @@ public class PasskeyService
     }
 
     public async Task<Result> RegisterPasskeyAsync(string credentialJson, string? email = null,
-        string? userId = null)
+        string? userId = null, CancellationToken cancellationToken = default)
     {
         try
         {
-            await _passkeyClient.RegisterPasskeyAsync(new RegisterPasskeyRequest
-            {
-                CredentialJson = credentialJson,
-                Email = email,
-                UserId = userId
-            });
+            await _passkeyClient.RegisterPasskeyAsync(
+                new RegisterPasskeyRequest { CredentialJson = credentialJson, Email = email, UserId = userId },
+                cancellationToken);
 
             return Result.Success();
         }
@@ -87,14 +88,14 @@ public class PasskeyService
         }
     }
 
-    public async Task<Result<LoginResponse>> LoginWithPasskeyAsync(string credentialJson)
+    public async Task<Result<LoginResponse>> LoginWithPasskeyAsync(string credentialJson,
+        CancellationToken cancellationToken = default)
     {
         try
         {
-            var loginResponse = await _passkeyClient.LoginPasskeyAsync(new RegisterPasskeyRequest
-            {
-                CredentialJson = credentialJson
-            });
+            var loginResponse =
+                await _passkeyClient.LoginPasskeyAsync(new RegisterPasskeyRequest { CredentialJson = credentialJson },
+                    cancellationToken);
 
             if (loginResponse != null && !string.IsNullOrEmpty(loginResponse.AccessToken))
             {
@@ -114,11 +115,11 @@ public class PasskeyService
         }
     }
 
-    public async Task<IReadOnlyList<PasskeyInfo>> ListPasskeysAsync()
+    public async Task<IReadOnlyList<PasskeyInfo>> ListPasskeysAsync(CancellationToken cancellationToken = default)
     {
         try
         {
-            return await _passkeyClient.ListPasskeysAsync();
+            return await _passkeyClient.ListPasskeysAsync(cancellationToken);
         }
         catch (Exception ex)
         {
@@ -127,11 +128,11 @@ public class PasskeyService
         }
     }
 
-    public async Task<Result> DeletePasskeyAsync(string id)
+    public async Task<Result> DeletePasskeyAsync(string id, CancellationToken cancellationToken = default)
     {
         try
         {
-            await _passkeyClient.DeletePasskeyAsync(id);
+            await _passkeyClient.DeletePasskeyAsync(id, cancellationToken: cancellationToken);
             return Result.Success();
         }
         catch (ApiException ex)

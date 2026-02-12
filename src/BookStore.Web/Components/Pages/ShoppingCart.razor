@@ -6,7 +6,7 @@
 @inject IShoppingCartClient CartClient
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
-@implements IAsyncDisposable
+@implements IDisposable
 @rendermode InteractiveServer
 @inject CurrencyService CurrencyService
 
@@ -88,6 +88,8 @@
     private ReactiveQuery<ShoppingCartResponse?>? cartQuery;
     private ShoppingCartResponse? cart => cartQuery?.Data;
     private bool isLoading => cartQuery?.IsLoading ?? true;
+    private readonly CancellationTokenSource _cts = new();
+    private bool _disposed;
 
     [Inject] private ILogger<ShoppingCart> Logger { get; set; } = default!;
     [Inject] private BookStoreEventsService EventsService { get; set; } = default!;
@@ -98,23 +100,23 @@
         // Start SSE listening
         EventsService.StartListening();
 
-        await InitializeQueryAsync();
+        await InitializeQueryAsync(_cts.Token);
 
         // Subscribe to currency changes
         CurrencyService.OnCurrencyChanged += StateHasChanged;
     }
 
-    private async Task InitializeQueryAsync()
+    private async Task InitializeQueryAsync(CancellationToken cancellationToken = default)
     {
         // Dispose previous if exists
         cartQuery?.Dispose();
 
         cartQuery = new ReactiveQuery<ShoppingCartResponse?>(
-            queryFn: async () =>
+            queryFn: async ct =>
             {
                 try
                 {
-                    return await CartClient.GetShoppingCartAsync();
+                    return await CartClient.GetShoppingCartAsync(ct);
                 }
                 catch (Refit.ApiException apiEx) when (apiEx.StatusCode == System.Net.HttpStatusCode.Unauthorized)
                 {
@@ -124,11 +126,11 @@
             eventsService: EventsService,
             invalidationService: InvalidationService,
             queryKeys: new[] { "User" },
-            onStateChanged: StateHasChanged,
+            onStateChanged: () => InvokeAsync(StateHasChanged),
             logger: Logger
         );
 
-        await cartQuery.LoadAsync();
+        await cartQuery.LoadAsync(cancellationToken: cancellationToken);
     }
 
     private async Task UpdateQuantityAsync(Guid bookId, int newQuantity)
@@ -154,7 +156,7 @@
         // 2. API Call
         try
         {
-            await CartClient.UpdateCartItemAsync(bookId, new UpdateCartItemClientRequest(newQuantity));
+            await CartClient.UpdateCartItemAsync(bookId, new UpdateCartItemClientRequest(newQuantity), _cts.Token);
             Snackbar.Add("Quantity updated", Severity.Success);
         }
         catch (Exception ex)
@@ -191,7 +193,7 @@
         // 2. API Call
         try
         {
-            await CartClient.RemoveFromCartAsync(bookId);
+            await CartClient.RemoveFromCartAsync(bookId, _cts.Token);
             Snackbar.Add("Item removed from cart", Severity.Success);
         }
         catch (Exception ex)
@@ -220,7 +222,7 @@
         // 2. API Call
         try
         {
-            await CartClient.ClearCartAsync();
+            await CartClient.ClearCartAsync(_cts.Token);
             Snackbar.Add("Cart cleared", Severity.Success);
         }
         catch (Exception ex)
@@ -232,8 +234,13 @@
         }
     }
 
-    public async ValueTask DisposeAsync()
+    public void Dispose()
     {
+        if (_disposed) return;
+        _disposed = true;
+
+        _cts.Cancel();
+        _cts.Dispose();
         cartQuery?.Dispose();
         CurrencyService.OnCurrencyChanged -= StateHasChanged;
     }

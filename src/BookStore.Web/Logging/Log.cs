@@ -11,6 +11,11 @@ public static partial class Log
     public static partial void QueryLoadFailed(ILogger logger, Exception ex);
 
     [LoggerMessage(
+        Level = LogLevel.Debug,
+        Message = "ReactiveQuery load cancelled for keys: {Keys}")]
+    public static partial void QueryLoadCancelled(ILogger logger, string keys);
+
+    [LoggerMessage(
         Level = LogLevel.Information,
         Message = "ReactiveQuery invalidating due to event: {EventType}. Matched Keys: {Keys}")]
     public static partial void QueryInvalidating(ILogger logger, string eventType, string keys);

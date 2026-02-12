@@ -95,6 +95,8 @@
 @code {
     private MudTable<AdminBookDto> _table = null!;
     private string _searchString = "";
+    private readonly CancellationTokenSource _cts = new();
+    private bool _disposed;
 
     protected override void OnInitialized()
     {
@@ -104,6 +106,11 @@
 
     public void Dispose()
     {
+        if (_disposed) return;
+        _disposed = true;
+
+        _cts.Cancel();
+        _cts.Dispose();
         EventsService.OnNotificationReceived -= HandleNotification;
     }
 
@@ -230,7 +237,7 @@
     {
         try
         {
-            await BooksClient.SoftDeleteBookAsync(id, etag);
+            await BooksClient.SoftDeleteBookAsync(id, etag, _cts.Token);
             Snackbar.Add("Book deleted.", Severity.Success);
             await _table.ReloadServerData();
         }
@@ -244,7 +251,7 @@
     {
         try
         {
-            await BooksClient.RestoreBookAsync(id, etag: etag);
+            await BooksClient.RestoreBookAsync(id, etag: etag, cancellationToken: _cts.Token);
             Snackbar.Add("Book restored.", Severity.Success);
             await _table.ReloadServerData();
         }

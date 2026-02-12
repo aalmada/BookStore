@@ -11,7 +11,8 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @inject ISnackbar Snackbar
 @inject CatalogService CatalogService
-@implements IAsyncDisposable
+@implements IDisposable
+@rendermode InteractiveServer
 
 @inject IAuthorsClient AuthorsClient
 @inject ICategoriesClient CategoriesClient
@@ -399,6 +400,8 @@
 
     [CascadingParameter] private Task<AuthenticationState> AuthStateTask { get; set; } = default!;
     private System.Security.Claims.ClaimsPrincipal? user;
+    private readonly CancellationTokenSource _cts = new();
+    private bool _disposed;
 
     protected override async Task OnInitializedAsync()
     {
@@ -414,16 +417,16 @@
 
         // Initialize ReactiveQuery
         bookQuery = new ReactiveQuery<PagedListDto<BookDto>>(
-            queryFn: FetchBooksAsync,
+            queryFn: ct => FetchBooksAsync(ct),
             eventsService: EventsService,
             invalidationService: InvalidationService,
             queryKeys: new[] { "Books", "Authors", "Publishers" },
-            onStateChanged: StateHasChanged,
+            onStateChanged: () => InvokeAsync(StateHasChanged),
             logger: Logger
         );
 
         // Initial load
-        await bookQuery.LoadAsync();
+        await bookQuery.LoadAsync(cancellationToken: _cts.Token);
 
         // Start cleanup timer for stale optimistic books
         StartCleanupTimer();
@@ -439,8 +442,9 @@
 
     private void HandleCurrencyChanged()
     {
+        if (_disposed) return;
         // Reload books when currency changes
-        _ = bookQuery?.LoadAsync();
+        _ = bookQuery?.LoadAsync(cancellationToken: _cts.Token);
         StateHasChanged();
     }
 
@@ -471,13 +475,15 @@
 
     private void HandleTenantChanged()
     {
+        if (_disposed) return;
         // Reload books when tenant changes
-        _ = bookQuery?.LoadAsync();
+        _ = bookQuery?.LoadAsync(cancellationToken: _cts.Token);
         StateHasChanged();
     }
 
     protected override async Task OnParametersSetAsync()
     {
+        if (_disposed) return;
         var authState = await AuthStateTask;
         var newUser = authState.User;
 
@@ -486,7 +492,7 @@
             user = newUser;
             if (user.Identity?.IsAuthenticated == true && bookQuery != null)
             {
-                await bookQuery.LoadAsync(silent: true);
+                await bookQuery.LoadAsync(silent: true, cancellationToken: _cts.Token);
             }
         }
     }
@@ -530,7 +536,7 @@
         await SearchBooks();
     }
 
-    private async Task<PagedListDto<BookDto>> FetchBooksAsync()
+    private async Task<PagedListDto<BookDto>> FetchBooksAsync(CancellationToken cancellationToken)
     {
         var request = new BookSearchRequest
         {
@@ -549,7 +555,7 @@
         };
 
         return await BooksClient.GetBooksAsync(
-            request);
+            request, cancellationToken);
     }
 
     private void HandleNotification(BookStore.Shared.Notifications.IDomainEventNotification notification)
@@ -587,6 +593,7 @@
 
     private async Task SearchBooks()
     {
+        if (_disposed) return;
         currentPage = 1;
         if (bookQuery != null)
         {
@@ -617,6 +624,7 @@
 
     private async Task LoadPage(int page)
     {
+        if (_disposed) return;
         currentPage = page;
         if (bookQuery != null)
         {
@@ -666,19 +674,32 @@
                     currentList.PageSize,
                     currentList.TotalItemCount
                 );
-            }));
+            }),
+            cancellationToken: _cts.Token);
     }
 
     private async Task RetryLoad()
     {
+        if (_disposed) return;
         if (bookQuery != null)
         {
-            await bookQuery.LoadAsync();
+            await bookQuery.LoadAsync(cancellationToken: _cts.Token);
         }
     }
 
     public void Dispose()
     {
+        if (_disposed) return;
+        _disposed = true;
+
+        OptimisticService.OnBooksChanged -= HandleOptimisticBooksChanged;
+        EventsService.OnNotificationReceived -= HandleNotification;
+        CurrencyService.OnCurrencyChanged -= HandleCurrencyChanged;
+        TenantService.OnChange -= HandleTenantChanged;
+
+        _cts.Cancel();
+        _cts.Dispose();
+        bookQuery?.Dispose();
         debounceTimer?.Dispose();
     }
 
@@ -694,17 +715,5 @@
         cleanupTimer = new System.Threading.Timer(_ => { OptimisticService.CleanupStaleBooks(); }, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
     }
 
-    public async ValueTask DisposeAsync()
-    {
-        bookQuery?.Dispose();
-        OptimisticService.OnBooksChanged -= HandleOptimisticBooksChanged;
-        EventsService.OnNotificationReceived -= HandleNotification;
-        CurrencyService.OnCurrencyChanged -= HandleCurrencyChanged;
-        TenantService.OnChange -= HandleTenantChanged;
-
-        // Dispose timers
-        debounceTimer?.Dispose();
-        cleanupTimer?.Dispose();
-    }
 
 }
