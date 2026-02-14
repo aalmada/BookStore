@@ -116,5 +116,5 @@ Use this guide to add a new capability (skill/workflow) that follows Anthropic's
 - After scaffolding, use `/test__verify_feature` or relevant automation to validate broader workflows.
 
 **See Also**:
-- [/doc__write_agents_md](.claude/skills/doc__write_agents_md/SKILL.md) for documentation guidance.
+- [/meta__write_agents_md](.claude/skills/meta__write_agents_md/SKILL.md) for documentation guidance.
 - Other `.claude/skills/` examples for reference implementations.

@@ -42,7 +42,7 @@
 | **Debug** | `/frontend__debug_sse`, `/cache__debug_cache` |
 | **Deploy** | `/deploy__azure_container_apps`, `/deploy__kubernetes_cluster`, `/deploy__rollback` |
 | **Utility** | `/ops__doctor_check`, `/ops__rebuild_clean`, `/meta__create_skill`, `/meta__cheat_sheet` |
-| **Documentation** | `/lang__docfx_guide`, `/doc__write_agents_md` |
+| **Documentation** | `/lang__docfx_guide`, `/meta__write_agents_md` |
 
 **Aliases**: `/sco`→wolverine__create_operation, `/suo`→wolverine__update_operation, `/sdo`→wolverine__delete_operation, `/sgbi`→marten__get_by_id, `/slq`→marten__list_query, `/sa`→marten__aggregate_scaffold, `/ssp`→marten__single_stream_projection, `/msp`→marten__multi_stream_projection, `/scp`→marten__composite_projection, `/sep`→marten__event_projection, `/st`→test__integration_scaffold, `/vf`→test__verify_feature
 

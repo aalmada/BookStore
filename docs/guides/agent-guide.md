@@ -163,7 +163,7 @@ The agent then follows the skill's instructions step-by-step.
 #### Documentation & Meta (4)
 - **`/meta__cheat_sheet`** - Quick reference to stack rules + commands.
 - **`/meta__create_skill`** - Scaffold new skills with templates + linting.
-- **`/doc__write_agents_md`** - Author AGENTS.md files.
+- **`/meta__write_agents_md`** - Author AGENTS.md files.
 - **`/lang__docfx_guide`** - Produce DocFX-friendly guides.
 
 ### Skill Cross-Referencing System
