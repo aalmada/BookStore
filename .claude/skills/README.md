@@ -55,7 +55,7 @@ Reusable, step-by-step workflows that guide AI agents through complex tasks in t
 
 - **`meta__cheat_sheet`** - Quick reference of stack rules and commands.
 - **`meta__create_skill`** - Scaffold new skills with templates and linting.
-- **`doc__write_agents_md`** - Author AGENTS.md files that delegate to skills.
+- **`meta__write_agents_md`** - Author AGENTS.md files that delegate to skills.
 - **`lang__docfx_guide`** - Write DocFX-friendly guides.
 
 ## Usage

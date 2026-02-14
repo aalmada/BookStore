@@ -24,7 +24,7 @@ Use the prefix that matches the dominant technology or artifact the skill target
 | `ops__` | Local runbooks unrelated to a single stack (doctor, rebuild) | Environment health checks, clean rebuilds | `doctor → ops__doctor_check`, `rebuild-clean → ops__rebuild_clean`
 | `deploy__` | Azure/Kubernetes shipping plus rollbacks | `aspire run` deployment helpers, rollback procedures | `deploy-to-azure → deploy__azure_container_apps`, `deploy-kubernetes → deploy__kubernetes_cluster`, `rollback-deployment → deploy__rollback`
 | `test__` | Unit/integration verification, feature validation | Running suites, verify-feature workflows | `run-unit-tests → test__unit_suite`, `verify-feature → test__verify_feature`
-| `doc__` | Documentation production aimed at end users | Publishing architecture notes, guides, onboarding docs | `write-agents-md → doc__write_agents_md`
+| `doc__` | Documentation production aimed at end users | Publishing architecture notes, guides, onboarding docs | `write-end-user-guide → doc__end_user_guide`
 
 > Tech-stack mapping example: `scaffold-event-projection` touches Marten, so the new name becomes `marten__event_projection`. `run-integration-tests` touches Aspire-hosted test harnesses more than Marten, so prefer `test__integration_suite`.
 
