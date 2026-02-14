@@ -1,8 +1,6 @@
 ---
 name: wolverine__update_operation
 description: Adds a new UPDATE operation (appending to stream) to the Backend. Use this when implementing PUT or PATCH endpoints to modify existing resources.
-aliases:
-  - /scaffold-update-operation
 ---
 
 Follow this guide to implement an **Update Operation** in the ApiService.

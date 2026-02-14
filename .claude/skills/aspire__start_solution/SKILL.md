@@ -1,8 +1,6 @@
 ---
 name: aspire__start_solution
 description: Start the BookStore solution using Aspire CLI in background mode. Use this to run the full application stack (API, Web, PostgreSQL, Redis, Azurite).
-aliases:
-  - /start-solution
 ---
 
 Follow this guide to start the BookStore solution using Aspire CLI.
