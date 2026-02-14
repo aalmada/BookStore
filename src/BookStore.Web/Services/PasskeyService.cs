@@ -1,3 +1,4 @@
+using System.Text.Json;
 using BookStore.Client;
 using BookStore.Shared.Models;
 using BookStore.Web.Infrastructure;
@@ -18,7 +19,7 @@ public class PasskeyService
         _logger = logger;
     }
 
-    public async Task<Result<string>> GetCreationOptionsAsync(string? email = null,
+    public async Task<Result<PasskeyCreationOptionsPayload>> GetCreationOptionsAsync(string? email = null,
         CancellationToken cancellationToken = default)
     {
         try
@@ -26,20 +27,24 @@ public class PasskeyService
             var response =
                 await _passkeyClient.GetPasskeyCreationOptionsAsync(new PasskeyCreationRequest { Email = email },
                     cancellationToken);
-            // Return the entire response (with both 'options' and 'userId')
-            // The frontend needs the userId to pass back during registration
-            var responseJson = System.Text.Json.JsonSerializer.Serialize(response);
-            return Result.Success(responseJson);
+            var optionsJson = response.Options switch
+            {
+                string raw => raw,
+                JsonElement element => element.GetRawText(),
+                _ => JsonSerializer.Serialize(response.Options)
+            };
+
+            return Result.Success(new PasskeyCreationOptionsPayload(optionsJson, response.UserId));
         }
         catch (ApiException ex)
         {
             Log.RegistrationOptionsError(_logger, ex);
-            return ex.ToResult<string>();
+            return ex.ToResult<PasskeyCreationOptionsPayload>();
         }
         catch (Exception ex)
         {
             Log.RegistrationOptionsError(_logger, ex);
-            return Result.Failure<string>(Error.Failure("ERR_PASSKEY_OPTIONS_FAILED", ex.Message));
+            return Result.Failure<PasskeyCreationOptionsPayload>(Error.Failure("ERR_PASSKEY_OPTIONS_FAILED", ex.Message));
         }
     }
 
@@ -51,7 +56,15 @@ public class PasskeyService
             var response =
                 await _passkeyClient.GetPasskeyLoginOptionsAsync(
                     new BookStore.Client.PasskeyLoginOptionsRequest { Email = email }, cancellationToken);
-            return Result.Success(System.Text.Json.JsonSerializer.Serialize(response));
+
+            var json = response switch
+            {
+                string raw => raw,
+                JsonElement element => element.GetRawText(),
+                _ => JsonSerializer.Serialize(response)
+            };
+
+            return Result.Success(json);
         }
         catch (ApiException ex)
         {
@@ -146,3 +159,5 @@ public class PasskeyService
         }
     }
 }
+
+public record PasskeyCreationOptionsPayload(string OptionsJson, string? UserId);

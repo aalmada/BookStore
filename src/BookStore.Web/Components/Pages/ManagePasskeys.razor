@@ -127,7 +127,7 @@
                 return;
             }
 
-            var optionsJson = optionsResult.Value;
+            var optionsJson = optionsResult.Value.OptionsJson;
 
             // 2. Create Credential via JS
             var credentialJson = await JS.InvokeAsync<string>("passkey.register", optionsJson);

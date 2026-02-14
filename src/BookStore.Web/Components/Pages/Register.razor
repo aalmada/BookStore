@@ -274,28 +274,8 @@
             }
 
             var options = optionsResult.Value;
-
-            // Extract userId from the options response
-            string? userId = null;
-            string optionsJson = options;
-            try
-            {
-                using var doc = System.Text.Json.JsonDocument.Parse(options);
-                if (doc.RootElement.TryGetProperty("userId", out var userIdElem))
-                {
-                    userId = userIdElem.GetString();
-                }
-
-                // Get the actual options object
-                if (doc.RootElement.TryGetProperty("options", out var optionsElem))
-                {
-                    optionsJson = optionsElem.GetRawText();
-                }
-            }
-            catch
-            {
-                // If parsing fails, use the whole response as options
-            }
+            var userId = options.UserId;
+            var optionsJson = options.OptionsJson;
 
             // 2. JS WebAuthn Create
             var credentialJson = await JS.InvokeAsync<string>("passkey.register", optionsJson);
