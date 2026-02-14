@@ -1,8 +1,6 @@
 ---
 name: marten__event_projection
 description: Create a Marten Event Projection for 1:1 event transformation or side-effects (creating separate documents per event).
-aliases:
-  - /scaffold-event-projection
 ---
 
 Follow this guide to create a **Event Projection** in Marten. This is best for flattening events into queryable documents (1 event -> 1 document) or copying data to other tables.

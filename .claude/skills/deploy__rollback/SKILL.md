@@ -1,8 +1,6 @@
 ---
 name: deploy__rollback
 description: Rollback a failed deployment to the previous working version. Use this when a deployment causes issues in Azure or Kubernetes.
-aliases:
-  - /rollback-deployment
 ---
 
 Use this guide to rollback a failed deployment to restore service quickly.

@@ -1,8 +1,6 @@
 ---
 name: test__unit_suite
 description: Run unit tests for the API Service and Analyzers. Use this to verify business logic, individual components, and code analyzers.
-aliases:
-  - /run-unit-tests
 ---
 
 To verify the logic, endpoints, and custom analyzers of the API Service:

@@ -1,8 +1,6 @@
 ---
 name: frontend__feature_scaffold
 description: Adds a new feature to the Web Frontend (Blazor) with Reactive State, Optimistic Updates, and Cache Invalidation. Use this when implementing user-facing features that need real-time updates.
-aliases:
-  - /scaffold-frontend-feature
 ---
 
 Follow this guide to implement a responsive frontend feature in `src/Web/BookStore.Web`.

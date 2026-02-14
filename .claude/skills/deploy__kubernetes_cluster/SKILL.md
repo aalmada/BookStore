@@ -1,8 +1,6 @@
 ---
 name: deploy__kubernetes_cluster
 description: Deploy the BookStore application to a Kubernetes cluster using Aspire-generated manifests. Use this for Kubernetes deployments (AKS, EKS, GKE, etc.).
-aliases:
-  - /deploy-kubernetes
 ---
 
 Deploy the BookStore application stack to a Kubernetes cluster using Aspire's manifest generation and kubectl.

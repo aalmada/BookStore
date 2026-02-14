@@ -1,8 +1,6 @@
 ---
 name: lang__docfx_guide
 description: Creates comprehensive documentation guides following BookStore conventions with proper structure, cross-references, and DocFX integration. Use when adding new technical documentation or updating existing guides.
-aliases:
-  - /write-documentation-guide
 ---
 
 Creates a new documentation guide in `docs/guides/` with proper structure, cross-references, and adherence to BookStore documentation standards.
@@ -27,21 +25,21 @@ Creates a new documentation guide in `docs/guides/` with proper structure, cross
    - Follow structure:
      ```markdown
      # {Title}
-     
+
      {Brief introduction - 1-2 paragraphs explaining what, why, and when}
-     
+
      ## Table of Contents (if guide > 100 lines)
-     
+
      ## Prerequisites (if applicable)
-     
+
      ## Core Concepts / Getting Started
-     
+
      ## Detailed Sections
-     
+
      ## Examples
-     
+
      ## Troubleshooting (if applicable)
-     
+
      ## Related Documentation
      ```
 
@@ -104,10 +102,10 @@ Creates a new documentation guide in `docs/guides/` with proper structure, cross
      ```markdown
      > [!NOTE]
      > Additional context or tip
-     
+
      > [!WARNING]
      > Important warning about potential issues
-     
+
      > [!TIP]
      > Best practice or optimization suggestion
      ```

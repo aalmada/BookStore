@@ -1,8 +1,6 @@
 ---
 name: marten__list_query
 description: Adds a new Query operation to fetch a paged list of resources with filtering. Handles caching and pagination.
-aliases:
-  - /scaffold-list-query
 ---
 
 Follow this guide to implement a **List Query** endpoint in the ApiService.

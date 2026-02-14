@@ -1,8 +1,6 @@
 ---
 name: test__verify_feature
 description: Strict verification for new features. Runs compilation, formatting, and all tests to ensure the "Definition of Done".
-aliases:
-  - /verify-feature
 ---
 
 Use this skill to verify that a feature implementation is complete and correct. It enforces code style, compilation, and test passing.

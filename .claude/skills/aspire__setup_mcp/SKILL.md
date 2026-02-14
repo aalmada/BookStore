@@ -1,8 +1,6 @@
 ---
 name: aspire__setup_mcp
 description: Configure Aspire MCP server for AI agent access to logs, metrics, and traces. Use this to enable programmatic access to Aspire observability data.
-aliases:
-  - /setup-aspire-mcp
 ---
 
 Follow this guide to set up the Aspire MCP server for agent access to logs and metrics.
