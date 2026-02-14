@@ -1,8 +1,6 @@
 ---
 name: test__integration_suite
 description: Run the full suite of integration tests for the BookStore application. Use this to verify system-wide behavior.
-aliases:
-  - /run-integration-tests
 ---
 
 To verify the application's end-to-end functionality using the Aspire AppHost tests:

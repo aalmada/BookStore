@@ -1,8 +1,6 @@
 ---
 name: wolverine__create_operation
 description: Adds a new CREATE operation (starting a stream) to the Backend. Use this when implementing POST endpoints to create new resources.
-aliases:
-  - /scaffold-create-operation
 ---
 
 Follow this guide to implement a **Create Operation** (Start Stream) in the ApiService.

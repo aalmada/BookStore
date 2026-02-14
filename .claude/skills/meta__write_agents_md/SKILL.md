@@ -1,9 +1,6 @@
 ---
 name: meta__write_agents_md
 description: Creates or updates AGENTS.md files with proper structure, skill references, and best practices. Use when adding AI assistant guidance to a project or subdirectory.
-aliases:
-  - /write-agents-md
-   - /doc__write_agents_md
 ---
 
 Create effective AGENTS.md files that delegate work to existing skills.

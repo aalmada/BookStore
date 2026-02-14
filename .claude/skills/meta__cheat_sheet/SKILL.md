@@ -1,8 +1,6 @@
 ---
 name: meta__cheat_sheet
 description: Quick reference for common patterns and code snippets. Use this when you need a fast lookup of project conventions.
-aliases:
-  - /cheat-sheet
 ---
 
 # BookStore Cheat Sheet

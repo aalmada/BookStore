@@ -1,8 +1,6 @@
 ---
 name: deploy__azure_container_apps
 description: Deploy the BookStore application to Azure using Aspire and azd. Use this to ship the application to production.
-aliases:
-  - /deploy-to-azure
 ---
 
 Deploy the application stack to Azure Container Apps using the Azure Developer CLI (`azd`).
