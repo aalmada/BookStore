@@ -52,24 +52,29 @@ window.passkey = {
             // Normalize all keys to camelCase (handling PascalCase from server)
             options = normalizeKeys(options);
 
-            // Fix options for WebAuthn (Base64Url Strings -> Uint8Array)
-            if (options.challenge) {
-                options.challenge = base64UrlToUint8Array(options.challenge);
-            }
+            let publicKey = options;
+            if (window.PublicKeyCredential && window.PublicKeyCredential.parseCreationOptionsFromJSON) {
+                publicKey = window.PublicKeyCredential.parseCreationOptionsFromJSON(options);
+            } else {
+                // Fix options for WebAuthn (Base64Url Strings -> Uint8Array)
+                if (publicKey.challenge) {
+                    publicKey.challenge = base64UrlToUint8Array(publicKey.challenge);
+                }
 
-            if (options.user && options.user.id) {
-                options.user.id = base64UrlToUint8Array(options.user.id);
-            }
+                if (publicKey.user && publicKey.user.id) {
+                    publicKey.user.id = base64UrlToUint8Array(publicKey.user.id);
+                }
 
-            if (options.excludeCredentials) {
-                options.excludeCredentials = options.excludeCredentials.map(c => {
-                    c.id = base64UrlToUint8Array(c.id);
-                    return c;
-                });
+                if (publicKey.excludeCredentials) {
+                    publicKey.excludeCredentials = publicKey.excludeCredentials.map(c => {
+                        c.id = base64UrlToUint8Array(c.id);
+                        return c;
+                    });
+                }
             }
 
             const credential = await navigator.credentials.create({
-                publicKey: options
+                publicKey: publicKey
             });
 
             const response = {
@@ -83,6 +88,10 @@ window.passkey = {
                     userHandle: credential.response.userHandle ? bufferToBase64Url(credential.response.userHandle) : null
                 }
             };
+
+            if (credential.response.getTransports) {
+                response.response.transports = credential.response.getTransports();
+            }
 
             // Pass extensions/transports if needed
             if (credential.authenticatorAttachment) response.authenticatorAttachment = credential.authenticatorAttachment;
@@ -105,22 +114,30 @@ window.passkey = {
 
     login: async (optionsJson) => {
         try {
-            let options = JSON.parse(optionsJson);
+            let parsed = JSON.parse(optionsJson);
+
+            // Handle wrapped response format
+            let options = parsed.options || parsed.Options || parsed;
 
             // Normalize all keys to camelCase
             options = normalizeKeys(options);
 
-            options.challenge = base64UrlToUint8Array(options.challenge);
+            let publicKey = options;
+            if (window.PublicKeyCredential && window.PublicKeyCredential.parseRequestOptionsFromJSON) {
+                publicKey = window.PublicKeyCredential.parseRequestOptionsFromJSON(options);
+            } else {
+                publicKey.challenge = base64UrlToUint8Array(publicKey.challenge);
 
-            if (options.allowCredentials) {
-                options.allowCredentials = options.allowCredentials.map(c => {
-                    c.id = base64UrlToUint8Array(c.id);
-                    return c;
-                });
+                if (publicKey.allowCredentials) {
+                    publicKey.allowCredentials = publicKey.allowCredentials.map(c => {
+                        c.id = base64UrlToUint8Array(c.id);
+                        return c;
+                    });
+                }
             }
 
             const credential = await navigator.credentials.get({
-                publicKey: options
+                publicKey: publicKey
             });
 
             const response = {

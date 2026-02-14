@@ -3,8 +3,11 @@ using BookStore.ApiService.Infrastructure.Extensions;
 using BookStore.ApiService.Infrastructure.Logging;
 using BookStore.ApiService.Infrastructure.Tenant;
 using BookStore.ApiService.Models;
+using BookStore.ApiService.Projections;
+using BookStore.Shared.Messages.Events;
 using BookStore.Shared.Infrastructure;
 using BookStore.Shared.Models;
+using Marten;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
@@ -90,12 +93,12 @@ public static class PasskeyEndpoints
             [FromBody] RegisterPasskeyRequest request,
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
-            IUserStore<ApplicationUser> userStore,
             ITenantContext tenantContext,
             BookStore.ApiService.Services.JwtTokenService tokenService,
             Wolverine.IMessageBus bus,
             ILogger<Program> logger,
             Microsoft.Extensions.Options.IOptions<Infrastructure.Email.EmailOptions> emailOptions,
+            [FromServices] IDocumentSession session,
             CancellationToken cancellationToken) =>
         {
             try
@@ -114,24 +117,24 @@ public static class PasskeyEndpoints
                         return Result.Failure(Error.Validation(ErrorCodes.Passkey.AttestationFailed, $"Attestation failed: {attestation.Failure?.Message}")).ToProblemDetails();
                     }
 
-                    // Capture Device Name from User-Agent
-                    var clientUserAgent = context.Request.Headers.UserAgent.ToString();
-                    if (attestation.Passkey != null)
+                    if (attestation.Passkey is null)
                     {
-                        attestation.Passkey.Name = BookStore.ApiService.Infrastructure.DeviceNameParser.Parse(clientUserAgent);
+                        Log.Users.PasskeyIsNull(logger);
+                        return Result.Failure(Error.Validation(ErrorCodes.Passkey.AttestationFailed, "Failed to create passkey")).ToProblemDetails();
                     }
 
-                    if (userStore is IUserPasskeyStore<ApplicationUser> passkeyStore)
+                    // Capture Device Name from User-Agent
+                    var clientUserAgent = context.Request.Headers.UserAgent.ToString();
+                    attestation.Passkey.Name = BookStore.ApiService.Infrastructure.DeviceNameParser.Parse(clientUserAgent);
+
+                    var addResult = await userManager.AddOrUpdatePasskeyAsync(user, attestation.Passkey);
+                    if (!addResult.Succeeded)
                     {
-                        await passkeyStore.AddOrUpdatePasskeyAsync(user, attestation.Passkey!, cancellationToken);
-                        // Persist the changes to the database
-                        var updateResult = await userManager.UpdateAsync(user);
-                        if (!updateResult.Succeeded)
-                        {
-                            Log.Users.PasskeyUpdateUserFailed(logger, user.Email, string.Join(", ", updateResult.Errors.Select(e => e.Description)));
-                            return Result.Failure(Error.Validation(ErrorCodes.Passkey.InvalidCredential, string.Join(", ", updateResult.Errors.Select(e => e.Description)))).ToProblemDetails();
-                        }
+                        Log.Users.PasskeyUpdateUserFailed(logger, user.Email, string.Join(", ", addResult.Errors.Select(e => e.Description)));
+                        return Result.Failure(Error.Validation(ErrorCodes.Passkey.InvalidCredential, string.Join(", ", addResult.Errors.Select(e => e.Description)))).ToProblemDetails();
                     }
+
+                    _ = await userManager.UpdateSecurityStampAsync(user);
 
                     Log.Users.PasskeyRegistrationSuccessful(logger, user.Email);
                     return Results.Ok(new { Message = "Passkey added." });
@@ -144,28 +147,14 @@ public static class PasskeyEndpoints
                     return Result.Failure(Error.Validation(ErrorCodes.Passkey.EmailRequired, "Email is required for registration.")).ToProblemDetails();
                 }
 
+                if (string.IsNullOrEmpty(request.UserId))
+                {
+                    return Result.Failure(Error.Validation(ErrorCodes.Passkey.InvalidCredential, "Registration data is incomplete.")).ToProblemDetails();
+                }
+
                 // 1. Verify Attempt & Extract User Handle
                 // We need the User Handle (ID) that was signed by the client.
                 // This is critical because the authenticator is now bound to THAT ID.
-                string? passedUserId = null;
-                try
-                {
-                    using var doc = System.Text.Json.JsonDocument.Parse(request.CredentialJson);
-                    if (doc.RootElement.TryGetProperty("response", out var responseElem) &&
-                        responseElem.TryGetProperty("userHandle", out var userHandleElem))
-                    {
-                        var userHandleBase64 = userHandleElem.GetString();
-                        if (!string.IsNullOrEmpty(userHandleBase64))
-                        {
-                            passedUserId = DecodeBase64UrlToString(userHandleBase64);
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Log.Users.PasskeyExtractUserIdError(logger, ex);
-                }
-
                 var attestationNew = await signInManager.PerformPasskeyAttestationAsync(request.CredentialJson);
                 if (!attestationNew.Succeeded)
                 {
@@ -181,30 +170,13 @@ public static class PasskeyEndpoints
 
                 // Use the user ID from the request (sent by client from options response)
                 // This is critical - the user ID must match what was in the passkey creation options
-                var userIdSource = "none";
-                string? newUserIdString = null;
-
-                if (!string.IsNullOrEmpty(request.UserId))
-                {
-                    newUserIdString = request.UserId;
-                    userIdSource = "request.UserId";
-                }
-                else if (!string.IsNullOrEmpty(passedUserId))
-                {
-                    newUserIdString = passedUserId;
-                    userIdSource = "passedUserId (from userHandle)";
-                }
-                else
-                {
-                    newUserIdString = Guid.CreateVersion7().ToString();
-                    userIdSource = "newly generated";
-                    Log.Users.PasskeyNoUserIdProvided(logger);
-                }
+                var userIdSource = "request.UserId";
+                var newUserIdString = request.UserId;
 
                 if (!Guid.TryParse(newUserIdString, out var newUserGuid))
                 {
                     Log.Users.PasskeyInvalidGuidFormat(logger, userIdSource, newUserIdString!);
-                    newUserGuid = Guid.CreateVersion7();
+                    return Result.Failure(Error.Validation(ErrorCodes.Passkey.InvalidCredential, "Invalid registration data.")).ToProblemDetails();
                 }
 
                 // SECURITY FIX: Check if user already exists to prevent overwrite
@@ -234,7 +206,7 @@ public static class PasskeyEndpoints
                     {
                         Log.Users.RegistrationFailed(logger, request.Email, "Passkey Registration: User already exists (masked)");
 
-                        // Return success message. 
+                        // Return success message.
                         // Note: If email verification is required, we might trigger a "Password Reset" or "Account Exists" email here in a real app.
                         // For now, we mimic the success response.
                         return Results.Ok(new { Message = "Registration successful. Please check your email to verify your account." });
@@ -243,25 +215,27 @@ public static class PasskeyEndpoints
                     return Result.Failure(Error.Validation(ErrorCodes.Auth.InvalidCredentials, string.Join(", ", createResult.Errors.Select(e => e.Description)))).ToProblemDetails();
                 }
 
-                if (userStore is IUserPasskeyStore<ApplicationUser> ps)
+                if (attestationNew.Passkey != null)
                 {
-                    if (attestationNew.Passkey != null)
+                    var addResult = await userManager.AddOrUpdatePasskeyAsync(newUser, attestationNew.Passkey);
+                    if (!addResult.Succeeded)
                     {
-                        await ps.AddOrUpdatePasskeyAsync(newUser, attestationNew.Passkey, cancellationToken);
+                        _ = await userManager.DeleteAsync(newUser);
+                        return Result.Failure(Error.Validation(ErrorCodes.Passkey.InvalidCredential, string.Join(", ", addResult.Errors.Select(e => e.Description)))).ToProblemDetails();
+                    }
 
-                        // Persist the changes (the added passkey) to the database
-                        var updateResult = await userManager.UpdateAsync(newUser);
-                        if (!updateResult.Succeeded)
-                        {
-                            return Result.Failure(Error.Validation(ErrorCodes.Passkey.InvalidCredential, string.Join(", ", updateResult.Errors.Select(e => e.Description)))).ToProblemDetails();
-                        }
-                    }
-                    else
-                    {
-                        Log.Users.PasskeyIsNull(logger);
-                        return Result.Failure(Error.Validation(ErrorCodes.Passkey.AttestationFailed, "Failed to create passkey")).ToProblemDetails();
-                    }
+                    _ = await userManager.UpdateSecurityStampAsync(newUser);
                 }
+                else
+                {
+                    Log.Users.PasskeyIsNull(logger);
+                    _ = await userManager.DeleteAsync(newUser);
+                    return Result.Failure(Error.Validation(ErrorCodes.Passkey.AttestationFailed, "Failed to create passkey")).ToProblemDetails();
+                }
+
+                // Initialize UserProfile stream on account creation
+                _ = session.Events.StartStream<UserProfile>(newUser.Id, new UserProfileCreated(newUser.Id));
+                await session.SaveChangesAsync(cancellationToken);
 
                 if (verificationRequired)
                 {
@@ -297,37 +271,10 @@ public static class PasskeyEndpoints
         _ = paramsGroup.MapPost("/assertion/options", async Task<IResult> (
             [FromBody] PasskeyLoginOptionsRequest request,
             SignInManager<ApplicationUser> signInManager,
-            UserManager<ApplicationUser> userManager,
-            IUserStore<ApplicationUser> userStore,
             CancellationToken cancellationToken) =>
         {
-            ApplicationUser? user = null;
-            if (!string.IsNullOrEmpty(request.Email))
-            {
-                user = await userManager.FindByEmailAsync(request.Email);
-            }
-
-            // Security: Use consistent error message to prevent email enumeration
-            const string genericError = "Invalid email or no passkeys registered.";
-
-            // If user doesn't exist, return generic error
-            if (user == null)
-            {
-                return Result.Failure(Error.Validation(ErrorCodes.Passkey.UserNotFound, genericError)).ToProblemDetails();
-            }
-
-            // Check if user has any passkeys registered
-            if (userStore is IUserPasskeyStore<ApplicationUser> passkeyStore)
-            {
-                var passkeys = await passkeyStore.GetPasskeysAsync(user, cancellationToken);
-                if (passkeys.Count == 0)
-                {
-                    return Result.Failure(Error.Validation(ErrorCodes.Passkey.UserNotFound, genericError)).ToProblemDetails();
-                }
-            }
-
-            // Generate options (assertion challenge)
-            var options = await signInManager.MakePasskeyRequestOptionsAsync(user);
+            // Privacy: Always return discoverable credential options to avoid user enumeration
+            var options = await signInManager.MakePasskeyRequestOptionsAsync(user: null);
 
             return Results.Content(options.ToString(), "application/json");
         });
@@ -337,7 +284,6 @@ public static class PasskeyEndpoints
             [FromBody] RegisterPasskeyRequest request,
             SignInManager<ApplicationUser> signInManager,
             UserManager<ApplicationUser> userManager,
-            IUserStore<ApplicationUser> userStore,
             ITenantContext tenantContext,
             ILogger<Program> logger,
             BookStore.ApiService.Services.JwtTokenService tokenService,
@@ -350,118 +296,54 @@ public static class PasskeyEndpoints
                     return Result.Failure(Error.Validation(ErrorCodes.Passkey.InvalidCredential, "Invalid credential data")).ToProblemDetails();
                 }
 
-                var result = await signInManager.PasskeySignInAsync(request.CredentialJson);
-
-                if (result.Succeeded)
+                var assertion = await signInManager.PerformPasskeyAssertionAsync(request.CredentialJson);
+                if (!assertion.Succeeded || assertion.User is null)
                 {
-                    // Find User to issue JWT
-                    try
-                    {
-                        using var doc = System.Text.Json.JsonDocument.Parse(request.CredentialJson);
-                        // Standard WebAuthn assertion response contains "response.userHandle"
-                        string? userId = null;
-
-                        if (doc.RootElement.TryGetProperty("response", out var responseElem) &&
-                            responseElem.TryGetProperty("userHandle", out var userHandleElem))
-                        {
-                            var userHandleBase64 = userHandleElem.GetString();
-                            if (!string.IsNullOrEmpty(userHandleBase64))
-                            {
-                                userId = DecodeBase64UrlToString(userHandleBase64);
-                            }
-                        }
-
-                        if (!string.IsNullOrEmpty(userId))
-                        {
-                            // Best case: We have the User ID directly from the authenticator
-                            var user = await userManager.FindByIdAsync(userId);
-                            if (user != null)
-                            {
-                                // Issue tokens
-                                // Check if user is allowed to sign in
-                                if (!await signInManager.CanSignInAsync(user))
-                                {
-                                    if (userManager.Options.SignIn.RequireConfirmedEmail && !await userManager.IsEmailConfirmedAsync(user))
-                                    {
-                                        Log.Users.LoginFailedUnconfirmedEmail(logger, user.Email!);
-                                        return Result.Failure(Error.Unauthorized(ErrorCodes.Auth.EmailUnconfirmed, "Please confirm your email address.")).ToProblemDetails();
-                                    }
-
-                                    Log.Users.LoginFailedUserNotFound(logger, user.Email!);
-                                    return Result.Failure(Error.Unauthorized(ErrorCodes.Auth.NotAllowed, "User is not allowed to sign in.")).ToProblemDetails();
-                                }
-
-                                var roles = await userManager.GetRolesAsync(user);
-                                var accessToken = tokenService.GenerateAccessToken(user, tenantContext.TenantId, roles);
-                                var refreshToken = tokenService.RotateRefreshToken(user, tenantContext.TenantId);
-
-                                _ = await userManager.UpdateAsync(user);
-
-                                return Results.Ok(new LoginResponse(
-                                    "Bearer",
-                                    accessToken,
-                                    3600,
-                                    refreshToken
-                                ));
-                            }
-                        }
-
-                        // Fallback: Lookup by Credential ID (if ID not returned or user not found by ID)
-                        // This is less reliable if 1 user has multiple credentials, but "id" is unique globally usually.
-                        if (doc.RootElement.TryGetProperty("id", out var idElement))
-                        {
-                            var idString = idElement.GetString();
-                            if (!string.IsNullOrEmpty(idString))
-                            {
-                                var credentialId = Microsoft.AspNetCore.WebUtilities.Base64UrlTextEncoder.Decode(idString);
-
-                                if (userStore is IUserPasskeyStore<ApplicationUser> passkeyStore)
-                                {
-                                    var user = await passkeyStore.FindByPasskeyIdAsync(credentialId, cancellationToken);
-                                    if (user is not null)
-                                    {
-                                        // Issue tokens
-                                        if (!await signInManager.CanSignInAsync(user))
-                                        {
-                                            if (userManager.Options.SignIn.RequireConfirmedEmail && !await userManager.IsEmailConfirmedAsync(user))
-                                            {
-                                                Log.Users.LoginFailedUnconfirmedEmail(logger, user.Email!);
-                                                return Result.Failure(Error.Unauthorized(ErrorCodes.Auth.EmailUnconfirmed, "Please confirm your email address.")).ToProblemDetails();
-                                            }
-
-                                            Log.Users.LoginFailedUserNotFound(logger, user.Email!);
-                                            return Result.Failure(Error.Unauthorized(ErrorCodes.Auth.NotAllowed, "User is not allowed to sign in.")).ToProblemDetails();
-                                        }
-
-                                        var roles = await userManager.GetRolesAsync(user);
-                                        var accessToken = tokenService.GenerateAccessToken(user, tenantContext.TenantId, roles);
-                                        var refreshToken = tokenService.RotateRefreshToken(user, tenantContext.TenantId);
-
-                                        _ = await userManager.UpdateAsync(user);
-
-                                        return Results.Ok(new LoginResponse(
-                                            "Bearer",
-                                            accessToken,
-                                            3600,
-                                            refreshToken
-                                        ));
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Users.PasskeyParseError(logger, ex);
-                    }
-
-                    return Result.Failure(Error.NotFound(ErrorCodes.Passkey.UserNotFound, "User not found for passkey.")).ToProblemDetails();
-                }
-                else
-                {
-                    Log.Users.PasskeyAssertionFailed(logger, result.IsLockedOut, result.IsNotAllowed, result.RequiresTwoFactor);
+                    Log.Users.PasskeyAssertionFailed(logger, false, false, false);
                     return Result.Failure(Error.Unauthorized(ErrorCodes.Passkey.AssertionFailed, "Invalid passkey assertion.")).ToProblemDetails();
                 }
+
+                var user = assertion.User;
+
+                if (await userManager.IsLockedOutAsync(user))
+                {
+                    Log.Users.AccountLocked(logger, user.Email!);
+                    return Result.Failure(Error.Unauthorized(ErrorCodes.Auth.LockedOut, "Account is locked out.")).ToProblemDetails();
+                }
+
+                if (!await signInManager.CanSignInAsync(user))
+                {
+                    if (userManager.Options.SignIn.RequireConfirmedEmail && !await userManager.IsEmailConfirmedAsync(user))
+                    {
+                        Log.Users.LoginFailedUnconfirmedEmail(logger, user.Email!);
+                        return Result.Failure(Error.Unauthorized(ErrorCodes.Auth.EmailUnconfirmed, "Please confirm your email address.")).ToProblemDetails();
+                    }
+
+                    Log.Users.LoginFailedUserNotFound(logger, user.Email!);
+                    return Result.Failure(Error.Unauthorized(ErrorCodes.Auth.NotAllowed, "User is not allowed to sign in.")).ToProblemDetails();
+                }
+
+                if (assertion.Passkey is not null)
+                {
+                    var updateResult = await userManager.AddOrUpdatePasskeyAsync(user, assertion.Passkey);
+                    if (!updateResult.Succeeded)
+                    {
+                        return Result.Failure(Error.Validation(ErrorCodes.Passkey.InvalidCredential, string.Join(", ", updateResult.Errors.Select(e => e.Description)))).ToProblemDetails();
+                    }
+                }
+
+                var roles = await userManager.GetRolesAsync(user);
+                var accessToken = tokenService.GenerateAccessToken(user, tenantContext.TenantId, roles);
+                var refreshToken = tokenService.RotateRefreshToken(user, tenantContext.TenantId);
+
+                _ = await userManager.UpdateAsync(user);
+
+                return Results.Ok(new LoginResponse(
+                    "Bearer",
+                    accessToken,
+                    3600,
+                    refreshToken
+                ));
             }
             catch (Exception ex)
             {

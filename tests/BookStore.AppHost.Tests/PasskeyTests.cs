@@ -1,5 +1,3 @@
-using System.Net;
-using System.Net.Http.Json;
 using System.Text.Json;
 using Bogus;
 using BookStore.Client;
@@ -24,11 +22,9 @@ public class PasskeyTests
     }
 
     [Test]
-    public async Task GetAssertionOptions_WithUserWithNoPasskeys_ShouldReturnBadRequest()
+    public async Task GetAssertionOptions_WithUserWithNoPasskeys_ShouldReturnOptions()
     {
         // Arrange
-        // A user registered with password only (no passkeys) should get BadRequest
-        // when trying to get assertion options (passkey login options)
         var email = _faker.Internet.Email();
         var password = _faker.Internet.Password(8, false, "\\w", "Aa1!");
 
@@ -37,18 +33,11 @@ public class PasskeyTests
 
         var request = new PasskeyLoginOptionsRequest { Email = email };
 
-        // Act & Assert
-        try
-        {
-            _ = await _passkeyClient.GetPasskeyLoginOptionsAsync(request);
-            Assert.Fail("Should have thrown BadRequest");
-        }
-        catch (ApiException ex)
-        {
-            _ = await Assert.That(ex.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
-            var error = await ex.GetContentAsAsync<TestHelpers.ErrorResponse>();
-            _ = await Assert.That(error?.Error).IsEqualTo(ErrorCodes.Passkey.UserNotFound);
-        }
+        // Act
+        var options = await _passkeyClient.GetPasskeyLoginOptionsAsync(request);
+
+        // Assert
+        _ = await Assert.That(options).IsNotNull();
     }
 
     [Test]

@@ -137,6 +137,34 @@ static void RegisterScopedRefitClients(
         return RestService.For<T>(httpClient);
     });
 
+    // Passkey client needs cookie persistence for the ceremony state
+    _ = services.AddScoped<IPasskeyClient>(sp =>
+    {
+        var tokenService = sp.GetRequiredService<TokenService>();
+        var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
+        var correlationService = sp.GetRequiredService<ClientContextService>();
+        var tenantService = sp.GetRequiredService<TenantService>();
+
+        var cookieContainer = new System.Net.CookieContainer();
+        var networkHandler = new HttpClientHandler
+        {
+            CookieContainer = cookieContainer,
+            UseCookies = true
+        };
+
+        var headerHandler =
+            new BookStore.Client.Infrastructure.BookStoreHeaderHandler() { InnerHandler = networkHandler };
+        var tenantHandler = new TenantHeaderHandler(tenantService) { InnerHandler = headerHandler };
+        var authHandler = new AuthorizationMessageHandler(
+            tokenService, tenantService, httpContextAccessor, correlationService)
+        { InnerHandler = tenantHandler };
+
+        var resilienceHandler = new ResilienceHandler(resiliencePipeline) { InnerHandler = authHandler };
+
+        var httpClient = new HttpClient(resilienceHandler) { BaseAddress = baseAddress };
+        return RestService.For<IPasskeyClient>(httpClient);
+    });
+
     AddScopedClient<IBooksClient>();
     AddScopedClient<IAuthorsClient>();
     AddScopedClient<ICategoriesClient>();
@@ -144,7 +172,6 @@ static void RegisterScopedRefitClients(
     AddScopedClient<IShoppingCartClient>();
     AddScopedClient<ISystemClient>();
     AddScopedClient<IIdentityClient>();
-    AddScopedClient<IPasskeyClient>();
     AddScopedClient<IUsersClient>();
     AddScopedClient<ISalesClient>();
 }

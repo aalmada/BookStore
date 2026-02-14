@@ -147,6 +147,10 @@ public static class ApplicationServicesExtensions
             options.ServerDomain = !string.IsNullOrEmpty(passkeyDomain) ? passkeyDomain : "localhost";
             options.AuthenticatorTimeout = TimeSpan.FromMinutes(2);
             options.ChallengeSize = 32;
+            options.UserVerificationRequirement = "required";
+            options.ResidentKeyRequirement = "required";
+            options.AttestationConveyancePreference = "none";
+            options.IsAllowedAlgorithm = algorithm => algorithm is -7 or -8;
 
             // Configure origin validation to allow Web app origin
             // By default, ASP.NET Core Identity rejects cross-origin passkey requests
@@ -161,7 +165,15 @@ public static class ApplicationServicesExtensions
 
                 // Allow requests from the Web app (even if marked as same-origin by browser)
                 var allowedOrigins = configuration.GetSection("Authentication:Passkey:AllowedOrigins").Get<string[]>() ?? [];
-                if (allowedOrigins.Contains(context.Origin, StringComparer.OrdinalIgnoreCase))
+                if (!Uri.TryCreate(context.Origin, UriKind.Absolute, out var originUri))
+                {
+                    return ValueTask.FromResult(false);
+                }
+
+                var isSecureOrigin = originUri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)
+                                     || originUri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase);
+
+                if (isSecureOrigin && allowedOrigins.Contains(context.Origin, StringComparer.OrdinalIgnoreCase))
                 {
                     return ValueTask.FromResult(true);
                 }
@@ -170,7 +182,7 @@ public static class ApplicationServicesExtensions
             };
         });
 
-        // Add roles support not needed via AddRoles (which requires IRoleStore), 
+        // Add roles support not needed via AddRoles (which requires IRoleStore),
         // as we use simple string roles on the user object via MartenUserStore implementation of IUserRoleStore.
 
         // Add HttpContextAccessor required for SignInManager
@@ -224,7 +236,7 @@ public static class ApplicationServicesExtensions
             {
                 "smtp" => new Infrastructure.Email.SmtpEmailService(sp.GetRequiredService<IOptions<Infrastructure.Email.EmailOptions>>(), smtpLogger),
                 // Logging enabled if method is Logging, OR if default behavior is needed.
-                // If "None", we still register LoggingEmailService but it might no-op if checking inside, 
+                // If "None", we still register LoggingEmailService but it might no-op if checking inside,
                 // OR we can implement a pure NoOp service.
                 // Our LoggingEmailService checks options.DeliveryMethod == "Logging".
                 _ => new Infrastructure.Email.LoggingEmailService(logger, sp.GetRequiredService<IOptions<Infrastructure.Email.EmailOptions>>())

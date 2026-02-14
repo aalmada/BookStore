@@ -95,10 +95,9 @@
                     <MudTextField @bind-Value="email"
                                   Label="Email"
                                   Variant="Variant.Outlined"
-                                  Required="true"
-                                  RequiredError="Email is required"
-                                  Validation="@(new Func<string, string?>(ValidateEmail))"
+                                  Validation="@(new Func<string, string?>(ValidateOptionalEmail))"
                                   Immediate="true"
+                                  UserAttributes="@(new Dictionary<string, object> { { "autocomplete", "webauthn" } })"
                                   Class="mb-4"/>
 
                     <MudButton Variant="Variant.Outlined"
@@ -106,6 +105,7 @@
                                Color="Color.Secondary"
                                FullWidth="true"
                                Size="Size.Large"
+                               ButtonType="ButtonType.Button"
                                OnClick="LoginWithPasskey"
                                Disabled="isLoading"
                                Class="mb-4">
@@ -166,7 +166,7 @@
             Logger.LogInformation("Attempting passkey login");
 
             // 1. Get Options
-            var optionsResult = await PasskeyService.GetLoginOptionsAsync(email);
+            var optionsResult = await PasskeyService.GetLoginOptionsAsync(string.IsNullOrWhiteSpace(email) ? null : email);
             if (optionsResult.IsFailure)
             {
                 lastError = optionsResult.Error;
@@ -175,6 +175,21 @@
             }
 
             var optionsJson = optionsResult.Value;
+            if (string.IsNullOrWhiteSpace(optionsJson))
+            {
+                errorMessage = "Passkey options are missing.";
+                return;
+            }
+
+            try
+            {
+                _ = System.Text.Json.JsonDocument.Parse(optionsJson);
+            }
+            catch
+            {
+                errorMessage = "Passkey options are invalid.";
+                return;
+            }
 
             // 2. JS WebAuthn Get
             var credentialJson = await Js.InvokeAsync<string>("passkey.login", optionsJson);
@@ -195,6 +210,11 @@
                 showResendVerification = result.Error.Code == BookStore.Shared.Models.ErrorCodes.Auth.EmailUnconfirmed ||
                                          result.Error.Message?.Contains("Requires verification") == true;
             }
+        }
+        catch (TaskCanceledException)
+        {
+            Logger.LogInformation("Passkey login was cancelled or timed out.");
+            errorMessage = "Login was cancelled or timed out.";
         }
         catch (Exception ex)
         {
@@ -318,5 +338,8 @@
     }
 
     static string? ValidateEmail(string email) => EmailValidator.GetError(email);
+
+    static string? ValidateOptionalEmail(string email)
+        => string.IsNullOrWhiteSpace(email) ? null : EmailValidator.GetError(email);
 
 }

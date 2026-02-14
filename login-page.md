@@ -1,0 +1,68 @@
+- generic [ref=e2]:
+  - banner [ref=e3]:
+    - toolbar [ref=e4]:
+      - button "Toggle Navigation" [ref=e6] [cursor=pointer]:
+        - img [ref=e8]
+      - heading "Contoso Ltd" [level=5] [ref=e11]
+      - generic "Switch Tenant" [ref=e13]:
+        - button [ref=e14] [cursor=pointer]:
+          - img [ref=e16]
+      - button "Change Currency" [ref=e20] [cursor=pointer]:
+        - button "Change Currency" [ref=e22]:
+          - generic [ref=e23]:
+            - generic [ref=e24]: 🇺🇸
+            - text: USD
+            - img [ref=e26]
+      - generic "Switch Theme" [ref=e30]:
+        - button [ref=e31] [cursor=pointer]:
+          - img [ref=e33]
+      - link "Login" [ref=e37] [cursor=pointer]:
+        - /url: /login
+        - generic [ref=e38]:
+          - img [ref=e40]
+          - text: Login
+      - link "Register" [ref=e46] [cursor=pointer]:
+        - /url: /register
+        - generic [ref=e47]:
+          - img [ref=e49]
+          - text: Register
+  - complementary [ref=e52]:
+    - navigation [ref=e54]:
+      - link "Books" [ref=e56] [cursor=pointer]:
+        - /url: ""
+        - img [ref=e57]
+        - generic [ref=e60]: Books
+  - generic [ref=e64]:
+    - heading "Login" [level=4] [ref=e65]:
+      - img [ref=e66]
+      - text: Login
+    - heading "BookStore" [level=6] [ref=e69]
+    - generic [ref=e70]:
+      - tablist [ref=e74]:
+        - tab "Standard" [selected] [ref=e76]:
+          - img [ref=e77]
+          - text: Standard
+        - tab "Passkey" [ref=e81]:
+          - img [ref=e82]
+          - text: Passkey
+      - tabpanel "Standard" [ref=e87]:
+        - generic [ref=e88]:
+          - generic [ref=e90]:
+            - generic [ref=e91]:
+              - textbox "Email*" [ref=e92]
+              - group "Email"
+            - generic: Email*
+          - generic [ref=e94]:
+            - generic [ref=e95]:
+              - textbox "Password*" [ref=e96]
+              - button "Show Password" [ref=e98] [cursor=pointer]:
+                - img [ref=e100]
+              - group "Password"
+            - generic: Password*
+          - button "Login" [ref=e103] [cursor=pointer]:
+            - generic [ref=e105]: Login
+    - separator [ref=e106]
+    - paragraph [ref=e107]:
+      - text: Don't have an account?
+      - link "Register here" [ref=e108] [cursor=pointer]:
+        - /url: /register
