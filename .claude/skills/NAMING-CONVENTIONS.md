@@ -18,7 +18,7 @@ Use the prefix that matches the dominant technology or artifact the skill target
 | `marten__` | Event sourcing, projections, document storage | Aggregate scaffolding, single/multi-stream projections, Marten troubleshooting | `scaffold-single-stream-projection → marten__single_stream_projection`, `scaffold-aggregate → marten__aggregate_scaffold`
 | `wolverine__` | Wolverine messaging, command handlers, Wolverine diagnostics | Handler templates, Wolverine-specific debugging | (future) `wolverine__handler_scaffold`
 | `aspire__` | Aspire orchestration, AppHost utilities, MCP integration | Starting the solution, setup scripts, pipeline hooks | `start-solution → aspire__start_solution`, `setup-aspire-mcp → aspire__setup_mcp`
-| `cache__` | HybridCache + Redis tuning | Cache debugging, invalidation playbooks | `debug-cache → cache__troubleshoot`
+| `cache__` | HybridCache + Redis tuning | Cache debugging, invalidation playbooks | `debug-cache → cache__debug_cache`
 | `frontend__` | Blazor features, ReactiveQuery patterns, SSE UX | UI scaffolding, optimistic update flows | `scaffold-frontend-feature → frontend__feature_scaffold`
 | `ops__` | Local runbooks unrelated to a single stack (doctor, rebuild) | Environment health checks, clean rebuilds | `doctor → ops__doctor_check`, `rebuild-clean → ops__rebuild_clean`
 | `deploy__` | Azure/Kubernetes shipping plus rollbacks | `aspire run` deployment helpers, rollback procedures | `deploy-to-azure → deploy__azure_container_apps`, `deploy-kubernetes → deploy__kubernetes_cluster`, `rollback-deployment → deploy__rollback`
