@@ -168,7 +168,7 @@ The agent then follows the skill's instructions step-by-step.
 
 ### Skill Cross-Referencing System
 
-All 17 skills include "Related Skills" sections that reference each other, creating an interconnected ecosystem:
+All 28 skills include "Related Skills" sections that reference each other, creating an interconnected ecosystem:
 
 **Example**: `/test__integration_scaffold` references:
 - **Prerequisites**: `/wolverine__create_operation`, `/marten__list_query`, `/frontend__feature_scaffold`
@@ -176,7 +176,7 @@ All 17 skills include "Related Skills" sections that reference each other, creat
 - **See Also**: Links to test runner skills for execution
 
 **Coverage**:
-- All 17 skills have "Related Skills" sections
+- All 28 skills have "Related Skills" sections
 - ~85 cross-reference links between skills
 - 4 end-to-end workflow paths documented
 - Common commands centralized (test runners, environment checks)
