@@ -7,7 +7,7 @@
 - `docs/guides/testing-guide.md` - Testing patterns
 
 ## Skills
-- `/run-unit-tests` - Run unit tests
+- `/test__unit_suite` - Run unit tests
 
 ## Rules
 - **TUnit only** (not xUnit/NUnit) - Use `[Test]` and `await Assert.That(...)`

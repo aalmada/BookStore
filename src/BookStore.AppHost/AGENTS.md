@@ -7,9 +7,9 @@
 - `docs/guides/aspire-deployment-guide.md` - Azure deployment
 
 ## Skills
-- `/deploy-to-azure` - Deploy to Azure Container Apps
-- `/deploy-kubernetes` - Deploy to Kubernetes
-- `/doctor` - Verify environment
+- `/deploy__azure_container_apps` - Deploy to Azure Container Apps
+- `/deploy__kubernetes_cluster` - Deploy to Kubernetes
+- `/ops__doctor_check` - Verify environment
 
 ## Rules
 - Use Aspire for all resource orchestration

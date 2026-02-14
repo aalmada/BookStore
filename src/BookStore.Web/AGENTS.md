@@ -7,8 +7,8 @@
 - `docs/guides/caching-guide.md` - HybridCache patterns
 
 ## Skills
-- `/scaffold-frontend-feature` - Add Blazor feature with reactive state
-- `/debug-sse` - Debug real-time updates
+- `/frontend__feature_scaffold` - Add Blazor feature with reactive state
+- `/frontend__debug_sse` - Debug real-time updates
 
 ## Rules
 - Use `ReactiveQuery<T>` for data fetching with auto-invalidation

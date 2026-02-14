@@ -4,49 +4,69 @@
 
 Reusable, step-by-step workflows that guide AI agents through complex tasks in the BookStore project. Each skill encodes best practices and architectural patterns.
 
-## Available Skills (17 total)
+## Available Skills (28 total)
 
-### Scaffolding Workflows
+### Aspire Runbooks
 
-- **`scaffold-write`** - Create new write operations (commands, events, handlers, endpoints) with Event Sourcing patterns
-- **`scaffold-read`** - Create new read operations (queries, projections, caching) with CQRS patterns  
-- **`scaffold-frontend-feature`** - Create Blazor components with ReactiveQuery, optimistic updates, and SSE integration
-- **`scaffold-aggregate`** - Create event-sourced aggregates with proper Apply methods and Marten configuration
-- **`scaffold-projection`** - Create Marten read model projections for optimized querying
-- **`scaffold-test`** - Create integration tests with SSE verification and TUnit patterns
-- **`scaffold-skill`** - Meta-skill for creating new agent skills
+- **`aspire__start_solution`** - Launch the full Aspire stack locally.
+- **`aspire__setup_mcp`** - Wire up the Aspire MCP server for agent telemetry.
 
-### Verification & Testing
+### Wolverine Operations
 
-- **`verify-feature`** - Comprehensive verification: build, format check, and all tests
-- **`run-integration-tests`** - Execute full integration test suite with Aspire
-- **`run-unit-tests`** - Execute API service and analyzer unit tests
+- **`wolverine__create_operation`** - Scaffold POST commands (event streams, HTTP endpoints).
+- **`wolverine__update_operation`** - Add mutations that append events to existing streams.
+- **`wolverine__delete_operation`** - Implement delete/tombstone workflows.
 
-### Debugging & Troubleshooting
+### Marten Modeling
 
-- **`debug-sse`** - Troubleshoot Server-Sent Events (SSE) notification issues with step-by-step checklist
-- **`debug-cache`** - Troubleshoot HybridCache and Redis caching issues with verification guide
+- **`marten__aggregate_scaffold`** - Create event-sourced aggregates with Apply methods.
+- **`marten__get_by_id`** - Add cached GET endpoints for documents.
+- **`marten__list_query`** - Build paged list queries with filters and caching.
+- **`marten__single_stream_projection`** - Project a single stream into a read model.
+- **`marten__multi_stream_projection`** - Aggregate multiple streams (dashboards, rollups).
+- **`marten__composite_projection`** - Chain projections for throughput/reuse.
+- **`marten__event_projection`** - Emit documents per event for side tables.
 
-### Deployment & Operations
+### Frontend & Realtime
 
-- **`deploy-to-azure`** - Deploy application to Azure Container Apps using Azure Developer CLI (azd)
-- **`deploy-kubernetes`** - Deploy to Kubernetes cluster using Aspire-generated manifests
-- **`rollback-deployment`** - Rollback failed deployment to previous working version
+- **`frontend__feature_scaffold`** - Create Blazor pages with ReactiveQuery + optimistic updates.
+- **`frontend__debug_sse`** - Troubleshoot SSE and cache invalidation loops.
 
-### Utilities
+### Testing & Verification
 
-- **`doctor`** - Check development environment (.NET, Docker, azd, kubectl, Aspire workload)
-- **`rebuild-clean`** - Clean build from scratch to resolve transient errors
+- **`test__unit_suite`** - Run analyzer + API unit suites.
+- **`test__integration_suite`** - Execute the Aspire-hosted integration suite.
+- **`test__verify_feature`** - Build, format, and test gatekeeper.
+- **`test__integration_scaffold`** - Scaffold integration tests with SSE verification.
+
+### Deployment
+
+- **`deploy__azure_container_apps`** - Ship via azd to Azure Container Apps.
+- **`deploy__kubernetes_cluster`** - Apply Aspire manifests to Kubernetes.
+- **`deploy__rollback`** - Roll back a faulty deployment.
+
+### Operations & Cache
+
+- **`ops__doctor_check`** - Validate dev tooling (dotnet, Docker, azd, kubectl).
+- **`ops__rebuild_clean`** - Force a clean rebuild to fix flaky assets.
+- **`cache__debug_cache`** - Diagnose HybridCache/Redis issues.
+
+### Documentation & Meta
+
+- **`meta__cheat_sheet`** - Quick reference of stack rules and commands.
+- **`meta__create_skill`** - Scaffold new skills with templates and linting.
+- **`doc__write_agents_md`** - Author AGENTS.md files that delegate to skills.
+- **`lang__docfx_guide`** - Write DocFX-friendly guides.
 
 ## Usage
 
 Skills are invoked using slash commands:
 
 ```
-/scaffold-write      # Create new mutation endpoint
-/scaffold-aggregate  # Create event-sourced aggregate
-/verify-feature      # Run all verification checks
-/debug-sse           # Troubleshoot SSE issues
+/wolverine__create_operation   # Create new mutation endpoint
+/marten__aggregate_scaffold    # Build event-sourced aggregate
+/test__verify_feature          # Run all verification checks
+/frontend__debug_sse           # Troubleshoot SSE issues
 ```
 
 ## Skill Structure
@@ -57,7 +77,7 @@ Each skill is a directory containing:
 
 ## Creating New Skills
 
-Use `/scaffold-skill` to create new agent capabilities following the established pattern.
+Use `/meta__create_skill` to create new agent capabilities following the established pattern.
 
 ## License
 

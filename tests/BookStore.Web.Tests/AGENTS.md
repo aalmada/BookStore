@@ -7,7 +7,7 @@
 - `docs/guides/real-time-notifications.md` - SSE & cache invalidation
 
 ## Skills
-- `/run-unit-tests` - Run unit tests
+- `/test__unit_suite` - Run unit tests
 
 ## Rules
 - **TUnit only** (not xUnit/NUnit) - Use `[Test]` and `await Assert.That(...)`
