@@ -1,8 +1,6 @@
 ---
 name: marten__multi_stream_projection
 description: Create a Marten Multi-Stream Projection to aggregate events from *multiple* streams into a single view (e.g., summaries, dashboards).
-aliases:
-  - /scaffold-multi-stream-projection
 ---
 
 Follow this guide to create a **Multi-Stream Projection** (View Projection) in Marten. This allows you to aggregate data across many different streams into a single document (or multiple documents based on grouping).

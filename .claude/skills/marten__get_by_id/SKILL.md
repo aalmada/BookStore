@@ -1,8 +1,6 @@
 ---
 name: marten__get_by_id
 description: Adds a new GET operation to fetch a single resource by ID. Handles 404s, caching, and localization.
-aliases:
-  - /scaffold-get-by-id
 ---
 
 Follow this guide to implement a **Get By ID** endpoint in the ApiService.

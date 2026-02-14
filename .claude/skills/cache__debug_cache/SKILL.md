@@ -1,8 +1,6 @@
 ---
 name: cache__debug_cache
 description: Debug HybridCache and Redis caching issues when data isn't being cached or invalidated correctly. Use this when cache hit/miss rates are wrong.
-aliases:
-  - /debug-cache
 ---
 
 Use this guide to troubleshoot **HybridCache** and **Redis** caching issues.

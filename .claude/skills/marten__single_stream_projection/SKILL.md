@@ -1,8 +1,6 @@
 ---
 name: marten__single_stream_projection
 description: Create a Marten Single Stream Projection to aggregate events from a single stream into a view (e.g., entity details).
-aliases:
-  - /scaffold-single-stream-projection
 ---
 
 Follow this guide to create a **Single Stream Projection** in Marten. This projection creates a single document for a single event stream (aggregate instance).

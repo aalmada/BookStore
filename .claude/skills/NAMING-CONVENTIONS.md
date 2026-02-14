@@ -7,7 +7,6 @@ These conventions keep the `.claude/skills` catalog searchable by technology dom
 1. **Shape**: `prefix__slug`. The double underscore clearly separates taxonomy from action.
 2. **Slug style**: lower snake case (e.g., `add_projection`, `create_skill`). Avoid hyphens—they break slash-command completion.
 3. **Canonical ID**: The directory name, the `name:` field in `SKILL.md`, the slash command shown in `AGENTS.md`, and any cross-links must match exactly.
-4. **Frontmatter alignment**: Update `aliases:` when you rename a skill so legacy commands (e.g., `/scaffold-aggregate`) still resolve while teams transition.
 
 ## Approved Prefixes
 Use the prefix that matches the dominant technology or artifact the skill targets. Derive new prefixes only when a new stack area emerges and at least two skills will share it.
@@ -33,14 +32,6 @@ Use the prefix that matches the dominant technology or artifact the skill target
 2. **Describe the outcome** using a short slug. Prefer `verb_object` or `object_action` depending on clarity (e.g., `marten__aggregate_scaffold`, `aspire__start_solution`).
 3. **Populate `SKILL.md`** with the new name in YAML frontmatter, keep the description action-oriented, list prerequisites, and document numbered steps per Claude skill guidelines.
 4. **Update references**: `AGENTS.md`, `.claude/skills/README.md`, docs, and any slash-command cheat sheets must reflect the new name immediately.
-5. **Add aliases**: Under `aliases:` include any retired names (`scaffold-aggregate`, `run-integration-tests`) until teams finish migrating their slash-command muscle memory.
-
-## Renaming Existing Skills
-1. Rename the folder to the new `prefix__slug`.
-2. Adjust `name:` and `aliases:` inside `SKILL.md` and fix any relative template paths.
-3. Search the repo for the previous command (e.g., `/scaffold-aggregate`) and update every reference.
-4. Mention the prefix rationale in the PR description so reviewers can confirm the stack alignment.
-5. Remove the alias once telemetry (or team confirmation) shows nobody uses the legacy command.
 
 ## Quality Gate
 - Skills that do not match `^(meta|lang|marten|wolverine|aspire|cache|frontend|ops|deploy|test|doc)__[a-z0-9_]+$` should fail CI or reviewer checks.

@@ -1,8 +1,6 @@
 ---
 name: marten__aggregate_scaffold
 description: Create a new event-sourced aggregate with proper Apply methods, event handling, and Marten configuration. Use this when adding a new domain entity that needs event sourcing.
-aliases:
-  - /scaffold-aggregate
 ---
 
 Follow this guide to create a new **event-sourced aggregate** in the ApiService following strict Event Sourcing patterns.

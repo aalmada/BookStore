@@ -1,21 +1,53 @@
-# AppHost Integration Tests Instructions
+# AppHost Integration Tests — Agent Instructions
 
-**Scope**: `tests/BookStore.AppHost.Tests/**`
+## Quick Reference
+- **Scope**: `tests/BookStore.AppHost.Tests/**`
+- **Docs**: `docs/guides/integration-testing-guide.md`, `docs/guides/testing-guide.md`
+- **Test**: `dotnet test tests/BookStore.AppHost.Tests/`
+- **Filter**: `dotnet test --filter "FullyQualifiedName~BookCrudTests"`
+- **Helpers**: `tests/BookStore.AppHost.Tests/TestHelpers.cs`
 
-## Guides
-- `docs/guides/integration-testing-guide.md` - Integration testing patterns
-- `docs/guides/testing-guide.md` - General testing patterns
+## Key Rules (MUST follow)
+```
+✅ [Test] async Task (TUnit)      ❌ xUnit / NUnit attributes
+✅ await Assert.That(...)         ❌ FluentAssertions or other assert libs
+✅ Use Aspire infra               ❌ Ad-hoc external setup
+✅ Await SSE event per command    ❌ Polling or any delays
+✅ Per-test setup                 ❌ Rely on seeded/global init data
+✅ Data-driven tenant coverage    ❌ Single-tenant-only tests
+✅ Verify tenant isolation        ❌ Shared data across tenants
+```
+
+## Common Mistakes
+- ❌ Ignoring tests/AGENTS.md rules → This file extends `tests/AGENTS.md`
+- ❌ Using polling/delays for async commands → Always await SSE events
+- ❌ Redundant polling after event helpers → `ExecuteAndWaitForEventAsync` already ensures consistency
+- ❌ Skipping infra startup → Use Aspire `DistributedApplicationTestingBuilder`
+
+## Project Layout
+| Path | Purpose |
+|------|---------|
+| `tests/BookStore.AppHost.Tests/TestHelpers.cs` | SSE and command helpers
+| `tests/BookStore.AppHost.Tests/GlobalSetup.cs` | Aspire app lifecycle hooks
+| `tests/BookStore.AppHost.Tests/Data/` | Test data helpers
+| `tests/BookStore.AppHost.Tests/Services/` | Test service fixtures
 
 ## Skills
-- `/test__integration_scaffold` - Create integration test with SSE verification
-- `/test__integration_suite` - Run integration tests
+| Category | Skills |
+|----------|--------|
+| **Scaffold** | `/test__integration_scaffold` |
+| **Verify** | `/test__integration_suite` |
 
-## Rules
-- **TUnit only** (not xUnit/NUnit) - Use `[Test]` and `await Assert.That(...)`
-- Use `DistributedApplicationTestingBuilder` from Aspire
-- **Avoid `Task.Delay`** - Never use hardcoded delays to wait for eventual consistency
-- **SSE Verification** - Use `TestHelpers.ExecuteAndWaitForEventAsync()`.
-- **Avoid Redundant Polling** - Do not use `WaitForConditionAsync()` after an event-driven helper (e.g., `CreateBookAsync`, `AddToFavoritesAsync`) as these already guarantee read-side consistency.
-- **Polling Utility** - Use `TestHelpers.WaitForConditionAsync()` for read-side checks only when an event-driven helper is not available.
-- **Bogus** - Use `TestHelpers.GenerateFake*Request()` for test data
-- Naming: `{Feature}Tests.cs` (e.g., `BookCrudTests.cs`)
+## Local Testing Patterns
+- Aspire-hosted tests use `DistributedApplicationTestingBuilder` and `GlobalHooks`
+- Refit clients are created with `RestService.For<T>` over test HTTP clients
+- Async commands emit SSE events; always use `TestHelpers.ExecuteAndWaitForEventAsync`
+- Data generation comes from `TestHelpers.GenerateFake*Request()` (Bogus)
+- All tests must be data-driven to run against the default tenant and one non-default tenant
+- Each test must assert tenant isolation (data created in one tenant is not visible in the other)
+
+## Documentation Index
+| Topic | Guide |
+|-------|-------|
+| Integration Testing | `docs/guides/integration-testing-guide.md` |
+| Testing | `docs/guides/testing-guide.md` |

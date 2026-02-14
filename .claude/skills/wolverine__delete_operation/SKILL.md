@@ -1,8 +1,6 @@
 ---
 name: wolverine__delete_operation
 description: Adds a new DELETE operation (soft delete / tombstone) to the Backend. Use this when implementing DELETE endpoints to remove resources.
-aliases:
-  - /scaffold-delete-operation
 ---
 
 Follow this guide to implement a **Delete Operation** (Soft Delete) in the ApiService.
