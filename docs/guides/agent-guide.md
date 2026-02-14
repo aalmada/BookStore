@@ -111,51 +111,68 @@ Skills live in `.claude/skills/{skill-name}/SKILL.md` and contain:
 Users or agents invoke skills using slash commands:
 
 ```
-/scaffold-write        # Add a new mutation/command endpoint
-/scaffold-aggregate    # Create event-sourced aggregate
-/verify-feature        # Run build, format check, and tests
-/debug-sse            # Troubleshoot SSE issues
-/deploy-to-azure      # Deploy to Azure Container Apps
+/wolverine__create_operation      # Add a new mutation/command endpoint
+/marten__aggregate_scaffold       # Create event-sourced aggregate
+/test__verify_feature             # Run build, format check, and tests
+/frontend__debug_sse              # Troubleshoot SSE issues
+/deploy__azure_container_apps     # Deploy to Azure Container Apps
 ```
 
 The agent then follows the skill's instructions step-by-step.
 
-### Complete Skill Catalog (17 Skills)
+### Complete Skill Catalog (28 Skills)
 
-#### Scaffolding Skills (7)
-- **`/scaffold-write`** - Backend write operations (commands, events, projections, SSE)
-- **`/scaffold-read`** - Backend read operations (queries, projections, caching, localization)
-- **`/scaffold-frontend-feature`** - Frontend features (Blazor, ReactiveQuery, optimistic updates)
-- **`/scaffold-aggregate`** - Event-sourced aggregates with Apply methods *(new)*
-- **`/scaffold-projection`** - Marten read model projections *(new)*
-- **`/scaffold-test`** - Integration tests with SSE verification *(new)*
-- **`/scaffold-skill`** - Meta-skill to create new skills
+#### Aspire Runbooks (2)
+- **`/aspire__start_solution`** - Launch the Aspire-hosted stack locally.
+- **`/aspire__setup_mcp`** - Configure the Aspire MCP bridge for observability.
 
-#### Verification & Testing Skills (3)
-- **`/verify-feature`** - Comprehensive verification (build + format + all tests)
-- **`/run-integration-tests`** - Integration test suite with Aspire
-- **`/run-unit-tests`** - Unit test suites (API + Analyzers)
+#### Wolverine Command Skills (3)
+- **`/wolverine__create_operation`** - POST endpoints + start-stream handlers.
+- **`/wolverine__update_operation`** - PUT/PATCH handlers that append events.
+- **`/wolverine__delete_operation`** - Delete/tombstone workflows.
 
-#### Debugging Skills (2) *(new category)*
-- **`/debug-sse`** - Troubleshoot Server-Sent Events issues *(new)*
-- **`/debug-cache`** - Troubleshoot HybridCache/Redis issues *(new)*
+#### Marten Modeling Skills (7)
+- **`/marten__aggregate_scaffold`** - Event-sourced aggregates with Apply methods.
+- **`/marten__get_by_id`** - Cached GET-by-id endpoints.
+- **`/marten__list_query`** - Filtered, paginated list endpoints.
+- **`/marten__single_stream_projection`** - Per-stream read models.
+- **`/marten__multi_stream_projection`** - Cross-stream dashboards.
+- **`/marten__composite_projection`** - Combine projections for throughput/reuse.
+- **`/marten__event_projection`** - Document-per-event projections.
 
-#### Deployment & Operations Skills (3) *(new category)*
-- **`/deploy-to-azure`** - Deploy to Azure Container Apps using azd
-- **`/deploy-kubernetes`** - Deploy to Kubernetes cluster with manifests *(new)*
-- **`/rollback-deployment`** - Rollback failed deployments *(new)*
+#### Frontend & Realtime (2)
+- **`/frontend__feature_scaffold`** - Blazor features with ReactiveQuery + optimistic updates.
+- **`/frontend__debug_sse`** - Troubleshoot SSE + cache invalidation.
 
-#### Utility Skills (2)
-- **`/doctor`** - Environment health check (.NET, Docker, azd, kubectl, Aspire)
-- **`/rebuild-clean`** - Clean build from scratch
+#### Testing & Verification (4)
+- **`/test__unit_suite`** - Analyzer/API unit suites.
+- **`/test__integration_suite`** - Aspire integration suite.
+- **`/test__verify_feature`** - Definition-of-done pipeline (build/format/tests).
+- **`/test__integration_scaffold`** - Author integration tests with SSE guards.
+
+#### Deployment (3)
+- **`/deploy__azure_container_apps`** - Ship with azd to Azure Container Apps.
+- **`/deploy__kubernetes_cluster`** - Apply Aspire manifests to Kubernetes.
+- **`/deploy__rollback`** - Roll back safely after failed releases.
+
+#### Operations & Cache (3)
+- **`/ops__doctor_check`** - Environment readiness (dotnet, Docker, azd, kubectl).
+- **`/ops__rebuild_clean`** - Full rebuild to clear flaky artifacts.
+- **`/cache__debug_cache`** - HybridCache/Redis troubleshooting.
+
+#### Documentation & Meta (4)
+- **`/meta__cheat_sheet`** - Quick reference to stack rules + commands.
+- **`/meta__create_skill`** - Scaffold new skills with templates + linting.
+- **`/doc__write_agents_md`** - Author AGENTS.md files.
+- **`/lang__docfx_guide`** - Produce DocFX-friendly guides.
 
 ### Skill Cross-Referencing System
 
 All 17 skills include "Related Skills" sections that reference each other, creating an interconnected ecosystem:
 
-**Example**: `/scaffold-test` references:
-- **Prerequisites**: `/scaffold-write`, `/scaffold-read`, `/scaffold-frontend-feature`
-- **Next Steps**: `/verify-feature`
+**Example**: `/test__integration_scaffold` references:
+- **Prerequisites**: `/wolverine__create_operation`, `/marten__list_query`, `/frontend__feature_scaffold`
+- **Next Steps**: `/test__verify_feature`
 - **See Also**: Links to test runner skills for execution
 
 **Coverage**:
@@ -172,7 +189,7 @@ All 17 skills include "Related Skills" sections that reference each other, creat
 
 ### Creating New Skills
 
-The project includes `/scaffold-skill` to create new workflows. This ensures consistency in skill structure across the project.
+The project includes `/meta__create_skill` to create new workflows. This ensures consistency in skill structure across the project.
 
 All skills follow these standards:
 - ✅ YAML frontmatter with `name` and `description`
@@ -190,9 +207,9 @@ When working with an AI agent on this project:
 
 1. **Let the agent read AGENTS.md** - They provide context the agent needs
 2. **Use skills for common tasks** - Don't write manual steps when a skill exists
-3. **Follow skill workflows** - Use cross-references to navigate (e.g., `/scaffold-aggregate` → `/scaffold-write` → `/verify-feature`)
+3. **Follow skill workflows** - Use cross-references to navigate (e.g., `/marten__aggregate_scaffold` → `/wolverine__create_operation` → `/test__verify_feature`)
 4. **Trust the analyzers** - Build warnings (BS1xxx-BS4xxx) indicate pattern violations
-5. **Verify with `/verify-feature`** - Ensures build, format, and tests pass
+5. **Verify with `/test__verify_feature`** - Ensures build, format, and tests pass
 
 ### For Developers Adding to the System
 
@@ -211,13 +228,13 @@ When extending the agent configuration:
 ### Complete Feature Development Path
 
 ```
-/scaffold-aggregate
-  → /scaffold-projection
-    → /scaffold-write
-      → /scaffold-read
-        → /scaffold-frontend-feature
-          → /scaffold-test
-            → /verify-feature ✅
+/marten__aggregate_scaffold
+  → /marten__single_stream_projection
+    → /wolverine__create_operation
+      → /marten__list_query
+        → /frontend__feature_scaffold
+          → /test__integration_scaffold
+            → /test__verify_feature ✅
 ```
 
 This workflow creates a complete Event Sourced feature from aggregate to UI in ~30-60 minutes.
@@ -226,30 +243,30 @@ This workflow creates a complete Event Sourced feature from aggregate to UI in ~
 
 ```
 Issue Detected
-  → /verify-feature (basic checks first)
-    → /debug-sse OR /debug-cache (specific debugging)
+  → /test__verify_feature (basic checks first)
+    → /frontend__debug_sse OR /cache__debug_cache (specific debugging)
       → Fix applied
-        → /scaffold-test (add regression test)
-          → /verify-feature ✅
+        → /test__integration_scaffold (add regression test)
+          → /test__verify_feature ✅
 ```
 
 ### Deployment Workflow
 
 ```
-/doctor (check environment)
-  → /deploy-to-azure OR /deploy-kubernetes
-    → /verify-feature (test deployment)
-      → If issues: /rollback-deployment
+/ops__doctor_check (check environment)
+  → /deploy__azure_container_apps OR /deploy__kubernetes_cluster
+    → /test__verify_feature (test deployment)
+      → If issues: /deploy__rollback
 ```
 
 ### Testing Workflow
 
 ```
 Feature Implemented
-  → /scaffold-test (create tests)
-    → /run-unit-tests (quick verification)
-      → /run-integration-tests (full verification)
-        → /verify-feature ✅
+  → /test__integration_scaffold (create tests)
+    → /test__unit_suite (quick verification)
+      → /test__integration_suite (full verification)
+        → /test__verify_feature ✅
 ```
 
 ---
@@ -269,8 +286,8 @@ The agent system complements (but doesn't replace) comprehensive documentation:
 - **Event Sourcing Guide** (docs/) explains *why* and *how* Event Sourcing works (for humans)
 - **ApiService AGENTS.md** reminds agents to use `DateTimeOffset` and past-tense event names
 - **BS1xxx analyzers** enforce events as records with immutable properties (compile-time)
-- **`/scaffold-write` skill** provides the exact steps to implement a new command
-- **`/scaffold-aggregate` skill** shows how to create event-sourced aggregates with Apply methods
+- **`/wolverine__create_operation` skill** provides the exact steps to implement a new command
+- **`/marten__aggregate_scaffold` skill** shows how to create event-sourced aggregates with Apply methods
 
 ---
 
@@ -333,10 +350,10 @@ This reduces iteration time by preventing common mistakes upfront.
 ### Skill Ecosystem *(new)*
 
 Skills are now interconnected:
-- **Prerequisites**: Skills can require other skills to run first (e.g., `/deploy-to-azure` requires `/doctor`)
-- **Alternatives**: Skills can suggest alternative approaches (e.g., `/deploy-kubernetes` as alternative to `/deploy-to-azure`)
-- **Next Steps**: Skills guide to logical next step (e.g., `/scaffold-test` → `/verify-feature`)
-- **Recovery**: Skills document failure recovery (e.g., `/rollback-deployment` for failed deployments)
+- **Prerequisites**: Skills can require other skills to run first (e.g., `/deploy__azure_container_apps` requires `/ops__doctor_check`)
+- **Alternatives**: Skills can suggest alternative approaches (e.g., `/deploy__kubernetes_cluster` as alternative to `/deploy__azure_container_apps`)
+- **Next Steps**: Skills guide to logical next step (e.g., `/test__integration_scaffold` → `/test__verify_feature`)
+- **Recovery**: Skills document failure recovery (e.g., `/deploy__rollback` for failed deployments)
 
 This creates a self-documenting workflow system where agents discover related skills naturally.
 

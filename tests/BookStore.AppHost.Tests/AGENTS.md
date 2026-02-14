@@ -7,8 +7,8 @@
 - `docs/guides/testing-guide.md` - General testing patterns
 
 ## Skills
-- `/scaffold-test` - Create integration test with SSE verification
-- `/run-integration-tests` - Run integration tests
+- `/test__integration_scaffold` - Create integration test with SSE verification
+- `/test__integration_suite` - Run integration tests
 
 ## Rules
 - **TUnit only** (not xUnit/NUnit) - Use `[Test]` and `await Assert.That(...)`

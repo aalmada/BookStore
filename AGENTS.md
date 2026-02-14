@@ -36,21 +36,21 @@
 
 | Category | Skills |
 |----------|--------|
-| **Run** | `/start-solution`, `/setup-aspire-mcp` |
-| **Scaffold** | `/scaffold-create-operation`, `/scaffold-update-operation`, `/scaffold-delete-operation`, `/scaffold-get-by-id`, `/scaffold-list-query`, `/scaffold-aggregate`, `/scaffold-single-stream-projection`, `/scaffold-multi-stream-projection`, `/scaffold-composite-projection`, `/scaffold-event-projection`, `/scaffold-frontend-feature`, `/scaffold-test` |
-| **Verify** | `/verify-feature`, `/run-unit-tests`, `/run-integration-tests` |
-| **Debug** | `/debug-sse`, `/debug-cache` |
-| **Deploy** | `/deploy-to-azure`, `/deploy-kubernetes`, `/rollback-deployment` |
-| **Utility** | `/doctor`, `/rebuild-clean`, `/scaffold-skill`, `/cheat-sheet` |
-| **Documentation** | `/write-documentation-guide`, `/write-agents-md` |
+| **Run** | `/aspire__start_solution`, `/aspire__setup_mcp` |
+| **Scaffold** | `/wolverine__create_operation`, `/wolverine__update_operation`, `/wolverine__delete_operation`, `/marten__get_by_id`, `/marten__list_query`, `/marten__aggregate_scaffold`, `/marten__single_stream_projection`, `/marten__multi_stream_projection`, `/marten__composite_projection`, `/marten__event_projection`, `/frontend__feature_scaffold`, `/test__integration_scaffold` |
+| **Verify** | `/test__verify_feature`, `/test__unit_suite`, `/test__integration_suite` |
+| **Debug** | `/frontend__debug_sse`, `/cache__debug_cache` |
+| **Deploy** | `/deploy__azure_container_apps`, `/deploy__kubernetes_cluster`, `/deploy__rollback` |
+| **Utility** | `/ops__doctor_check`, `/ops__rebuild_clean`, `/meta__create_skill`, `/meta__cheat_sheet` |
+| **Documentation** | `/lang__docfx_guide`, `/doc__write_agents_md` |
 
-**Aliases**: `/sco`→scaffold-create-operation, `/suo`→scaffold-update-operation, `/sdo`→scaffold-delete-operation, `/sgbi`→scaffold-get-by-id, `/slq`→scaffold-list-query, `/sa`→scaffold-aggregate, `/ssp`→scaffold-single-stream-projection, `/msp`→scaffold-multi-stream-projection, `/scp`→scaffold-composite-projection, `/sep`→scaffold-event-projection, `/st`→scaffold-test, `/vf`→verify-feature
+**Aliases**: `/sco`→wolverine__create_operation, `/suo`→wolverine__update_operation, `/sdo`→wolverine__delete_operation, `/sgbi`→marten__get_by_id, `/slq`→marten__list_query, `/sa`→marten__aggregate_scaffold, `/ssp`→marten__single_stream_projection, `/msp`→marten__multi_stream_projection, `/scp`→marten__composite_projection, `/sep`→marten__event_projection, `/st`→test__integration_scaffold, `/vf`→test__verify_feature
 
 ## Quick Troubleshooting
 - **Build fails**: Check BS1xxx-BS4xxx analyzer errors first
-- **SSE not working**: Run `/debug-sse`
-- **Cache stale**: Run `/debug-cache`
-- **Environment issues**: Run `/doctor`
+- **SSE not working**: Run `/frontend__debug_sse`
+- **Cache stale**: Run `/cache__debug_cache`
+- **Environment issues**: Run `/ops__doctor_check`
 
 ## Documentation Index
 | Topic | Guide |
