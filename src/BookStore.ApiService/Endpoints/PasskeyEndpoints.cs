@@ -4,8 +4,8 @@ using BookStore.ApiService.Infrastructure.Logging;
 using BookStore.ApiService.Infrastructure.Tenant;
 using BookStore.ApiService.Models;
 using BookStore.ApiService.Projections;
-using BookStore.Shared.Messages.Events;
 using BookStore.Shared.Infrastructure;
+using BookStore.Shared.Messages.Events;
 using BookStore.Shared.Models;
 using Marten;
 using Microsoft.AspNetCore.Identity;
@@ -27,8 +27,18 @@ public static class PasskeyEndpoints
             [FromBody] PasskeyCreationRequest request,
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
+            ITenantContext tenantContext,
+            ITenantStore tenantStore,
+            ILogger<Program> logger,
             CancellationToken cancellationToken) =>
         {
+            // Validate tenant before processing
+            if (!await tenantStore.IsValidTenantAsync(tenantContext.TenantId))
+            {
+                Log.Users.PasskeyTenantValidationFailed(logger, tenantContext.TenantId, "/attestation/options");
+                return Result.Failure(Error.Validation(ErrorCodes.Passkey.InvalidCredential, "Invalid tenant.")).ToProblemDetails();
+            }
+
             var user = await userManager.GetUserAsync(context.User);
 
             // If authenticated, use current user (Add Passkey logic)
@@ -94,6 +104,7 @@ public static class PasskeyEndpoints
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
             ITenantContext tenantContext,
+            ITenantStore tenantStore,
             BookStore.ApiService.Services.JwtTokenService tokenService,
             Wolverine.IMessageBus bus,
             ILogger<Program> logger,
@@ -103,6 +114,13 @@ public static class PasskeyEndpoints
         {
             try
             {
+                // Validate tenant before processing
+                if (!await tenantStore.IsValidTenantAsync(tenantContext.TenantId))
+                {
+                    Log.Users.PasskeyTenantValidationFailed(logger, tenantContext.TenantId, "/attestation/result");
+                    return Result.Failure(Error.Validation(ErrorCodes.Passkey.InvalidCredential, "Invalid tenant.")).ToProblemDetails();
+                }
+
                 var user = await userManager.GetUserAsync(context.User);
                 var verificationRequired = emailOptions.Value.DeliveryMethod != "None";
 
@@ -152,7 +170,36 @@ public static class PasskeyEndpoints
                     return Result.Failure(Error.Validation(ErrorCodes.Passkey.InvalidCredential, "Registration data is incomplete.")).ToProblemDetails();
                 }
 
-                // 1. Verify Attempt & Extract User Handle
+                // 1. Validate Tenant
+                if (!await tenantStore.IsValidTenantAsync(tenantContext.TenantId))
+                {
+                    return Result.Failure(Error.Validation(ErrorCodes.Passkey.InvalidCredential, "Invalid tenant.")).ToProblemDetails();
+                }
+
+                // 2. Parse and Validate User ID
+                // Use the user ID from the request (sent by client from options response)
+                // This is critical - the user ID must match what was in the passkey creation options
+                var userIdSource = "request.UserId";
+                var newUserIdString = request.UserId;
+
+                if (!Guid.TryParse(newUserIdString, out var newUserGuid))
+                {
+                    Log.Users.PasskeyInvalidGuidFormat(logger, userIdSource, newUserIdString!);
+                    return Result.Failure(Error.Validation(ErrorCodes.Passkey.InvalidCredential, "Invalid registration data.")).ToProblemDetails();
+                }
+
+                // 3. SECURITY FIX: Check if user already exists BEFORE attestation
+                // This prevents race conditions and wasted attestation processing
+                var conflictingUserById = await userManager.FindByIdAsync(newUserGuid.ToString());
+                if (conflictingUserById != null)
+                {
+                    Log.Users.PasskeyUserIdConflictDetected(logger, newUserGuid, tenantContext.TenantId);
+                    Log.Users.PasskeyRegistrationIdConflict(logger, newUserGuid);
+                    // Security: Use generic message to prevent user enumeration
+                    return Result.Failure(Error.Validation(ErrorCodes.Passkey.InvalidCredential, "Registration failed. Please try again.")).ToProblemDetails();
+                }
+
+                // 4. Verify Attestation
                 // We need the User Handle (ID) that was signed by the client.
                 // This is critical because the authenticator is now bound to THAT ID.
                 var attestationNew = await signInManager.PerformPasskeyAttestationAsync(request.CredentialJson);
@@ -166,25 +213,6 @@ public static class PasskeyEndpoints
                 if (attestationNew.Passkey != null)
                 {
                     attestationNew.Passkey.Name = BookStore.ApiService.Infrastructure.DeviceNameParser.Parse(registrationUserAgent);
-                }
-
-                // Use the user ID from the request (sent by client from options response)
-                // This is critical - the user ID must match what was in the passkey creation options
-                var userIdSource = "request.UserId";
-                var newUserIdString = request.UserId;
-
-                if (!Guid.TryParse(newUserIdString, out var newUserGuid))
-                {
-                    Log.Users.PasskeyInvalidGuidFormat(logger, userIdSource, newUserIdString!);
-                    return Result.Failure(Error.Validation(ErrorCodes.Passkey.InvalidCredential, "Invalid registration data.")).ToProblemDetails();
-                }
-
-                // SECURITY FIX: Check if user already exists to prevent overwrite
-                var conflictingUserById = await userManager.FindByIdAsync(newUserGuid.ToString());
-                if (conflictingUserById != null)
-                {
-                    Log.Users.PasskeyRegistrationIdConflict(logger, newUserGuid);
-                    return Result.Failure(Error.Conflict(ErrorCodes.Passkey.IdAlreadyExists, "User ID already exists.")).ToProblemDetails();
                 }
 
                 Log.Users.PasskeyCreatingNewUser(logger, newUserGuid, userIdSource);
@@ -332,11 +360,14 @@ public static class PasskeyEndpoints
                         var storedPasskey = await passkeyStore.FindPasskeyAsync(user, assertion.Passkey.CredentialId, cancellationToken);
                         if (storedPasskey != null && storedPasskey.SignCount > 0)
                         {
+                            // Log counter validation for security monitoring
+                            Log.Users.PasskeyCounterValidationTriggered(logger, user.Email, storedPasskey.SignCount, assertion.Passkey.SignCount);
+
                             // Counter should always increment. If it doesn't, the authenticator may be cloned.
                             if (assertion.Passkey.SignCount <= storedPasskey.SignCount)
                             {
                                 Log.Users.PasskeyCounterMismatch(logger, user.Email, storedPasskey.SignCount, assertion.Passkey.SignCount);
-                                await userManager.SetLockoutEndDateAsync(user, DateTimeOffset.UtcNow.AddHours(1));
+                                _ = await userManager.SetLockoutEndDateAsync(user, DateTimeOffset.UtcNow.AddHours(1));
                                 _ = await userManager.UpdateAsync(user);
                                 return Result.Failure(Error.Unauthorized(ErrorCodes.Passkey.CounterMismatch, "Security violation detected. Account temporarily locked.")).ToProblemDetails();
                             }

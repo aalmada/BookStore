@@ -56,12 +56,9 @@ public static class TestHelpers
     /// </summary>
     public static async Task<BookStore.ApiService.Models.ApplicationUser?> GetUserByEmailAsync(
         Marten.IQuerySession session,
-        string email)
-    {
-        return await session.Query<BookStore.ApiService.Models.ApplicationUser>()
+        string email) => await session.Query<BookStore.ApiService.Models.ApplicationUser>()
             .Where(u => u.NormalizedEmail == email.ToUpperInvariant())
             .FirstOrDefaultAsync();
-    }
 
     /// <summary>
     /// Registers a new user and logs them in, returning complete authentication details.

@@ -345,7 +345,7 @@ public static class JwtAuthenticationEndpoints
             Log.Users.CrossTenantTokenTheft(logger, user.Id, existingToken.TenantId, tenantContext.TenantId);
 
             // Lock account and clear all refresh tokens
-            await userManager.SetLockoutEndDateAsync(user, DateTimeOffset.UtcNow.AddHours(24));
+            _ = await userManager.SetLockoutEndDateAsync(user, DateTimeOffset.UtcNow.AddHours(24));
             user.RefreshTokens.Clear();
             _ = await userManager.UpdateAsync(user);
 
