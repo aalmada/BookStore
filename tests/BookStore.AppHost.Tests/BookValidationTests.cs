@@ -5,6 +5,7 @@ using BookStore.Shared.Models;
 using Refit;
 using MvcProblemDetails = Microsoft.AspNetCore.Mvc.ProblemDetails;
 using SharedModels = BookStore.Shared.Models;
+using BookStore.AppHost.Tests.Helpers;
 
 namespace BookStore.AppHost.Tests;
 
@@ -21,7 +22,7 @@ public class BookValidationTests
         string expectedErrorCode)
     {
         // Arrange
-        var client = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
+        var client = await HttpClientHelpers.GetAuthenticatedClientAsync<IBooksClient>();
 
         var request = new CreateBookRequest
         {

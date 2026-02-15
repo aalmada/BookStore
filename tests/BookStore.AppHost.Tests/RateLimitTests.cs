@@ -1,4 +1,5 @@
 using System.Net;
+using BookStore.AppHost.Tests.Helpers;
 using BookStore.Client;
 using Refit;
 using SharedModels = BookStore.Shared.Models;
@@ -16,7 +17,7 @@ public class RateLimitTests
             .WaitAsync(TestConstants.DefaultTimeout);
 
         // Use unauthenticated client for login attempt via Refit
-        var httpClient = TestHelpers.GetUnauthenticatedClient();
+        var httpClient = HttpClientHelpers.GetUnauthenticatedClient();
         var client = RestService.For<IIdentityClient>(httpClient);
 
         // Act & Assert

@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using BookStore.Shared;
 using TUnit.Assertions.Extensions;
 using TUnit.Core;
+using BookStore.AppHost.Tests.Helpers;
 
 namespace BookStore.AppHost.Tests;
 
@@ -17,9 +18,9 @@ public class PasskeyRegistrationSecurityTests
     public async Task PasskeyRegistration_ConcurrentAttempts_OnlyOneSucceeds()
     {
         // Arrange - Get registration options to obtain a user ID
-        var email = TestHelpers.GenerateFakeEmail();
+        var email = FakeDataGenerators.GenerateFakeEmail();
         var tenantId = MultiTenancyConstants.DefaultTenantId;
-        var client = TestHelpers.GetUnauthenticatedClient(tenantId);
+        var client = HttpClientHelpers.GetUnauthenticatedClient(tenantId);
 
         // Get creation options first
         var optionsResponse = await client.PostAsJsonAsync("/account/attestation/options", new
@@ -77,22 +78,22 @@ public class PasskeyRegistrationSecurityTests
     public async Task PasskeyRegistration_WithExistingUserId_ReturnsGenericError()
     {
         // Arrange - Create a user first
-        var (email, _, _, tenantId) = await TestHelpers.RegisterAndLoginUserAsync();
+        var (email, _, _, tenantId) = await AuthenticationHelpers.RegisterAndLoginUserAsync();
 
         // Get the existing user's ID
-        var store = await TestHelpers.GetDocumentStoreAsync();
+        var store = await DatabaseHelpers.GetDocumentStoreAsync();
         await using var session = store.LightweightSession(tenantId);
-        var existingUser = await TestHelpers.GetUserByEmailAsync(session, email);
+        var existingUser = await DatabaseHelpers.GetUserByEmailAsync(session, email);
         _ = await Assert.That(existingUser).IsNotNull();
 
         var existingUserId = existingUser!.Id.ToString();
 
         // Act - Try to register a NEW passkey with an EXISTING user ID
-        var client = TestHelpers.GetUnauthenticatedClient(tenantId);
+        var client = HttpClientHelpers.GetUnauthenticatedClient(tenantId);
         var response = await client.PostAsJsonAsync("/account/attestation/result", new
         {
             credentialJson = "{\"mock\":\"credential\"}",
-            email = TestHelpers.GenerateFakeEmail(), // different email
+            email = FakeDataGenerators.GenerateFakeEmail(), // different email
             userId = existingUserId // SAME user ID
         });
 

@@ -6,6 +6,7 @@ using BookStore.Shared.Models;
 using JasperFx;
 using Refit;
 using TUnit.Core.Interfaces;
+using BookStore.AppHost.Tests.Helpers;
 
 namespace BookStore.AppHost.Tests;
 
@@ -15,11 +16,11 @@ public class CategoryCrudTests
     public async Task CreateCategory_EndToEndFlow_ShouldReturnOk()
     {
         // Arrange
-        var client = await TestHelpers.GetAuthenticatedClientAsync<ICategoriesClient>();
-        var createCategoryRequest = TestHelpers.GenerateFakeCategoryRequest();
+        var client = await HttpClientHelpers.GetAuthenticatedClientAsync<ICategoriesClient>();
+        var createCategoryRequest = FakeDataGenerators.GenerateFakeCategoryRequest();
 
         // Act
-        var category = await TestHelpers.CreateCategoryAsync(client, createCategoryRequest);
+        var category = await CategoryHelpers.CreateCategoryAsync(client, createCategoryRequest);
 
         // Assert
         _ = await Assert.That(category).IsNotNull();
@@ -30,14 +31,14 @@ public class CategoryCrudTests
     public async Task UpdateCategory_ShouldReturnOk()
     {
         // Arrange
-        var client = await TestHelpers.GetAuthenticatedClientAsync<ICategoriesClient>();
-        var createRequest = TestHelpers.GenerateFakeCategoryRequest();
-        var createdCategory = await TestHelpers.CreateCategoryAsync(client, createRequest);
+        var client = await HttpClientHelpers.GetAuthenticatedClientAsync<ICategoriesClient>();
+        var createRequest = FakeDataGenerators.GenerateFakeCategoryRequest();
+        var createdCategory = await CategoryHelpers.CreateCategoryAsync(client, createRequest);
 
-        var updateRequest = TestHelpers.GenerateFakeUpdateCategoryRequest(); // New data
+        var updateRequest = FakeDataGenerators.GenerateFakeUpdateCategoryRequest(); // New data
 
         // Act
-        createdCategory = await TestHelpers.UpdateCategoryAsync(client, createdCategory!, updateRequest);
+        createdCategory = await CategoryHelpers.UpdateCategoryAsync(client, createdCategory!, updateRequest);
 
         // Verify update in public API (data should be consistent now)
         // We use public unauthenticated client to verify
@@ -45,7 +46,7 @@ public class CategoryCrudTests
 
         var publicClient =
             RestService.For<ICategoriesClient>(
-                TestHelpers.GetUnauthenticatedClient(StorageConstants.DefaultTenantId));
+                HttpClientHelpers.GetUnauthenticatedClient(StorageConstants.DefaultTenantId));
         var expectedName = updateRequest.Translations["en"].Name;
 
         var updatedCategory = await publicClient.GetCategoryAsync(createdCategory!.Id, acceptLanguage: "en");
@@ -56,18 +57,18 @@ public class CategoryCrudTests
     public async Task DeleteCategory_ShouldReturnNoContent()
     {
         // Arrange
-        var client = await TestHelpers.GetAuthenticatedClientAsync<ICategoriesClient>();
-        var createRequest = TestHelpers.GenerateFakeCategoryRequest();
-        var createdCategory = await TestHelpers.CreateCategoryAsync(client, createRequest);
+        var client = await HttpClientHelpers.GetAuthenticatedClientAsync<ICategoriesClient>();
+        var createRequest = FakeDataGenerators.GenerateFakeCategoryRequest();
+        var createdCategory = await CategoryHelpers.CreateCategoryAsync(client, createRequest);
 
         // Act
-        createdCategory = await TestHelpers.DeleteCategoryAsync(client, createdCategory!);
+        createdCategory = await CategoryHelpers.DeleteCategoryAsync(client, createdCategory!);
 
         // Verify it's gone from public API
         // Verify it's gone from public API
         var publicClient =
             RestService.For<ICategoriesClient>(
-                TestHelpers.GetUnauthenticatedClient(StorageConstants.DefaultTenantId));
+                HttpClientHelpers.GetUnauthenticatedClient(StorageConstants.DefaultTenantId));
         try
         {
             _ = await publicClient.GetCategoryAsync(createdCategory!.Id);
@@ -85,7 +86,7 @@ public class CategoryCrudTests
     public async Task CreateCategory_WithInvalidName_ShouldReturnBadRequest(string? invalidName)
     {
         // Arrange
-        var client = await TestHelpers.GetAuthenticatedClientAsync<ICategoriesClient>();
+        var client = await HttpClientHelpers.GetAuthenticatedClientAsync<ICategoriesClient>();
         var request = new CreateCategoryRequest
         {
             Id = Guid.CreateVersion7(),
@@ -117,7 +118,7 @@ public class CategoryCrudTests
         string expectedName)
     {
         // Arrange
-        var client = await TestHelpers.GetAuthenticatedClientAsync<ICategoriesClient>();
+        var client = await HttpClientHelpers.GetAuthenticatedClientAsync<ICategoriesClient>();
 
         var createRequest = new CreateCategoryRequest
         {
@@ -130,12 +131,12 @@ public class CategoryCrudTests
             }
         };
 
-        var createdCategory = await TestHelpers.CreateCategoryAsync(client, createRequest);
+        var createdCategory = await CategoryHelpers.CreateCategoryAsync(client, createRequest);
         _ = await Assert.That(createdCategory).IsNotNull();
 
         var publicClient =
             RestService.For<ICategoriesClient>(
-                TestHelpers.GetUnauthenticatedClient(StorageConstants.DefaultTenantId));
+                HttpClientHelpers.GetUnauthenticatedClient(StorageConstants.DefaultTenantId));
         var categoryDto = await publicClient.GetCategoryAsync(createdCategory!.Id, acceptLanguage: acceptLanguage);
 
         // Assert
@@ -147,17 +148,17 @@ public class CategoryCrudTests
     public async Task RestoreCategory_ShouldReturnOk()
     {
         // Arrange
-        var client = await TestHelpers.GetAuthenticatedClientAsync<ICategoriesClient>();
+        var client = await HttpClientHelpers.GetAuthenticatedClientAsync<ICategoriesClient>();
 
         // 1. Create Category
-        var createRequest = TestHelpers.GenerateFakeCategoryRequest();
-        var createdCategory = await TestHelpers.CreateCategoryAsync(client, createRequest);
+        var createRequest = FakeDataGenerators.GenerateFakeCategoryRequest();
+        var createdCategory = await CategoryHelpers.CreateCategoryAsync(client, createRequest);
 
         // 2. Soft Delete Category
-        createdCategory = await TestHelpers.DeleteCategoryAsync(client, createdCategory!);
+        createdCategory = await CategoryHelpers.DeleteCategoryAsync(client, createdCategory!);
 
         // Act - Restore
-        createdCategory = await TestHelpers.RestoreCategoryAsync(client, createdCategory!);
+        createdCategory = await CategoryHelpers.RestoreCategoryAsync(client, createdCategory!);
 
         // Verify
         // Use client to get it (should succeed now if visible to admin, which it is)

@@ -3,6 +3,7 @@ using BookStore.Client;
 using BookStore.Shared.Models;
 using Marten;
 using Refit;
+using BookStore.AppHost.Tests.Helpers;
 
 namespace BookStore.AppHost.Tests;
 
@@ -29,8 +30,8 @@ public class MultiTenancyTests
             opts.Events.TenancyStyle = Marten.Storage.TenancyStyle.Conjoined;
         });
 
-        await TestHelpers.SeedTenantAsync(store, "acme");
-        await TestHelpers.SeedTenantAsync(store, "contoso");
+        await DatabaseHelpers.SeedTenantAsync(store, "acme");
+        await DatabaseHelpers.SeedTenantAsync(store, "contoso");
     }
 
     [Test]
@@ -38,23 +39,23 @@ public class MultiTenancyTests
     {
         // 1. Setup Clients
         // Login as Acme Admin
-        var acmeLogin = await TestHelpers.LoginAsAdminAsync("acme");
+        var acmeLogin = await AuthenticationHelpers.LoginAsAdminAsync("acme");
         _ = await Assert.That(acmeLogin).IsNotNull();
         var acmeClient =
-            RestService.For<IBooksClient>(TestHelpers.GetAuthenticatedClient(acmeLogin!.AccessToken, "acme"));
+            RestService.For<IBooksClient>(HttpClientHelpers.GetAuthenticatedClient(acmeLogin!.AccessToken, "acme"));
 
         // Login as Contoso Admin
-        var contosoLogin = await TestHelpers.LoginAsAdminAsync("contoso");
+        var contosoLogin = await AuthenticationHelpers.LoginAsAdminAsync("contoso");
         _ = await Assert.That(contosoLogin).IsNotNull();
         var contosoClient =
-            RestService.For<IBooksClient>(TestHelpers.GetAuthenticatedClient(contosoLogin!.AccessToken, "contoso"));
+            RestService.For<IBooksClient>(HttpClientHelpers.GetAuthenticatedClient(contosoLogin!.AccessToken, "contoso"));
 
         // 2. Create Book in ACME
-        var createRequest = TestHelpers.GenerateFakeBookRequest();
+        var createRequest = FakeDataGenerators.GenerateFakeBookRequest();
         // Use CreateBookAsync helper that handles dependencies and SSE waiting
-        // Wait, TestHelpers.CreateBookAsync takes IBooksClient and CreateBookRequest.
+        // Wait, BookHelpers.CreateBookAsync takes IBooksClient and CreateBookRequest.
         // It should handle it.
-        var createdBook = await TestHelpers.CreateBookAsync(acmeClient, createRequest);
+        var createdBook = await BookHelpers.CreateBookAsync(acmeClient, createRequest);
         _ = await Assert.That(createdBook).IsNotNull();
         var bookId = createdBook.Id;
 
@@ -85,7 +86,7 @@ public class MultiTenancyTests
         // But the middleware validates tenant existence or format.
         // If we use IBooksClient with bad tenant, standard Refit call handles it.
 
-        var client = RestService.For<IBooksClient>(TestHelpers.GetUnauthenticatedClient("garbage-tenant-id"));
+        var client = RestService.For<IBooksClient>(HttpClientHelpers.GetUnauthenticatedClient("garbage-tenant-id"));
 
         var exception = await Assert.That(async () => await client.GetBooksAsync(new BookSearchRequest()))
             .Throws<ApiException>();

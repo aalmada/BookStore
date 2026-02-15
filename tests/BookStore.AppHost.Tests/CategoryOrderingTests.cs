@@ -4,6 +4,7 @@ using BookStore.Client;
 using BookStore.Shared.Models;
 using Refit;
 using TUnit.Core.Interfaces;
+using BookStore.AppHost.Tests.Helpers;
 
 namespace BookStore.AppHost.Tests;
 
@@ -18,7 +19,7 @@ public class CategoryOrderingTests
     public async Task GetCategories_OrderedByName_ShouldReturnInCorrectOrder()
     {
         // Arrange
-        var adminClient = await TestHelpers.GetAuthenticatedClientAsync<ICategoriesClient>();
+        var adminClient = await HttpClientHelpers.GetAuthenticatedClientAsync<ICategoriesClient>();
 
         // Create categories with specific names to test ordering
         var names = (string[])["Z-Category", "A-Category", "M-Category"];
@@ -34,7 +35,7 @@ public class CategoryOrderingTests
                     ["en"] = new CategoryTranslationDto(name)
                 }
             };
-            _ = await TestHelpers.ExecuteAndWaitForEventAsync(
+            _ = await SseEventHelpers.ExecuteAndWaitForEventAsync(
                 createRequest.Id,
                 ["CategoryCreated", "CategoryUpdated"],
                 async () => await adminClient.CreateCategoryAsync(createRequest),
@@ -44,7 +45,7 @@ public class CategoryOrderingTests
         // Removed Task.Delay(TestConstants.DefaultProjectionDelay) as we now wait for each creation.
 
         // Act - Request public categories ordered by name asc
-        var publicHttpClient = TestHelpers.GetUnauthenticatedClient();
+        var publicHttpClient = HttpClientHelpers.GetUnauthenticatedClient();
         publicHttpClient.DefaultRequestHeaders.AcceptLanguage.Clear();
         publicHttpClient.DefaultRequestHeaders.AcceptLanguage.Add(new StringWithQualityHeaderValue("en"));
         var publicClient = RestService.For<ICategoriesClient>(publicHttpClient);
@@ -71,7 +72,7 @@ public class CategoryOrderingTests
     public async Task AdminGetAllCategories_OrderedByNameWithLanguage_ShouldReturnInCorrectOrder()
     {
         // Arrange
-        var adminClient = await TestHelpers.GetAuthenticatedClientAsync<ICategoriesClient>();
+        var adminClient = await HttpClientHelpers.GetAuthenticatedClientAsync<ICategoriesClient>();
 
         // Create categories with Portuguese and English names
         // Cat 1: EN: "C", PT: "A"
@@ -93,7 +94,7 @@ public class CategoryOrderingTests
                     ["pt-PT"] = new CategoryTranslationDto(cat.PT)
                 }
             };
-            _ = await TestHelpers.ExecuteAndWaitForEventAsync(
+            _ = await SseEventHelpers.ExecuteAndWaitForEventAsync(
                 createRequest.Id,
                 ["CategoryCreated", "CategoryUpdated"],
                 async () => await adminClient.CreateCategoryAsync(createRequest),

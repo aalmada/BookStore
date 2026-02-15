@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using BookStore.Client;
 using BookStore.Shared.Models;
 using Refit;
+using BookStore.AppHost.Tests.Helpers;
 
 namespace BookStore.AppHost.Tests;
 
@@ -18,7 +19,7 @@ public class LocalizationTests
         string expectedDescription)
     {
         // Arrange
-        var adminClient = RestService.For<IBooksClient>(await TestHelpers.GetAuthenticatedClientAsync());
+        var adminClient = RestService.For<IBooksClient>(await HttpClientHelpers.GetAuthenticatedClientAsync());
 
         // Create the book
         // Use dictionary for Translations as per contract
@@ -29,13 +30,13 @@ public class LocalizationTests
             ["es"] = new BookTranslationDto("Descripción en Español")
         };
 
-        var request = TestHelpers.GenerateFakeBookRequest();
+        var request = FakeDataGenerators.GenerateFakeBookRequest();
         request.Translations = translations;
         request.Title = "Localized Book";
 
-        var createdBook = await TestHelpers.CreateBookAsync(adminClient, request);
+        var createdBook = await BookHelpers.CreateBookAsync(adminClient, request);
 
-        var publicClient = TestHelpers.GetUnauthenticatedClientWithLanguage<IBooksClient>(acceptLanguage);
+        var publicClient = HttpClientHelpers.GetUnauthenticatedClientWithLanguage<IBooksClient>(acceptLanguage);
         var bookDto = await publicClient.GetBookAsync(createdBook.Id);
 
         // Assert

@@ -7,6 +7,7 @@ using JasperFx;
 using Marten;
 using Refit;
 using Weasel.Core;
+using BookStore.AppHost.Tests.Helpers;
 
 namespace BookStore.AppHost.Tests;
 
@@ -17,7 +18,7 @@ public class EmailVerificationTests
 
     public EmailVerificationTests()
     {
-        var httpClient = TestHelpers.GetUnauthenticatedClient();
+        var httpClient = HttpClientHelpers.GetUnauthenticatedClient();
         _client = RestService.For<IIdentityClient>(httpClient);
         _faker = new Faker();
     }
@@ -44,7 +45,7 @@ public class EmailVerificationTests
         catch (ApiException ex)
         {
             _ = await Assert.That((int)ex.StatusCode).IsEqualTo((int)HttpStatusCode.Unauthorized);
-            var problem = await ex.GetContentAsAsync<TestHelpers.ValidationProblemDetails>();
+            var problem = await ex.GetContentAsAsync<AuthenticationHelpers.ValidationProblemDetails>();
             _ = await Assert.That(problem?.Error).IsEqualTo(ErrorCodes.Auth.EmailUnconfirmed);
         }
 

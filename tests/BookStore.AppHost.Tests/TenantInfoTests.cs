@@ -2,6 +2,7 @@ using System.Net;
 using BookStore.Client;
 using BookStore.Shared.Models;
 using Refit;
+using BookStore.AppHost.Tests.Helpers;
 
 namespace BookStore.AppHost.Tests;
 
@@ -10,7 +11,7 @@ public class TenantInfoTests
     [Test]
     public async Task GetTenantInfo_ReturnsCorrectName()
     {
-        var client = RestService.For<ITenantsClient>(TestHelpers.GetUnauthenticatedClient());
+        var client = RestService.For<ITenantsClient>(HttpClientHelpers.GetUnauthenticatedClient());
 
         // 1. Get info for "acme"
         var acmeInfo = await client.GetTenantAsync("acme");
@@ -28,7 +29,7 @@ public class TenantInfoTests
     [Test]
     public async Task GetTenantInfo_InvalidId_ReturnsNotFound()
     {
-        var client = RestService.For<ITenantsClient>(TestHelpers.GetUnauthenticatedClient());
+        var client = RestService.For<ITenantsClient>(HttpClientHelpers.GetUnauthenticatedClient());
 
         var exception = await Assert.That(async () => await client.GetTenantAsync("invalid-tenant-id"))
             .Throws<ApiException>();

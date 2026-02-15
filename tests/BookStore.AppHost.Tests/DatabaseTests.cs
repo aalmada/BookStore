@@ -1,5 +1,6 @@
 using Aspire.Hosting;
 using Npgsql;
+using BookStore.AppHost.Tests.Helpers;
 
 namespace BookStore.AppHost.Tests;
 

@@ -5,6 +5,7 @@ using UpdateAuthorRequest = BookStore.Client.UpdateAuthorRequest;
 using UpdateBookRequest = BookStore.Client.UpdateBookRequest;
 using UpdateCategoryRequest = BookStore.Client.UpdateCategoryRequest;
 using UpdatePublisherRequest = BookStore.Client.UpdatePublisherRequest;
+using BookStore.AppHost.Tests.Helpers;
 
 namespace BookStore.AppHost.Tests;
 
@@ -14,9 +15,9 @@ public class UpdateTests
     public async Task UpdateAuthor_FullUpdate_ShouldReflectChanges()
     {
         // Arrange
-        var client = await TestHelpers.GetAuthenticatedClientAsync<IAuthorsClient>();
-        var createRequest = TestHelpers.GenerateFakeAuthorRequest();
-        var author = await TestHelpers.CreateAuthorAsync(client, createRequest);
+        var client = await HttpClientHelpers.GetAuthenticatedClientAsync<IAuthorsClient>();
+        var createRequest = FakeDataGenerators.GenerateFakeAuthorRequest();
+        var author = await AuthorHelpers.CreateAuthorAsync(client, createRequest);
 
         var updateRequest = new UpdateAuthorRequest
         {
@@ -29,14 +30,14 @@ public class UpdateTests
         };
 
         // Act
-        author = await TestHelpers.UpdateAuthorAsync(client, author, updateRequest);
+        author = await AuthorHelpers.UpdateAuthorAsync(client, author, updateRequest);
 
         // Assert
         var updatedAuthorAdmin = await client.GetAuthorAsync(author.Id);
         _ = await Assert.That(updatedAuthorAdmin.Name).IsEqualTo(updateRequest.Name);
 
         // Verify translations via public API
-        var publicClient = RestService.For<IAuthorsClient>(TestHelpers.GetUnauthenticatedClient());
+        var publicClient = RestService.For<IAuthorsClient>(HttpClientHelpers.GetUnauthenticatedClient());
 
         var enAuthor = await publicClient.GetAuthorAsync(author.Id, "en");
         var ptAuthor = await publicClient.GetAuthorAsync(author.Id, "pt-PT");
@@ -49,9 +50,9 @@ public class UpdateTests
     public async Task UpdateCategory_FullUpdate_ShouldReflectChanges()
     {
         // Arrange
-        var client = await TestHelpers.GetAuthenticatedClientAsync<ICategoriesClient>();
-        var createRequest = TestHelpers.GenerateFakeCategoryRequest();
-        var category = await TestHelpers.CreateCategoryAsync(client, createRequest);
+        var client = await HttpClientHelpers.GetAuthenticatedClientAsync<ICategoriesClient>();
+        var createRequest = FakeDataGenerators.GenerateFakeCategoryRequest();
+        var category = await CategoryHelpers.CreateCategoryAsync(client, createRequest);
 
         var updateRequest = new UpdateCategoryRequest
         {
@@ -63,10 +64,10 @@ public class UpdateTests
         };
 
         // Act
-        category = await TestHelpers.UpdateCategoryAsync(client, category, updateRequest);
+        category = await CategoryHelpers.UpdateCategoryAsync(client, category, updateRequest);
 
         // Assert
-        var publicClient = RestService.For<ICategoriesClient>(TestHelpers.GetUnauthenticatedClient());
+        var publicClient = RestService.For<ICategoriesClient>(HttpClientHelpers.GetUnauthenticatedClient());
 
         var enCat = await publicClient.GetCategoryAsync(category.Id, null, "en");
         var esCat = await publicClient.GetCategoryAsync(category.Id, null, "es");
@@ -79,17 +80,17 @@ public class UpdateTests
     public async Task UpdatePublisher_FullUpdate_ShouldReflectChanges()
     {
         // Arrange
-        var client = await TestHelpers.GetAuthenticatedClientAsync<IPublishersClient>();
-        var createRequest = TestHelpers.GenerateFakePublisherRequest();
-        var publisher = await TestHelpers.CreatePublisherAsync(client, createRequest);
+        var client = await HttpClientHelpers.GetAuthenticatedClientAsync<IPublishersClient>();
+        var createRequest = FakeDataGenerators.GenerateFakePublisherRequest();
+        var publisher = await PublisherHelpers.CreatePublisherAsync(client, createRequest);
 
         var updateRequest = new UpdatePublisherRequest { Name = "Updated Publisher Name" };
 
         // Act
-        publisher = await TestHelpers.UpdatePublisherAsync(client, publisher, updateRequest);
+        publisher = await PublisherHelpers.UpdatePublisherAsync(client, publisher, updateRequest);
 
         // Assert
-        var publicClient = RestService.For<IPublishersClient>(TestHelpers.GetUnauthenticatedClient());
+        var publicClient = RestService.For<IPublishersClient>(HttpClientHelpers.GetUnauthenticatedClient());
 
         var updatedPub = await publicClient.GetPublisherAsync(publisher.Id);
         _ = await Assert.That(updatedPub.Name).IsEqualTo(updateRequest.Name);
@@ -99,21 +100,21 @@ public class UpdateTests
     public async Task UpdateBook_FullUpdate_ShouldReflectChanges()
     {
         // Arrange
-        var client = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
-        var authorsClient = await TestHelpers.GetAuthenticatedClientAsync<IAuthorsClient>();
-        var categoriesClient = await TestHelpers.GetAuthenticatedClientAsync<ICategoriesClient>();
-        var publishersClient = await TestHelpers.GetAuthenticatedClientAsync<IPublishersClient>();
+        var client = await HttpClientHelpers.GetAuthenticatedClientAsync<IBooksClient>();
+        var authorsClient = await HttpClientHelpers.GetAuthenticatedClientAsync<IAuthorsClient>();
+        var categoriesClient = await HttpClientHelpers.GetAuthenticatedClientAsync<ICategoriesClient>();
+        var publishersClient = await HttpClientHelpers.GetAuthenticatedClientAsync<IPublishersClient>();
 
         var originalAuthor =
-            await TestHelpers.CreateAuthorAsync(authorsClient, TestHelpers.GenerateFakeAuthorRequest());
+            await AuthorHelpers.CreateAuthorAsync(authorsClient, FakeDataGenerators.GenerateFakeAuthorRequest());
         var originalCategory =
-            await TestHelpers.CreateCategoryAsync(categoriesClient, TestHelpers.GenerateFakeCategoryRequest());
+            await CategoryHelpers.CreateCategoryAsync(categoriesClient, FakeDataGenerators.GenerateFakeCategoryRequest());
         var originalPublisher =
-            await TestHelpers.CreatePublisherAsync(publishersClient, TestHelpers.GenerateFakePublisherRequest());
+            await PublisherHelpers.CreatePublisherAsync(publishersClient, FakeDataGenerators.GenerateFakePublisherRequest());
 
         var createRequest =
-            TestHelpers.GenerateFakeBookRequest(originalPublisher.Id, [originalAuthor.Id], [originalCategory.Id]);
-        var book = await TestHelpers.CreateBookAsync(client, createRequest);
+            FakeDataGenerators.GenerateFakeBookRequest(originalPublisher.Id, [originalAuthor.Id], [originalCategory.Id]);
+        var book = await BookHelpers.CreateBookAsync(client, createRequest);
 
         // Retrieve ETag
         var getResponse = await client.GetBookWithResponseAsync(book.Id);
@@ -121,11 +122,11 @@ public class UpdateTests
         _ = await Assert.That(etag).IsNotNull();
 
         // New dependencies
-        var newAuthor = await TestHelpers.CreateAuthorAsync(authorsClient, TestHelpers.GenerateFakeAuthorRequest());
+        var newAuthor = await AuthorHelpers.CreateAuthorAsync(authorsClient, FakeDataGenerators.GenerateFakeAuthorRequest());
         var newCategory =
-            await TestHelpers.CreateCategoryAsync(categoriesClient, TestHelpers.GenerateFakeCategoryRequest());
+            await CategoryHelpers.CreateCategoryAsync(categoriesClient, FakeDataGenerators.GenerateFakeCategoryRequest());
         var newPublisher =
-            await TestHelpers.CreatePublisherAsync(publishersClient, TestHelpers.GenerateFakePublisherRequest());
+            await PublisherHelpers.CreatePublisherAsync(publishersClient, FakeDataGenerators.GenerateFakePublisherRequest());
 
         var updateRequest = new UpdateBookRequest
         {
@@ -144,11 +145,11 @@ public class UpdateTests
             }
         };
 
-        book = await TestHelpers.UpdateBookAsync(client, book.Id, updateRequest, etag!);
+        book = await BookHelpers.UpdateBookAsync(client, book.Id, updateRequest, etag!);
 
         // Assert
-        var enClient = TestHelpers.GetUnauthenticatedClientWithLanguage<IBooksClient>("en");
-        var ptClient = TestHelpers.GetUnauthenticatedClientWithLanguage<IBooksClient>("pt-PT");
+        var enClient = HttpClientHelpers.GetUnauthenticatedClientWithLanguage<IBooksClient>("en");
+        var ptClient = HttpClientHelpers.GetUnauthenticatedClientWithLanguage<IBooksClient>("pt-PT");
 
         var enBook = await enClient.GetBookAsync(book.Id);
         var ptBook = await ptClient.GetBookAsync(book.Id);

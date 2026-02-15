@@ -3,6 +3,7 @@ using Aspire.Hosting;
 using Aspire.Hosting.Testing;
 using BookStore.ApiService.Aggregates;
 using BookStore.ApiService.Events;
+using BookStore.AppHost.Tests.Helpers;
 using BookStore.Shared.Models;
 using JasperFx;
 using JasperFx.Core;
@@ -151,7 +152,7 @@ public static class GlobalHooks
 
         // Retry login mechanism (less aggressive now that we control seeding)
         HttpResponseMessage? loginResponse = null;
-        await TestHelpers.WaitForConditionAsync(async () =>
+        await SseEventHelpers.WaitForConditionAsync(async () =>
         {
             try
             {

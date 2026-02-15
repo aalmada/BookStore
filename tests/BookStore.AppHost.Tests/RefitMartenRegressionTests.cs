@@ -5,6 +5,7 @@ using Refit;
 using Weasel.Core;
 using CreateAuthorRequest = BookStore.Client.CreateAuthorRequest;
 using CreateBookRequest = BookStore.Client.CreateBookRequest;
+using BookStore.AppHost.Tests.Helpers;
 
 namespace BookStore.AppHost.Tests;
 
@@ -14,7 +15,7 @@ public class RefitMartenRegressionTests
     public async Task GetPublishers_ShouldReturnPagedListDto_MatchingRefitExpectation()
     {
         // Arrange
-        var client = RestService.For<IPublishersClient>(TestHelpers.GetUnauthenticatedClient());
+        var client = RestService.For<IPublishersClient>(HttpClientHelpers.GetUnauthenticatedClient());
 
         // Act
         // This effectively tests that the server response structure matches PagedListDto<T>
@@ -31,8 +32,8 @@ public class RefitMartenRegressionTests
     public async Task SearchBooks_WithPriceFilter_ShouldNotThrow500()
     {
         // Arrange
-        var authClient = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
-        var publicClient = RestService.For<IBooksClient>(TestHelpers.GetUnauthenticatedClient());
+        var authClient = await HttpClientHelpers.GetAuthenticatedClientAsync<IBooksClient>();
+        var publicClient = RestService.For<IBooksClient>(HttpClientHelpers.GetUnauthenticatedClient());
 
         // Create a book with a specific price to ensure we have data to query against
         var uniqueTitle = $"PriceTest-{Guid.NewGuid()}";
@@ -47,7 +48,7 @@ public class RefitMartenRegressionTests
             PublicationDate = new PartialDate(2024, 1, 1),
             Prices = new Dictionary<string, decimal> { ["USD"] = 10.0m }
         };
-        _ = await TestHelpers.CreateBookAsync(authClient, createRequest);
+        _ = await BookHelpers.CreateBookAsync(authClient, createRequest);
 
         // Act
         // This query caused Marten.Exceptions.BadLinqExpressionException before the fix
@@ -68,8 +69,8 @@ public class RefitMartenRegressionTests
     public async Task SearchBooks_WithPriceFilter_ShouldExcludeOutOfRange()
     {
         // Arrange
-        var authClient = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
-        var publicClient = RestService.For<IBooksClient>(TestHelpers.GetUnauthenticatedClient());
+        var authClient = await HttpClientHelpers.GetAuthenticatedClientAsync<IBooksClient>();
+        var publicClient = RestService.For<IBooksClient>(HttpClientHelpers.GetUnauthenticatedClient());
 
         // Create a book with price 20.0 (outside range 5-15)
         var uniqueTitle = $"OutOfRange-{Guid.NewGuid()}";
@@ -84,7 +85,7 @@ public class RefitMartenRegressionTests
             PublicationDate = new PartialDate(2024, 1, 1),
             Prices = new Dictionary<string, decimal> { ["USD"] = 20.0m }
         };
-        _ = await TestHelpers.CreateBookAsync(authClient, createRequest);
+        _ = await BookHelpers.CreateBookAsync(authClient, createRequest);
 
         // Act
         var response = await publicClient.GetBooksAsync(new BookSearchRequest
@@ -104,9 +105,9 @@ public class RefitMartenRegressionTests
     {
         // Arrange
         // Create a book to ensure data exists with the new PublicationDateString field populated
-        var authClient = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
+        var authClient = await HttpClientHelpers.GetAuthenticatedClientAsync<IBooksClient>();
         var uniqueTitle = $"DateSort-{Guid.NewGuid()}";
-        _ = await TestHelpers.CreateBookAsync(authClient,
+        _ = await BookHelpers.CreateBookAsync(authClient,
             new CreateBookRequest
             {
                 Id = Guid.CreateVersion7(),
@@ -119,7 +120,7 @@ public class RefitMartenRegressionTests
                 Prices = new Dictionary<string, decimal> { ["USD"] = 10.0m }
             });
 
-        var publicClient = RestService.For<IBooksClient>(TestHelpers.GetUnauthenticatedClient());
+        var publicClient = RestService.For<IBooksClient>(HttpClientHelpers.GetUnauthenticatedClient());
 
         // Act
         // This query caused Marten.Exceptions.BadLinqExpressionException before the fix
@@ -139,8 +140,8 @@ public class RefitMartenRegressionTests
         // it matches because 10 <= 15, even though the USD price is 100.
 
         // Arrange
-        var authClient = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
-        var publicClient = RestService.For<IBooksClient>(TestHelpers.GetUnauthenticatedClient());
+        var authClient = await HttpClientHelpers.GetAuthenticatedClientAsync<IBooksClient>();
+        var publicClient = RestService.For<IBooksClient>(HttpClientHelpers.GetUnauthenticatedClient());
 
         var uniqueTitle = $"CurrencyMismatch-{Guid.NewGuid()}";
         var createRequest = new CreateBookRequest
@@ -158,7 +159,7 @@ public class RefitMartenRegressionTests
                 ["EUR"] = 10.0m // Cheap in EUR
             }
         };
-        _ = await TestHelpers.CreateBookAsync(authClient, createRequest);
+        _ = await BookHelpers.CreateBookAsync(authClient, createRequest);
 
         // Act
         // Filter: MaxPrice 15 AND Currency=USD.
@@ -202,30 +203,30 @@ public class RefitMartenRegressionTests
                    opts.UseSystemTextJsonForSerialization(EnumStorage.AsString, Casing.CamelCase);
                }))
         {
-            await TestHelpers.SeedTenantAsync(store, tenantId);
+            await DatabaseHelpers.SeedTenantAsync(store, tenantId);
         }
 
         // 1. Authenticate as Admin in the new tenant
-        var loginRes = await TestHelpers.LoginAsAdminAsync(tenantId);
+        var loginRes = await AuthenticationHelpers.LoginAsAdminAsync(tenantId);
         _ = await Assert.That(loginRes).IsNotNull();
 
         var adminClient =
-            RestService.For<IAuthorsClient>(TestHelpers.GetAuthenticatedClient(loginRes!.AccessToken, tenantId));
+            RestService.For<IAuthorsClient>(HttpClientHelpers.GetAuthenticatedClient(loginRes!.AccessToken, tenantId));
         var adminBooksClient =
-            RestService.For<IBooksClient>(TestHelpers.GetAuthenticatedClient(loginRes!.AccessToken, tenantId));
+            RestService.For<IBooksClient>(HttpClientHelpers.GetAuthenticatedClient(loginRes!.AccessToken, tenantId));
 
         // 2. Create an Author in this tenant
-        var authorReq = TestHelpers.GenerateFakeAuthorRequest();
+        var authorReq = FakeDataGenerators.GenerateFakeAuthorRequest();
         var authorRes = await adminClient.CreateAuthorWithResponseAsync(authorReq);
         _ = await Assert.That(authorRes.StatusCode).IsEqualTo(HttpStatusCode.Created);
         var authorId = authorRes.Content!.Id;
 
         // 3. Create a Book linked to this Author
-        var bookReq = TestHelpers.GenerateFakeBookRequest(authorIds: new[] { authorId });
-        var book = await TestHelpers.CreateBookAsync(adminBooksClient, bookReq);
+        var bookReq = FakeDataGenerators.GenerateFakeBookRequest(authorIds: new[] { authorId });
+        var book = await BookHelpers.CreateBookAsync(adminBooksClient, bookReq);
 
         // 4. Search for the book using the Author Filter
-        var publicClient = RestService.For<IBooksClient>(TestHelpers.GetUnauthenticatedClient(tenantId));
+        var publicClient = RestService.For<IBooksClient>(HttpClientHelpers.GetUnauthenticatedClient(tenantId));
 
         // Act
         var response = await publicClient.GetBooksAsync(new BookSearchRequest { AuthorId = authorId });
@@ -256,29 +257,29 @@ public class RefitMartenRegressionTests
             opts.UseSystemTextJsonForSerialization(EnumStorage.AsString, Casing.CamelCase);
         });
 
-        await TestHelpers.SeedTenantAsync(store, tenantA);
-        await TestHelpers.SeedTenantAsync(store, tenantB);
+        await DatabaseHelpers.SeedTenantAsync(store, tenantA);
+        await DatabaseHelpers.SeedTenantAsync(store, tenantB);
 
-        var loginResA = await TestHelpers.LoginAsAdminAsync(tenantA);
+        var loginResA = await AuthenticationHelpers.LoginAsAdminAsync(tenantA);
         var adminClientA =
-            RestService.For<IAuthorsClient>(TestHelpers.GetAuthenticatedClient(loginResA!.AccessToken, tenantA));
+            RestService.For<IAuthorsClient>(HttpClientHelpers.GetAuthenticatedClient(loginResA!.AccessToken, tenantA));
 
-        var loginResB = await TestHelpers.LoginAsAdminAsync(tenantB);
+        var loginResB = await AuthenticationHelpers.LoginAsAdminAsync(tenantB);
         var adminClientB =
-            RestService.For<IAuthorsClient>(TestHelpers.GetAuthenticatedClient(loginResB!.AccessToken, tenantB));
+            RestService.For<IAuthorsClient>(HttpClientHelpers.GetAuthenticatedClient(loginResB!.AccessToken, tenantB));
 
         // Create Unique Authors and wait for projection
-        var authorReqA = TestHelpers.GenerateFakeAuthorRequest();
-        var authorA = await TestHelpers.CreateAuthorAsync(adminClientA, authorReqA);
+        var authorReqA = FakeDataGenerators.GenerateFakeAuthorRequest();
+        var authorA = await AuthorHelpers.CreateAuthorAsync(adminClientA, authorReqA);
         _ = await Assert.That(authorA).IsNotNull();
 
-        var authorReqB = TestHelpers.GenerateFakeAuthorRequest();
-        var authorB = await TestHelpers.CreateAuthorAsync(adminClientB, authorReqB);
+        var authorReqB = FakeDataGenerators.GenerateFakeAuthorRequest();
+        var authorB = await AuthorHelpers.CreateAuthorAsync(adminClientB, authorReqB);
         _ = await Assert.That(authorB).IsNotNull();
 
         // Act & Assert
         // 1. Get Authors from Tenant A. Should contain Author A.
-        var publicClientA = RestService.For<IAuthorsClient>(TestHelpers.GetUnauthenticatedClient(tenantA));
+        var publicClientA = RestService.For<IAuthorsClient>(HttpClientHelpers.GetUnauthenticatedClient(tenantA));
 
         var nameA = authorReqA.Name;
 
@@ -286,7 +287,7 @@ public class RefitMartenRegressionTests
         _ = await Assert.That(listA.Items.Any(a => a.Name == nameA)).IsTrue();
 
         // 2. Get Authors from Tenant B. Should contain Author B, AND NOT Author A.
-        var publicClientB = RestService.For<IAuthorsClient>(TestHelpers.GetUnauthenticatedClient(tenantB));
+        var publicClientB = RestService.For<IAuthorsClient>(HttpClientHelpers.GetUnauthenticatedClient(tenantB));
 
         var nameB = authorReqB.Name;
 

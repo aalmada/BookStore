@@ -1,6 +1,7 @@
 using System.Net;
 using BookStore.Client;
 using TUnit.Assertions.Extensions;
+using BookStore.AppHost.Tests.Helpers;
 
 namespace BookStore.AppHost.Tests;
 
@@ -10,18 +11,18 @@ public class BookConcurrencyTests
     public async Task UpdateBook_TwiceWithSameETag_ShouldFailOnSecondUpdate()
     {
         // Arrange
-        var client = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
-        var createRequest = TestHelpers.GenerateFakeBookRequest();
-        var book = await TestHelpers.CreateBookAsync(client, createRequest);
+        var client = await HttpClientHelpers.GetAuthenticatedClientAsync<IBooksClient>();
+        var createRequest = FakeDataGenerators.GenerateFakeBookRequest();
+        var book = await BookHelpers.CreateBookAsync(client, createRequest);
 
         // Get initial state and ETag
         var response = await client.GetBookWithResponseAsync(book.Id);
         var etag = response.Headers.ETag?.Tag;
         _ = await Assert.That(etag).IsNotNull();
 
-        var updateRequest1 = TestHelpers.GenerateFakeUpdateBookRequest(book.Publisher?.Id,
+        var updateRequest1 = FakeDataGenerators.GenerateFakeUpdateBookRequest(book.Publisher?.Id,
             book.Authors.Select(a => a.Id), book.Categories.Select(c => c.Id));
-        var updateRequest2 = TestHelpers.GenerateFakeUpdateBookRequest(book.Publisher?.Id,
+        var updateRequest2 = FakeDataGenerators.GenerateFakeUpdateBookRequest(book.Publisher?.Id,
             book.Authors.Select(a => a.Id), book.Categories.Select(c => c.Id));
 
         // Act - First update succeeds
@@ -38,16 +39,16 @@ public class BookConcurrencyTests
     public async Task UpdateThenDeleteBook_WithSameETag_ShouldFailOnDelete()
     {
         // Arrange
-        var client = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
-        var createRequest = TestHelpers.GenerateFakeBookRequest();
-        var book = await TestHelpers.CreateBookAsync(client, createRequest);
+        var client = await HttpClientHelpers.GetAuthenticatedClientAsync<IBooksClient>();
+        var createRequest = FakeDataGenerators.GenerateFakeBookRequest();
+        var book = await BookHelpers.CreateBookAsync(client, createRequest);
 
         // Get initial state and ETag
         var response = await client.GetBookWithResponseAsync(book.Id);
         var etag = response.Headers.ETag?.Tag;
         _ = await Assert.That(etag).IsNotNull();
 
-        var updateRequest = TestHelpers.GenerateFakeUpdateBookRequest(book.Publisher?.Id,
+        var updateRequest = FakeDataGenerators.GenerateFakeUpdateBookRequest(book.Publisher?.Id,
             book.Authors.Select(a => a.Id), book.Categories.Select(c => c.Id));
 
         // Act - Update succeeds
@@ -64,16 +65,16 @@ public class BookConcurrencyTests
     public async Task DeleteThenUpdateBook_WithSameETag_ShouldFailOnUpdate()
     {
         // Arrange
-        var client = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
-        var createRequest = TestHelpers.GenerateFakeBookRequest();
-        var book = await TestHelpers.CreateBookAsync(client, createRequest);
+        var client = await HttpClientHelpers.GetAuthenticatedClientAsync<IBooksClient>();
+        var createRequest = FakeDataGenerators.GenerateFakeBookRequest();
+        var book = await BookHelpers.CreateBookAsync(client, createRequest);
 
         // Get initial state and ETag
         var response = await client.GetBookWithResponseAsync(book.Id);
         var etag = response.Headers.ETag?.Tag;
         _ = await Assert.That(etag).IsNotNull();
 
-        var updateRequest = TestHelpers.GenerateFakeUpdateBookRequest(book.Publisher?.Id,
+        var updateRequest = FakeDataGenerators.GenerateFakeUpdateBookRequest(book.Publisher?.Id,
             book.Authors.Select(a => a.Id), book.Categories.Select(c => c.Id));
 
         // Act - Delete succeeds

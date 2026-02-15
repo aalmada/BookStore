@@ -1,6 +1,7 @@
 using System.Net;
 using BookStore.Client;
 using TUnit.Assertions.Extensions;
+using BookStore.AppHost.Tests.Helpers;
 
 namespace BookStore.AppHost.Tests;
 
@@ -10,17 +11,17 @@ public class ConcurrencyTests
     public async Task UpdateAuthor_TwiceWithSameETag_ShouldFailOnSecondUpdate()
     {
         // Arrange
-        var client = await TestHelpers.GetAuthenticatedClientAsync<IAuthorsClient>();
-        var createRequest = TestHelpers.GenerateFakeAuthorRequest();
-        var author = await TestHelpers.CreateAuthorAsync(client, createRequest);
+        var client = await HttpClientHelpers.GetAuthenticatedClientAsync<IAuthorsClient>();
+        var createRequest = FakeDataGenerators.GenerateFakeAuthorRequest();
+        var author = await AuthorHelpers.CreateAuthorAsync(client, createRequest);
 
         // Get initial state and ETag
         var response = await client.GetAuthorWithResponseAsync(author.Id);
         var etag = response.Headers.ETag?.Tag;
         _ = await Assert.That(etag).IsNotNull();
 
-        var updateRequest1 = TestHelpers.GenerateFakeUpdateAuthorRequest();
-        var updateRequest2 = TestHelpers.GenerateFakeUpdateAuthorRequest();
+        var updateRequest1 = FakeDataGenerators.GenerateFakeUpdateAuthorRequest();
+        var updateRequest2 = FakeDataGenerators.GenerateFakeUpdateAuthorRequest();
 
         // Act - First update succeeds
         await client.UpdateAuthorAsync(author.Id, updateRequest1, etag);
@@ -36,16 +37,16 @@ public class ConcurrencyTests
     public async Task UpdateThenDeleteAuthor_WithSameETag_ShouldFailOnDelete()
     {
         // Arrange
-        var client = await TestHelpers.GetAuthenticatedClientAsync<IAuthorsClient>();
-        var createRequest = TestHelpers.GenerateFakeAuthorRequest();
-        var author = await TestHelpers.CreateAuthorAsync(client, createRequest);
+        var client = await HttpClientHelpers.GetAuthenticatedClientAsync<IAuthorsClient>();
+        var createRequest = FakeDataGenerators.GenerateFakeAuthorRequest();
+        var author = await AuthorHelpers.CreateAuthorAsync(client, createRequest);
 
         // Get initial state and ETag
         var response = await client.GetAuthorWithResponseAsync(author.Id);
         var etag = response.Headers.ETag?.Tag;
         _ = await Assert.That(etag).IsNotNull();
 
-        var updateRequest = TestHelpers.GenerateFakeUpdateAuthorRequest();
+        var updateRequest = FakeDataGenerators.GenerateFakeUpdateAuthorRequest();
 
         // Act - Update succeeds
         await client.UpdateAuthorAsync(author.Id, updateRequest, etag);
@@ -61,16 +62,16 @@ public class ConcurrencyTests
     public async Task DeleteThenUpdateAuthor_WithSameETag_ShouldFailOnUpdate()
     {
         // Arrange
-        var client = await TestHelpers.GetAuthenticatedClientAsync<IAuthorsClient>();
-        var createRequest = TestHelpers.GenerateFakeAuthorRequest();
-        var author = await TestHelpers.CreateAuthorAsync(client, createRequest);
+        var client = await HttpClientHelpers.GetAuthenticatedClientAsync<IAuthorsClient>();
+        var createRequest = FakeDataGenerators.GenerateFakeAuthorRequest();
+        var author = await AuthorHelpers.CreateAuthorAsync(client, createRequest);
 
         // Get initial state and ETag
         var response = await client.GetAuthorWithResponseAsync(author.Id);
         var etag = response.Headers.ETag?.Tag;
         _ = await Assert.That(etag).IsNotNull();
 
-        var updateRequest = TestHelpers.GenerateFakeUpdateAuthorRequest();
+        var updateRequest = FakeDataGenerators.GenerateFakeUpdateAuthorRequest();
 
         // Act - Delete succeeds
         await client.SoftDeleteAuthorAsync(author.Id, etag);
@@ -86,11 +87,11 @@ public class ConcurrencyTests
     public async Task UpdateAuthor_MissingETag_ShouldFail()
     {
         // Arrange
-        var client = await TestHelpers.GetAuthenticatedClientAsync<IAuthorsClient>();
-        var createRequest = TestHelpers.GenerateFakeAuthorRequest();
-        var author = await TestHelpers.CreateAuthorAsync(client, createRequest);
+        var client = await HttpClientHelpers.GetAuthenticatedClientAsync<IAuthorsClient>();
+        var createRequest = FakeDataGenerators.GenerateFakeAuthorRequest();
+        var author = await AuthorHelpers.CreateAuthorAsync(client, createRequest);
 
-        var updateRequest = TestHelpers.GenerateFakeUpdateAuthorRequest();
+        var updateRequest = FakeDataGenerators.GenerateFakeUpdateAuthorRequest();
 
         // Act - Update without ETag should fail (once we make it mandatory)
         var updateResponse = await client.UpdateAuthorWithResponseAsync(author.Id, updateRequest, null);

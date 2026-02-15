@@ -8,6 +8,7 @@ using Marten;
 using Microsoft.AspNetCore.Identity;
 using Refit;
 using Weasel.Core;
+using BookStore.AppHost.Tests.Helpers;
 
 namespace BookStore.AppHost.Tests;
 
@@ -18,7 +19,7 @@ public class PasswordManagementTests
 
     public PasswordManagementTests()
     {
-        var httpClient = TestHelpers.GetUnauthenticatedClient();
+        var httpClient = HttpClientHelpers.GetUnauthenticatedClient();
         _client = RestService.For<IIdentityClient>(httpClient);
         _faker = new Faker();
     }
@@ -27,7 +28,7 @@ public class PasswordManagementTests
     public async Task GetPasswordStatus_WhenUserHasPassword_ShouldReturnTrue()
     {
         // Arrange
-        var identityClient = await TestHelpers.CreateUserAndGetClientAsync<IIdentityClient>();
+        var identityClient = await AuthenticationHelpers.CreateUserAndGetClientAsync<IIdentityClient>();
 
         // Act
         var status = await identityClient.GetPasswordStatusAsync();
@@ -41,9 +42,9 @@ public class PasswordManagementTests
     public async Task ChangePassword_WithValidCredentials_ShouldSucceed()
     {
         // Arrange
-        var email = TestHelpers.GenerateFakeEmail();
-        var oldPassword = TestHelpers.GenerateFakePassword();
-        var newPassword = TestHelpers.GenerateFakePassword();
+        var email = FakeDataGenerators.GenerateFakeEmail();
+        var oldPassword = FakeDataGenerators.GenerateFakePassword();
+        var newPassword = FakeDataGenerators.GenerateFakePassword();
 
         // Register
         _ = await _client.RegisterAsync(new RegisterRequest(email, oldPassword));
@@ -52,7 +53,7 @@ public class PasswordManagementTests
         var loginResult = await _client.LoginAsync(new LoginRequest(email, oldPassword));
 
         var authClient = RestService.For<IIdentityClient>(
-            TestHelpers.GetAuthenticatedClient(loginResult.AccessToken, StorageConstants.DefaultTenantId));
+            HttpClientHelpers.GetAuthenticatedClient(loginResult.AccessToken, StorageConstants.DefaultTenantId));
 
         // Act
         await authClient.ChangePasswordAsync(new ChangePasswordRequest(oldPassword, newPassword));
@@ -68,16 +69,16 @@ public class PasswordManagementTests
     public async Task AddPassword_WhenManualClearance_ShouldSucceed()
     {
         // Arrange
-        var email = TestHelpers.GenerateFakeEmail();
-        var tempPassword = TestHelpers.GenerateFakePassword();
-        var newPassword = TestHelpers.GenerateFakePassword();
+        var email = FakeDataGenerators.GenerateFakeEmail();
+        var tempPassword = FakeDataGenerators.GenerateFakePassword();
+        var newPassword = FakeDataGenerators.GenerateFakePassword();
 
         // Register normally
         _ = await _client.RegisterAsync(new RegisterRequest(email, tempPassword));
         var loginResult = await _client.LoginAsync(new LoginRequest(email, tempPassword));
 
         var authClient = RestService.For<IIdentityClient>(
-            TestHelpers.GetAuthenticatedClient(loginResult.AccessToken, StorageConstants.DefaultTenantId));
+            HttpClientHelpers.GetAuthenticatedClient(loginResult.AccessToken, StorageConstants.DefaultTenantId));
 
         // Manually clear password hash in DB
         using var store = await GetStoreAsync();
@@ -111,8 +112,8 @@ public class PasswordManagementTests
     public async Task ChangePassword_WithSamePassword_ShouldReturnBadRequest()
     {
         // Arrange
-        var email = TestHelpers.GenerateFakeEmail();
-        var password = TestHelpers.GenerateFakePassword();
+        var email = FakeDataGenerators.GenerateFakeEmail();
+        var password = FakeDataGenerators.GenerateFakePassword();
 
         // Register
         _ = await _client.RegisterAsync(new RegisterRequest(email, password));
@@ -121,7 +122,7 @@ public class PasswordManagementTests
         var loginResult = await _client.LoginAsync(new LoginRequest(email, password));
 
         var authClient = RestService.For<IIdentityClient>(
-            TestHelpers.GetAuthenticatedClient(loginResult.AccessToken, StorageConstants.DefaultTenantId));
+            HttpClientHelpers.GetAuthenticatedClient(loginResult.AccessToken, StorageConstants.DefaultTenantId));
 
         // Act & Assert
         try
@@ -132,7 +133,7 @@ public class PasswordManagementTests
         catch (ApiException ex)
         {
             _ = await Assert.That((int)ex.StatusCode).IsEqualTo((int)HttpStatusCode.BadRequest);
-            var problem = await ex.GetContentAsAsync<TestHelpers.ValidationProblemDetails>();
+            var problem = await ex.GetContentAsAsync<AuthenticationHelpers.ValidationProblemDetails>();
             _ = await Assert.That(problem?.Error).IsEqualTo(ErrorCodes.Auth.PasswordReuse);
         }
     }
@@ -141,8 +142,8 @@ public class PasswordManagementTests
     public async Task RemovePassword_Fails_WhenUserHasNoPasskey()
     {
         // Arrange
-        var email = TestHelpers.GenerateFakeEmail();
-        var password = TestHelpers.GenerateFakePassword();
+        var email = FakeDataGenerators.GenerateFakeEmail();
+        var password = FakeDataGenerators.GenerateFakePassword();
 
         // Register
         _ = await _client.RegisterAsync(new RegisterRequest(email, password));
@@ -151,7 +152,7 @@ public class PasswordManagementTests
         var loginResult = await _client.LoginAsync(new LoginRequest(email, password));
 
         var authClient = RestService.For<IIdentityClient>(
-            TestHelpers.GetAuthenticatedClient(loginResult.AccessToken, StorageConstants.DefaultTenantId));
+            HttpClientHelpers.GetAuthenticatedClient(loginResult.AccessToken, StorageConstants.DefaultTenantId));
 
         // Act & Assert
         try
@@ -162,7 +163,7 @@ public class PasswordManagementTests
         catch (ApiException ex)
         {
             _ = await Assert.That((int)ex.StatusCode).IsEqualTo((int)HttpStatusCode.BadRequest);
-            var problem = await ex.GetContentAsAsync<TestHelpers.ValidationProblemDetails>();
+            var problem = await ex.GetContentAsAsync<AuthenticationHelpers.ValidationProblemDetails>();
             _ = await Assert.That(problem?.Error).IsEqualTo(ErrorCodes.Auth.InvalidRequest);
         }
     }
@@ -171,8 +172,8 @@ public class PasswordManagementTests
     public async Task RemovePassword_Succeeds_WhenUserHasPasskey()
     {
         // Arrange
-        var email = TestHelpers.GenerateFakeEmail();
-        var password = TestHelpers.GenerateFakePassword();
+        var email = FakeDataGenerators.GenerateFakeEmail();
+        var password = FakeDataGenerators.GenerateFakePassword();
 
         // Register
         _ = await _client.RegisterAsync(new RegisterRequest(email, password));
@@ -181,7 +182,7 @@ public class PasswordManagementTests
         var loginResult = await _client.LoginAsync(new LoginRequest(email, password));
 
         var authClient = RestService.For<IIdentityClient>(
-            TestHelpers.GetAuthenticatedClient(loginResult.AccessToken, StorageConstants.DefaultTenantId));
+            HttpClientHelpers.GetAuthenticatedClient(loginResult.AccessToken, StorageConstants.DefaultTenantId));
 
         // Manually add a passkey
         using var store = await GetStoreAsync();

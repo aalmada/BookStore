@@ -6,6 +6,7 @@ using Refit;
 using Weasel.Core;
 using CreateAuthorRequest = BookStore.Client.CreateAuthorRequest;
 using CreateBookRequest = BookStore.Client.CreateBookRequest;
+using BookStore.AppHost.Tests.Helpers;
 
 namespace BookStore.AppHost.Tests;
 
@@ -27,33 +28,33 @@ public class BookFilterRegressionTests
                    opts.UseSystemTextJsonForSerialization(EnumStorage.AsString, Casing.CamelCase);
                }))
         {
-            await TestHelpers.SeedTenantAsync(store, tenantId);
+            await DatabaseHelpers.SeedTenantAsync(store, tenantId);
         }
 
         // Authenticate as Admin in the new tenant
-        var loginRes = await TestHelpers.LoginAsAdminAsync(tenantId);
+        var loginRes = await AuthenticationHelpers.LoginAsAdminAsync(tenantId);
         var adminClient =
-            RestService.For<IAuthorsClient>(TestHelpers.GetAuthenticatedClient(loginRes!.AccessToken, tenantId));
+            RestService.For<IAuthorsClient>(HttpClientHelpers.GetAuthenticatedClient(loginRes!.AccessToken, tenantId));
         var adminBooksClient =
-            RestService.For<IBooksClient>(TestHelpers.GetAuthenticatedClient(loginRes!.AccessToken, tenantId));
+            RestService.For<IBooksClient>(HttpClientHelpers.GetAuthenticatedClient(loginRes!.AccessToken, tenantId));
 
         // Create Author in this tenant
-        var authorReq = TestHelpers.GenerateFakeAuthorRequest();
-        var author = await TestHelpers.CreateAuthorAsync(adminClient, authorReq);
+        var authorReq = FakeDataGenerators.GenerateFakeAuthorRequest();
+        var author = await AuthorHelpers.CreateAuthorAsync(adminClient, authorReq);
         var authorId = author.Id;
 
         // Create Book linked to this Author
-        var bookReq = TestHelpers.GenerateFakeBookRequest(authorIds: new[] { authorId });
-        var book = await TestHelpers.CreateBookAsync(adminBooksClient, bookReq);
+        var bookReq = FakeDataGenerators.GenerateFakeBookRequest(authorIds: new[] { authorId });
+        var book = await BookHelpers.CreateBookAsync(adminBooksClient, bookReq);
 
         // Search in correct tenant
-        var tenantClient = RestService.For<IBooksClient>(TestHelpers.GetUnauthenticatedClient(tenantId));
+        var tenantClient = RestService.For<IBooksClient>(HttpClientHelpers.GetUnauthenticatedClient(tenantId));
 
         var list = await tenantClient.GetBooksAsync(new BookSearchRequest { AuthorId = authorId });
         _ = await Assert.That(list != null && list.Items.Any(b => b.Id == book.Id)).IsTrue();
 
         // Search in WRONG tenant (Default)
-        var defaultTenantClient = RestService.For<IBooksClient>(TestHelpers.GetUnauthenticatedClient());
+        var defaultTenantClient = RestService.For<IBooksClient>(HttpClientHelpers.GetUnauthenticatedClient());
         // No X-Tenant-ID header implies default tenant
 
         var listDefault = await defaultTenantClient.GetBooksAsync(new BookSearchRequest { AuthorId = authorId });
@@ -77,8 +78,8 @@ public class BookFilterRegressionTests
         double? maxPrice, bool expectedFound)
     {
         // Debugging Multi-Currency Price Filter
-        var authClient = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
-        var publicClient = RestService.For<IBooksClient>(TestHelpers.GetUnauthenticatedClient());
+        var authClient = await HttpClientHelpers.GetAuthenticatedClientAsync<IBooksClient>();
+        var publicClient = RestService.For<IBooksClient>(HttpClientHelpers.GetUnauthenticatedClient());
 
         var uniqueTitle = $"MultiCurrency-{Guid.NewGuid()}";
         // Create book with: USD=10, EUR=50
@@ -95,7 +96,7 @@ public class BookFilterRegressionTests
         };
 
         // Wait for projection
-        _ = await TestHelpers.CreateBookAsync(authClient, createRequest);
+        _ = await BookHelpers.CreateBookAsync(authClient, createRequest);
 
         var contentInitial = await publicClient.GetBooksAsync(new BookSearchRequest { Search = uniqueTitle });
         _ = await Assert.That(contentInitial != null && contentInitial.Items.Any(b => b.Title == uniqueTitle)).IsTrue();
@@ -127,8 +128,8 @@ public class BookFilterRegressionTests
     public async Task SearchBooks_WithActiveSale_ShouldFilterByDiscountedPrice()
     {
         // Debugging Price Filter taking Sale into account
-        var authClient = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
-        var publicClient = RestService.For<IBooksClient>(TestHelpers.GetUnauthenticatedClient());
+        var authClient = await HttpClientHelpers.GetAuthenticatedClientAsync<IBooksClient>();
+        var publicClient = RestService.For<IBooksClient>(HttpClientHelpers.GetUnauthenticatedClient());
 
         var uniqueTitle = $"SaleBook-{Guid.NewGuid()}";
         // Create book with Price=50 USD
@@ -144,7 +145,7 @@ public class BookFilterRegressionTests
             Prices = new Dictionary<string, decimal> { ["USD"] = 50.0m }
         };
 
-        var book = await TestHelpers.CreateBookAsync(authClient, createRequest);
+        var book = await BookHelpers.CreateBookAsync(authClient, createRequest);
         var bookId = book.Id;
 
         // Verify initially NOT found with MaxPrice=40 (Price is 50)
@@ -161,7 +162,7 @@ public class BookFilterRegressionTests
         var saleRequest =
             new ScheduleSaleRequest(50m, DateTimeOffset.UtcNow.AddSeconds(-5), DateTimeOffset.UtcNow.AddDays(1));
 
-        var putReceived = await TestHelpers.ExecuteAndWaitForEventAsync(bookId, "BookUpdated",
+        var putReceived = await SseEventHelpers.ExecuteAndWaitForEventAsync(bookId, "BookUpdated",
             async () => await authClient.ScheduleBookSaleAsync(bookId, saleRequest, book.ETag),
             TimeSpan.FromSeconds(5));
 

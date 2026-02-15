@@ -7,6 +7,7 @@ using JasperFx;
 using Refit;
 using CreateAuthorRequest = BookStore.Client.CreateAuthorRequest;
 using UpdateAuthorRequest = BookStore.Client.UpdateAuthorRequest;
+using BookStore.AppHost.Tests.Helpers;
 
 namespace BookStore.AppHost.Tests;
 
@@ -16,11 +17,11 @@ public class AuthorCrudTests
     public async Task CreateAuthor_EndToEndFlow_ShouldReturnOk()
     {
         // Arrange
-        var client = await TestHelpers.GetAuthenticatedClientAsync<IAuthorsClient>();
-        var createAuthorRequest = TestHelpers.GenerateFakeAuthorRequest();
+        var client = await HttpClientHelpers.GetAuthenticatedClientAsync<IAuthorsClient>();
+        var createAuthorRequest = FakeDataGenerators.GenerateFakeAuthorRequest();
 
         // 1. Create Author
-        _ = await TestHelpers.ExecuteAndWaitForEventAsync(
+        _ = await SseEventHelpers.ExecuteAndWaitForEventAsync(
             createAuthorRequest.Id,
             ["AuthorCreated", "AuthorUpdated"],
             async () => await client.CreateAuthorAsync(createAuthorRequest),
@@ -37,7 +38,7 @@ public class AuthorCrudTests
     public async Task CreateAuthor_WithInvalidName_ShouldReturnBadRequest(string? invalidName)
     {
         // Arrange
-        var client = await TestHelpers.GetAuthenticatedClientAsync<IAuthorsClient>();
+        var client = await HttpClientHelpers.GetAuthenticatedClientAsync<IAuthorsClient>();
         var request = new CreateAuthorRequest
         {
             Id = Guid.CreateVersion7(),
@@ -64,14 +65,14 @@ public class AuthorCrudTests
     public async Task UpdateAuthor_ShouldReturnOk()
     {
         // Arrange
-        var client = await TestHelpers.GetAuthenticatedClientAsync<IAuthorsClient>();
-        var createRequest = TestHelpers.GenerateFakeAuthorRequest();
-        var author = await TestHelpers.CreateAuthorAsync(client, createRequest);
+        var client = await HttpClientHelpers.GetAuthenticatedClientAsync<IAuthorsClient>();
+        var createRequest = FakeDataGenerators.GenerateFakeAuthorRequest();
+        var author = await AuthorHelpers.CreateAuthorAsync(client, createRequest);
 
-        var updateRequest = TestHelpers.GenerateFakeUpdateAuthorRequest();
+        var updateRequest = FakeDataGenerators.GenerateFakeUpdateAuthorRequest();
 
         // Act
-        author = await TestHelpers.UpdateAuthorAsync(client, author!, updateRequest);
+        author = await AuthorHelpers.UpdateAuthorAsync(client, author!, updateRequest);
 
         // Assert
         var updatedAuthor = await client.GetAuthorAsync(author!.Id);
@@ -82,12 +83,12 @@ public class AuthorCrudTests
     public async Task DeleteAuthor_ShouldReturnNoContent()
     {
         // Arrange
-        var client = await TestHelpers.GetAuthenticatedClientAsync<IAuthorsClient>();
-        var createRequest = TestHelpers.GenerateFakeAuthorRequest();
-        var author = await TestHelpers.CreateAuthorAsync(client, createRequest);
+        var client = await HttpClientHelpers.GetAuthenticatedClientAsync<IAuthorsClient>();
+        var createRequest = FakeDataGenerators.GenerateFakeAuthorRequest();
+        var author = await AuthorHelpers.CreateAuthorAsync(client, createRequest);
 
         // Act
-        author = await TestHelpers.DeleteAuthorAsync(client, author!);
+        author = await AuthorHelpers.DeleteAuthorAsync(client, author!);
 
         // Assert
         // Verify it is not found or soft deleted
@@ -110,13 +111,13 @@ public class AuthorCrudTests
     public async Task RestoreAuthor_ShouldReturnOk()
     {
         // Arrange
-        var client = await TestHelpers.GetAuthenticatedClientAsync<IAuthorsClient>();
-        var createRequest = TestHelpers.GenerateFakeAuthorRequest();
-        var author = await TestHelpers.CreateAuthorAsync(client, createRequest);
-        author = await TestHelpers.DeleteAuthorAsync(client, author!);
+        var client = await HttpClientHelpers.GetAuthenticatedClientAsync<IAuthorsClient>();
+        var createRequest = FakeDataGenerators.GenerateFakeAuthorRequest();
+        var author = await AuthorHelpers.CreateAuthorAsync(client, createRequest);
+        author = await AuthorHelpers.DeleteAuthorAsync(client, author!);
 
         // Act
-        author = await TestHelpers.RestoreAuthorAsync(client, author!);
+        author = await AuthorHelpers.RestoreAuthorAsync(client, author!);
 
         // Assert
         var restored = await client.GetAuthorAsync(author!.Id);
@@ -133,9 +134,9 @@ public class AuthorCrudTests
         string expectedBiography)
     {
         // Arrange
-        var client = await TestHelpers.GetAuthenticatedClientAsync<IAuthorsClient>();
+        var client = await HttpClientHelpers.GetAuthenticatedClientAsync<IAuthorsClient>();
         var publicClient =
-            RestService.For<IAuthorsClient>(TestHelpers.GetUnauthenticatedClient(StorageConstants.DefaultTenantId));
+            RestService.For<IAuthorsClient>(HttpClientHelpers.GetUnauthenticatedClient(StorageConstants.DefaultTenantId));
 
         var createRequest = new CreateAuthorRequest
         {
@@ -150,7 +151,7 @@ public class AuthorCrudTests
         };
 
         // Act
-        var author = await TestHelpers.CreateAuthorAsync(client, createRequest);
+        var author = await AuthorHelpers.CreateAuthorAsync(client, createRequest);
 
         // Assert
         var authorDto = await publicClient.GetAuthorAsync(author!.Id, acceptLanguage);
