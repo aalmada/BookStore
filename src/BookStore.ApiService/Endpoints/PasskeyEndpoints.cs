@@ -284,6 +284,7 @@ public static class PasskeyEndpoints
             [FromBody] RegisterPasskeyRequest request,
             SignInManager<ApplicationUser> signInManager,
             UserManager<ApplicationUser> userManager,
+            IUserStore<ApplicationUser> userStore,
             ITenantContext tenantContext,
             ILogger<Program> logger,
             BookStore.ApiService.Services.JwtTokenService tokenService,
@@ -325,12 +326,32 @@ public static class PasskeyEndpoints
 
                 if (assertion.Passkey is not null)
                 {
+                    // Validate credential counter to detect cloned authenticators
+                    if (userStore is IUserPasskeyStore<ApplicationUser> passkeyStore)
+                    {
+                        var storedPasskey = await passkeyStore.FindPasskeyAsync(user, assertion.Passkey.CredentialId, cancellationToken);
+                        if (storedPasskey != null && storedPasskey.SignCount > 0)
+                        {
+                            // Counter should always increment. If it doesn't, the authenticator may be cloned.
+                            if (assertion.Passkey.SignCount <= storedPasskey.SignCount)
+                            {
+                                Log.Users.PasskeyCounterMismatch(logger, user.Email, storedPasskey.SignCount, assertion.Passkey.SignCount);
+                                await userManager.SetLockoutEndDateAsync(user, DateTimeOffset.UtcNow.AddHours(1));
+                                _ = await userManager.UpdateAsync(user);
+                                return Result.Failure(Error.Unauthorized(ErrorCodes.Passkey.CounterMismatch, "Security violation detected. Account temporarily locked.")).ToProblemDetails();
+                            }
+                        }
+                    }
+
                     var updateResult = await userManager.AddOrUpdatePasskeyAsync(user, assertion.Passkey);
                     if (!updateResult.Succeeded)
                     {
                         return Result.Failure(Error.Validation(ErrorCodes.Passkey.InvalidCredential, string.Join(", ", updateResult.Errors.Select(e => e.Description)))).ToProblemDetails();
                     }
                 }
+
+                // Clear all existing refresh tokens for security (full logout from all other sessions)
+                user.RefreshTokens.Clear();
 
                 var roles = await userManager.GetRolesAsync(user);
                 var accessToken = tokenService.GenerateAccessToken(user, tenantContext.TenantId, roles);

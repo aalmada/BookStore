@@ -14,7 +14,8 @@ Use this file for agent-only context: build and test commands, conventions, and 
 - `src/BookStore.ApiService/`: Event-sourced API (Marten + Wolverine)
 - `src/BookStore.Web/`: Blazor frontend
 - `src/BookStore.AppHost/`: Aspire orchestration
-- `src/BookStore.Shared/`, `src/BookStore.Client/`: shared DTOs and API client
+- `src/BookStore.Shared/`: Shared DTOs and models
+- `src/BookStore.Client/`: Refit-based API client (generated from OpenAPI)
 - `src/BookStore.ApiService.Analyzers/`: Roslyn analyzers enforcing rules
 - `tests/`: Unit and integration tests per project
 - `docs/`: architecture and guide material
@@ -32,6 +33,9 @@ Use this file for agent-only context: build and test commands, conventions, and 
 2. Write verification first
 3. Implement
 4. Verify all steps pass
+5. Run `dotnet format` to ensure code style compliance
+
+**A feature is not complete until `dotnet format` has been executed successfully.**
 
 ## Code Rules (MUST follow)
 ```

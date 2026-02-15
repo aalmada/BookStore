@@ -170,8 +170,10 @@ public static class ApplicationServicesExtensions
                     return ValueTask.FromResult(false);
                 }
 
+                // Only allow HTTP for localhost in Development environment
+                var env = context.HttpContext.RequestServices.GetRequiredService<Microsoft.AspNetCore.Hosting.IWebHostEnvironment>();
                 var isSecureOrigin = originUri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)
-                                     || originUri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase);
+                                     || (env.IsDevelopment() && originUri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase));
 
                 if (isSecureOrigin && allowedOrigins.Contains(context.Origin, StringComparer.OrdinalIgnoreCase))
                 {
@@ -190,24 +192,75 @@ public static class ApplicationServicesExtensions
 
         // Add JWT Bearer authentication
         var jwtSettings = configuration.GetSection("Jwt");
+        var secretKey = jwtSettings["SecretKey"];
+        var environment = services.BuildServiceProvider().GetRequiredService<Microsoft.AspNetCore.Hosting.IWebHostEnvironment>();
+
+        // SECURITY: Validate JWT secret key in production
+        if (!environment.IsDevelopment())
+        {
+            if (string.IsNullOrEmpty(secretKey) ||
+                secretKey == "your-secret-key-must-be-at-least-32-characters-long-for-hs256")
+            {
+                throw new InvalidOperationException(
+                    "Production JWT secret key must be configured via environment variables or secure key vault. " +
+                    "Set the 'Jwt:SecretKey' configuration value. Never use the default key in production.");
+            }
+        }
+
         _ = services.AddAuthentication(options =>
             {
                 options.DefaultAuthenticateScheme = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme;
                 options.DefaultChallengeScheme = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme;
             })
-            .AddJwtBearer(options => options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+            .AddJwtBearer(options =>
             {
-                ValidateIssuer = true,
-                ValidateAudience = true,
-                ValidateLifetime = true,
-                ValidateIssuerSigningKey = true,
-                ValidIssuer = jwtSettings["Issuer"],
-                ValidAudience = jwtSettings["Audience"],
-                IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(
-                        System.Text.Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]!)),
-                ClockSkew = TimeSpan.Zero, // Remove default 5 minute clock skew
-                RoleClaimType = System.Security.Claims.ClaimTypes.Role,
-                NameClaimType = System.Security.Claims.ClaimTypes.Name
+                options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+                    ValidIssuer = jwtSettings["Issuer"],
+                    ValidAudience = jwtSettings["Audience"],
+                    IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(
+                            System.Text.Encoding.UTF8.GetBytes(secretKey!)),
+                    ClockSkew = TimeSpan.Zero, // Remove default 5 minute clock skew
+                    RoleClaimType = System.Security.Claims.ClaimTypes.Role,
+                    NameClaimType = System.Security.Claims.ClaimTypes.Name
+                };
+
+                // Validate security stamp on each request to detect token revocation
+                options.Events = new Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerEvents
+                {
+                    OnTokenValidated = async context =>
+                    {
+                        var userManager = context.HttpContext.RequestServices.GetRequiredService<UserManager<Models.ApplicationUser>>();
+                        var userId = context.Principal?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+                        if (!string.IsNullOrEmpty(userId))
+                        {
+                            var user = await userManager.FindByIdAsync(userId);
+                            if (user != null)
+                            {
+                                // Get security stamp from token (null if claim doesn't exist)
+                                var tokenSecurityStamp = context.Principal?.FindFirst("security_stamp")?.Value;
+
+                                // Only validate if token HAS a security_stamp claim and user HAS a security stamp
+                                // This allows old tokens without the claim to work (backward compatibility)
+                                if (!string.IsNullOrEmpty(tokenSecurityStamp) &&
+                                    !string.IsNullOrEmpty(user.SecurityStamp) &&
+                                    tokenSecurityStamp != user.SecurityStamp)
+                                {
+                                    context.Fail("Token has been revoked due to security stamp change.");
+                                }
+                            }
+                            else
+                            {
+                                context.Fail("User not found.");
+                            }
+                        }
+                    }
+                };
             })
             // Add cookies required by SignInManager
             .AddCookie(Microsoft.AspNetCore.Identity.IdentityConstants.ApplicationScheme)

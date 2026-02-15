@@ -28,7 +28,8 @@ public class JwtTokenService
             new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new(JwtRegisteredClaimNames.Email, user.Email!),
             new(JwtRegisteredClaimNames.Jti, Guid.CreateVersion7().ToString()),
-            new("tenant_id", tenantId)
+            new("tenant_id", tenantId),
+            new("security_stamp", user.SecurityStamp ?? string.Empty)
         };
 
         foreach (var role in roles)
