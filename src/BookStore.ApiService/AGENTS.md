@@ -11,12 +11,18 @@
 ✅ record BookAdded(...)          ❌ record AddBook(...)
 ✅ Guid.CreateVersion7()          ❌ Guid.NewGuid()
 ✅ DateTimeOffset.UtcNow          ❌ DateTime.Now
+✅ [LoggerMessage(...)]           ❌ _logger.LogInformation(...) / LogWarning / LogError
+✅ Result.Failure(Error.X(...))   ❌ throw new Exception() / return BadRequest()
 ✅ Wolverine-managed projections  ❌ Marten async daemon
 ✅ Projections stay async by default ❌ Switching to inline without explicit need
 ✅ Tenant-scoped sessions          ❌ Cross-tenant queries
 ✅ ETags for concurrency           ❌ Blind writes
 ✅ Cache tags for invalidation     ❌ Stale cache after mutations
 ```
+
+**Logging**: Use `/lang__logger_message` skill for all logging. Logs organized by domain in `Infrastructure/Logging/Log.<Domain>.cs`.
+
+**Error Handling**: Use `/lang__problem_details` skill for all errors. Return `Result.Failure(Error.<Type>(code, message)).ToProblemDetails()`.
 
 ## Common Mistakes
 - ❌ Business logic in endpoints → Put logic in aggregates/handlers

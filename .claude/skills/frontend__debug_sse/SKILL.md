@@ -10,11 +10,11 @@ Use this guide to troubleshoot Server-Sent Events (SSE) issues.
 // turbo
 1. **Test SSE endpoint**:
    ```bash
-   curl -N -H "Accept: text/event-stream" http://localhost:5000/api/events
+   curl -N -H "Accept: text/event-stream" http://localhost:5000/api/notifications/stream
    ```
    Should see: `data: {"type":"Connected",...}`
 
-2. **Check MartenCommitListener** has case for your projection
+2. **Check ProjectionCommitListener** has case for your projection
 3. **Check QueryInvalidationService** maps notification to query keys
 4. **Check ReactiveQuery** uses matching `queryKeys`
 
@@ -53,7 +53,7 @@ Test the SSE endpoint directly:
 
 ```bash
 # Terminal 1: Connect to SSE stream
-curl -N -H "Accept: text/event-stream" http://localhost:5000/api/events
+curl -N -H "Accept: text/event-stream" http://localhost:5000/api/notifications/stream
 ```
 
 You should see:
@@ -65,7 +65,7 @@ data: {"type":"Connected","timestamp":"2026-01-15T20:00:00Z"}
 
 **If connection fails**:
 - ✗ Check API service is running
-- ✗ Verify `/api/events` endpoint exists in `EventsEndpoint.cs`
+- ✗ Verify `/api/notifications/stream` endpoint exists in `NotificationEndpoints.cs`
 - ✗ Check firewall/network issues
 
 ### 2. Verify Notifications Are Defined
@@ -85,7 +85,7 @@ public record BookCreatedNotification(Guid Id, string Title);
 2. Implement `IDomainEventNotification` interface
 3. Include all data needed for frontend invalidation
 
-### 3. Verify MartenCommitListener Configuration
+### 3. Verify ProjectionCommitListener Configuration
 
 Open `src/BookStore.ApiService/Infrastructure/MartenCommitListener.cs`:
 
@@ -139,27 +139,34 @@ Open `src/Web/BookStore.Web/Services/QueryInvalidationService.cs`:
 **Check if notification maps to query keys**:
 
 ```csharp
-public IEnumerable<string> GetInvalidationKeys(IDomainEventNotification notification)
+IEnumerable<string> GetInvalidationKeys(IDomainEventNotification notification)
 {
-    return notification switch
+    switch (notification)
     {
-        BookCreatedNotification => new[] { "Books" },
-        BookUpdatedNotification => new[] { "Books" },
+        case BookCreatedNotification n:
+            yield return "Books";
+            yield return $"Book:{n.EntityId}";
+            break;
+        case BookUpdatedNotification n:
+            yield return "Books";
+            yield return $"Book:{n.EntityId}";
+            break;
 
         // ❌ Missing: Your notification
-        AuthorUpdatedNotification => new[] { "Authors" },
-
-        _ => Array.Empty<string>()
-    };
+        case AuthorUpdatedNotification n:
+            yield return "Authors";
+            yield return $"Author:{n.EntityId}";
+            break;
+    }
 }
 ```
 
 **If mapping is missing**:
 1. Add case for your notification type
-2. Return query keys that should be invalidated
+2. Yield return query keys that should be invalidated
 3. Match keys used in `ReactiveQuery` setup
 
-### 5. Verify Frontend EventsService
+### 5. Verify Frontend BookStoreEventsService
 
 Check browser console for SSE connection:
 
@@ -170,7 +177,7 @@ Check browser console for SSE connection:
 4. View "EventStream" tab to see events
 
 **If connection is closed**:
-- Check `EventsService.StartListening()` is called in `OnInitializedAsync`
+- Check `BookStoreEventsService.StartListening()` is called in `OnInitializedAsync`
 - Verify base URL is correct
 - Check for JavaScript errors
 
@@ -182,7 +189,7 @@ Check component using `ReactiveQuery`:
 // ✅ Correct - query keys match invalidation mapping
 bookQuery = new ReactiveQuery<PagedListDto<BookDto>>(
     queryFn: FetchBooksAsync,
-    eventsService: EventsService,
+    eventsService: BookStoreEventsService,
     invalidationService: InvalidationService,
     queryKeys: new[] { "Books" },  // Matches QueryInvalidationService
     onStateChanged: StateHasChanged,
@@ -195,7 +202,7 @@ queryKeys: new[] { "AllBooks" }  // Doesn't match "Books"
 
 **If query doesn't invalidate**:
 1. Ensure `queryKeys` match `QueryInvalidationService` mapping
-2. Verify `EventsService` is subscribed
+2. Verify `BookStoreEventsService` is subscribed
 3. Check `onStateChanged` callback is provided
 
 ### 7. Test End-to-End
@@ -204,7 +211,7 @@ Perform a mutation and watch the flow:
 
 ```bash
 # Terminal 1: Watch SSE stream
-curl -N -H "Accept: text/event-stream" http://localhost:5000/api/events
+curl -N -H "Accept: text/event-stream" http://localhost:5000/api/notifications/stream
 
 # Terminal 2: Trigger mutation
 curl -X POST http://localhost:5000/api/admin/books \
@@ -215,7 +222,7 @@ curl -X POST http://localhost:5000/api/admin/books \
 **Expected flow**:
 1. Command executed
 2. Event stored in Marten
-3. `MartenCommitListener` triggered
+3. `ProjectionCommitListener` triggered
 4. Notification sent via SSE
 5. Browser receives event
 6. `QueryInvalidationService` maps to keys
@@ -225,17 +232,17 @@ curl -X POST http://localhost:5000/api/admin/books \
 
 **If any step fails**, locate where:
 - Check logs in Aspire dashboard
-- Add debug logging to `MartenCommitListener`
+- Add debug logging to `ProjectionCommitListener`
 - Use browser console to see received events
 
 ## Common Issues & Fixes
 
 ### Issue: Events Not Sent
 
-**Symptom**: MartenCommitListener not triggered
+**Symptom**: ProjectionCommitListener not triggered
 
 **Fix**:
-- Ensure `MartenCommitListener` is registered in DI
+- Ensure `ProjectionCommitListener` is registered in DI
 - Check Marten event store configuration
 - Verify projection lifecycle (`Inline` vs `Async`)
 
@@ -256,7 +263,7 @@ case "BookUpdated":              // ✗ Wrong
 
 **Fix**:
 - SSE works per-connection, each tab needs own connection
-- Each tab should call `EventsService.StartListening()`
+- Each tab should call `BookStoreEventsService.StartListening()`
 - Verify SignalR isn't being used (project uses SSE)
 
 ### Issue: SSE Connection Drops
@@ -266,17 +273,17 @@ case "BookUpdated":              // ✗ Wrong
 **Fix**:
 - Check server-side timeout configuration
 - Verify no proxy/load balancer kills long connections
-- Add reconnection logic in `EventsService`
+- Add reconnection logic in `BookStoreEventsService`
 
 ## Verification Checklist
 
-- [ ] SSE endpoint accessible at `/api/events`
+- [ ] SSE endpoint accessible at `/api/notifications/stream`
 - [ ] Notification class implements `IDomainEventNotification`
-- [ ] `MartenCommitListener` has handler for projection
+- [ ] `ProjectionCommitListener` has handler for projection
 - [ ] Handler calls `NotifyAsync` with notification
 - [ ] `QueryInvalidationService` maps notification to keys
 - [ ] Frontend `ReactiveQuery` uses matching query keys
-- [ ] `EventsService.StartListening()` called on mount
+- [ ] `BookStoreEventsService.StartListening()` called on mount
 - [ ] Browser DevTools shows active EventSource connection
 - [ ] End-to-end test confirms UI updates after mutation
 
@@ -284,7 +291,7 @@ case "BookUpdated":              // ✗ Wrong
 
 **Backend**:
 - Aspire Dashboard → Structured Logs → Filter by "notification"
-- Add logging in `MartenCommitListener`: `_logger.LogInformation("Sending {Type}", notification.GetType().Name)`
+- Add logging in `ProjectionCommitListener`: `_logger.LogInformation("Sending {Type}", notification.GetType().Name)`
 
 **Frontend**:
 - Browser Console → Look for EventSource logs
@@ -305,7 +312,7 @@ case "BookUpdated":              // ✗ Wrong
 - `/test__integration_scaffold` - Add tests to prevent regression
 
 **See Also**:
-- [wolverine__create_operation](../wolverine__create_operation/SKILL.md) - SSE notification setup in MartenCommitListener
+- [wolverine__create_operation](../wolverine__create_operation/SKILL.md) - SSE notification setup in ProjectionCommitListener
 - [frontend__feature_scaffold](../frontend__feature_scaffold/SKILL.md) - Frontend SSE integration
 - [real-time-notifications](../../../docs/guides/real-time-notifications.md) - SSE architecture and data flow
 - ApiService AGENTS.md - Backend notification patterns

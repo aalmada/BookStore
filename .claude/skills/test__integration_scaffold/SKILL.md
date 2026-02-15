@@ -10,11 +10,13 @@ Follow this guide to create **integration tests** for API endpoints in `tests/Bo
    - **Naming**: `{Feature}Tests.cs` (e.g., `AuthorCrudTests.cs`)
    - **Template**:
      ```csharp
-     using TUnit.Core;
-     using TUnit.Assertions.Extensions;
+     using BookStore.AppHost.Tests.Helpers;
+     using BookStore.Client;
      using BookStore.Shared.Models;
+     using Refit;
+     using System.Net;
 
-     namespace BookStore.AppHost.Tests.Tests;
+     namespace BookStore.AppHost.Tests;
 
      public class AuthorCrudTests
      {
@@ -24,31 +26,25 @@ Follow this guide to create **integration tests** for API endpoints in `tests/Bo
 
 2. **Write Create Test (with SSE)**
    - Test endpoint that creates a resource
-   - **Use TestHelpers** for SSE event verification
+   - **Use Resource Helpers** for SSE event verification and creation
    - **Example**:
      ```csharp
      [Test]
-     public async Task CreateAuthor_ValidRequest_CreatesAndNotifies()
+     public async Task CreateAuthor_EndToEndFlow_ShouldReturnOk()
      {
          // Arrange
-         var client = await TestHelpers.GetAuthenticatedClientAsync();
-         var request = TestHelpers.GenerateFakeAuthorRequest();
+         var client = await HttpClientHelpers.GetAuthenticatedClientAsync<IAuthorsClient>();
+         var createRequest = FakeDataGenerators.GenerateFakeAuthorRequest();
 
-         // Act - ExecuteAndWaitForEventAsync automatically:
-         // 1. Makes the HTTP request
-         // 2. Waits for SSE notification
-         // 3. Returns the created resource
-         var (author, _) = await TestHelpers.ExecuteAndWaitForEventAsync<AuthorDto>(
-             client,
-             async () => await client.PostAsJsonAsync("/api/admin/authors", request),
-             "AuthorUpdated",  // Wait for this SSE event
-             timeout: TimeSpan.FromSeconds(10)
-         );
+         // Act - Helper handles:
+         // 1. Making the HTTP request
+         // 2. Waiting for SSE notification
+         // 3. Fetching and returning the created resource
+         var author = await AuthorHelpers.CreateAuthorAsync(client, createRequest);
 
          // Assert
          await Assert.That(author).IsNotNull();
-         await Assert.That(author!.Name).IsEqualTo(request.Name);
-         await Assert.That(author.Biography).IsEqualTo(request.Biography);
+         await Assert.That(author!.Id).IsNotEqualTo(Guid.Empty);
      }
      ```
 
@@ -57,36 +53,23 @@ Follow this guide to create **integration tests** for API endpoints in `tests/Bo
    - **Pattern**: Create → Update → Verify
      ```csharp
      [Test]
-     public async Task UpdateAuthor_ValidRequest_UpdatesAndNotifies()
+     public async Task UpdateAuthor_ShouldReturnOk()
      {
          // Arrange
-         var client = await TestHelpers.GetAuthenticatedClientAsync();
-         var createRequest = TestHelpers.GenerateFakeAuthorRequest();
+         var client = await HttpClientHelpers.GetAuthenticatedClientAsync<IAuthorsClient>();
+         var createRequest = FakeDataGenerators.GenerateFakeAuthorRequest();
 
          // Create author first
-         var (created, _) = await TestHelpers.ExecuteAndWaitForEventAsync<AuthorDto>(
-             client,
-             async () => await client.PostAsJsonAsync("/api/admin/authors", createRequest),
-             "AuthorUpdated"
-         );
+         var author = await AuthorHelpers.CreateAuthorAsync(client, createRequest);
 
-         var updateRequest = new UpdateAuthorRequest(
-             Name: "Updated Name",
-             Biography: "Updated Biography"
-         );
+         var updateRequest = FakeDataGenerators.GenerateFakeUpdateAuthorRequest();
 
-         // Act
-         var (updated, _) = await TestHelpers.ExecuteAndWaitForEventAsync<AuthorDto>(
-             client,
-             async () => await client.PutAsJsonAsync($"/api/admin/authors/{created!.Id}", updateRequest),
-             "AuthorUpdated"
-         );
+         // Act - Helper handles ETag retrieval and SSE wait
+         author = await AuthorHelpers.UpdateAuthorAsync(client, author!, updateRequest);
 
-         // Assert
-         await Assert.That(updated).IsNotNull();
-         await Assert.That(updated!.Name).IsEqualTo("Updated Name");
-         await Assert.That(updated.Biography).IsEqualTo("Updated Biography");
-         await Assert.That(updated.Id).IsEqualTo(created.Id);  // Same ID
+         // Assert - Verify update by fetching
+         var updatedAuthor = await client.GetAuthorAsync(author!.Id);
+         await Assert.That(updatedAuthor.Name).IsEqualTo(updateRequest.Name);
      }
      ```
 
@@ -94,28 +77,27 @@ Follow this guide to create **integration tests** for API endpoints in `tests/Bo
    - Test soft deletion with restore capability
      ```csharp
      [Test]
-     public async Task DeleteAuthor_ExistingAuthor_SoftDeletes()
+     public async Task DeleteAuthor_ShouldReturnNoContent()
      {
          // Arrange
-         var client = await TestHelpers.GetAuthenticatedClientAsync();
-         var request = TestHelpers.GenerateFakeAuthorRequest();
-
-         var (created, _) = await TestHelpers.ExecuteAndWaitForEventAsync<AuthorDto>(
-             client,
-             async () => await client.PostAsJsonAsync("/api/admin/authors", request),
-             "AuthorUpdated"
-         );
+         var client = await HttpClientHelpers.GetAuthenticatedClientAsync<IAuthorsClient>();
+         var createRequest = FakeDataGenerators.GenerateFakeAuthorRequest();
+         var author = await AuthorHelpers.CreateAuthorAsync(client, createRequest);
 
          // Act - Delete
-         var deleteResponse = await client.DeleteAsync($"/api/admin/authors/{created!.Id}");
-         await Assert.That(deleteResponse.IsSuccessStatusCode).IsTrue();
+         author = await AuthorHelpers.DeleteAuthorAsync(client, author!);
 
-         // Verify not in public list
-         var listResponse = await TestHelpers.GetUnauthenticatedClient()
-             .GetFromJsonAsync<PagedListDto<AuthorDto>>("/api/authors");
-
-         await Assert.That(listResponse).IsNotNull();
-         await Assert.That(listResponse!.Items.Any(a => a.Id == created.Id)).IsFalse();
+         // Verify - Should return 404 from public API
+         var publicClient = HttpClientHelpers.GetUnauthenticatedClient<IAuthorsClient>();
+         try
+         {
+             await publicClient.GetAuthorAsync(author!.Id);
+             Assert.Fail("Author should have been deleted");
+         }
+         catch (ApiException ex)
+         {
+             await Assert.That(ex.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
+         }
      }
      ```
 
@@ -126,12 +108,10 @@ Follow this guide to create **integration tests** for API endpoints in `tests/Bo
      public async Task GetAuthors_ReturnsPagedList()
      {
          // Arrange
-         var client = TestHelpers.GetUnauthenticatedClient();
+         var client = HttpClientHelpers.GetUnauthenticatedClient<IAuthorsClient>();
 
          // Act
-         var response = await client.GetFromJsonAsync<PagedListDto<AuthorDto>>(
-             "/api/authors?page=1&pageSize=20"
-         );
+         var response = await client.GetAuthorsAsync(page: 1, pageSize: 20);
 
          // Assert
          await Assert.That(response).IsNotNull();
@@ -143,53 +123,131 @@ Follow this guide to create **integration tests** for API endpoints in `tests/Bo
      public async Task GetAuthorById_ExistingId_ReturnsAuthor()
      {
          // Arrange - Create an author first
-         var client = await TestHelpers.GetAuthenticatedClientAsync();
-         var request = TestHelpers.GenerateFakeAuthorRequest();
-
-         var (created, _) = await TestHelpers.ExecuteAndWaitForEventAsync<AuthorDto>(
-             client,
-             async () => await client.PostAsJsonAsync("/api/admin/authors", request),
-             "AuthorUpdated"
-         );
+         var adminClient = await HttpClientHelpers.GetAuthenticatedClientAsync<IAuthorsClient>();
+         var createRequest = FakeDataGenerators.GenerateFakeAuthorRequest();
+         var created = await AuthorHelpers.CreateAuthorAsync(adminClient, createRequest);
 
          // Act - Get by ID (public endpoint)
-         var unauthClient = TestHelpers.GetUnauthenticatedClient();
-         var author = await unauthClient.GetFromJsonAsync<AuthorDto>(
-             $"/api/authors/{created!.Id}"
-         );
+         var publicClient = HttpClientHelpers.GetUnauthenticatedClient<IAuthorsClient>();
+         var author = await publicClient.GetAuthorAsync(created!.Id);
 
          // Assert
          await Assert.That(author).IsNotNull();
          await Assert.That(author!.Id).IsEqualTo(created.Id);
-         await Assert.That(author.Name).IsEqualTo(request.Name);
+         await Assert.That(author.Name).IsEqualTo(createRequest.Name);
      }
      ```
 
 6. **Add Custom Test Helper (if needed)**
-   - For resource-specific operations, add to `TestHelpers.cs`:
+   - For resource-specific operations, create separate helper files:
+   - **AuthorHelpers.cs** (example):
      ```csharp
-     public static async Task<AuthorDto> CreateAuthorAsync(
-         HttpClient client,
-         CreateAuthorRequest? request = null)
+     using BookStore.Client;
+     using BookStore.Shared.Models;
+
+     namespace BookStore.AppHost.Tests.Helpers;
+
+     public static class AuthorHelpers
      {
-         request ??= GenerateFakeAuthorRequest();
+         public static async Task<AuthorDto> CreateAuthorAsync(
+             IAuthorsClient client,
+             CreateAuthorRequest createRequest)
+         {
+             var received = await SseEventHelpers.ExecuteAndWaitForEventAsync(
+                 createRequest.Id,
+                 ["AuthorCreated", "AuthorUpdated"],
+                 async () =>
+                 {
+                     var response = await client.CreateAuthorWithResponseAsync(createRequest);
+                     if (response.Error != null)
+                         throw response.Error;
+                 },
+                 TestConstants.DefaultEventTimeout);
 
-         var (author, _) = await ExecuteAndWaitForEventAsync<AuthorDto>(
-             client,
-             async () => await client.PostAsJsonAsync("/api/admin/authors", request),
-             "AuthorUpdated"
-         );
+             if (!received)
+                 throw new Exception("Failed to receive AuthorCreated event.");
 
-         return author!;
+             return await client.GetAuthorAsync(createRequest.Id);
+         }
+
+         public static async Task<AuthorDto> UpdateAuthorAsync(
+             IAuthorsClient client,
+             AuthorDto author,
+             UpdateAuthorRequest updateRequest)
+         {
+             var version = ETagHelper.ParseETag(author.ETag) ?? 0;
+             var received = await SseEventHelpers.ExecuteAndWaitForEventWithVersionAsync(
+                 author.Id,
+                 "AuthorUpdated",
+                 async () => await client.UpdateAuthorAsync(author.Id, updateRequest, author.ETag),
+                 TestConstants.DefaultEventTimeout,
+                 minVersion: version + 1,
+                 minTimestamp: DateTimeOffset.UtcNow);
+
+             if (!received.Success)
+                 throw new Exception("Failed to receive AuthorUpdated event.");
+
+             return await client.GetAuthorAsync(author.Id);
+         }
+
+         public static async Task<AuthorDto> DeleteAuthorAsync(
+             IAuthorsClient client,
+             AuthorDto author)
+         {
+             var received = await SseEventHelpers.ExecuteAndWaitForEventAsync(
+                 author.Id,
+                 "AuthorDeleted",
+                 async () =>
+                 {
+                     var etag = author.ETag;
+                     if (string.IsNullOrEmpty(etag))
+                     {
+                         var latest = await client.GetAuthorAdminAsync(author.Id);
+                         etag = latest?.ETag;
+                     }
+                     await client.SoftDeleteAuthorAsync(author.Id, etag);
+                 },
+                 TestConstants.DefaultEventTimeout);
+
+             if (!received)
+                 throw new Exception("Failed to receive AuthorDeleted event.");
+
+             return await client.GetAuthorAsync(author.Id);
+         }
      }
+     ```
+   - **FakeDataGenerators.cs** (add fake data generators):
+     ```csharp
+     using Bogus;
+     using BookStore.Client;
+     using BookStore.Shared.Models;
 
-     public static CreateAuthorRequest GenerateFakeAuthorRequest()
+     namespace BookStore.AppHost.Tests.Helpers;
+
+     public static class FakeDataGenerators
      {
-         var faker = new Faker();
-         return new CreateAuthorRequest(
-             Name: faker.Name.FullName(),
-             Biography: faker.Lorem.Paragraph()
-         );
+         static readonly Faker _faker = new();
+
+         public static CreateAuthorRequest GenerateFakeAuthorRequest() => new()
+         {
+             Id = Guid.CreateVersion7(),
+             Name = _faker.Name.FullName(),
+             Translations = new Dictionary<string, AuthorTranslationDto>
+             {
+                 ["en"] = new(_faker.Lorem.Paragraphs(2)),
+                 ["es"] = new(_faker.Lorem.Paragraphs(2))
+             }
+         };
+
+         public static UpdateAuthorRequest GenerateFakeUpdateAuthorRequest() => new()
+         {
+             Name = _faker.Name.FullName(),
+             Translations = new Dictionary<string, AuthorTranslationDto>
+             {
+                 ["en"] = new(_faker.Lorem.Paragraphs(2)),
+                 ["es"] = new(_faker.Lorem.Paragraphs(2))
+             }
+         };
      }
      ```
 
@@ -197,67 +255,160 @@ Follow this guide to create **integration tests** for API endpoints in `tests/Bo
    - Test validation failures and edge cases
      ```csharp
      [Test]
-     public async Task CreateAuthor_EmptyName_ReturnsBadRequest()
+     [Arguments("")]
+     [Arguments(null)]
+     public async Task CreateAuthor_WithInvalidName_ShouldReturnBadRequest(string? invalidName)
      {
          // Arrange
-         var client = await TestHelpers.GetAuthenticatedClientAsync();
-         var request = new CreateAuthorRequest(Name: "", Biography: "Bio");
+         var client = await HttpClientHelpers.GetAuthenticatedClientAsync<IAuthorsClient>();
+         var request = new CreateAuthorRequest
+         {
+             Id = Guid.CreateVersion7(),
+             Name = invalidName,
+             Translations = new Dictionary<string, AuthorTranslationDto> { ["en"] = new("Biography") }
+         };
 
-         // Act
-         var response = await client.PostAsJsonAsync("/api/admin/authors", request);
-
-         // Assert
-         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+         // Act & Assert - Refit throws ApiException on error
+         try
+         {
+             await client.CreateAuthorAsync(request);
+             Assert.Fail("Expected ApiException was not thrown");
+         }
+         catch (ApiException ex)
+         {
+             await Assert.That(ex.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+         }
      }
 
      [Test]
      public async Task DeleteAuthor_Unauthenticated_ReturnsUnauthorized()
      {
          // Arrange
-         var client = TestHelpers.GetUnauthenticatedClient();
+         var client = HttpClientHelpers.GetUnauthenticatedClient<IAuthorsClient>();
          var authorId = Guid.CreateVersion7();
 
-         // Act
-         var response = await client.DeleteAsync($"/api/admin/authors/{authorId}");
+         // Act & Assert
+         try
+         {
+             await client.SoftDeleteAuthorAsync(authorId);
+             Assert.Fail("Expected ApiException was not thrown");
+         }
+         catch (ApiException ex)
+         {
+             await Assert.That(ex.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+         }
+     }
 
-         // Assert
-         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+     // Validation with error codes (ProblemDetails pattern)
+     [Test]
+     [Arguments("", ErrorCodes.Books.TitleRequired)]
+     [Arguments(null, ErrorCodes.Books.TitleRequired)]
+     public async Task CreateBook_WithInvalidTitle_ReturnsExpectedErrorCode(
+         string? title,
+         string expectedErrorCode)
+     {
+         // Arrange
+         var client = await HttpClientHelpers.GetAuthenticatedClientAsync<IBooksClient>();
+         var request = FakeDataGenerators.GenerateFakeBookRequest();
+         request.Title = title;
+
+         // Act & Assert
+         try
+         {
+             await client.CreateBookAsync(request);
+             Assert.Fail("Expected ApiException was not thrown");
+         }
+         catch (ApiException ex)
+         {
+             await Assert.That(ex.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+             await Assert.That(ex.Content).Contains(expectedErrorCode);
+         }
      }
      ```
 
 ## Key Testing Patterns
 
-### Use Authenticated Client for Admin Endpoints
+### Use Authenticated Refit Client for Admin Endpoints
 ```csharp
-var client = await TestHelpers.GetAuthenticatedClientAsync();
+var client = await HttpClientHelpers.GetAuthenticatedClientAsync<IAuthorsClient>();
 ```
 
-### Use Unauthenticated Client for Public Endpoints
+### Use Unauthenticated Refit Client for Public Endpoints
 ```csharp
-var client = TestHelpers.GetUnauthenticatedClient();
+var client = HttpClientHelpers.GetUnauthenticatedClient<IAuthorsClient>();
 ```
 
-### Multi-Tenancy
+### Multi-Tenancy Testing
 ```csharp
-// Manual tenant isolation testing
-var client = await TestHelpers.GetAuthenticatedClientAsync();
-client.DefaultRequestHeaders.Add("X-Tenant-ID", "acme");
+// Use specific tenant
+var httpClient = HttpClientHelpers.GetUnauthenticatedClient("tenant-id");
+var client = RestService.For<IAuthorsClient>(httpClient);
+
+// Or for authenticated requests
+var httpClient = await HttpClientHelpers.GetTenantClientAsync("tenant-id", accessToken);
+var client = RestService.For<IAuthorsClient>(httpClient);
 ```
 
 ### Wait for SSE Events After Mutations
 ```csharp
-var (result, notification) = await TestHelpers.ExecuteAndWaitForEventAsync<T>(
-    client,
+// Simple event wait
+var received = await SseEventHelpers.ExecuteAndWaitForEventAsync(
+    entityId,
+    "EventName",
     async () => /* HTTP call */,
-    "EventName"
+    TestConstants.DefaultEventTimeout
+);
+
+// Wait for multiple event types
+var received = await SseEventHelpers.ExecuteAndWaitForEventAsync(
+    entityId,
+    ["EventName1", "EventName2"],
+    async () => /* HTTP call */,
+    TestConstants.DefaultEventTimeout
+);
+
+// Wait with version check (for updates)
+var result = await SseEventHelpers.ExecuteAndWaitForEventWithVersionAsync(
+    entityId,
+    "EventName",
+    async () => /* HTTP call */,
+    TestConstants.DefaultEventTimeout,
+    minVersion: currentVersion + 1,
+    minTimestamp: DateTimeOffset.UtcNow
 );
 ```
 
-### Use Bogus for Fake Data
+### Use FakeDataGenerators for Test Data
 ```csharp
-var faker = new Faker();
-var name = faker.Name.FullName();
-var email = faker.Internet.Email();
+var createRequest = FakeDataGenerators.GenerateFakeAuthorRequest();
+var updateRequest = FakeDataGenerators.GenerateFakeUpdateAuthorRequest();
+var email = FakeDataGenerators.GenerateFakeEmail();
+var password = FakeDataGenerators.GenerateFakePassword();
+```
+
+### Use TestConstants for Timeouts
+```csharp
+TestConstants.DefaultTimeout           // 30 seconds
+TestConstants.DefaultEventTimeout      // 30 seconds
+TestConstants.DefaultProjectionDelay   // 500 ms
+TestConstants.DefaultRetryDelay        // 100 ms
+TestConstants.DefaultPollingInterval   // 50 ms
+TestConstants.DefaultStreamTimeout     // 5 minutes
+TestConstants.DefaultMaxRetries        // 10
+```
+
+### Handle ETags for Concurrency
+```csharp
+// Get resource with ETag
+var response = await client.GetAuthorWithResponseAsync(authorId);
+var etag = response.Headers.ETag?.Tag;
+
+// Use ETag in update/delete
+await client.UpdateAuthorAsync(authorId, updateRequest, etag);
+await client.SoftDeleteAuthorAsync(authorId, etag);
+
+// Parse ETag for version comparison
+var version = ETagHelper.ParseETag(author.ETag) ?? 0;
 ```
 
 ## TUnit Assertion Patterns
@@ -282,8 +433,16 @@ await Assert.That(collection).DoesNotContain(item);
 await Assert.That(count).IsGreaterThan(0);
 await Assert.That(count).IsGreaterThanOrEqualTo(0);
 
-// Exceptions
-await Assert.That(() => action()).Throws<InvalidOperationException>();
+// Refit Exception handling (use try/catch with Assert.Fail)
+try
+{
+    await client.SomeMethodAsync();
+    Assert.Fail("Expected ApiException was not thrown");
+}
+catch (ApiException ex)
+{
+    await Assert.That(ex.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+}
 ```
 
 ## Running Tests
@@ -316,16 +475,29 @@ dotnet test --filter "FullyQualifiedName~AuthorCrudTests"
 **Test Hangs on SSE Wait**
 - Check event name matches exactly (case-sensitive)
 - Verify `MartenCommitListener` sends the notification
-- Increase timeout if needed
+- Increase timeout if needed using `TestConstants`
+- Check that the entity ID matches (use `Guid.Empty` to match any entity)
 
 **Port Already in Use**
 - Stop any running Aspire instances
 - Check for orphaned `dotnet` processes
+- Use `pkill -f dotnet` on macOS/Linux to clean up
 
 **"Zero tests ran"**
 - Ensure test class is public
 - Ensure methods are decorated with `[Test]`
-- Check GlobalSetup completed successfully
+- Check `GlobalHooks` setup completed successfully
+- Verify test assembly references TUnit
+
+**Refit Exceptions Not Caught**
+- Use try/catch blocks with `ApiException` for error testing
+- Call `Assert.Fail()` if no exception was thrown
+- Check status code on caught exception
+
+**ETag Missing or Null**
+- Use `*WithResponseAsync()` variants to access response headers
+- Access ETag via `response.Headers.ETag?.Tag`
+- Use `ETagHelper.ParseETag()` to get version number
 
 ## Related Skills
 

@@ -51,7 +51,16 @@ Use this file for agent-only context: build and test commands, conventions, and 
 ✅ namespace BookStore.X;         ❌ namespace BookStore.X { }
 ✅ [Test] async Task (TUnit)      ❌ [Fact] (xUnit)
 ✅ WaitForConditionAsync          ❌ Task.Delay / Thread.Sleep
+✅ [LoggerMessage(...)]           ❌ _logger.LogInformation(...) / LogWarning / LogError / etc.
 ```
+
+### Logging Pattern
+
+**MUST use LoggerMessage source generator for ALL logging.** See `/lang__logger_message` skill for details, templates, and examples.
+
+### Error Handling Pattern
+
+**MUST use Result pattern with typed Error codes and ProblemDetails.** See `/lang__problem_details` skill for error types, status codes, and usage.
 
 ## Conventions and Style
 
