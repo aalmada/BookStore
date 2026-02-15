@@ -3,11 +3,11 @@ using System.Linq;
 using System.Net;
 using System.Net.Http.Json;
 using BookStore.ApiService.Models;
+using BookStore.AppHost.Tests.Helpers;
 using BookStore.Client;
 using Marten;
 using Refit;
 using Weasel.Core;
-using BookStore.AppHost.Tests.Helpers;
 
 namespace BookStore.AppHost.Tests;
 

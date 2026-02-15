@@ -34,18 +34,11 @@ public class PasskeyTests
 
         var request = new PasskeyLoginOptionsRequest { Email = email };
 
-        // Act & Assert
-        try
-        {
-            _ = await _passkeyClient.GetPasskeyLoginOptionsAsync(request);
-            Assert.Fail("Should have thrown BadRequest");
-        }
-        catch (ApiException ex)
-        {
-            _ = await Assert.That(ex.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
-            var error = await ex.GetContentAsAsync<AuthenticationHelpers.ErrorResponse>();
-            _ = await Assert.That(error?.Error).IsEqualTo(ErrorCodes.Passkey.UserNotFound);
-        }
+        // Act
+        var options = await _passkeyClient.GetPasskeyLoginOptionsAsync(request);
+
+        // Assert - API returns options even for users without passkeys to prevent user enumeration
+        _ = await Assert.That(options).IsNotNull();
     }
 
     [Test]
