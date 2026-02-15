@@ -3,6 +3,7 @@ using BookStore.Client;
 using BookStore.Shared.Models;
 using Refit;
 using SharedModels = BookStore.Shared.Models;
+using BookStore.AppHost.Tests.Helpers;
 
 namespace BookStore.AppHost.Tests;
 
@@ -12,10 +13,10 @@ public class ManagementIntegrationTests
     public async Task GetAllData_AsAdmin_ShouldReturnAllEntities()
     {
         // Arrange
-        var client = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
-        var authorsClient = await TestHelpers.GetAuthenticatedClientAsync<IAuthorsClient>();
-        var categoriesClient = await TestHelpers.GetAuthenticatedClientAsync<ICategoriesClient>();
-        var publishersClient = await TestHelpers.GetAuthenticatedClientAsync<IPublishersClient>();
+        var client = await HttpClientHelpers.GetAuthenticatedClientAsync<IBooksClient>();
+        var authorsClient = await HttpClientHelpers.GetAuthenticatedClientAsync<IAuthorsClient>();
+        var categoriesClient = await HttpClientHelpers.GetAuthenticatedClientAsync<ICategoriesClient>();
+        var publishersClient = await HttpClientHelpers.GetAuthenticatedClientAsync<IPublishersClient>();
 
         var suffix = Guid.NewGuid().ToString()[..8];
         var authorName = $"GetAll Auth {suffix}";
@@ -24,7 +25,7 @@ public class ManagementIntegrationTests
         var bookTitle = $"GetAll Book {suffix}";
 
         // Create random entities to ensure list is non-empty
-        var author = await TestHelpers.CreateAuthorAsync(authorsClient,
+        var author = await AuthorHelpers.CreateAuthorAsync(authorsClient,
             new CreateAuthorRequest
             {
                 Id = Guid.CreateVersion7(),
@@ -32,14 +33,14 @@ public class ManagementIntegrationTests
                 Translations = new Dictionary<string, AuthorTranslationDto> { ["en"] = new("Bio") }
             });
 
-        var category = await TestHelpers.CreateCategoryAsync(categoriesClient,
+        var category = await CategoryHelpers.CreateCategoryAsync(categoriesClient,
             new CreateCategoryRequest
             {
                 Id = Guid.CreateVersion7(),
                 Translations = new Dictionary<string, CategoryTranslationDto> { ["en"] = new(catName) }
             });
 
-        var publisher = await TestHelpers.CreatePublisherAsync(publishersClient,
+        var publisher = await PublisherHelpers.CreatePublisherAsync(publishersClient,
             new CreatePublisherRequest { Id = Guid.CreateVersion7(), Name = pubName });
 
         var createRequest = new CreateBookRequest
@@ -56,7 +57,7 @@ public class ManagementIntegrationTests
             CategoryIds = [category.Id],
             PublisherId = publisher.Id
         };
-        var book = await TestHelpers.CreateBookAsync(client, createRequest);
+        var book = await BookHelpers.CreateBookAsync(client, createRequest);
 
         // Act
         // Use search with empty params to get all (paged/list), 
@@ -88,29 +89,29 @@ public class ManagementIntegrationTests
     public async Task Search_WithFilter_ShouldReturnMatchedItems()
     {
         // Arrange
-        var authorsClient = await TestHelpers.GetAuthenticatedClientAsync<IAuthorsClient>();
-        var categoriesClient = await TestHelpers.GetAuthenticatedClientAsync<ICategoriesClient>();
-        var publishersClient = await TestHelpers.GetAuthenticatedClientAsync<IPublishersClient>();
+        var authorsClient = await HttpClientHelpers.GetAuthenticatedClientAsync<IAuthorsClient>();
+        var categoriesClient = await HttpClientHelpers.GetAuthenticatedClientAsync<ICategoriesClient>();
+        var publishersClient = await HttpClientHelpers.GetAuthenticatedClientAsync<IPublishersClient>();
 
         var suffix = Guid.NewGuid().ToString()[..8];
         var authorName = $"SearchMatch Auth {suffix}";
         var catName = $"SearchMatch Cat {suffix}";
         var pubName = $"SearchMatch Pub {suffix}";
 
-        _ = await TestHelpers.CreateAuthorAsync(authorsClient,
+        _ = await AuthorHelpers.CreateAuthorAsync(authorsClient,
             new CreateAuthorRequest
             {
                 Id = Guid.CreateVersion7(),
                 Name = authorName,
                 Translations = new Dictionary<string, AuthorTranslationDto> { ["en"] = new("Bio") }
             });
-        _ = await TestHelpers.CreateCategoryAsync(categoriesClient,
+        _ = await CategoryHelpers.CreateCategoryAsync(categoriesClient,
             new CreateCategoryRequest
             {
                 Id = Guid.CreateVersion7(),
                 Translations = new Dictionary<string, CategoryTranslationDto> { ["en"] = new(catName) }
             });
-        _ = await TestHelpers.CreatePublisherAsync(publishersClient,
+        _ = await PublisherHelpers.CreatePublisherAsync(publishersClient,
             new CreatePublisherRequest { Id = Guid.CreateVersion7(), Name = pubName });
 
         // Act & Assert
@@ -123,11 +124,11 @@ public class ManagementIntegrationTests
     public async Task SoftDelete_ShouldHideItem_AndRestoreShouldShowIt()
     {
         // Arrange
-        var authorsClient = await TestHelpers.GetAuthenticatedClientAsync<IAuthorsClient>();
+        var authorsClient = await HttpClientHelpers.GetAuthenticatedClientAsync<IAuthorsClient>();
         var suffix = Guid.NewGuid().ToString()[..8];
         var authorName = $"Delete Auth {suffix}";
 
-        var author = await TestHelpers.CreateAuthorAsync(authorsClient,
+        var author = await AuthorHelpers.CreateAuthorAsync(authorsClient,
             new CreateAuthorRequest
             {
                 Id = Guid.CreateVersion7(),

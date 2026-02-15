@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using BookStore.Shared.Models;
+using BookStore.AppHost.Tests.Helpers;
 
 namespace BookStore.AppHost.Tests;
 
@@ -10,7 +11,7 @@ public class ConfigurationEndpointsTests
     public async Task GetLocalizationConfig_ShouldReturnConfiguration()
     {
         // Arrange
-        var client = TestHelpers.GetUnauthenticatedClient();
+        var client = HttpClientHelpers.GetUnauthenticatedClient();
 
         // Act
         var response = await client.GetAsync("/api/config/localization");
@@ -29,7 +30,7 @@ public class ConfigurationEndpointsTests
     public async Task GetCurrencyConfig_ShouldReturnConfiguration()
     {
         // Arrange
-        var client = TestHelpers.GetUnauthenticatedClient();
+        var client = HttpClientHelpers.GetUnauthenticatedClient();
 
         // Act
         var response = await client.GetAsync("/api/config/currency");
@@ -48,7 +49,7 @@ public class ConfigurationEndpointsTests
     public async Task GetLocalizationConfig_ShouldBeAccessibleWithoutAuthentication()
     {
         // Arrange
-        var client = TestHelpers.GetUnauthenticatedClient();
+        var client = HttpClientHelpers.GetUnauthenticatedClient();
         // No authentication headers added
 
         // Act
@@ -62,7 +63,7 @@ public class ConfigurationEndpointsTests
     public async Task GetCurrencyConfig_ShouldBeAccessibleWithoutAuthentication()
     {
         // Arrange
-        var client = TestHelpers.GetUnauthenticatedClient();
+        var client = HttpClientHelpers.GetUnauthenticatedClient();
         // No authentication headers added
 
         // Act
@@ -76,7 +77,7 @@ public class ConfigurationEndpointsTests
     public async Task GetLocalizationConfig_ShouldMatchAppSettings()
     {
         // Arrange
-        var client = TestHelpers.GetUnauthenticatedClient();
+        var client = HttpClientHelpers.GetUnauthenticatedClient();
 
         // Act
         var response = await client.GetAsync("/api/config/localization");
@@ -98,7 +99,7 @@ public class ConfigurationEndpointsTests
     public async Task GetCurrencyConfig_ShouldMatchAppSettings()
     {
         // Arrange
-        var client = TestHelpers.GetUnauthenticatedClient();
+        var client = HttpClientHelpers.GetUnauthenticatedClient();
 
         // Act
         var response = await client.GetAsync("/api/config/currency");

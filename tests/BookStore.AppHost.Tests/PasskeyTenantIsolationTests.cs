@@ -7,6 +7,7 @@ using BookStore.Client;
 using Marten;
 using Refit;
 using Weasel.Core;
+using BookStore.AppHost.Tests.Helpers;
 
 namespace BookStore.AppHost.Tests;
 
@@ -16,15 +17,15 @@ public class PasskeyTenantIsolationTests
     public async Task Passkeys_AreTenantScoped()
     {
         // Arrange
-        var (acmeEmail, _, acmeLoginResponse, _) = await TestHelpers.RegisterAndLoginUserAsync("acme");
-        var (_, _, contosoLoginResponse, _) = await TestHelpers.RegisterAndLoginUserAsync("contoso");
+        var (acmeEmail, _, acmeLoginResponse, _) = await AuthenticationHelpers.RegisterAndLoginUserAsync("acme");
+        var (_, _, contosoLoginResponse, _) = await AuthenticationHelpers.RegisterAndLoginUserAsync("contoso");
 
         var credentialId = Guid.CreateVersion7().ToByteArray();
         await PasskeyTestHelpers.AddPasskeyToUserAsync("acme", acmeEmail, "Acme Passkey", credentialId);
 
-        var acmeClient = RestService.For<IPasskeyClient>(TestHelpers.GetAuthenticatedClient(acmeLoginResponse.AccessToken, "acme"));
+        var acmeClient = RestService.For<IPasskeyClient>(HttpClientHelpers.GetAuthenticatedClient(acmeLoginResponse.AccessToken, "acme"));
         var contosoClient =
-            RestService.For<IPasskeyClient>(TestHelpers.GetAuthenticatedClient(contosoLoginResponse.AccessToken, "contoso"));
+            RestService.For<IPasskeyClient>(HttpClientHelpers.GetAuthenticatedClient(contosoLoginResponse.AccessToken, "contoso"));
 
         // Act
         var acmePasskeys = await acmeClient.ListPasskeysAsync();
@@ -35,7 +36,7 @@ public class PasskeyTenantIsolationTests
         _ = await Assert.That(contosoPasskeys.Any(p => p.Name == "Acme Passkey")).IsFalse();
 
         var mismatchedClient =
-            RestService.For<IPasskeyClient>(TestHelpers.GetAuthenticatedClient(acmeLoginResponse.AccessToken, "contoso"));
+            RestService.For<IPasskeyClient>(HttpClientHelpers.GetAuthenticatedClient(acmeLoginResponse.AccessToken, "contoso"));
         var mismatchException =
             await Assert.That(async () => await mismatchedClient.ListPasskeysAsync()).Throws<ApiException>();
         var isRejected = mismatchException!.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.Unauthorized;
@@ -46,16 +47,16 @@ public class PasskeyTenantIsolationTests
     public async Task DeletePasskey_WithMismatchedTenantHeader_IsRejected()
     {
         // Arrange
-        var (acmeEmail, _, acmeLoginResponse, _) = await TestHelpers.RegisterAndLoginUserAsync("acme");
+        var (acmeEmail, _, acmeLoginResponse, _) = await AuthenticationHelpers.RegisterAndLoginUserAsync("acme");
         var credentialId = Guid.CreateVersion7().ToByteArray();
         await PasskeyTestHelpers.AddPasskeyToUserAsync("acme", acmeEmail, "Acme Passkey", credentialId);
 
-        var acmeClient = RestService.For<IPasskeyClient>(TestHelpers.GetAuthenticatedClient(acmeLoginResponse.AccessToken, "acme"));
+        var acmeClient = RestService.For<IPasskeyClient>(HttpClientHelpers.GetAuthenticatedClient(acmeLoginResponse.AccessToken, "acme"));
         var passkeys = await acmeClient.ListPasskeysAsync();
         var passkeyId = passkeys.Single(p => p.Name == "Acme Passkey").Id;
 
         var mismatchedClient =
-            RestService.For<IPasskeyClient>(TestHelpers.GetAuthenticatedClient(acmeLoginResponse.AccessToken, "contoso"));
+            RestService.For<IPasskeyClient>(HttpClientHelpers.GetAuthenticatedClient(acmeLoginResponse.AccessToken, "contoso"));
 
         // Act
         var mismatchException = await Assert.That(
@@ -74,8 +75,8 @@ public class PasskeyTenantIsolationTests
     public async Task PasskeyCreationOptions_WithEmailFromOtherTenant_ReturnsFreshUserId()
     {
         // Arrange
-        var (acmeEmail, _, acmeLoginResponse, _) = await TestHelpers.RegisterAndLoginUserAsync("acme");
-        var contosoClient = RestService.For<IPasskeyClient>(TestHelpers.GetUnauthenticatedClient("contoso"));
+        var (acmeEmail, _, acmeLoginResponse, _) = await AuthenticationHelpers.RegisterAndLoginUserAsync("acme");
+        var contosoClient = RestService.For<IPasskeyClient>(HttpClientHelpers.GetUnauthenticatedClient("contoso"));
 
         // Get acme user ID from JWT token
         var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();

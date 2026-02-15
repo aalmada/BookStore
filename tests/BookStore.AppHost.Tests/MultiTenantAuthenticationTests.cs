@@ -6,6 +6,7 @@ using BookStore.Shared.Models;
 using JasperFx;
 using Marten;
 using Refit;
+using BookStore.AppHost.Tests.Helpers;
 
 namespace BookStore.AppHost.Tests;
 
@@ -35,8 +36,8 @@ public class MultiTenantAuthenticationTests : IDisposable
             opts.Events.TenancyStyle = Marten.Storage.TenancyStyle.Conjoined;
         });
 
-        await TestHelpers.SeedTenantAsync(store, "acme");
-        await TestHelpers.SeedTenantAsync(store, "contoso");
+        await DatabaseHelpers.SeedTenantAsync(store, "acme");
+        await DatabaseHelpers.SeedTenantAsync(store, "contoso");
     }
 
     [Before(Test)]
@@ -69,9 +70,9 @@ public class MultiTenantAuthenticationTests : IDisposable
     public async Task SeedAsync_CreatesAdminForEachTenant()
     {
         // Act: Try to login as each tenant's admin
-        var defaultLogin = await TestHelpers.LoginAsAdminAsync(_client!, StorageConstants.DefaultTenantId);
-        var acmeLogin = await TestHelpers.LoginAsAdminAsync(_client!, "acme");
-        var contosoLogin = await TestHelpers.LoginAsAdminAsync(_client!, "contoso");
+        var defaultLogin = await AuthenticationHelpers.LoginAsAdminAsync(_client!, StorageConstants.DefaultTenantId);
+        var acmeLogin = await AuthenticationHelpers.LoginAsAdminAsync(_client!, "acme");
+        var contosoLogin = await AuthenticationHelpers.LoginAsAdminAsync(_client!, "contoso");
 
         // Assert: All admins should exist and be able to login
         _ = await Assert.That(defaultLogin).IsNotNull();
@@ -107,7 +108,7 @@ public class MultiTenantAuthenticationTests : IDisposable
     public async Task Login_AdminFromAcme_SucceedsInAcmeTenant()
     {
         // Act: Login with Acme credentials using helper (which has retry logic)
-        var response = await TestHelpers.LoginAsAdminAsync(_client!, "acme");
+        var response = await AuthenticationHelpers.LoginAsAdminAsync(_client!, "acme");
 
         // Assert: Should succeed
         _ = await Assert.That(response).IsNotNull();
@@ -118,7 +119,7 @@ public class MultiTenantAuthenticationTests : IDisposable
     public async Task AdminToken_FromAcme_CanAccessAcmeBooks()
     {
         // Arrange: Login as Acme admin and get token
-        var acmeLogin = await TestHelpers.LoginAsAdminAsync(_client!, "acme");
+        var acmeLogin = await AuthenticationHelpers.LoginAsAdminAsync(_client!, "acme");
         _ = await Assert.That(acmeLogin).IsNotNull();
 
         // Act: Try to access acme books with acme token and acme tenant header
@@ -136,7 +137,7 @@ public class MultiTenantAuthenticationTests : IDisposable
     public async Task AdminToken_FromAcme_WithContosoHeader_IsRejected()
     {
         // Arrange: Login as Acme admin
-        var acmeLogin = await TestHelpers.LoginAsAdminAsync(_client!, "acme");
+        var acmeLogin = await AuthenticationHelpers.LoginAsAdminAsync(_client!, "acme");
         _ = await Assert.That(acmeLogin).IsNotNull();
 
         // Act: Try to access books with acme JWT but contoso tenant header
@@ -160,7 +161,7 @@ public class MultiTenantAuthenticationTests : IDisposable
     public async Task Admin_CanCreateBookInOwnTenant()
     {
         // Arrange: Login as Acme admin
-        var acmeLogin = await TestHelpers.LoginAsAdminAsync(_client!, "acme");
+        var acmeLogin = await AuthenticationHelpers.LoginAsAdminAsync(_client!, "acme");
         _ = await Assert.That(acmeLogin).IsNotNull();
 
         // Create minimal book data
@@ -213,7 +214,7 @@ public class MultiTenantAuthenticationTests : IDisposable
     public async Task Login_ContosoAdmin_CannotAccessAcmeData()
     {
         // Arrange: Login as Contoso admin
-        var contosoLogin = await TestHelpers.LoginAsAdminAsync(_client!, "contoso");
+        var contosoLogin = await AuthenticationHelpers.LoginAsAdminAsync(_client!, "contoso");
         _ = await Assert.That(contosoLogin).IsNotNull();
 
         // Act: Try to access acme books with contoso credentials

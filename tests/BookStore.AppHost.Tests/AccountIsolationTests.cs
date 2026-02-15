@@ -1,4 +1,5 @@
 using System.Net;
+using BookStore.AppHost.Tests.Helpers;
 using BookStore.Client;
 using BookStore.Shared.Models;
 using JasperFx;
@@ -35,19 +36,19 @@ public class AccountIsolationTests
             opts.Events.TenancyStyle = Marten.Storage.TenancyStyle.Conjoined;
         });
 
-        await TestHelpers.SeedTenantAsync(store, "acme");
-        await TestHelpers.SeedTenantAsync(store, "contoso");
+        await DatabaseHelpers.SeedTenantAsync(store, "acme");
+        await DatabaseHelpers.SeedTenantAsync(store, "contoso");
     }
 
     [Test]
     public async Task User_RegisteredOnContoso_CannotLoginOnAcme()
     {
         // Arrange: Create a unique user email for this test
-        var userEmail = TestHelpers.GenerateFakeEmail();
-        var password = TestHelpers.GenerateFakePassword();
+        var userEmail = FakeDataGenerators.GenerateFakeEmail();
+        var password = FakeDataGenerators.GenerateFakePassword();
 
-        var contosoClient = RestService.For<IIdentityClient>(TestHelpers.GetUnauthenticatedClient("contoso"));
-        var acmeClient = RestService.For<IIdentityClient>(TestHelpers.GetUnauthenticatedClient("acme"));
+        var contosoClient = RestService.For<IIdentityClient>(HttpClientHelpers.GetUnauthenticatedClient("contoso"));
+        var acmeClient = RestService.For<IIdentityClient>(HttpClientHelpers.GetUnauthenticatedClient("acme"));
 
         // Act 1: Register user on Contoso tenant
         _ = await contosoClient.RegisterAsync(new RegisterRequest(userEmail, password));
@@ -64,10 +65,10 @@ public class AccountIsolationTests
     public async Task User_RegisteredOnContoso_CanLoginOnContoso()
     {
         // Arrange: Create a unique user email for this test
-        var userEmail = TestHelpers.GenerateFakeEmail();
-        var password = TestHelpers.GenerateFakePassword();
+        var userEmail = FakeDataGenerators.GenerateFakeEmail();
+        var password = FakeDataGenerators.GenerateFakePassword();
 
-        var contosoClient = RestService.For<IIdentityClient>(TestHelpers.GetUnauthenticatedClient("contoso"));
+        var contosoClient = RestService.For<IIdentityClient>(HttpClientHelpers.GetUnauthenticatedClient("contoso"));
 
         // Act 1: Register user on Contoso tenant
         _ = await contosoClient.RegisterAsync(new RegisterRequest(userEmail, password));
@@ -84,11 +85,11 @@ public class AccountIsolationTests
     public async Task User_RegisteredOnAcme_CannotLoginOnContoso()
     {
         // Arrange: Create a unique user email for this test
-        var userEmail = TestHelpers.GenerateFakeEmail();
-        var password = TestHelpers.GenerateFakePassword();
+        var userEmail = FakeDataGenerators.GenerateFakeEmail();
+        var password = FakeDataGenerators.GenerateFakePassword();
 
-        var acmeClient = RestService.For<IIdentityClient>(TestHelpers.GetUnauthenticatedClient("acme"));
-        var contosoClient = RestService.For<IIdentityClient>(TestHelpers.GetUnauthenticatedClient("contoso"));
+        var acmeClient = RestService.For<IIdentityClient>(HttpClientHelpers.GetUnauthenticatedClient("acme"));
+        var contosoClient = RestService.For<IIdentityClient>(HttpClientHelpers.GetUnauthenticatedClient("contoso"));
 
         // Act 1: Register user on Acme tenant
         _ = await acmeClient.RegisterAsync(new RegisterRequest(userEmail, password));
@@ -105,11 +106,11 @@ public class AccountIsolationTests
     public async Task User_RegisteredOnDefault_CannotLoginOnAcme()
     {
         // Arrange: Create a unique user email for this test
-        var userEmail = TestHelpers.GenerateFakeEmail();
-        var password = TestHelpers.GenerateFakePassword();
+        var userEmail = FakeDataGenerators.GenerateFakeEmail();
+        var password = FakeDataGenerators.GenerateFakePassword();
 
-        var defaultClient = RestService.For<IIdentityClient>(TestHelpers.GetUnauthenticatedClient());
-        var acmeClient = RestService.For<IIdentityClient>(TestHelpers.GetUnauthenticatedClient("acme"));
+        var defaultClient = RestService.For<IIdentityClient>(HttpClientHelpers.GetUnauthenticatedClient());
+        var acmeClient = RestService.For<IIdentityClient>(HttpClientHelpers.GetUnauthenticatedClient("acme"));
 
         // Act 1: Register user on Default tenant (no X-Tenant-ID header)
         _ = await defaultClient.RegisterAsync(new RegisterRequest(userEmail, password));

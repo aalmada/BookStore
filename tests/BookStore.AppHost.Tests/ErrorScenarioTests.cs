@@ -1,4 +1,5 @@
 using System.Net;
+using BookStore.AppHost.Tests.Helpers;
 using BookStore.Client;
 using BookStore.Shared.Models;
 using Refit;
@@ -11,8 +12,8 @@ public class ErrorScenarioTests
     public async Task CreateBook_WithoutAuth_ShouldReturnUnauthorized()
     {
         // Arrange
-        var client = RestService.For<IBooksClient>(TestHelpers.GetUnauthenticatedClient());
-        var createBookRequest = TestHelpers.GenerateFakeBookRequest();
+        var client = RestService.For<IBooksClient>(HttpClientHelpers.GetUnauthenticatedClient());
+        var createBookRequest = FakeDataGenerators.GenerateFakeBookRequest();
 
         // Act & Assert
         var exception = await Assert.That(async () => await client.CreateBookAsync(createBookRequest))
@@ -24,7 +25,7 @@ public class ErrorScenarioTests
     public async Task CreateBook_WithInvalidData_ShouldReturnBadRequest()
     {
         // Arrange
-        var client = RestService.For<IBooksClient>(await TestHelpers.GetAuthenticatedClientAsync());
+        var client = RestService.For<IBooksClient>(await HttpClientHelpers.GetAuthenticatedClientAsync());
 
         var createBookRequest = new CreateBookRequest
         {
@@ -50,7 +51,7 @@ public class ErrorScenarioTests
     public async Task GetBook_NotFound_ShouldReturn404()
     {
         // Arrange
-        var client = RestService.For<IBooksClient>(TestHelpers.GetUnauthenticatedClient());
+        var client = RestService.For<IBooksClient>(HttpClientHelpers.GetUnauthenticatedClient());
         var nonExistentId = Guid.NewGuid();
 
         // Act & Assert

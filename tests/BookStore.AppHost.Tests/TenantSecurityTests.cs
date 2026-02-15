@@ -1,6 +1,7 @@
 using System.Net;
 using BookStore.Client;
 using Refit;
+using BookStore.AppHost.Tests.Helpers;
 
 namespace BookStore.AppHost.Tests;
 
@@ -18,7 +19,7 @@ public class TenantSecurityTests
 
         // Arrange
         // Test 1: Valid token (tenant=Default/BookStore), Header=acme -> Should Fail
-        var client = RestService.For<IShoppingCartClient>(TestHelpers.GetAuthenticatedClient(validToken, "acme"));
+        var client = RestService.For<IShoppingCartClient>(HttpClientHelpers.GetAuthenticatedClient(validToken, "acme"));
 
         // Act & Assert
         var exception = await Assert.That(async () => await client.GetShoppingCartAsync()).Throws<ApiException>();
@@ -34,7 +35,7 @@ public class TenantSecurityTests
         }
 
         // Test 2: Anonymous user with X-Tenant-ID="acme" -> Should be Forbidden
-        var client = RestService.For<IShoppingCartClient>(TestHelpers.GetUnauthenticatedClient("acme"));
+        var client = RestService.For<IShoppingCartClient>(HttpClientHelpers.GetUnauthenticatedClient("acme"));
 
         // Act & Assert
         var exception = await Assert.That(async () => await client.GetShoppingCartAsync()).Throws<ApiException>();
@@ -51,7 +52,7 @@ public class TenantSecurityTests
 
         // Test 3: Same as Test 1 basically - Valid Token (Default), Header (acme) -> Mismatch -> Forbidden
         var validToken = GlobalHooks.AdminAccessToken!;
-        var client = RestService.For<IShoppingCartClient>(TestHelpers.GetAuthenticatedClient(validToken, "acme"));
+        var client = RestService.For<IShoppingCartClient>(HttpClientHelpers.GetAuthenticatedClient(validToken, "acme"));
 
         // Act & Assert
         var exception = await Assert.That(async () => await client.GetShoppingCartAsync()).Throws<ApiException>();
@@ -73,7 +74,7 @@ public class TenantSecurityTests
 
         // 1. Success path: Default Tenant Admin (GlobalHooks.AdminAccessToken) accessing Default Tenant endpoint
         var client =
-            RestService.For<ITenantsClient>(TestHelpers.GetAuthenticatedClient(GlobalHooks.AdminAccessToken));
+            RestService.For<ITenantsClient>(HttpClientHelpers.GetAuthenticatedClient(GlobalHooks.AdminAccessToken));
 
         // Act
         var result = await client.GetAllTenantsAdminAsync();

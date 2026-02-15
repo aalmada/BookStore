@@ -8,6 +8,7 @@ using Marten;
 using Microsoft.AspNetCore.Identity;
 using Refit;
 using Weasel.Core;
+using BookStore.AppHost.Tests.Helpers;
 
 namespace BookStore.AppHost.Tests;
 
@@ -19,7 +20,7 @@ public class PasskeyDeletionTests
 
     public PasskeyDeletionTests()
     {
-        var httpClient = TestHelpers.GetUnauthenticatedClient();
+        var httpClient = HttpClientHelpers.GetUnauthenticatedClient();
         _client = RestService.For<IIdentityClient>(httpClient);
         _passkeyClient = RestService.For<IPasskeyClient>(httpClient);
         _faker = new Faker();
@@ -36,7 +37,7 @@ public class PasskeyDeletionTests
         _ = await _client.RegisterAsync(new RegisterRequest(email, password));
         var loginResult = await _client.LoginAsync(new LoginRequest(email, password));
 
-        var authClient = TestHelpers.GetAuthenticatedClient(loginResult.AccessToken);
+        var authClient = HttpClientHelpers.GetAuthenticatedClient(loginResult.AccessToken);
         var authenticatedPasskeyClient = RestService.For<IPasskeyClient>(authClient);
 
         // 2. Manually seed a passkey with an ID that is NOT URL-safe in standard Base64
@@ -67,7 +68,7 @@ public class PasskeyDeletionTests
         // 5. Assert
 
         // Verify it's gone from DB
-        var store = await TestHelpers.GetDocumentStoreAsync();
+        var store = await DatabaseHelpers.GetDocumentStoreAsync();
         await using var session = store.LightweightSession(StorageConstants.DefaultTenantId);
         var user = await session.Query<ApplicationUser>()
             .Where(u => u.NormalizedEmail == email.ToUpperInvariant())

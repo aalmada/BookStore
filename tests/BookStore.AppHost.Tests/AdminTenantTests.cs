@@ -1,5 +1,6 @@
 using System.Net;
 using BookStore.ApiService.Models;
+using BookStore.AppHost.Tests.Helpers;
 using BookStore.Client;
 using BookStore.Shared.Models;
 using JasperFx.Events;
@@ -20,7 +21,7 @@ public class AdminTenantTests
         }
 
         var client =
-            RestService.For<ITenantsClient>(TestHelpers.GetAuthenticatedClient(GlobalHooks.AdminAccessToken!));
+            RestService.For<ITenantsClient>(HttpClientHelpers.GetAuthenticatedClient(GlobalHooks.AdminAccessToken!));
 
         // Arrange
         var command = new CreateTenantCommand(
@@ -37,7 +38,7 @@ public class AdminTenantTests
         var exception = await Assert.That(async () => await client.CreateTenantAsync(command)).Throws<ApiException>();
         _ = await Assert.That(exception!.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
 
-        var error = await exception.GetContentAsAsync<TestHelpers.ErrorResponse>();
+        var error = await exception.GetContentAsAsync<AuthenticationHelpers.ErrorResponse>();
         _ = await Assert.That(error?.Error).IsEqualTo(ErrorCodes.Tenancy.InvalidAdminPassword);
     }
 
@@ -50,7 +51,7 @@ public class AdminTenantTests
         }
 
         var client =
-            RestService.For<ITenantsClient>(TestHelpers.GetAuthenticatedClient(GlobalHooks.AdminAccessToken!));
+            RestService.For<ITenantsClient>(HttpClientHelpers.GetAuthenticatedClient(GlobalHooks.AdminAccessToken!));
 
         // Arrange
         var command = new CreateTenantCommand(
@@ -60,14 +61,14 @@ public class AdminTenantTests
             ThemePrimaryColor: "#ff0000",
             IsEnabled: true,
             AdminEmail: "invalid-email", // Invalid email
-            AdminPassword: TestHelpers.GenerateFakePassword()
+            AdminPassword: FakeDataGenerators.GenerateFakePassword()
         );
 
         // Act & Assert
         var exception = await Assert.That(async () => await client.CreateTenantAsync(command)).Throws<ApiException>();
         _ = await Assert.That(exception!.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
 
-        var error = await exception.GetContentAsAsync<TestHelpers.ErrorResponse>();
+        var error = await exception.GetContentAsAsync<AuthenticationHelpers.ErrorResponse>();
         _ = await Assert.That(error?.Error).IsEqualTo(ErrorCodes.Tenancy.InvalidAdminEmail);
     }
 
@@ -80,7 +81,7 @@ public class AdminTenantTests
         }
 
         var client =
-            RestService.For<ITenantsClient>(TestHelpers.GetAuthenticatedClient(GlobalHooks.AdminAccessToken!));
+            RestService.For<ITenantsClient>(HttpClientHelpers.GetAuthenticatedClient(GlobalHooks.AdminAccessToken!));
 
         // Arrange
         var tenantId = $"valid-tenant-{Guid.NewGuid():N}";
@@ -90,8 +91,8 @@ public class AdminTenantTests
             Tagline: "Testing valid creation",
             ThemePrimaryColor: "#00ff00",
             IsEnabled: true,
-            AdminEmail: TestHelpers.GenerateFakeEmail(),
-            AdminPassword: TestHelpers.GenerateFakePassword() // Valid password
+            AdminEmail: FakeDataGenerators.GenerateFakeEmail(),
+            AdminPassword: FakeDataGenerators.GenerateFakePassword() // Valid password
         );
 
         // Act
@@ -107,11 +108,11 @@ public class AdminTenantTests
         }
 
         var client =
-            RestService.For<ITenantsClient>(TestHelpers.GetAuthenticatedClient(GlobalHooks.AdminAccessToken!));
+            RestService.For<ITenantsClient>(HttpClientHelpers.GetAuthenticatedClient(GlobalHooks.AdminAccessToken!));
 
         // Arrange
         var tenantId = $"verify-tenant-{Guid.NewGuid():N}";
-        var adminEmail = TestHelpers.GenerateFakeEmail();
+        var adminEmail = FakeDataGenerators.GenerateFakeEmail();
         var command = new CreateTenantCommand(
             Id: tenantId,
             Name: "Verify Tenant",
@@ -119,12 +120,12 @@ public class AdminTenantTests
             ThemePrimaryColor: "#0000ff",
             IsEnabled: true,
             AdminEmail: adminEmail,
-            AdminPassword: TestHelpers.GenerateFakePassword()
+            AdminPassword: FakeDataGenerators.GenerateFakePassword()
         );
 
         // Act & Assert - Connect to SSE before creating, then wait for notification
         // Creation triggers UserUpdated via UserProfile projection
-        var received = await TestHelpers.ExecuteAndWaitForEventAsync(
+        var received = await SseEventHelpers.ExecuteAndWaitForEventAsync(
             Guid.Empty,
             "UserUpdated",
             async () => await client.CreateTenantAsync(command),

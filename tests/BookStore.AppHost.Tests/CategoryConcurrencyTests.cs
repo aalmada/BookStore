@@ -1,6 +1,7 @@
 using System.Net;
 using BookStore.Client;
 using TUnit.Assertions.Extensions;
+using BookStore.AppHost.Tests.Helpers;
 
 namespace BookStore.AppHost.Tests;
 
@@ -10,17 +11,17 @@ public class CategoryConcurrencyTests
     public async Task UpdateCategory_TwiceWithSameETag_ShouldFailOnSecondUpdate()
     {
         // Arrange
-        var client = await TestHelpers.GetAuthenticatedClientAsync<ICategoriesClient>();
-        var createRequest = TestHelpers.GenerateFakeCategoryRequest();
-        var category = await TestHelpers.CreateCategoryAsync(client, createRequest);
+        var client = await HttpClientHelpers.GetAuthenticatedClientAsync<ICategoriesClient>();
+        var createRequest = FakeDataGenerators.GenerateFakeCategoryRequest();
+        var category = await CategoryHelpers.CreateCategoryAsync(client, createRequest);
 
         // Get initial state and ETag
         var response = await client.GetCategoryWithResponseAsync(category.Id);
         var etag = response.Headers.ETag?.Tag;
         _ = await Assert.That(etag).IsNotNull();
 
-        var updateRequest1 = TestHelpers.GenerateFakeUpdateCategoryRequest();
-        var updateRequest2 = TestHelpers.GenerateFakeUpdateCategoryRequest();
+        var updateRequest1 = FakeDataGenerators.GenerateFakeUpdateCategoryRequest();
+        var updateRequest2 = FakeDataGenerators.GenerateFakeUpdateCategoryRequest();
 
         // Act - First update succeeds
         await client.UpdateCategoryAsync(category.Id, updateRequest1, etag);
@@ -36,16 +37,16 @@ public class CategoryConcurrencyTests
     public async Task UpdateThenDeleteCategory_WithSameETag_ShouldFailOnDelete()
     {
         // Arrange
-        var client = await TestHelpers.GetAuthenticatedClientAsync<ICategoriesClient>();
-        var createRequest = TestHelpers.GenerateFakeCategoryRequest();
-        var category = await TestHelpers.CreateCategoryAsync(client, createRequest);
+        var client = await HttpClientHelpers.GetAuthenticatedClientAsync<ICategoriesClient>();
+        var createRequest = FakeDataGenerators.GenerateFakeCategoryRequest();
+        var category = await CategoryHelpers.CreateCategoryAsync(client, createRequest);
 
         // Get initial state and ETag
         var response = await client.GetCategoryWithResponseAsync(category.Id);
         var etag = response.Headers.ETag?.Tag;
         _ = await Assert.That(etag).IsNotNull();
 
-        var updateRequest = TestHelpers.GenerateFakeUpdateCategoryRequest();
+        var updateRequest = FakeDataGenerators.GenerateFakeUpdateCategoryRequest();
 
         // Act - Update succeeds
         await client.UpdateCategoryAsync(category.Id, updateRequest, etag);
@@ -61,16 +62,16 @@ public class CategoryConcurrencyTests
     public async Task DeleteThenUpdateCategory_WithSameETag_ShouldFailOnUpdate()
     {
         // Arrange
-        var client = await TestHelpers.GetAuthenticatedClientAsync<ICategoriesClient>();
-        var createRequest = TestHelpers.GenerateFakeCategoryRequest();
-        var category = await TestHelpers.CreateCategoryAsync(client, createRequest);
+        var client = await HttpClientHelpers.GetAuthenticatedClientAsync<ICategoriesClient>();
+        var createRequest = FakeDataGenerators.GenerateFakeCategoryRequest();
+        var category = await CategoryHelpers.CreateCategoryAsync(client, createRequest);
 
         // Get initial state and ETag
         var response = await client.GetCategoryWithResponseAsync(category.Id);
         var etag = response.Headers.ETag?.Tag;
         _ = await Assert.That(etag).IsNotNull();
 
-        var updateRequest = TestHelpers.GenerateFakeUpdateCategoryRequest();
+        var updateRequest = FakeDataGenerators.GenerateFakeUpdateCategoryRequest();
 
         // Act - Delete succeeds
         await client.SoftDeleteCategoryAsync(category.Id, etag);

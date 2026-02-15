@@ -3,6 +3,7 @@ using BookStore.Client;
 using BookStore.Shared.Models;
 using TUnit;
 using SharedModels = BookStore.Shared.Models;
+using BookStore.AppHost.Tests.Helpers;
 
 namespace BookStore.AppHost.Tests;
 
@@ -27,9 +28,9 @@ public class PriceFilterRegressionTests
         double maxPrice,
         bool shouldMatch)
     {
-        var authClient = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
+        var authClient = await HttpClientHelpers.GetAuthenticatedClientAsync<IBooksClient>();
         // Public client via Refit
-        var publicHttpClient = TestHelpers.GetUnauthenticatedClient();
+        var publicHttpClient = HttpClientHelpers.GetUnauthenticatedClient();
         var publicClient = Refit.RestService.For<IBooksClient>(publicHttpClient);
 
         var uniqueTitle =
@@ -49,7 +50,7 @@ public class PriceFilterRegressionTests
         };
         createRequest.Prices = new Dictionary<string, decimal> { ["USD"] = (decimal)originalPrice };
 
-        var book = await TestHelpers.CreateBookAsync(authClient, createRequest);
+        var book = await BookHelpers.CreateBookAsync(authClient, createRequest);
         var bookId = book.Id;
 
         if (discountPercentage > 0)
@@ -59,7 +60,7 @@ public class PriceFilterRegressionTests
             var bookResponse = await authClient.GetBookWithResponseAsync(bookId);
             var currentVersion = ParseETag(bookResponse.Headers.ETag?.Tag);
 
-            _ = await TestHelpers.ExecuteAndWaitForEventAsync(bookId, "BookUpdated",
+            _ = await SseEventHelpers.ExecuteAndWaitForEventAsync(bookId, "BookUpdated",
                 async () => await authClient.ScheduleBookSaleAsync(bookId, saleRequest, bookResponse.Headers.ETag?.Tag),
                 TimeSpan.FromSeconds(10),
                 minVersion: currentVersion + 1);
@@ -93,8 +94,8 @@ public class PriceFilterRegressionTests
     [Test]
     public async Task SearchBooks_WithMixedCurrency_ShouldRequireSingleCurrencyToMatchRange()
     {
-        var authClient = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
-        var publicHttpClient = TestHelpers.GetUnauthenticatedClient();
+        var authClient = await HttpClientHelpers.GetAuthenticatedClientAsync<IBooksClient>();
+        var publicHttpClient = HttpClientHelpers.GetUnauthenticatedClient();
         var publicClient = Refit.RestService.For<IBooksClient>(publicHttpClient);
 
         var uniqueTitle = $"Mixed-NoMatch-{Guid.NewGuid()}";
@@ -113,7 +114,7 @@ public class PriceFilterRegressionTests
             CategoryIds = []
         };
 
-        var book = await TestHelpers.CreateBookAsync(authClient, createRequest);
+        var book = await BookHelpers.CreateBookAsync(authClient, createRequest);
 
         var contentInitial = await publicClient.GetBooksAsync(new BookSearchRequest { Search = uniqueTitle });
         _ = await Assert.That(contentInitial != null && contentInitial.Items.Any(b => b.Title == uniqueTitle)).IsTrue();
@@ -133,8 +134,8 @@ public class PriceFilterRegressionTests
     [Test]
     public async Task SearchBooks_WithDiscount_AfterBookUpdate_ShouldStillFilterByDiscountedPrice()
     {
-        var authClient = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
-        var publicHttpClient = TestHelpers.GetUnauthenticatedClient();
+        var authClient = await HttpClientHelpers.GetAuthenticatedClientAsync<IBooksClient>();
+        var publicHttpClient = HttpClientHelpers.GetUnauthenticatedClient();
         var publicClient = Refit.RestService.For<IBooksClient>(publicHttpClient);
 
         var uniqueTitle = $"UpdateResetsDiscount-{Guid.NewGuid()}";
@@ -152,7 +153,7 @@ public class PriceFilterRegressionTests
             CategoryIds = []
         };
 
-        var book = await TestHelpers.CreateBookAsync(authClient, createRequest);
+        var book = await BookHelpers.CreateBookAsync(authClient, createRequest);
         var bookId = book.Id;
         var initialVersion = ParseETag(book.ETag);
 
@@ -164,14 +165,14 @@ public class PriceFilterRegressionTests
             $"[Test] Book {bookId} Created. InitialVersion={initialVersion}");
 
         // Wait for ScheduleBookSale (version 2)
-        _ = await TestHelpers.ExecuteAndWaitForEventAsync(bookId, "BookUpdated",
+        _ = await SseEventHelpers.ExecuteAndWaitForEventAsync(bookId, "BookUpdated",
             async () => await authClient.ScheduleBookSaleAsync(bookId, saleRequest), TimeSpan.FromSeconds(10),
             minVersion: initialVersion + 1);
 
         // Wait for ApplyBookDiscount side effect (version 3)
         // This is scheduled to run at Sale.Start (which is UtcNow), so it should execute almost immediately
         // Instead of Delay, we should wait for the event that signals the discount was applied
-        _ = await TestHelpers.ExecuteAndWaitForEventAsync(bookId, "BookUpdated",
+        _ = await SseEventHelpers.ExecuteAndWaitForEventAsync(bookId, "BookUpdated",
             async () =>
             {
                 /* The side effect is already triggered by Marten/Wolverine */
@@ -210,7 +211,7 @@ public class PriceFilterRegressionTests
             Prices = fetchedBook.Prices?.ToDictionary(k => k.Key, v => v.Value) ?? []
         };
 
-        _ = await TestHelpers.UpdateBookAsync(authClient, bookId, updateRequest, etagValue!);
+        _ = await BookHelpers.UpdateBookAsync(authClient, bookId, updateRequest, etagValue!);
 
         // 4. Verify book is STILL found in the same price range
         var updatedTitle = uniqueTitle + " Updated";

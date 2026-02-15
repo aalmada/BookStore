@@ -3,6 +3,7 @@ using BookStore.Client;
 using BookStore.Shared.Models;
 using Refit;
 using SharedModels = BookStore.Shared.Models;
+using BookStore.AppHost.Tests.Helpers;
 
 namespace BookStore.AppHost.Tests;
 
@@ -17,11 +18,11 @@ public class TenantUserIsolationTests
     {
         // Arrange - Setup tenant and user
         var tenantId = "acme";
-        var adminClient = await TestHelpers.GetAuthenticatedClientAsync();
-        var loginRes = await TestHelpers.LoginAsAdminAsync(adminClient, tenantId);
+        var adminClient = await HttpClientHelpers.GetAuthenticatedClientAsync();
+        var loginRes = await AuthenticationHelpers.LoginAsAdminAsync(adminClient, tenantId);
         _ = await Assert.That(loginRes).IsNotNull();
 
-        var tenantAdminClient = await TestHelpers.GetTenantClientAsync(tenantId, loginRes!.AccessToken);
+        var tenantAdminClient = await HttpClientHelpers.GetTenantClientAsync(tenantId, loginRes!.AccessToken);
         var tenantAdminBooksClient = Refit.RestService.For<IBooksClient>(tenantAdminClient);
 
         // Use Refit to create book
@@ -40,18 +41,18 @@ public class TenantUserIsolationTests
         };
 
         SharedModels.BookDto book = null!;
-        _ = await TestHelpers.ExecuteAndWaitForEventAsync(Guid.Empty, ["BookCreated", "BookUpdated"],
+        _ = await SseEventHelpers.ExecuteAndWaitForEventAsync(Guid.Empty, ["BookCreated", "BookUpdated"],
             async () => book = await tenantAdminBooksClient.CreateBookAsync(createRequest),
             TestConstants.DefaultEventTimeout);
 
-        var userClient = await TestHelpers.CreateUserAndGetClientAsync(tenantId);
+        var userClient = await AuthenticationHelpers.CreateUserAndGetClientAsync(tenantId);
         var userBooksClient = Refit.RestService.For<IBooksClient>(userClient.Client);
 
         // Act - Rate the book
         var rating = 5;
         // Verify method name in IBooksClient. IRateBookEndpoint.RateBookAsync?
         // Using wait for event
-        _ = await TestHelpers.ExecuteAndWaitForEventAsync(book.Id, "BookUpdated",
+        _ = await SseEventHelpers.ExecuteAndWaitForEventAsync(book.Id, "BookUpdated",
             async () => await userBooksClient.RateBookAsync(book.Id, new RateBookRequest(rating)),
             TestConstants.DefaultEventTimeout);
 
@@ -66,11 +67,11 @@ public class TenantUserIsolationTests
     {
         // Arrange
         var tenantId = "contoso";
-        var adminClient = await TestHelpers.GetAuthenticatedClientAsync();
-        var loginRes = await TestHelpers.LoginAsAdminAsync(adminClient, tenantId);
+        var adminClient = await HttpClientHelpers.GetAuthenticatedClientAsync();
+        var loginRes = await AuthenticationHelpers.LoginAsAdminAsync(adminClient, tenantId);
         _ = await Assert.That(loginRes).IsNotNull();
 
-        var tenantAdminClient = await TestHelpers.GetTenantClientAsync(tenantId, loginRes!.AccessToken);
+        var tenantAdminClient = await HttpClientHelpers.GetTenantClientAsync(tenantId, loginRes!.AccessToken);
         var tenantAdminBooksClient = Refit.RestService.For<IBooksClient>(tenantAdminClient);
 
         var createRequest = new CreateBookRequest
@@ -88,17 +89,17 @@ public class TenantUserIsolationTests
         };
 
         SharedModels.BookDto book = null!;
-        _ = await TestHelpers.ExecuteAndWaitForEventAsync(Guid.Empty, ["BookCreated", "BookUpdated"],
+        _ = await SseEventHelpers.ExecuteAndWaitForEventAsync(Guid.Empty, ["BookCreated", "BookUpdated"],
             async () => book = await tenantAdminBooksClient.CreateBookAsync(createRequest),
             TestConstants.DefaultEventTimeout);
 
-        var userClient = await TestHelpers.CreateUserAndGetClientAsync(tenantId);
+        var userClient = await AuthenticationHelpers.CreateUserAndGetClientAsync(tenantId);
         var userBooksClient = Refit.RestService.For<IBooksClient>(userClient.Client);
 
         // Act
         // Act
         // AddBookToFavoritesAsync ?
-        _ = await TestHelpers.ExecuteAndWaitForEventAsync(userClient.UserId, "UserUpdated",
+        _ = await SseEventHelpers.ExecuteAndWaitForEventAsync(userClient.UserId, "UserUpdated",
             async () => await userBooksClient.AddBookToFavoritesAsync(book.Id),
             TestConstants.DefaultEventTimeout);
 
@@ -117,11 +118,11 @@ public class TenantUserIsolationTests
     {
         // Arrange - Setup tenant-specific context
         var tenantId = "acme";
-        var adminClient = await TestHelpers.GetAuthenticatedClientAsync();
-        var loginRes = await TestHelpers.LoginAsAdminAsync(adminClient, tenantId);
+        var adminClient = await HttpClientHelpers.GetAuthenticatedClientAsync();
+        var loginRes = await AuthenticationHelpers.LoginAsAdminAsync(adminClient, tenantId);
         _ = await Assert.That(loginRes).IsNotNull();
 
-        var tenantAdminClient = await TestHelpers.GetTenantClientAsync(tenantId, loginRes!.AccessToken);
+        var tenantAdminClient = await HttpClientHelpers.GetTenantClientAsync(tenantId, loginRes!.AccessToken);
         var tenantAdminBooksClient = Refit.RestService.For<IBooksClient>(tenantAdminClient);
 
         var createRequest = new CreateBookRequest
@@ -139,16 +140,16 @@ public class TenantUserIsolationTests
         };
 
         SharedModels.BookDto book = null!;
-        _ = await TestHelpers.ExecuteAndWaitForEventAsync(Guid.Empty, ["BookCreated", "BookUpdated"],
+        _ = await SseEventHelpers.ExecuteAndWaitForEventAsync(Guid.Empty, ["BookCreated", "BookUpdated"],
             async () => book = await tenantAdminBooksClient.CreateBookAsync(createRequest),
             TestConstants.DefaultEventTimeout);
 
-        var userClient = await TestHelpers.CreateUserAndGetClientAsync(tenantId);
+        var userClient = await AuthenticationHelpers.CreateUserAndGetClientAsync(tenantId);
         // Need Cart Client
         var userCartClient = Refit.RestService.For<IShoppingCartClient>(userClient.Client);
 
         // Act - Add to cart
-        _ = await TestHelpers.ExecuteAndWaitForEventAsync(userClient.UserId, "UserUpdated",
+        _ = await SseEventHelpers.ExecuteAndWaitForEventAsync(userClient.UserId, "UserUpdated",
             async () => await userCartClient.AddToCartAsync(new AddToCartClientRequest(book.Id, 2)),
             TestConstants.DefaultEventTimeout);
 
@@ -165,13 +166,13 @@ public class TenantUserIsolationTests
         var tenant1 = "acme";
         var tenant2 = "contoso";
 
-        var adminClient = await TestHelpers.GetAuthenticatedClientAsync();
+        var adminClient = await HttpClientHelpers.GetAuthenticatedClientAsync();
 
         // Helper to setup tenant and create book
-        async Task<(SharedModels.BookDto book, TestHelpers.UserClient userClient)> SetupTenantAsync(string tid)
+        async Task<(SharedModels.BookDto book, AuthenticationHelpers.UserClient userClient)> SetupTenantAsync(string tid)
         {
-            var login = await TestHelpers.LoginAsAdminAsync(adminClient, tid);
-            var tClient = await TestHelpers.GetTenantClientAsync(tid, login!.AccessToken);
+            var login = await AuthenticationHelpers.LoginAsAdminAsync(adminClient, tid);
+            var tClient = await HttpClientHelpers.GetTenantClientAsync(tid, login!.AccessToken);
             var tBooksClient = Refit.RestService.For<IBooksClient>(tClient);
 
             var createRequest = new CreateBookRequest
@@ -189,11 +190,11 @@ public class TenantUserIsolationTests
             };
 
             SharedModels.BookDto createdBook = null!;
-            _ = await TestHelpers.ExecuteAndWaitForEventAsync(Guid.Empty, ["BookCreated", "BookUpdated"],
+            _ = await SseEventHelpers.ExecuteAndWaitForEventAsync(Guid.Empty, ["BookCreated", "BookUpdated"],
                 async () => createdBook = await tBooksClient.CreateBookAsync(createRequest),
                 TestConstants.DefaultEventTimeout);
 
-            var uClient = await TestHelpers.CreateUserAndGetClientAsync(tid);
+            var uClient = await AuthenticationHelpers.CreateUserAndGetClientAsync(tid);
             return (createdBook, uClient);
         }
 
@@ -204,11 +205,11 @@ public class TenantUserIsolationTests
         var user2Client = Refit.RestService.For<IBooksClient>(user2ClientInfo.Client);
 
         // Act - User1 rates book1, User2 rates book2
-        _ = await TestHelpers.ExecuteAndWaitForEventAsync(book1.Id, "BookUpdated",
+        _ = await SseEventHelpers.ExecuteAndWaitForEventAsync(book1.Id, "BookUpdated",
             async () => await user1Client.RateBookAsync(book1.Id, new RateBookRequest(5)),
             TestConstants.DefaultEventTimeout);
 
-        _ = await TestHelpers.ExecuteAndWaitForEventAsync(book2.Id, "BookUpdated",
+        _ = await SseEventHelpers.ExecuteAndWaitForEventAsync(book2.Id, "BookUpdated",
             async () => await user2Client.RateBookAsync(book2.Id, new RateBookRequest(3)),
             TestConstants.DefaultEventTimeout);
 

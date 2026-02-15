@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using BookStore.ServiceDefaults;
 using Npgsql;
+using BookStore.AppHost.Tests.Helpers;
 
 namespace BookStore.AppHost.Tests;
 
@@ -17,7 +18,7 @@ public class CorrelationTests
             Assert.Fail("App not initialized");
         }
 
-        var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
+        var httpClient = await HttpClientHelpers.GetAuthenticatedClientAsync();
 
         var correlationId = Guid.NewGuid().ToString();
         var fakeBookId =
@@ -43,7 +44,7 @@ public class CorrelationTests
         // Act & Assert
         // We use ExecuteAndWaitForEventAsync to ensure the command is processed and events are persisted 
         // before we check the database. Rating a book triggers a UserUpdated notification in this system.
-        var received = await TestHelpers.ExecuteAndWaitForEventAsync(
+        var received = await SseEventHelpers.ExecuteAndWaitForEventAsync(
             Guid.Empty,
             "UserUpdated",
             async () =>
@@ -121,7 +122,7 @@ public class CorrelationTests
             Assert.Fail("App not initialized");
         }
 
-        var httpClient = await TestHelpers.GetAuthenticatedClientAsync();
+        var httpClient = await HttpClientHelpers.GetAuthenticatedClientAsync();
 
         var fakeBookId = Guid.NewGuid();
 
@@ -134,7 +135,7 @@ public class CorrelationTests
         // Act & Assert
         string? responseCorrelationId = null;
 
-        var received = await TestHelpers.ExecuteAndWaitForEventAsync(
+        var received = await SseEventHelpers.ExecuteAndWaitForEventAsync(
             Guid.Empty,
             "UserUpdated",
             async () =>

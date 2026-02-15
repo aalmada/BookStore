@@ -3,6 +3,7 @@ using BookStore.Client;
 using BookStore.Shared.Models;
 using JasperFx;
 using Refit;
+using BookStore.AppHost.Tests.Helpers;
 
 namespace BookStore.AppHost.Tests;
 
@@ -21,8 +22,8 @@ public class AdminUserTests
     public async Task GetUsers_ReturnsListOfUsers()
     {
         // Arrange
-        var adminLogin = await TestHelpers.LoginAsAdminAsync(StorageConstants.DefaultTenantId);
-        var client = RestService.For<IUsersClient>(TestHelpers.GetAuthenticatedClient(adminLogin!.AccessToken));
+        var adminLogin = await AuthenticationHelpers.LoginAsAdminAsync(StorageConstants.DefaultTenantId);
+        var client = RestService.For<IUsersClient>(HttpClientHelpers.GetAuthenticatedClient(adminLogin!.AccessToken));
 
         // Act
         var result = await client.GetUsersAsync();
@@ -42,14 +43,14 @@ public class AdminUserTests
     public async Task PromoteUser_SucceedsForOtherUser()
     {
         // Arrange
-        var adminLogin = await TestHelpers.LoginAsAdminAsync(StorageConstants.DefaultTenantId);
-        var client = RestService.For<IUsersClient>(TestHelpers.GetAuthenticatedClient(adminLogin!.AccessToken));
+        var adminLogin = await AuthenticationHelpers.LoginAsAdminAsync(StorageConstants.DefaultTenantId);
+        var client = RestService.For<IUsersClient>(HttpClientHelpers.GetAuthenticatedClient(adminLogin!.AccessToken));
         var identityClient =
-            RestService.For<IIdentityClient>(TestHelpers.GetUnauthenticatedClient(StorageConstants.DefaultTenantId));
+            RestService.For<IIdentityClient>(HttpClientHelpers.GetUnauthenticatedClient(StorageConstants.DefaultTenantId));
 
         // Create a regular user
-        var userEmail = TestHelpers.GenerateFakeEmail();
-        _ = await identityClient.RegisterAsync(new RegisterRequest(userEmail, TestHelpers.GenerateFakePassword()));
+        var userEmail = FakeDataGenerators.GenerateFakeEmail();
+        _ = await identityClient.RegisterAsync(new RegisterRequest(userEmail, FakeDataGenerators.GenerateFakePassword()));
 
         var result = await client.GetUsersAsync(search: userEmail);
         var users = result.Items;
@@ -69,8 +70,8 @@ public class AdminUserTests
     public async Task PromoteSelf_ReturnsBadRequest()
     {
         // Arrange
-        var adminLogin = await TestHelpers.LoginAsAdminAsync(StorageConstants.DefaultTenantId);
-        var client = RestService.For<IUsersClient>(TestHelpers.GetAuthenticatedClient(adminLogin!.AccessToken));
+        var adminLogin = await AuthenticationHelpers.LoginAsAdminAsync(StorageConstants.DefaultTenantId);
+        var client = RestService.For<IUsersClient>(HttpClientHelpers.GetAuthenticatedClient(adminLogin!.AccessToken));
 
         var result = await client.GetUsersAsync();
         var users = result.Items;
@@ -80,7 +81,7 @@ public class AdminUserTests
         var exception = await Assert.That(async () => await client.PromoteToAdminAsync(self.Id)).Throws<ApiException>();
         _ = await Assert.That(exception!.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
 
-        var error = await exception.GetContentAsAsync<TestHelpers.ErrorResponse>();
+        var error = await exception.GetContentAsAsync<AuthenticationHelpers.ErrorResponse>();
         _ = await Assert.That(error?.Error).IsEqualTo(ErrorCodes.Admin.CannotPromoteSelf);
     }
 
@@ -88,8 +89,8 @@ public class AdminUserTests
     public async Task DemoteSelf_ReturnsBadRequest()
     {
         // Arrange
-        var adminLogin = await TestHelpers.LoginAsAdminAsync(StorageConstants.DefaultTenantId);
-        var client = RestService.For<IUsersClient>(TestHelpers.GetAuthenticatedClient(adminLogin!.AccessToken));
+        var adminLogin = await AuthenticationHelpers.LoginAsAdminAsync(StorageConstants.DefaultTenantId);
+        var client = RestService.For<IUsersClient>(HttpClientHelpers.GetAuthenticatedClient(adminLogin!.AccessToken));
 
         var result = await client.GetUsersAsync();
         var users = result.Items;
@@ -100,7 +101,7 @@ public class AdminUserTests
             .Throws<ApiException>();
         _ = await Assert.That(exception!.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
 
-        var error = await exception.GetContentAsAsync<TestHelpers.ErrorResponse>();
+        var error = await exception.GetContentAsAsync<AuthenticationHelpers.ErrorResponse>();
         _ = await Assert.That(error?.Error).IsEqualTo(ErrorCodes.Admin.CannotDemoteSelf);
     }
 
@@ -108,14 +109,14 @@ public class AdminUserTests
     public async Task DemoteUser_SucceedsForOtherUser()
     {
         // Arrange
-        var adminLogin = await TestHelpers.LoginAsAdminAsync(StorageConstants.DefaultTenantId);
-        var client = RestService.For<IUsersClient>(TestHelpers.GetAuthenticatedClient(adminLogin!.AccessToken));
+        var adminLogin = await AuthenticationHelpers.LoginAsAdminAsync(StorageConstants.DefaultTenantId);
+        var client = RestService.For<IUsersClient>(HttpClientHelpers.GetAuthenticatedClient(adminLogin!.AccessToken));
         var identityClient =
-            RestService.For<IIdentityClient>(TestHelpers.GetUnauthenticatedClient(StorageConstants.DefaultTenantId));
+            RestService.For<IIdentityClient>(HttpClientHelpers.GetUnauthenticatedClient(StorageConstants.DefaultTenantId));
 
         // Create and promote a user
-        var userEmail = TestHelpers.GenerateFakeEmail();
-        _ = await identityClient.RegisterAsync(new RegisterRequest(userEmail, TestHelpers.GenerateFakePassword()));
+        var userEmail = FakeDataGenerators.GenerateFakeEmail();
+        _ = await identityClient.RegisterAsync(new RegisterRequest(userEmail, FakeDataGenerators.GenerateFakePassword()));
 
         var result = await client.GetUsersAsync(search: userEmail);
         var users = result.Items;
@@ -136,14 +137,14 @@ public class AdminUserTests
     public async Task PromoteUser_AlreadyAdmin_ReturnsBadRequest()
     {
         // Arrange
-        var adminLogin = await TestHelpers.LoginAsAdminAsync(StorageConstants.DefaultTenantId);
-        var client = RestService.For<IUsersClient>(TestHelpers.GetAuthenticatedClient(adminLogin!.AccessToken));
+        var adminLogin = await AuthenticationHelpers.LoginAsAdminAsync(StorageConstants.DefaultTenantId);
+        var client = RestService.For<IUsersClient>(HttpClientHelpers.GetAuthenticatedClient(adminLogin!.AccessToken));
         var identityClient =
-            RestService.For<IIdentityClient>(TestHelpers.GetUnauthenticatedClient(StorageConstants.DefaultTenantId));
+            RestService.For<IIdentityClient>(HttpClientHelpers.GetUnauthenticatedClient(StorageConstants.DefaultTenantId));
 
         // Create and promote a user
-        var userEmail = TestHelpers.GenerateFakeEmail();
-        _ = await identityClient.RegisterAsync(new RegisterRequest(userEmail, TestHelpers.GenerateFakePassword()));
+        var userEmail = FakeDataGenerators.GenerateFakeEmail();
+        _ = await identityClient.RegisterAsync(new RegisterRequest(userEmail, FakeDataGenerators.GenerateFakePassword()));
 
         var result = await client.GetUsersAsync(search: userEmail);
         var users = result.Items;
@@ -159,14 +160,14 @@ public class AdminUserTests
     public async Task DemoteUser_NotAdmin_ReturnsBadRequest()
     {
         // Arrange
-        var adminLogin = await TestHelpers.LoginAsAdminAsync(StorageConstants.DefaultTenantId);
-        var client = RestService.For<IUsersClient>(TestHelpers.GetAuthenticatedClient(adminLogin!.AccessToken));
+        var adminLogin = await AuthenticationHelpers.LoginAsAdminAsync(StorageConstants.DefaultTenantId);
+        var client = RestService.For<IUsersClient>(HttpClientHelpers.GetAuthenticatedClient(adminLogin!.AccessToken));
         var identityClient =
-            RestService.For<IIdentityClient>(TestHelpers.GetUnauthenticatedClient(StorageConstants.DefaultTenantId));
+            RestService.For<IIdentityClient>(HttpClientHelpers.GetUnauthenticatedClient(StorageConstants.DefaultTenantId));
 
         // Create a regular user
-        var userEmail = TestHelpers.GenerateFakeEmail();
-        _ = await identityClient.RegisterAsync(new RegisterRequest(userEmail, TestHelpers.GenerateFakePassword()));
+        var userEmail = FakeDataGenerators.GenerateFakeEmail();
+        _ = await identityClient.RegisterAsync(new RegisterRequest(userEmail, FakeDataGenerators.GenerateFakePassword()));
 
         var result = await client.GetUsersAsync(search: userEmail);
         var users = result.Items;
@@ -182,15 +183,15 @@ public class AdminUserTests
     public async Task RegularUser_CannotAccessAdminUserEndpoints()
     {
         // Arrange
-        var userEmail = TestHelpers.GenerateFakeEmail();
-        var password = TestHelpers.GenerateFakePassword();
+        var userEmail = FakeDataGenerators.GenerateFakeEmail();
+        var password = FakeDataGenerators.GenerateFakePassword();
         var identityClient =
-            RestService.For<IIdentityClient>(TestHelpers.GetUnauthenticatedClient(StorageConstants.DefaultTenantId));
+            RestService.For<IIdentityClient>(HttpClientHelpers.GetUnauthenticatedClient(StorageConstants.DefaultTenantId));
         _ = await identityClient.RegisterAsync(new RegisterRequest(userEmail, password));
 
         var loginResponse = await identityClient.LoginAsync(new LoginRequest(userEmail, password));
         var userClient =
-            RestService.For<IUsersClient>(TestHelpers.GetAuthenticatedClient(loginResponse.AccessToken));
+            RestService.For<IUsersClient>(HttpClientHelpers.GetAuthenticatedClient(loginResponse.AccessToken));
 
         // Act & Assert
         var exception = await Assert.That(async () => await userClient.GetUsersAsync()).Throws<ApiException>();
@@ -201,14 +202,14 @@ public class AdminUserTests
     public async Task PromoteUser_LowercaseAdmin_IsNormalizedToPascalCase()
     {
         // Arrange
-        var adminLogin = await TestHelpers.LoginAsAdminAsync(StorageConstants.DefaultTenantId);
-        var client = RestService.For<IUsersClient>(TestHelpers.GetAuthenticatedClient(adminLogin!.AccessToken));
+        var adminLogin = await AuthenticationHelpers.LoginAsAdminAsync(StorageConstants.DefaultTenantId);
+        var client = RestService.For<IUsersClient>(HttpClientHelpers.GetAuthenticatedClient(adminLogin!.AccessToken));
         var identityClient =
-            RestService.For<IIdentityClient>(TestHelpers.GetUnauthenticatedClient(StorageConstants.DefaultTenantId));
+            RestService.For<IIdentityClient>(HttpClientHelpers.GetUnauthenticatedClient(StorageConstants.DefaultTenantId));
 
         // Create a regular user
-        var userEmail = TestHelpers.GenerateFakeEmail();
-        _ = await identityClient.RegisterAsync(new RegisterRequest(userEmail, TestHelpers.GenerateFakePassword()));
+        var userEmail = FakeDataGenerators.GenerateFakeEmail();
+        _ = await identityClient.RegisterAsync(new RegisterRequest(userEmail, FakeDataGenerators.GenerateFakePassword()));
 
         var result = await client.GetUsersAsync(search: userEmail);
         var users = result.Items;
@@ -230,8 +231,8 @@ public class AdminUserTests
     public async Task GetUsers_WithPagination_ReturnsCorrectPage()
     {
         // Arrange
-        var adminLogin = await TestHelpers.LoginAsAdminAsync(StorageConstants.DefaultTenantId);
-        var client = RestService.For<IUsersClient>(TestHelpers.GetAuthenticatedClient(adminLogin!.AccessToken));
+        var adminLogin = await AuthenticationHelpers.LoginAsAdminAsync(StorageConstants.DefaultTenantId);
+        var client = RestService.For<IUsersClient>(HttpClientHelpers.GetAuthenticatedClient(adminLogin!.AccessToken));
 
         // Act
         var result = await client.GetUsersAsync(page: 1, pageSize: 1);

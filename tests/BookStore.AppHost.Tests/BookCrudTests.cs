@@ -4,6 +4,7 @@ using Bogus;
 using BookStore.Client;
 using BookStore.Shared.Models;
 using Refit;
+using BookStore.AppHost.Tests.Helpers;
 
 // Resolve ambiguities by preferring Client types
 using CreateBookRequest = BookStore.Client.CreateBookRequest;
@@ -17,8 +18,8 @@ public class BookCrudTests
     public async Task UploadBookImage_ShouldReturnOk()
     {
         // Arrange
-        var client = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
-        var createdBook = await TestHelpers.CreateBookAsync(client);
+        var client = await HttpClientHelpers.GetAuthenticatedClientAsync<IBooksClient>();
+        var createdBook = await BookHelpers.CreateBookAsync(client);
 
         // Get ETag for concurrency check
         var getResponse = await client.GetBookWithResponseAsync(createdBook.Id);
@@ -43,7 +44,7 @@ public class BookCrudTests
         // We can double check strict status if we change return type to Task<IApiResponse>, but Task is fine for "ShouldReturnOk".
     }
 
-    // I will modify ONLY the parts that DON'T need ETag for now? 
+    // I will modify ONLY the parts that DON'T need ETag for now?
     // No, most tests use ETag.
     // I absolutely need to solve the ETag retrieval with Refit.
     // Standard Refit pattern: use ApiResponse<T>.
@@ -54,10 +55,10 @@ public class BookCrudTests
     public async Task CreateBook_EndToEndFlow_ShouldReturnOk()
     {
         // Arrange
-        var client = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
+        var client = await HttpClientHelpers.GetAuthenticatedClientAsync<IBooksClient>();
 
         // Act
-        var createdBook = await TestHelpers.CreateBookAsync(client);
+        var createdBook = await BookHelpers.CreateBookAsync(client);
 
         // Assert
         _ = await Assert.That(createdBook).IsNotNull();
@@ -67,8 +68,8 @@ public class BookCrudTests
     public async Task UpdateBook_EndToEndFlow_ShouldReturnOk()
     {
         // Arrange
-        var client = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
-        var createdBook = await TestHelpers.CreateBookAsync(client);
+        var client = await HttpClientHelpers.GetAuthenticatedClientAsync<IBooksClient>();
+        var createdBook = await BookHelpers.CreateBookAsync(client);
 
         // Get the book to retrieve its ETag
         var getResponse = await client.GetBookWithResponseAsync(createdBook.Id);
@@ -78,8 +79,8 @@ public class BookCrudTests
         _ = await Assert.That(etag).IsNotNull();
 
         // Act
-        var updateBookRequest = TestHelpers.GenerateFakeBookRequest();
-        createdBook = await TestHelpers.UpdateBookAsync(client, createdBook.Id, updateBookRequest, etag!);
+        var updateBookRequest = FakeDataGenerators.GenerateFakeBookRequest();
+        createdBook = await BookHelpers.UpdateBookAsync(client, createdBook.Id, updateBookRequest, etag!);
 
         // Assert - Success is validated inside UpdateBookAsync
     }
@@ -88,8 +89,8 @@ public class BookCrudTests
     public async Task DeleteBook_EndToEndFlow_ShouldReturnNoContent()
     {
         // Arrange
-        var client = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
-        var createdBook = await TestHelpers.CreateBookAsync(client);
+        var client = await HttpClientHelpers.GetAuthenticatedClientAsync<IBooksClient>();
+        var createdBook = await BookHelpers.CreateBookAsync(client);
 
         // Get the book to retrieve its ETag
         var getResponse = await client.GetBookWithResponseAsync(createdBook.Id);
@@ -99,7 +100,7 @@ public class BookCrudTests
         _ = await Assert.That(etag).IsNotNull();
 
         // Act
-        var deletedBook = await TestHelpers.DeleteBookAsync(client, createdBook.Id, etag!);
+        var deletedBook = await BookHelpers.DeleteBookAsync(client, createdBook.Id, etag!);
 
         // Assert - Success is validated inside DeleteBookAsync
     }
@@ -108,8 +109,8 @@ public class BookCrudTests
     public async Task RestoreBook_ShouldReturnOk()
     {
         // Arrange
-        var client = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
-        var createdBook = await TestHelpers.CreateBookAsync(client);
+        var client = await HttpClientHelpers.GetAuthenticatedClientAsync<IBooksClient>();
+        var createdBook = await BookHelpers.CreateBookAsync(client);
 
         // Get ETag for delete
         var getResponse = await client.GetBookWithResponseAsync(createdBook.Id);
@@ -117,10 +118,10 @@ public class BookCrudTests
         _ = await Assert.That(deleteEtag).IsNotNull();
 
         // Soft delete book
-        _ = await TestHelpers.DeleteBookAsync(client, createdBook.Id, deleteEtag!);
+        _ = await BookHelpers.DeleteBookAsync(client, createdBook.Id, deleteEtag!);
 
         // Act
-        createdBook = await TestHelpers.RestoreBookAsync(client, createdBook.Id);
+        createdBook = await BookHelpers.RestoreBookAsync(client, createdBook.Id);
 
         // Assert - Success is validated inside RestoreBookAsync
     }
@@ -129,11 +130,11 @@ public class BookCrudTests
     public async Task AddToFavorites_ShouldReturnNoContent()
     {
         // Arrange
-        var client = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
-        var createdBook = await TestHelpers.CreateBookAsync(client);
+        var client = await HttpClientHelpers.GetAuthenticatedClientAsync<IBooksClient>();
+        var createdBook = await BookHelpers.CreateBookAsync(client);
 
         // Act
-        await TestHelpers.AddToFavoritesAsync(client, createdBook.Id);
+        await BookHelpers.AddToFavoritesAsync(client, createdBook.Id);
 
         // Assert
         var getResponse = await client.GetBookAsync(createdBook.Id);
@@ -144,18 +145,18 @@ public class BookCrudTests
     public async Task RemoveFromFavorites_ShouldReturnNoContent()
     {
         // Arrange
-        var client = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
-        var createdBook = await TestHelpers.CreateBookAsync(client);
+        var client = await HttpClientHelpers.GetAuthenticatedClientAsync<IBooksClient>();
+        var createdBook = await BookHelpers.CreateBookAsync(client);
 
         // Add to favorites first
-        await TestHelpers.AddToFavoritesAsync(client, createdBook.Id);
+        await BookHelpers.AddToFavoritesAsync(client, createdBook.Id);
 
         // Verify it IS favorite initially
         var initialGet = await client.GetBookAsync(createdBook.Id);
         _ = await Assert.That(initialGet!.IsFavorite).IsTrue();
 
         // Act
-        await TestHelpers.RemoveFromFavoritesAsync(client, createdBook.Id);
+        await BookHelpers.RemoveFromFavoritesAsync(client, createdBook.Id);
 
         // Assert
         var getResponse = await client.GetBookAsync(createdBook.Id);
@@ -166,11 +167,11 @@ public class BookCrudTests
     public async Task GetBook_WhenNotAuthenticated_ShouldHaveIsFavoriteFalse()
     {
         // Arrange
-        var adminClient = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
-        var createdBook = await TestHelpers.CreateBookAsync(adminClient);
+        var adminClient = await HttpClientHelpers.GetAuthenticatedClientAsync<IBooksClient>();
+        var createdBook = await BookHelpers.CreateBookAsync(adminClient);
 
         // Act
-        var publicClient = TestHelpers.GetUnauthenticatedClient<IBooksClient>();
+        var publicClient = HttpClientHelpers.GetUnauthenticatedClient<IBooksClient>();
         var getResponse = await publicClient.GetBookAsync(createdBook.Id);
 
         // Assert
@@ -180,32 +181,32 @@ public class BookCrudTests
     [Test]
     public async Task BookLikeCount_ShouldAggregateCorrectly_WhenMultipleUsersLikeBook()
     {
-        var anonClient = TestHelpers.GetUnauthenticatedClient<IBooksClient>();
+        var anonClient = HttpClientHelpers.GetUnauthenticatedClient<IBooksClient>();
 
         // Arrange
-        var adminClient = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
-        var createdBook = await TestHelpers.CreateBookAsync(adminClient);
+        var adminClient = await HttpClientHelpers.GetAuthenticatedClientAsync<IBooksClient>();
+        var createdBook = await BookHelpers.CreateBookAsync(adminClient);
 
         var user1Client = await CreateAuthenticatedUserAsync();
         var user2Client = await CreateAuthenticatedUserAsync();
 
         // Act & Assert: User 1 likes book
-        await TestHelpers.AddToFavoritesAsync(user1Client, createdBook.Id, createdBook.Id, "BookStatisticsUpdate");
+        await BookHelpers.AddToFavoritesAsync(user1Client, createdBook.Id, createdBook.Id, "BookStatisticsUpdate");
         var bookDto1 = await anonClient.GetBookAsync(createdBook.Id);
         _ = await Assert.That(bookDto1!.LikeCount).IsEqualTo(1);
 
         // Act & Assert: User 2 likes book
-        await TestHelpers.AddToFavoritesAsync(user2Client, createdBook.Id, createdBook.Id, "BookStatisticsUpdate");
+        await BookHelpers.AddToFavoritesAsync(user2Client, createdBook.Id, createdBook.Id, "BookStatisticsUpdate");
         var bookDto2 = await anonClient.GetBookAsync(createdBook.Id);
         _ = await Assert.That(bookDto2!.LikeCount).IsEqualTo(2);
 
         // Act & Assert: User 1 unlikes book
-        await TestHelpers.RemoveFromFavoritesAsync(user1Client, createdBook.Id, createdBook.Id, "BookStatisticsUpdate");
+        await BookHelpers.RemoveFromFavoritesAsync(user1Client, createdBook.Id, createdBook.Id, "BookStatisticsUpdate");
         var bookDto3 = await anonClient.GetBookAsync(createdBook.Id);
         _ = await Assert.That(bookDto3!.LikeCount).IsEqualTo(1);
     }
 
     async Task<IBooksClient> CreateAuthenticatedUserAsync()
-        // Wrapper for TestHelpers.CreateUserAndGetClientAsync
-        => await TestHelpers.CreateUserAndGetClientAsync<IBooksClient>();
+        // Wrapper for AuthenticationHelpers.CreateUserAndGetClientAsync
+        => await AuthenticationHelpers.CreateUserAndGetClientAsync<IBooksClient>();
 }

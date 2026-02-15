@@ -3,6 +3,7 @@ using Bogus;
 using BookStore.Client;
 using BookStore.Shared.Models;
 using Refit;
+using BookStore.AppHost.Tests.Helpers;
 
 namespace BookStore.AppHost.Tests;
 
@@ -13,7 +14,7 @@ public class AuthTests
 
     public AuthTests()
     {
-        var httpClient = TestHelpers.GetUnauthenticatedClient();
+        var httpClient = HttpClientHelpers.GetUnauthenticatedClient();
         _client = RestService.For<IIdentityClient>(httpClient);
         _faker = new Faker();
     }
@@ -23,8 +24,8 @@ public class AuthTests
     {
         // Arrange
         var request = new RegisterRequest(
-            TestHelpers.GenerateFakeEmail(),
-            TestHelpers.GenerateFakePassword()
+            FakeDataGenerators.GenerateFakeEmail(),
+            FakeDataGenerators.GenerateFakePassword()
         );
 
         // Act
@@ -40,7 +41,7 @@ public class AuthTests
     {
         // Arrange
         var email = _faker.Internet.Email();
-        var password = TestHelpers.GenerateFakePassword();
+        var password = FakeDataGenerators.GenerateFakePassword();
         var request = new RegisterRequest(email, password);
 
         // Register once
@@ -58,7 +59,7 @@ public class AuthTests
     {
         // Arrange
         var email = _faker.Internet.Email();
-        var password = TestHelpers.GenerateFakePassword();
+        var password = FakeDataGenerators.GenerateFakePassword();
 
         // Register first
         _ = await _client.RegisterAsync(new RegisterRequest(email, password));
@@ -102,7 +103,7 @@ public class AuthTests
         }
         catch (ApiException ex)
         {
-            var problem = await ex.GetContentAsAsync<TestHelpers.ValidationProblemDetails>();
+            var problem = await ex.GetContentAsAsync<AuthenticationHelpers.ValidationProblemDetails>();
             _ = await Assert.That(problem?.Error).IsEqualTo("ERR_AUTH_INVALID_CREDENTIALS");
         }
     }
@@ -115,7 +116,7 @@ public class AuthTests
         var email = $"admin@{tenantId}.com";
         var password = "Admin123!";
 
-        var client = RestService.For<IIdentityClient>(TestHelpers.GetUnauthenticatedClient(tenantId));
+        var client = RestService.For<IIdentityClient>(HttpClientHelpers.GetUnauthenticatedClient(tenantId));
 
         // Act
         var loginResult = await client.LoginAsync(new LoginRequest(email, password));
@@ -129,8 +130,8 @@ public class AuthTests
     public async Task Refresh_WithValidToken_ShouldReturnNewToken()
     {
         // Arrange
-        var email = TestHelpers.GenerateFakeEmail();
-        var password = TestHelpers.GenerateFakePassword();
+        var email = FakeDataGenerators.GenerateFakeEmail();
+        var password = FakeDataGenerators.GenerateFakePassword();
 
         // Register and Login
         _ = await _client.RegisterAsync(new RegisterRequest(email, password));
@@ -149,14 +150,14 @@ public class AuthTests
     public async Task Logout_WithValidRefreshToken_ShouldInvalidateToken()
     {
         // Arrange - Register and login
-        var email = TestHelpers.GenerateFakeEmail();
-        var password = TestHelpers.GenerateFakePassword();
+        var email = FakeDataGenerators.GenerateFakeEmail();
+        var password = FakeDataGenerators.GenerateFakePassword();
 
         _ = await _client.RegisterAsync(new RegisterRequest(email, password));
         var loginResult = await _client.LoginAsync(new LoginRequest(email, password));
 
         // Create an authenticated client with the user's token
-        var authClient = RestService.For<IIdentityClient>(TestHelpers.GetAuthenticatedClient(loginResult.AccessToken));
+        var authClient = RestService.For<IIdentityClient>(HttpClientHelpers.GetAuthenticatedClient(loginResult.AccessToken));
 
         // Act - Logout
         await authClient.LogoutAsync(new LogoutRequest(loginResult.RefreshToken));
@@ -177,8 +178,8 @@ public class AuthTests
     public async Task Logout_WithoutRefreshToken_ShouldInvalidateAllTokens()
     {
         // Arrange - Register, login twice to get two refresh tokens
-        var email = TestHelpers.GenerateFakeEmail();
-        var password = TestHelpers.GenerateFakePassword();
+        var email = FakeDataGenerators.GenerateFakeEmail();
+        var password = FakeDataGenerators.GenerateFakePassword();
 
         _ = await _client.RegisterAsync(new RegisterRequest(email, password));
 
@@ -186,7 +187,7 @@ public class AuthTests
         var loginResult2 = await _client.LoginAsync(new LoginRequest(email, password));
 
         // Create an authenticated client with the user's token
-        var authClient = RestService.For<IIdentityClient>(TestHelpers.GetAuthenticatedClient(loginResult2.AccessToken));
+        var authClient = RestService.For<IIdentityClient>(HttpClientHelpers.GetAuthenticatedClient(loginResult2.AccessToken));
 
         // Act - Logout without specifying refresh token (should clear all)
         await authClient.LogoutAsync(new LogoutRequest(null));

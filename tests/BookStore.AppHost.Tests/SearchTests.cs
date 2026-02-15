@@ -1,5 +1,6 @@
 using BookStore.Client;
 using BookStore.Shared.Models;
+using BookStore.AppHost.Tests.Helpers;
 
 namespace BookStore.AppHost.Tests;
 
@@ -9,7 +10,7 @@ public class SearchTests
     public async Task SearchBooks_WithValidQuery_ShouldReturnMatches()
     {
         // Arrange
-        var adminClient = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
+        var adminClient = await HttpClientHelpers.GetAuthenticatedClientAsync<IBooksClient>();
         var uniqueTitle = $"UniqueSearchTerm-{Guid.NewGuid()}";
 
         // Create a book with a unique title using proper request model
@@ -27,10 +28,10 @@ public class SearchTests
             CategoryIds = [],
             Prices = new Dictionary<string, decimal> { ["USD"] = 10.0m }
         };
-        var createdBook = await TestHelpers.CreateBookAsync(adminClient, createRequest);
+        var createdBook = await BookHelpers.CreateBookAsync(adminClient, createRequest);
 
         // Act
-        var publicClient = TestHelpers.GetUnauthenticatedClient<IBooksClient>();
+        var publicClient = HttpClientHelpers.GetUnauthenticatedClient<IBooksClient>();
         var searchResult = await publicClient.GetBooksAsync(new BookSearchRequest { Search = uniqueTitle });
 
         // Assert
@@ -43,7 +44,7 @@ public class SearchTests
     public async Task SearchBooks_WithNoMatches_ShouldReturnEmpty()
     {
         // Arrange
-        var publicClient = TestHelpers.GetUnauthenticatedClient<IBooksClient>();
+        var publicClient = HttpClientHelpers.GetUnauthenticatedClient<IBooksClient>();
         var globalHooks = GlobalHooks.NotificationService; // ensure app is ready
         _ = await globalHooks!.WaitForResourceHealthyAsync("apiservice", CancellationToken.None)
             .WaitAsync(TestConstants.DefaultTimeout);

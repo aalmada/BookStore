@@ -9,6 +9,7 @@ using Marten;
 using Microsoft.AspNetCore.Identity;
 using Refit;
 using Weasel.Core;
+using BookStore.AppHost.Tests.Helpers;
 
 namespace BookStore.AppHost.Tests;
 
@@ -25,7 +26,7 @@ public class PasskeySecurityTests
     public async Task PasskeyLogin_WithClonedAuthenticator_LocksAccount()
     {
         // Arrange - Create user with a passkey that has a sign count of 5
-        var (email, password, _, tenantId) = await TestHelpers.RegisterAndLoginUserAsync();
+        var (email, password, _, tenantId) = await AuthenticationHelpers.RegisterAndLoginUserAsync();
 
         var credentialId = Guid.CreateVersion7().ToByteArray();
         const uint initialSignCount = 5;
@@ -36,16 +37,16 @@ public class PasskeySecurityTests
         await PasskeyTestHelpers.UpdatePasskeySignCountAsync(tenantId, email, credentialId, signCount: 3);
 
         // Act - Try to use a passkey with a DECREASING counter (cloned authenticator)
-        var client = TestHelpers.GetUnauthenticatedClient(tenantId);
+        var client = HttpClientHelpers.GetUnauthenticatedClient(tenantId);
         var response = await client.PostAsJsonAsync("/account/assertion/result", new
         {
             credentialJson = "{\"mock\":\"data\"}", // Would normally be WebAuthn credential
         });
 
         // Assert - The endpoint should return error, and account should be locked
-        var store = await TestHelpers.GetDocumentStoreAsync();
+        var store = await DatabaseHelpers.GetDocumentStoreAsync();
         await using var session = store.LightweightSession(tenantId);
-        var user = await TestHelpers.GetUserByEmailAsync(session, email);
+        var user = await DatabaseHelpers.GetUserByEmailAsync(session, email);
         _ = await Assert.That(user).IsNotNull();
         // The actual lockout would be tested via a full WebAuthn flow which requires browser automation
     }
@@ -54,10 +55,10 @@ public class PasskeySecurityTests
     public async Task Token_AfterSecurityStampChange_BecomesInvalid()
     {
         // Arrange - Register and login to get a valid token
-        var (email, password, loginResponse, tenantId) = await TestHelpers.RegisterAndLoginUserAsync();
+        var (email, password, loginResponse, tenantId) = await AuthenticationHelpers.RegisterAndLoginUserAsync();
 
         var authClient = RestService.For<IIdentityClient>(
-            TestHelpers.GetAuthenticatedClient(loginResponse.AccessToken, tenantId));
+            HttpClientHelpers.GetAuthenticatedClient(loginResponse.AccessToken, tenantId));
 
         // Verify token works initially
         var initialStatus = await authClient.GetPasswordStatusAsync();
@@ -66,7 +67,7 @@ public class PasskeySecurityTests
         // Act - Change password (this updates security stamp)
         await authClient.ChangePasswordAsync(new ChangePasswordRequest(
             password,
-            TestHelpers.GenerateFakePassword()
+            FakeDataGenerators.GenerateFakePassword()
         ));
 
         // Assert - Old token should now be rejected due to security stamp mismatch
@@ -79,10 +80,10 @@ public class PasskeySecurityTests
     public async Task Token_AfterAddingPasskey_BecomesInvalid()
     {
         // Arrange
-        var (email, password, loginResponse, tenantId) = await TestHelpers.RegisterAndLoginUserAsync();
+        var (email, password, loginResponse, tenantId) = await AuthenticationHelpers.RegisterAndLoginUserAsync();
 
         var authClient = RestService.For<IIdentityClient>(
-            TestHelpers.GetAuthenticatedClient(loginResponse.AccessToken, tenantId));
+            HttpClientHelpers.GetAuthenticatedClient(loginResponse.AccessToken, tenantId));
 
         // Verify token works initially
         var initialStatus = await authClient.GetPasswordStatusAsync();
@@ -93,10 +94,10 @@ public class PasskeySecurityTests
         await PasskeyTestHelpers.AddPasskeyToUserAsync(tenantId, email, "New Passkey", credentialId, signCount: 0);
 
         // Manually trigger security stamp update like the endpoint does
-        var store = await TestHelpers.GetDocumentStoreAsync();
+        var store = await DatabaseHelpers.GetDocumentStoreAsync();
         await using (var session = store.LightweightSession(tenantId))
         {
-            var user = await TestHelpers.GetUserByEmailAsync(session, email);
+            var user = await DatabaseHelpers.GetUserByEmailAsync(session, email);
             user!.SecurityStamp = Guid.CreateVersion7().ToString();
             session.Update(user);
             await session.SaveChangesAsync();
@@ -113,24 +114,24 @@ public class PasskeySecurityTests
     {
         // Arrange - Create a user in tenant1
         var tenant1 = "acme";
-        var email = TestHelpers.GenerateFakeEmail();
-        var password = TestHelpers.GenerateFakePassword();
+        var email = FakeDataGenerators.GenerateFakeEmail();
+        var password = FakeDataGenerators.GenerateFakePassword();
 
-        var client1 = TestHelpers.GetUnauthenticatedClient(tenant1);
+        var client1 = HttpClientHelpers.GetUnauthenticatedClient(tenant1);
         var register1 = await client1.PostAsJsonAsync("/account/register", new { email, password });
         _ = register1.EnsureSuccessStatusCode();
 
         // Get refresh token for tenant1
         var login1 = await client1.PostAsJsonAsync("/account/login", new { email, password });
         _ = login1.EnsureSuccessStatusCode();
-        var loginResponse1 = await login1.Content.ReadFromJsonAsync<TestHelpers.LoginResponse>();
+        var loginResponse1 = await login1.Content.ReadFromJsonAsync<AuthenticationHelpers.LoginResponse>();
 
         // Manually add the same refresh token with a DIFFERENT tenant ID to simulate cross-tenant token theft
         // In a real scenario, this would require a security breach or bug that allows token reuse across tenants
-        var store = await TestHelpers.GetDocumentStoreAsync();
+        var store = await DatabaseHelpers.GetDocumentStoreAsync();
         await using (var session = store.LightweightSession(tenant1))
         {
-            var user = await TestHelpers.GetUserByEmailAsync(session, email);
+            var user = await DatabaseHelpers.GetUserByEmailAsync(session, email);
 
             if (user != null)
             {
@@ -158,7 +159,7 @@ public class PasskeySecurityTests
         // Verify tenant1 account is now locked and all tokens cleared
         await using (var sessionVerify = store.LightweightSession(tenant1))
         {
-            var user = await TestHelpers.GetUserByEmailAsync(sessionVerify, email);
+            var user = await DatabaseHelpers.GetUserByEmailAsync(sessionVerify, email);
 
             _ = await Assert.That(user).IsNotNull();
             _ = await Assert.That(user!.LockoutEnd).IsNotNull();
@@ -171,14 +172,14 @@ public class PasskeySecurityTests
     public async Task PasskeyLogin_ClearsAllExistingRefreshTokens()
     {
         // Arrange - Create user and establish multiple sessions with refresh tokens
-        var (email, password, login1, tenantId) = await TestHelpers.RegisterAndLoginUserAsync();
+        var (email, password, login1, tenantId) = await AuthenticationHelpers.RegisterAndLoginUserAsync();
 
         // Create 2 additional sessions (with RegisterAndLoginUserAsync we already have 1)
-        var client = TestHelpers.GetUnauthenticatedClient(tenantId);
+        var client = HttpClientHelpers.GetUnauthenticatedClient(tenantId);
         var loginResponse2 = await client.PostAsJsonAsync("/account/login", new { email, password });
-        var login2 = await loginResponse2.Content.ReadFromJsonAsync<TestHelpers.LoginResponse>();
+        var login2 = await loginResponse2.Content.ReadFromJsonAsync<AuthenticationHelpers.LoginResponse>();
         var loginResponse3 = await client.PostAsJsonAsync("/account/login", new { email, password });
-        var login3 = await loginResponse3.Content.ReadFromJsonAsync<TestHelpers.LoginResponse>();
+        var login3 = await loginResponse3.Content.ReadFromJsonAsync<AuthenticationHelpers.LoginResponse>();
 
         // Act - Add a passkey and trigger passkey login flow
         // In a real passkey login, all refresh tokens are cleared for security
@@ -186,10 +187,10 @@ public class PasskeySecurityTests
         await PasskeyTestHelpers.AddPasskeyToUserAsync(tenantId, email, "Login Passkey", credentialId, signCount: 0);
 
         // Simulate the token clearing that happens in passkey login
-        var store = await TestHelpers.GetDocumentStoreAsync();
+        var store = await DatabaseHelpers.GetDocumentStoreAsync();
         await using (var session = store.LightweightSession(tenantId))
         {
-            var user = await TestHelpers.GetUserByEmailAsync(session, email);
+            var user = await DatabaseHelpers.GetUserByEmailAsync(session, email);
             user!.RefreshTokens.Clear();
             session.Update(user);
             await session.SaveChangesAsync();
@@ -206,7 +207,7 @@ public class PasskeySecurityTests
 
         // Verify database state
         await using var sessionFinal = store.LightweightSession(tenantId);
-        var userAfter = await TestHelpers.GetUserByEmailAsync(sessionFinal, email);
+        var userAfter = await DatabaseHelpers.GetUserByEmailAsync(sessionFinal, email);
 
         _ = await Assert.That(userAfter!.RefreshTokens).IsEmpty();
     }
@@ -215,7 +216,7 @@ public class PasskeySecurityTests
     public async Task SecurityStamp_InToken_MustMatchUserSecurityStamp()
     {
         // Arrange - Register user and get token
-        var (email, _, loginResponse, tenantId) = await TestHelpers.RegisterAndLoginUserAsync();
+        var (email, _, loginResponse, tenantId) = await AuthenticationHelpers.RegisterAndLoginUserAsync();
 
         // Verify token contains security_stamp claim
         var handler = new JwtSecurityTokenHandler();
@@ -224,9 +225,9 @@ public class PasskeySecurityTests
         _ = await Assert.That(securityStampClaim).IsNotNull();
 
         // Verify it matches the user's actual security stamp
-        var store = await TestHelpers.GetDocumentStoreAsync();
+        var store = await DatabaseHelpers.GetDocumentStoreAsync();
         await using var session = store.LightweightSession(tenantId);
-        var user = await TestHelpers.GetUserByEmailAsync(session, email);
+        var user = await DatabaseHelpers.GetUserByEmailAsync(session, email);
 
         _ = await Assert.That(user).IsNotNull();
         _ = await Assert.That(securityStampClaim!.Value).IsEqualTo(user!.SecurityStamp);
@@ -236,13 +237,13 @@ public class PasskeySecurityTests
     public async Task PasskeySignCount_MustBeStoredAndIncrement()
     {
         // Arrange
-        var (email, _, _, tenantId) = await TestHelpers.RegisterAndLoginUserAsync();
+        var (email, _, _, tenantId) = await AuthenticationHelpers.RegisterAndLoginUserAsync();
         var credentialId = Guid.CreateVersion7().ToByteArray();
 
         // Add initial passkey with sign count 0
         await PasskeyTestHelpers.AddPasskeyToUserAsync(tenantId, email, "Test Device", credentialId, signCount: 0);
 
-        var store = await TestHelpers.GetDocumentStoreAsync();
+        var store = await DatabaseHelpers.GetDocumentStoreAsync();
 
         // Act - Simulate successful logins that increment the counter
         await PasskeyTestHelpers.UpdatePasskeySignCountAsync(tenantId, email, credentialId, signCount: 1);
@@ -251,7 +252,7 @@ public class PasskeySecurityTests
 
         // Assert - Verify counter is properly stored and incremented
         await using var session = store.LightweightSession(tenantId);
-        var user = await TestHelpers.GetUserByEmailAsync(session, email);
+        var user = await DatabaseHelpers.GetUserByEmailAsync(session, email);
 
         _ = await Assert.That(user).IsNotNull();
         var passkey = user!.Passkeys.First(p => p.CredentialId.SequenceEqual(credentialId));

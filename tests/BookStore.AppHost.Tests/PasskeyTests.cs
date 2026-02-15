@@ -4,6 +4,7 @@ using BookStore.Client;
 using BookStore.Shared.Models;
 using Refit;
 using TUnit.Core.Interfaces;
+using BookStore.AppHost.Tests.Helpers;
 
 namespace BookStore.AppHost.Tests;
 
@@ -15,7 +16,7 @@ public class PasskeyTests
 
     public PasskeyTests()
     {
-        var httpClient = TestHelpers.GetUnauthenticatedClient();
+        var httpClient = HttpClientHelpers.GetUnauthenticatedClient();
         _identityClient = RestService.For<IIdentityClient>(httpClient);
         _passkeyClient = RestService.For<IPasskeyClient>(httpClient);
         _faker = new Faker();
@@ -33,11 +34,18 @@ public class PasskeyTests
 
         var request = new PasskeyLoginOptionsRequest { Email = email };
 
-        // Act
-        var options = await _passkeyClient.GetPasskeyLoginOptionsAsync(request);
-
-        // Assert
-        _ = await Assert.That(options).IsNotNull();
+        // Act & Assert
+        try
+        {
+            _ = await _passkeyClient.GetPasskeyLoginOptionsAsync(request);
+            Assert.Fail("Should have thrown BadRequest");
+        }
+        catch (ApiException ex)
+        {
+            _ = await Assert.That(ex.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+            var error = await ex.GetContentAsAsync<AuthenticationHelpers.ErrorResponse>();
+            _ = await Assert.That(error?.Error).IsEqualTo(ErrorCodes.Passkey.UserNotFound);
+        }
     }
 
     [Test]
@@ -73,7 +81,7 @@ public class PasskeyTests
         var loginResult = await _identityClient.LoginAsync(new LoginRequest(email, password));
 
         // Create authenticated client
-        var authHttpClient = TestHelpers.GetUnauthenticatedClient();
+        var authHttpClient = HttpClientHelpers.GetUnauthenticatedClient();
         authHttpClient.DefaultRequestHeaders.Authorization =
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", loginResult!.AccessToken);
         var authPasskeyClient = RestService.For<IPasskeyClient>(authHttpClient);

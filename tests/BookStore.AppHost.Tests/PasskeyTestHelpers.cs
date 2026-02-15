@@ -1,4 +1,5 @@
 using BookStore.ApiService.Models;
+using BookStore.AppHost.Tests.Helpers;
 using JasperFx;
 using Marten;
 using Microsoft.AspNetCore.Identity;
@@ -45,10 +46,10 @@ public static class PasskeyTestHelpers
         byte[] credentialId,
         uint signCount = 0)
     {
-        var store = await TestHelpers.GetDocumentStoreAsync();
+        var store = await DatabaseHelpers.GetDocumentStoreAsync();
         await using var session = store.LightweightSession(tenantId);
 
-        var user = await TestHelpers.GetUserByEmailAsync(session, email);
+        var user = await DatabaseHelpers.GetUserByEmailAsync(session, email);
         if (user == null)
         {
             throw new InvalidOperationException($"User not found: {email}");
@@ -70,10 +71,10 @@ public static class PasskeyTestHelpers
         byte[] credentialId,
         uint signCount)
     {
-        var store = await TestHelpers.GetDocumentStoreAsync();
+        var store = await DatabaseHelpers.GetDocumentStoreAsync();
         await using var session = store.LightweightSession(tenantId);
 
-        var user = await TestHelpers.GetUserByEmailAsync(session, email);
+        var user = await DatabaseHelpers.GetUserByEmailAsync(session, email);
         if (user == null)
         {
             throw new InvalidOperationException($"User not found: {email}");
@@ -106,62 +107,5 @@ public static class PasskeyTestHelpers
 
         session.Update(user);
         await session.SaveChangesAsync();
-    }
-
-    /// <summary>
-    /// Creates a passkey using reflection for legacy code compatibility.
-    /// This is a fallback for tests that need to work with different UserPasskeyInfo versions.
-    /// </summary>
-    [Obsolete("Use CreatePasskeyInfo instead. This method is only for backward compatibility.")]
-    public static object CreatePasskeyViaReflection(byte[] credentialId, string name)
-    {
-        var passkeyType = typeof(UserPasskeyInfo);
-        var constructors = passkeyType.GetConstructors(System.Reflection.BindingFlags.Instance |
-                                                       System.Reflection.BindingFlags.Public |
-                                                       System.Reflection.BindingFlags.NonPublic);
-        var constructor = constructors[0];
-        var parameters = constructor.GetParameters();
-        var args = new object?[parameters.Length];
-
-        for (var i = 0; i < parameters.Length; i++)
-        {
-            var parameter = parameters[i];
-            if (parameter.ParameterType == typeof(byte[]))
-            {
-                args[i] = Array.Empty<byte>();
-            }
-            else if (parameter.ParameterType == typeof(DateTimeOffset))
-            {
-                args[i] = DateTimeOffset.UtcNow;
-            }
-            else if (parameter.ParameterType == typeof(uint))
-            {
-                args[i] = 0u;
-            }
-            else if (parameter.ParameterType == typeof(bool))
-            {
-                args[i] = false;
-            }
-            else
-            {
-                args[i] = null;
-            }
-        }
-
-        var passkey = constructor.Invoke(args) ?? throw new InvalidOperationException("Failed to create passkey.");
-
-        var fields = passkeyType.GetFields(System.Reflection.BindingFlags.Instance |
-                           System.Reflection.BindingFlags.NonPublic |
-                           System.Reflection.BindingFlags.Public);
-
-        var credentialIdField = fields.FirstOrDefault(f =>
-            f.Name.Contains("<CredentialId>k__BackingField") || f.Name == "_credentialId" || f.Name == "credentialId");
-        credentialIdField?.SetValue(passkey, credentialId);
-
-        var nameField = fields.FirstOrDefault(f =>
-            f.Name.Contains("<Name>k__BackingField") || f.Name == "_name" || f.Name == "name");
-        nameField?.SetValue(passkey, name);
-
-        return passkey;
     }
 }

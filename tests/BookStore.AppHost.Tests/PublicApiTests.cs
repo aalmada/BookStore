@@ -1,6 +1,7 @@
 using System.Net;
 using BookStore.Client;
 using Refit;
+using BookStore.AppHost.Tests.Helpers;
 
 namespace BookStore.AppHost.Tests;
 
@@ -16,7 +17,7 @@ public class PublicApiTests
         _ = await notificationService.WaitForResourceHealthyAsync("apiservice", CancellationToken.None)
             .WaitAsync(TestConstants.DefaultTimeout);
 
-        var httpClient = TestHelpers.GetUnauthenticatedClient();
+        var httpClient = HttpClientHelpers.GetUnauthenticatedClient();
         var client = RestService.For<IBooksClient>(httpClient);
 
         // Act
@@ -37,7 +38,7 @@ public class PublicApiTests
         _ = await notificationService.WaitForResourceHealthyAsync("apiservice", CancellationToken.None)
             .WaitAsync(TestConstants.DefaultTimeout);
 
-        var httpClient = TestHelpers.GetUnauthenticatedClient();
+        var httpClient = HttpClientHelpers.GetUnauthenticatedClient();
         var client = RestService.For<IAuthorsClient>(httpClient);
 
         // Act
@@ -58,7 +59,7 @@ public class PublicApiTests
         _ = await notificationService.WaitForResourceHealthyAsync("apiservice", CancellationToken.None)
             .WaitAsync(TestConstants.DefaultTimeout);
 
-        var httpClient = TestHelpers.GetUnauthenticatedClient();
+        var httpClient = HttpClientHelpers.GetUnauthenticatedClient();
         var client = RestService.For<ICategoriesClient>(httpClient);
 
         // Act
@@ -79,7 +80,7 @@ public class PublicApiTests
         _ = await notificationService.WaitForResourceHealthyAsync("apiservice", CancellationToken.None)
             .WaitAsync(TestConstants.DefaultTimeout);
 
-        var httpClient = TestHelpers.GetUnauthenticatedClient();
+        var httpClient = HttpClientHelpers.GetUnauthenticatedClient();
         var client = RestService.For<IPublishersClient>(httpClient);
 
         // Act

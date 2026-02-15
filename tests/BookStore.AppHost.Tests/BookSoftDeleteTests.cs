@@ -2,6 +2,7 @@ using System.Net;
 using BookStore.Client;
 using BookStore.Shared.Models;
 using Refit;
+using BookStore.AppHost.Tests.Helpers;
 
 namespace BookStore.AppHost.Tests;
 
@@ -11,13 +12,13 @@ public class BookSoftDeleteTests
     public async Task SoftDeleteFlow_FullLifecycle_ShouldWorkCorrectly()
     {
         // Arrange
-        var adminClient = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
+        var adminClient = await HttpClientHelpers.GetAuthenticatedClientAsync<IBooksClient>();
         // We also need a raw client to fetch ETag, as Refit IBooksClient returns DTOs without headers
-        // var rawAdminClient = await TestHelpers.GetAuthenticatedClientAsync();
-        var publicClient = Refit.RestService.For<IBooksClient>(TestHelpers.GetUnauthenticatedClient());
+        // var rawAdminClient = await HttpClientHelpers.GetAuthenticatedClientAsync();
+        var publicClient = Refit.RestService.For<IBooksClient>(HttpClientHelpers.GetUnauthenticatedClient());
 
         // 1. Create a book
-        var createdBook = await TestHelpers.CreateBookAsync(adminClient);
+        var createdBook = await BookHelpers.CreateBookAsync(adminClient);
         var bookId = createdBook!.Id;
 
         // Verify visible in public API
@@ -27,7 +28,7 @@ public class BookSoftDeleteTests
         // 2. Soft Delete via Admin API
 
         // Perform Soft Delete
-        var deletedBook = await TestHelpers.DeleteBookAsync(adminClient, createdBook);
+        var deletedBook = await BookHelpers.DeleteBookAsync(adminClient, createdBook);
 
         // 3. Verify Public API returns 404
         try
@@ -48,7 +49,7 @@ public class BookSoftDeleteTests
         _ = await Assert.That(adminBook!.IsDeleted).IsTrue();
 
         // 5. Restore via Admin API
-        createdBook = await TestHelpers.RestoreBookAsync(adminClient, bookId);
+        createdBook = await BookHelpers.RestoreBookAsync(adminClient, bookId);
 
         var restoredGet = await publicClient.GetBookAsync(bookId);
         _ = await Assert.That(restoredGet).IsNotNull();
@@ -58,15 +59,15 @@ public class BookSoftDeleteTests
     public async Task SoftDeletedBook_ShouldBeVisibleToAdmin_ButNotPublic()
     {
         // Arrange
-        var adminClient = await TestHelpers.GetAuthenticatedClientAsync<IBooksClient>();
-        // var rawAdminClient = await TestHelpers.GetAuthenticatedClientAsync(); // For ETag
-        var publicClient = Refit.RestService.For<IBooksClient>(TestHelpers.GetUnauthenticatedClient());
+        var adminClient = await HttpClientHelpers.GetAuthenticatedClientAsync<IBooksClient>();
+        // var rawAdminClient = await HttpClientHelpers.GetAuthenticatedClientAsync(); // For ETag
+        var publicClient = Refit.RestService.For<IBooksClient>(HttpClientHelpers.GetUnauthenticatedClient());
 
-        var createdBook = await TestHelpers.CreateBookAsync(adminClient);
+        var createdBook = await BookHelpers.CreateBookAsync(adminClient);
         var bookId = createdBook!.Id;
 
         // Soft Delete
-        var deletedBook = await TestHelpers.DeleteBookAsync(adminClient, createdBook);
+        var deletedBook = await BookHelpers.DeleteBookAsync(adminClient, createdBook);
 
         // Act & Assert
 
