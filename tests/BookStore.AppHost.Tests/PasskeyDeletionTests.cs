@@ -68,13 +68,11 @@ public class PasskeyDeletionTests
 
         // Verify it's gone from DB
         var store = await TestHelpers.GetDocumentStoreAsync();
-        await using (var session = store.LightweightSession(StorageConstants.DefaultTenantId))
-        {
-            var user = await session.Query<ApplicationUser>()
-                .Where(u => u.NormalizedEmail == email.ToUpperInvariant())
-                .FirstOrDefaultAsync();
+        await using var session = store.LightweightSession(StorageConstants.DefaultTenantId);
+        var user = await session.Query<ApplicationUser>()
+            .Where(u => u.NormalizedEmail == email.ToUpperInvariant())
+            .FirstOrDefaultAsync();
 
-            _ = await Assert.That(user!.Passkeys.Any(p => p.CredentialId.SequenceEqual(unsafeCredentialId))).IsFalse();
-        }
+        _ = await Assert.That(user!.Passkeys.Any(p => p.CredentialId.SequenceEqual(unsafeCredentialId))).IsFalse();
     }
 }

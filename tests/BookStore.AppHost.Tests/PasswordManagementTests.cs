@@ -217,15 +217,13 @@ public class PasswordManagementTests
         // Note: RemovePasswordAsync updates the security stamp, invalidating the current token
         // This is correct security behavior - security-sensitive operations should invalidate sessions
         using var verifyStore = await GetStoreAsync();
-        await using (var verifySession = verifyStore.LightweightSession(StorageConstants.DefaultTenantId))
-        {
-            var updatedUser = await verifySession.Query<ApplicationUser>()
-                .Where(u => u.NormalizedEmail == email.ToUpperInvariant())
-                .FirstOrDefaultAsync();
+        await using var verifySession = verifyStore.LightweightSession(StorageConstants.DefaultTenantId);
+        var updatedUser = await verifySession.Query<ApplicationUser>()
+            .Where(u => u.NormalizedEmail == email.ToUpperInvariant())
+            .FirstOrDefaultAsync();
 
-            _ = await Assert.That(updatedUser).IsNotNull();
-            _ = await Assert.That(updatedUser!.PasswordHash).IsNull();
-        }
+        _ = await Assert.That(updatedUser).IsNotNull();
+        _ = await Assert.That(updatedUser!.PasswordHash).IsNull();
     }
 
     async Task<IDocumentStore> GetStoreAsync()

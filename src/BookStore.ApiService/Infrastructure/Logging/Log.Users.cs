@@ -172,5 +172,20 @@ public static partial class Log
             Message = "Cross-tenant token theft detected for user {UserId}. Token tenant: {TokenTenantId}, Request tenant: {RequestTenantId}")]
         public static partial void CrossTenantTokenTheft(ILogger logger, Guid userId, string tokenTenantId, string requestTenantId);
 
+        [LoggerMessage(
+            Level = LogLevel.Warning,
+            Message = "Passkey tenant validation failed for tenant {TenantId} on endpoint {Endpoint}")]
+        public static partial void PasskeyTenantValidationFailed(ILogger logger, string tenantId, string endpoint);
+
+        [LoggerMessage(
+            Level = LogLevel.Information,
+            Message = "Passkey counter validation triggered for user {Email}. Expected >= {ExpectedCounter}, Actual: {ActualCounter}")]
+        public static partial void PasskeyCounterValidationTriggered(ILogger logger, string? email, uint expectedCounter, uint actualCounter);
+
+        [LoggerMessage(
+            Level = LogLevel.Warning,
+            Message = "Passkey user ID conflict detected for ID {UserId} in tenant {TenantId}")]
+        public static partial void PasskeyUserIdConflictDetected(ILogger logger, Guid userId, string tenantId);
+
     }
 }

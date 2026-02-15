@@ -19,24 +19,21 @@ public static class PasskeyTestHelpers
         byte[] credentialId,
         string name,
         uint signCount = 0,
-        DateTimeOffset? createdAt = null)
-    {
-        return new UserPasskeyInfo(
+        DateTimeOffset? createdAt = null) => new(
             credentialId,
-            Array.Empty<byte>(), // publicKey
+            [], // publicKey
             createdAt ?? DateTimeOffset.UtcNow,
             signCount,
-            Array.Empty<string>(), // transports
+            [], // transports
             true, // isUserVerified
             false, // isBackupEligible
             false, // isBackedUp
-            Array.Empty<byte>(), // attestationObject
-            Array.Empty<byte>() // clientDataJson
+            [], // attestationObject
+            [] // clientDataJson
         )
         {
             Name = name
         };
-    }
 
     /// <summary>
     /// Adds a passkey to a user in the database.

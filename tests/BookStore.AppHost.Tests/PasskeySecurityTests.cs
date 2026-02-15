@@ -205,12 +205,10 @@ public class PasskeySecurityTests
         _ = await Assert.That(response3.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
 
         // Verify database state
-        await using (var sessionFinal = store.LightweightSession(tenantId))
-        {
-            var userAfter = await TestHelpers.GetUserByEmailAsync(sessionFinal, email);
+        await using var sessionFinal = store.LightweightSession(tenantId);
+        var userAfter = await TestHelpers.GetUserByEmailAsync(sessionFinal, email);
 
-            _ = await Assert.That(userAfter!.RefreshTokens).IsEmpty();
-        }
+        _ = await Assert.That(userAfter!.RefreshTokens).IsEmpty();
     }
 
     [Test]
