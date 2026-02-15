@@ -1,8 +1,8 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using BookStore.AppHost.Tests.Helpers;
 using BookStore.ServiceDefaults;
 using Npgsql;
-using BookStore.AppHost.Tests.Helpers;
 
 namespace BookStore.AppHost.Tests;
 

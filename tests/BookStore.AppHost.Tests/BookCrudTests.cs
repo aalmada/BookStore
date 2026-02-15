@@ -1,11 +1,10 @@
 using System.Net;
 using System.Net.Http.Headers;
 using Bogus;
+using BookStore.AppHost.Tests.Helpers;
 using BookStore.Client;
 using BookStore.Shared.Models;
 using Refit;
-using BookStore.AppHost.Tests.Helpers;
-
 // Resolve ambiguities by preferring Client types
 using CreateBookRequest = BookStore.Client.CreateBookRequest;
 using UpdateBookRequest = BookStore.Client.UpdateBookRequest;

@@ -1,7 +1,7 @@
 using Aspire.Hosting;
 using Aspire.Hosting.Testing;
-using Projects;
 using BookStore.AppHost.Tests.Helpers;
+using Projects;
 
 namespace BookStore.AppHost.Tests;
 

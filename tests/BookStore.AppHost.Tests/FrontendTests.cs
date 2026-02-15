@@ -1,9 +1,9 @@
 using System.Net;
 using Aspire.Hosting;
 using Aspire.Hosting.Testing;
+using BookStore.AppHost.Tests.Helpers;
 using BookStore.ServiceDefaults;
 using Projects;
-using BookStore.AppHost.Tests.Helpers;
 
 namespace BookStore.AppHost.Tests;
 

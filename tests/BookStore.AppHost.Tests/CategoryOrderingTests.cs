@@ -1,10 +1,10 @@
 using System.Net;
 using System.Net.Http.Headers;
+using BookStore.AppHost.Tests.Helpers;
 using BookStore.Client;
 using BookStore.Shared.Models;
 using Refit;
 using TUnit.Core.Interfaces;
-using BookStore.AppHost.Tests.Helpers;
 
 namespace BookStore.AppHost.Tests;
 

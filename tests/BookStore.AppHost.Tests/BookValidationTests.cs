@@ -1,11 +1,11 @@
 using System.Net;
 using Bogus;
+using BookStore.AppHost.Tests.Helpers;
 using BookStore.Client;
 using BookStore.Shared.Models;
 using Refit;
 using MvcProblemDetails = Microsoft.AspNetCore.Mvc.ProblemDetails;
 using SharedModels = BookStore.Shared.Models;
-using BookStore.AppHost.Tests.Helpers;
 
 namespace BookStore.AppHost.Tests;
 

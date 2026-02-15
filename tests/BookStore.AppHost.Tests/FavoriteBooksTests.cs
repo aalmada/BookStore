@@ -1,9 +1,9 @@
 using System.Net;
+using BookStore.AppHost.Tests.Helpers;
 using BookStore.Client;
 using BookStore.Shared.Models;
 using Refit;
 using TUnit.Assertions.Extensions;
-using BookStore.AppHost.Tests.Helpers;
 
 namespace BookStore.AppHost.Tests;
 
