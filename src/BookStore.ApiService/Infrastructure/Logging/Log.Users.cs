@@ -162,5 +162,15 @@ public static partial class Log
             Message = "Resend verification successful for {Email}")]
         public static partial void ResendVerificationSuccessful(ILogger logger, string email);
 
+        [LoggerMessage(
+            Level = LogLevel.Critical,
+            Message = "Passkey counter mismatch detected for user {Email}. Stored: {StoredCounter}, Received: {ReceivedCounter}. Possible cloned authenticator.")]
+        public static partial void PasskeyCounterMismatch(ILogger logger, string? email, uint storedCounter, uint receivedCounter);
+
+        [LoggerMessage(
+            Level = LogLevel.Critical,
+            Message = "Cross-tenant token theft detected for user {UserId}. Token tenant: {TokenTenantId}, Request tenant: {RequestTenantId}")]
+        public static partial void CrossTenantTokenTheft(ILogger logger, Guid userId, string tokenTenantId, string requestTenantId);
+
     }
 }

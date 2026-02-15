@@ -341,8 +341,15 @@ public static class JwtAuthenticationEndpoints
         // 3. Validate tenant matches the token's original tenant (security: prevent cross-tenant token theft)
         if (!string.Equals(existingToken.TenantId, tenantContext.TenantId, StringComparison.OrdinalIgnoreCase))
         {
-            Log.Users.RefreshFailedTokenExpiredOrInvalid(logger, user.UserName);
-            return Result.Failure(Error.Unauthorized(ErrorCodes.Auth.CrossTenantIdentity, "Refresh token expired or invalid.")).ToProblemDetails();
+            // CRITICAL SECURITY VIOLATION: Cross-tenant token theft attempt
+            Log.Users.CrossTenantTokenTheft(logger, user.Id, existingToken.TenantId, tenantContext.TenantId);
+
+            // Lock account and clear all refresh tokens
+            await userManager.SetLockoutEndDateAsync(user, DateTimeOffset.UtcNow.AddHours(24));
+            user.RefreshTokens.Clear();
+            _ = await userManager.UpdateAsync(user);
+
+            return Result.Failure(Error.Unauthorized(ErrorCodes.Auth.SecurityViolation, "Security violation detected. Account has been locked.")).ToProblemDetails();
         }
 
         // 4. Generate new tokens using the original tenant from the refresh token

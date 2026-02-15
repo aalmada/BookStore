@@ -11,6 +11,7 @@ using BookStore.Shared.Models;
 using JasperFx;
 using Marten;
 using Refit;
+using Weasel.Core;
 // Resolve ambiguities by preferring Client types
 using CreateBookRequest = BookStore.Client.CreateBookRequest;
 using SharedModels = BookStore.Shared.Models;
@@ -33,6 +34,60 @@ public static class TestHelpers
     /// </summary>
     /// <returns>A valid email address.</returns>
     public static string GenerateFakeEmail() => _faker.Internet.Email();
+
+    /// <summary>
+    /// Creates a Marten DocumentStore configured for the BookStore application.
+    /// </summary>
+    /// <returns>A configured IDocumentStore instance.</returns>
+    public static async Task<IDocumentStore> GetDocumentStoreAsync()
+    {
+        var connectionString = await GlobalHooks.App!.GetConnectionStringAsync("bookstore");
+        return DocumentStore.For(opts =>
+        {
+            opts.UseSystemTextJsonForSerialization(EnumStorage.AsString, Casing.CamelCase);
+            opts.Connection(connectionString!);
+            _ = opts.Policies.AllDocumentsAreMultiTenanted();
+            opts.Events.TenancyStyle = Marten.Storage.TenancyStyle.Conjoined;
+        });
+    }
+
+    /// <summary>
+    /// Retrieves a user by email address from the given Marten session.
+    /// </summary>
+    public static async Task<BookStore.ApiService.Models.ApplicationUser?> GetUserByEmailAsync(
+        Marten.IQuerySession session,
+        string email)
+    {
+        return await session.Query<BookStore.ApiService.Models.ApplicationUser>()
+            .Where(u => u.NormalizedEmail == email.ToUpperInvariant())
+            .FirstOrDefaultAsync();
+    }
+
+    /// <summary>
+    /// Registers a new user and logs them in, returning complete authentication details.
+    /// </summary>
+    public static async Task<(string Email, string Password, LoginResponse Login, string TenantId)>
+        RegisterAndLoginUserAsync(string? tenantId = null)
+    {
+        tenantId ??= StorageConstants.DefaultTenantId;
+        var email = GenerateFakeEmail();
+        var password = GenerateFakePassword();
+
+        var client = GetUnauthenticatedClient(tenantId);
+        var registerResponse = await client.PostAsJsonAsync("/account/register", new { email, password });
+        _ = registerResponse.EnsureSuccessStatusCode();
+
+        var loginResponse = await client.PostAsJsonAsync("/account/login", new { email, password });
+        _ = loginResponse.EnsureSuccessStatusCode();
+
+        var tokenResponse = await loginResponse.Content.ReadFromJsonAsync<LoginResponse>();
+        if (tokenResponse == null)
+        {
+            throw new InvalidOperationException("Login response was null.");
+        }
+
+        return (email, password, tokenResponse, tenantId);
+    }
 
     /// <summary>
     /// Generates a fake book creation request with random data using Bogus.

@@ -86,6 +86,7 @@ public static class ErrorCodes
         public const string InvalidToken = "ERR_AUTH_INVALID_TOKEN";
         public const string TokenExpired = "ERR_AUTH_TOKEN_EXPIRED";
         public const string CrossTenantIdentity = "ERR_AUTH_CROSS_TENANT_IDENTITY";
+        public const string SecurityViolation = "ERR_AUTH_SECURITY_VIOLATION";
         public const string PasswordMismatch = "ERR_AUTH_PASSWORD_MISMATCH";
         public const string PasswordReuse = "ERR_AUTH_PASSWORD_REUSE";
         public const string RegistrationDisabled = "ERR_AUTH_REGISTRATION_DISABLED";
@@ -142,5 +143,6 @@ public static class ErrorCodes
         public const string StoreNotAvailable = "ERR_PASSKEY_STORE_NOT_AVAILABLE";
         public const string InvalidFormat = "ERR_PASSKEY_INVALID_FORMAT";
         public const string InvalidCredential = "ERR_PASSKEY_INVALID_CREDENTIAL";
+        public const string CounterMismatch = "ERR_PASSKEY_COUNTER_MISMATCH";
     }
 }
