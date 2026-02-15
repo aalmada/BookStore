@@ -1,7 +1,7 @@
 using System.Net;
+using BookStore.AppHost.Tests.Helpers;
 using BookStore.Client;
 using TUnit.Assertions.Extensions;
-using BookStore.AppHost.Tests.Helpers;
 
 namespace BookStore.AppHost.Tests;
 

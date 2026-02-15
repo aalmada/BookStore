@@ -1,7 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
-using BookStore.Shared.Models;
 using BookStore.AppHost.Tests.Helpers;
+using BookStore.Shared.Models;
 
 namespace BookStore.AppHost.Tests;
 

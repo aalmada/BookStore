@@ -1,6 +1,7 @@
 using System.Net;
 using Bogus;
 using BookStore.ApiService.Models;
+using BookStore.AppHost.Tests.Helpers;
 using BookStore.Client;
 using BookStore.Shared.Models;
 using JasperFx;
@@ -8,7 +9,6 @@ using Marten;
 using Microsoft.AspNetCore.Identity;
 using Refit;
 using Weasel.Core;
-using BookStore.AppHost.Tests.Helpers;
 
 namespace BookStore.AppHost.Tests;
 

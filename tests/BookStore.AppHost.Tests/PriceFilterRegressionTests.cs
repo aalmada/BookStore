@@ -1,9 +1,9 @@
 using System.Globalization;
+using BookStore.AppHost.Tests.Helpers;
 using BookStore.Client;
 using BookStore.Shared.Models;
 using TUnit;
 using SharedModels = BookStore.Shared.Models;
-using BookStore.AppHost.Tests.Helpers;
 
 namespace BookStore.AppHost.Tests;
 

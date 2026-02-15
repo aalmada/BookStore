@@ -1,13 +1,13 @@
 using BookStore.ApiService.Handlers.Maintenance;
 using BookStore.ApiService.Infrastructure.Identity;
 using BookStore.ApiService.Models;
+using BookStore.AppHost.Tests.Helpers;
 using JasperFx.Core;
 using Marten;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Weasel.Core;
 using Wolverine;
-using BookStore.AppHost.Tests.Helpers;
 
 namespace BookStore.AppHost.Tests;
 

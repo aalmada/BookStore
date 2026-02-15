@@ -1,3 +1,4 @@
+using BookStore.AppHost.Tests.Helpers;
 using BookStore.Client;
 using BookStore.Shared.Models;
 using Refit;
@@ -5,7 +6,6 @@ using UpdateAuthorRequest = BookStore.Client.UpdateAuthorRequest;
 using UpdateBookRequest = BookStore.Client.UpdateBookRequest;
 using UpdateCategoryRequest = BookStore.Client.UpdateCategoryRequest;
 using UpdatePublisherRequest = BookStore.Client.UpdatePublisherRequest;
-using BookStore.AppHost.Tests.Helpers;
 
 namespace BookStore.AppHost.Tests;
 
