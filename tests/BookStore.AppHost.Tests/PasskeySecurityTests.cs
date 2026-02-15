@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Net.Http.Json;
 using BookStore.ApiService.Models;
+using BookStore.AppHost.Tests.Helpers;
 using BookStore.Client;
 using BookStore.Shared.Models;
 using JasperFx;
@@ -9,7 +10,6 @@ using Marten;
 using Microsoft.AspNetCore.Identity;
 using Refit;
 using Weasel.Core;
-using BookStore.AppHost.Tests.Helpers;
 
 namespace BookStore.AppHost.Tests;
 

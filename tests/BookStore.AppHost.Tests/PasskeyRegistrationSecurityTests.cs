@@ -1,9 +1,9 @@
 using System.Net;
 using System.Net.Http.Json;
+using BookStore.AppHost.Tests.Helpers;
 using BookStore.Shared;
 using TUnit.Assertions.Extensions;
 using TUnit.Core;
-using BookStore.AppHost.Tests.Helpers;
 
 namespace BookStore.AppHost.Tests;
 
