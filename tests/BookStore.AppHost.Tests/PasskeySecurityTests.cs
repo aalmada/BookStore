@@ -9,6 +9,7 @@ using JasperFx;
 using Marten;
 using Microsoft.AspNetCore.Identity;
 using Refit;
+using TUnit;
 using Weasel.Core;
 
 namespace BookStore.AppHost.Tests;
@@ -19,9 +20,35 @@ namespace BookStore.AppHost.Tests;
 /// - Security stamp validation (token revocation)
 /// - Cross-tenant token theft detection
 /// - Refresh token cleanup on passkey login
+/// - Multi-tenant passkey isolation
 /// </summary>
 public class PasskeySecurityTests
 {
+    [Before(Class)]
+    public static async Task ClassSetup()
+    {
+        if (GlobalHooks.App == null)
+        {
+            throw new InvalidOperationException("App is not initialized");
+        }
+
+        var connectionString = await GlobalHooks.App.GetConnectionStringAsync("bookstore");
+        if (string.IsNullOrEmpty(connectionString))
+        {
+            throw new InvalidOperationException("Could not retrieve connection string for 'bookstore' resource.");
+        }
+
+        using var store = DocumentStore.For(opts =>
+        {
+            opts.Connection(connectionString);
+            _ = opts.Policies.AllDocumentsAreMultiTenanted();
+            opts.Events.TenancyStyle = Marten.Storage.TenancyStyle.Conjoined;
+        });
+
+        await DatabaseHelpers.SeedTenantAsync(store, "tenant-a");
+        await DatabaseHelpers.SeedTenantAsync(store, "tenant-b");
+    }
+
     [Test]
     public async Task PasskeyLogin_WithClonedAuthenticator_LocksAccount()
     {
@@ -210,6 +237,155 @@ public class PasskeySecurityTests
         var userAfter = await DatabaseHelpers.GetUserByEmailAsync(sessionFinal, email);
 
         _ = await Assert.That(userAfter!.RefreshTokens).IsEmpty();
+    }
+
+    [Test]
+    [Arguments("tenant-a", "tenant-b")]
+    [Arguments("tenant-a", "default")]
+    [Arguments("tenant-b", "default")]
+    public async Task ConcurrentPasskeyRegistrations_SameEmailDifferentTenants_Succeed(string tenant1, string tenant2)
+    {
+        // Arrange: Use the same email for both tenants
+        var sharedEmail = FakeDataGenerators.GenerateFakeEmail();
+
+        // Create users in both tenants with the same email
+        var (_, _, login1, _) = await AuthenticationHelpers.RegisterAndLoginUserAsync(tenant1, sharedEmail);
+        var (_, _, login2, _) = await AuthenticationHelpers.RegisterAndLoginUserAsync(tenant2, sharedEmail);
+
+        // Act: Add passkeys to both users (same email, different tenants)
+        var credentialId1 = Guid.CreateVersion7().ToByteArray();
+        var credentialId2 = Guid.CreateVersion7().ToByteArray();
+
+        await PasskeyTestHelpers.AddPasskeyToUserAsync(tenant1, sharedEmail, "Tenant1 Passkey", credentialId1);
+        await PasskeyTestHelpers.AddPasskeyToUserAsync(tenant2, sharedEmail, "Tenant2 Passkey", credentialId2);
+
+        // Assert: Both passkeys should exist in their respective tenants
+        var store = await DatabaseHelpers.GetDocumentStoreAsync();
+
+        await using (var session1 = store.LightweightSession(tenant1))
+        {
+            var user1 = await DatabaseHelpers.GetUserByEmailAsync(session1, sharedEmail);
+            _ = await Assert.That(user1).IsNotNull();
+            _ = await Assert.That(user1!.Passkeys.Count).IsEqualTo(1);
+            _ = await Assert.That(user1.Passkeys[0].Name).IsEqualTo("Tenant1 Passkey");
+        }
+
+        await using var session2 = store.LightweightSession(tenant2);
+        var user2 = await DatabaseHelpers.GetUserByEmailAsync(session2, sharedEmail);
+        _ = await Assert.That(user2).IsNotNull();
+        _ = await Assert.That(user2!.Passkeys.Count).IsEqualTo(1);
+        _ = await Assert.That(user2.Passkeys[0].Name).IsEqualTo("Tenant2 Passkey");
+    }
+
+    [Test]
+    [Arguments("default")]
+    [Arguments("tenant-a")]
+    [Arguments("tenant-b")]
+    public async Task UserWithPasskeyOnly_CanAccessProtectedEndpoints(string tenantId)
+    {
+        // Arrange: Create user with password first
+        var (email, password, loginResponse, _) = await AuthenticationHelpers.RegisterAndLoginUserAsync(tenantId);
+
+        // Add passkey
+        var credentialId = Guid.CreateVersion7().ToByteArray();
+        await PasskeyTestHelpers.AddPasskeyToUserAsync(tenantId, email, "Primary Passkey", credentialId);
+
+        // Get fresh JWT after adding passkey
+        var client = RestService.For<IIdentityClient>(HttpClientHelpers.GetUnauthenticatedClient(tenantId));
+        var newLoginResponse = await client.LoginAsync(new LoginRequest(email, password));
+
+        var authClient = RestService.For<IIdentityClient>(
+            HttpClientHelpers.GetAuthenticatedClient(newLoginResponse.AccessToken, tenantId));
+
+        // Act: Remove password (user now has passkey only)
+        await authClient.RemovePasswordAsync(new RemovePasswordRequest());
+
+        // Get another JWT after password removal (simulate passkey login)
+        // In real scenario, user would authenticate via passkey WebAuthn flow
+        // For this test, we simulate it by manually checking the user can exist with passkey only
+        var store = await DatabaseHelpers.GetDocumentStoreAsync();
+        await using var session = store.LightweightSession(tenantId);
+        var user = await DatabaseHelpers.GetUserByEmailAsync(session, email);
+
+        // Assert: User should have no password but have passkey
+        _ = await Assert.That(user).IsNotNull();
+        _ = await Assert.That(user!.PasswordHash).IsNull();
+        _ = await Assert.That(user.Passkeys.Count).IsGreaterThan(0);
+
+        // User with passkey-only can list their passkeys
+        var passkeyClient = RestService.For<IPasskeyClient>(
+            HttpClientHelpers.GetAuthenticatedClient(newLoginResponse.AccessToken, tenantId));
+        var passkeys = await passkeyClient.ListPasskeysAsync();
+        _ = await Assert.That(passkeys.Count).IsGreaterThan(0);
+    }
+
+    [Test]
+    public async Task UserWithPasswordOnly_CanAccessBasicEndpoints()
+    {
+        // Arrange: Create user with password only (no passkey)
+        var (email, password, loginResponse, tenantId) = await AuthenticationHelpers.RegisterAndLoginUserAsync();
+
+        // Verify user has no passkeys
+        var store = await DatabaseHelpers.GetDocumentStoreAsync();
+        await using (var session = store.LightweightSession(tenantId))
+        {
+            var user = await DatabaseHelpers.GetUserByEmailAsync(session, email);
+            _ = await Assert.That(user).IsNotNull();
+            _ = await Assert.That(user!.Passkeys).IsEmpty();
+            _ = await Assert.That(user.PasswordHash).IsNotNull();
+        }
+
+        // Act: Access passkey endpoints - should work (list will be empty)
+        var passkeyClient = RestService.For<IPasskeyClient>(
+            HttpClientHelpers.GetAuthenticatedClient(loginResponse.AccessToken, tenantId));
+
+        var passkeys = await passkeyClient.ListPasskeysAsync();
+
+        // Assert: User can list passkeys (empty list) even without having any
+        _ = await Assert.That(passkeys).IsEmpty();
+
+        // User can access password management endpoints
+        var identityClient = RestService.For<IIdentityClient>(
+            HttpClientHelpers.GetAuthenticatedClient(loginResponse.AccessToken, tenantId));
+
+        var passwordStatus = await identityClient.GetPasswordStatusAsync();
+        _ = await Assert.That(passwordStatus).IsNotNull();
+        _ = await Assert.That(passwordStatus.HasPassword).IsTrue();
+    }
+
+    [Test]
+    public async Task CannotDeleteLastPasskey_WithoutPassword()
+    {
+        // Arrange: Create user with password
+        var (email, password, loginResponse, tenantId) = await AuthenticationHelpers.RegisterAndLoginUserAsync();
+
+        // Add passkey
+        var credentialId = Guid.CreateVersion7().ToByteArray();
+        await PasskeyTestHelpers.AddPasskeyToUserAsync(tenantId, email, "Only Passkey", credentialId);
+
+        // Get fresh JWT
+        var client = RestService.For<IIdentityClient>(HttpClientHelpers.GetUnauthenticatedClient(tenantId));
+        var newLoginResponse = await client.LoginAsync(new LoginRequest(email, password));
+
+        var authClient = RestService.For<IIdentityClient>(
+            HttpClientHelpers.GetAuthenticatedClient(newLoginResponse.AccessToken, tenantId));
+
+        // Remove password first
+        await authClient.RemovePasswordAsync(new RemovePasswordRequest());
+
+        // Act: Try to delete the last passkey (should fail - would lock user out)
+        var passkeyClient = RestService.For<IPasskeyClient>(
+            HttpClientHelpers.GetAuthenticatedClient(newLoginResponse.AccessToken, tenantId));
+
+        var passkeys = await passkeyClient.ListPasskeysAsync();
+        var passkeyId = passkeys[0].Id;
+
+        var exception = await Assert.That(async () =>
+            await passkeyClient.DeletePasskeyAsync(passkeyId, "\"0\""))
+            .Throws<ApiException>();
+
+        // Assert: Should be rejected with bad request
+        _ = await Assert.That(exception!.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
     }
 
     [Test]

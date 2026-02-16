@@ -107,10 +107,10 @@ public static class AuthenticationHelpers
     }
 
     public static async Task<(string email, string password, LoginResponse loginResponse, string tenantId)>
-        RegisterAndLoginUserAsync(string? tenantId = null)
+        RegisterAndLoginUserAsync(string? tenantId = null, string? email = null)
     {
         tenantId ??= StorageConstants.DefaultTenantId;
-        var email = FakeDataGenerators.GenerateFakeEmail();
+        email ??= FakeDataGenerators.GenerateFakeEmail();
         var password = FakeDataGenerators.GenerateFakePassword();
 
         var client = HttpClientHelpers.GetUnauthenticatedClient(tenantId);
@@ -129,7 +129,12 @@ public static class AuthenticationHelpers
         return (email, password, tokenResponse, tenantId);
     }
 
-    public record LoginResponse(string AccessToken, string RefreshToken);
+    public record LoginResponse(
+        string TokenType,
+        string AccessToken,
+        int ExpiresIn,
+        string RefreshToken,
+        Guid? UserId = null);
 
     public record ErrorResponse(
         [property: JsonPropertyName("error")]
