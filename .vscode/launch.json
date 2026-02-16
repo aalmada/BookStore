@@ -1,0 +1,31 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug TUnit Test",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${input:dllPath}",
+      "args": [
+        "--treenode-filter",
+        "${input:testFilter}"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "stopAtEntry": false
+    }
+  ],
+  "inputs": [
+    {
+      "id": "dllPath",
+      "type": "command",
+      "command": "csharp-test-filter.getDllPath"
+    },
+    {
+      "id": "testFilter",
+      "type": "command",
+      "command": "csharp-test-filter.getFilter"
+    }
+  ]
+}

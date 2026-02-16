@@ -1,0 +1,9 @@
+{
+    "recommendations": [
+        "microsoft-aspire.aspire-vscode",
+        "ms-dotnettools.csdevkit",
+        "ms-azuretools.vscode-containers",
+        "editorconfig.editorconfig",
+        "bits.csharp-test-filter"
+    ]
+}
