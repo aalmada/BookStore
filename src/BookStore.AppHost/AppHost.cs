@@ -36,6 +36,13 @@ var apiService = builder.AddProject<Projects.BookStore_ApiService>(ResourceNames
         url.Url += ResourceNames.ApiReferenceUrl;
     });
 
+// Pass rate limit configuration to disable for tests
+var disableRateLimit = builder.Configuration["RateLimit:Disabled"];
+if (!string.IsNullOrEmpty(disableRateLimit))
+{
+    _ = apiService.WithEnvironment("RateLimit__Disabled", disableRateLimit);
+}
+
 var seedingEnabled = builder.Configuration["Seeding:Enabled"];
 if (!string.IsNullOrEmpty(seedingEnabled))
 {

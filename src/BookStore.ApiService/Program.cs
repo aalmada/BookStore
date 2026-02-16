@@ -51,7 +51,7 @@ builder.Services.AddCors(options => options.AddDefaultPolicy(policy => _ = polic
 
 // Add Rate Limiting
 // Add Rate Limiting (using extension)
-builder.Services.AddCustomRateLimiting(builder.Configuration);
+builder.Services.AddCustomRateLimiting(builder.Configuration, builder.Environment);
 
 var app = builder.Build();
 
