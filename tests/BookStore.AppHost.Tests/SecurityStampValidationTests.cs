@@ -56,7 +56,10 @@ public class SecurityStampValidationTests
         // Manually update security stamp in database (simulating credential change)
         await ManuallyUpdateSecurityStampAsync(email, tenantId);
 
-        // Act: Try to access protected endpoint with old JWT
+        // Small delay to ensure database transaction is committed
+        await Task.Delay(100);
+
+        //Act: Try to access protected endpoint with old JWT
         var booksClient = RestService.For<IBooksClient>(
             HttpClientHelpers.GetAuthenticatedClient(oldAccessToken, tenantId));
 
@@ -117,6 +120,9 @@ public class SecurityStampValidationTests
         // Act: Update security stamp
         await ManuallyUpdateSecurityStampAsync(email);
 
+        // Small delay to ensure database transaction is committed
+        await Task.Delay(100);
+
         // Assert: All three JWTs should be rejected
         var booksClient1 = RestService.For<IBooksClient>(HttpClientHelpers.GetAuthenticatedClient(jwt1));
         var exception1 = await Assert.That(async () => await booksClient1.GetBooksAsync(new BookSearchRequest())).Throws<ApiException>();
@@ -140,9 +146,12 @@ public class SecurityStampValidationTests
         var (email, password, loginResponse, _) = await AuthenticationHelpers.RegisterAndLoginUserAsync(tenantId);
         var oldAccessToken = loginResponse.AccessToken;
 
-        // Act: Add a passkey (this updates security stamp per PasskeyEndpoints.cs#L263-L264)
+        // Act: Add a passkey (this updates security stamp via PasskeyTestHelpers)
         var credentialId = Guid.CreateVersion7().ToByteArray();
         await PasskeyTestHelpers.AddPasskeyToUserAsync(tenantId, email, "New Passkey", credentialId);
+
+        // Small delay to ensure database transaction is committed
+        await Task.Delay(100);
 
         // Assert: Old JWT should be rejected
         var booksClient = RestService.For<IBooksClient>(
@@ -176,6 +185,9 @@ public class SecurityStampValidationTests
 
         // Act: Remove password (updates security stamp)
         await authClient.RemovePasswordAsync(new RemovePasswordRequest());
+
+        // Small delay to ensure database transaction is committed
+        await Task.Delay(100);
 
         // Assert: JWT before password removal should be rejected
         var booksClient = RestService.For<IBooksClient>(

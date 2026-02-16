@@ -38,6 +38,7 @@ public static class PasskeyTestHelpers
 
     /// <summary>
     /// Adds a passkey to a user in the database.
+    /// Also updates the security stamp to simulate the behavior of the API endpoint.
     /// </summary>
     public static async Task AddPasskeyToUserAsync(
         string tenantId,
@@ -57,6 +58,10 @@ public static class PasskeyTestHelpers
 
         var passkey = CreatePasskeyInfo(credentialId, name, signCount);
         user.Passkeys.Add(passkey);
+
+        // Update the security stamp to match the behavior of PasskeyEndpoints.cs
+        // This is critical for JWT invalidation tests
+        user.SecurityStamp = Guid.CreateVersion7().ToString();
 
         session.Update(user);
         await session.SaveChangesAsync();
