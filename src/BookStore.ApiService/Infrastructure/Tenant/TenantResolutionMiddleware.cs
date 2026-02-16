@@ -1,4 +1,5 @@
 using BookStore.ApiService.Infrastructure.Logging;
+using BookStore.Shared.Models;
 using Microsoft.AspNetCore.Http;
 
 namespace BookStore.ApiService.Infrastructure.Tenant;
@@ -31,10 +32,21 @@ public class TenantResolutionMiddleware
                 }
                 else
                 {
-                    // Invalid tenant - return 400 Bad Request
+                    // Invalid tenant - return 400 Bad Request with ProblemDetails
                     Log.Tenants.InvalidTenantRequested(_logger, tenantId);
                     context.Response.StatusCode = StatusCodes.Status400BadRequest;
-                    await context.Response.WriteAsJsonAsync(new { error = "Invalid or unknown tenant" });
+                    context.Response.ContentType = "application/problem+json";
+
+                    var problemDetails = new
+                    {
+                        type = "https://tools.ietf.org/html/rfc7231#section-6.5.1",
+                        title = "Bad Request",
+                        status = 400,
+                        detail = "The specified tenant is invalid or does not exist.",
+                        error = ErrorCodes.Tenancy.TenantNotFound
+                    };
+
+                    await context.Response.WriteAsJsonAsync(problemDetails);
                     return;
                 }
             }

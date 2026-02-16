@@ -52,6 +52,7 @@ Use this file for agent-only context: build and test commands, conventions, and 
 ✅ [Test] async Task (TUnit)      ❌ [Fact] (xUnit)
 ✅ WaitForConditionAsync          ❌ Task.Delay / Thread.Sleep
 ✅ [LoggerMessage(...)]           ❌ _logger.LogInformation(...) / LogWarning / LogError / etc.
+✅ MultiTenancyConstants.*        ❌ Hardcoded "*DEFAULT*" / "default"
 ```
 
 ### Logging Pattern

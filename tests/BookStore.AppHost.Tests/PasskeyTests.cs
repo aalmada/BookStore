@@ -26,8 +26,8 @@ public class PasskeyTests
     public async Task GetAssertionOptions_WithUserWithNoPasskeys_ShouldReturnOptions()
     {
         // Arrange
-        var email = _faker.Internet.Email();
-        var password = _faker.Internet.Password(8, false, "\\w", "Aa1!");
+        var email = FakeDataGenerators.GenerateFakeEmail();
+        var password = FakeDataGenerators.GenerateFakePassword();
 
         var registerResponse = await _identityClient.RegisterAsync(new RegisterRequest(email, password));
         _ = await Assert.That(registerResponse).IsNotNull();
@@ -45,8 +45,8 @@ public class PasskeyTests
     public async Task GetAttestationOptions_WithExistingUser_ShouldReturnOk()
     {
         // Arrange
-        var email = _faker.Internet.Email();
-        var password = _faker.Internet.Password(8, false, "\\w", "Aa1!");
+        var email = FakeDataGenerators.GenerateFakeEmail();
+        var password = FakeDataGenerators.GenerateFakePassword();
 
         // Register a user
         _ = await _identityClient.RegisterAsync(new RegisterRequest(email, password));
@@ -64,8 +64,8 @@ public class PasskeyTests
     public async Task GetAttestationOptions_WhenAuthenticated_ShouldReturnOptions()
     {
         // Arrange - Need to be logged in to register a passkey
-        var email = _faker.Internet.Email();
-        var password = _faker.Internet.Password(8, false, "\\w", "Aa1!");
+        var email = FakeDataGenerators.GenerateFakeEmail();
+        var password = FakeDataGenerators.GenerateFakePassword();
 
         // Register
         _ = await _identityClient.RegisterAsync(new RegisterRequest(email, password));

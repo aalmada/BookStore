@@ -24,6 +24,8 @@
 
 **Error Handling**: Use `/lang__problem_details` skill for all errors. Return `Result.Failure(Error.<Type>(code, message)).ToProblemDetails()`.
 
+**CRITICAL**: ALL failures MUST return RFC 7807 ProblemDetails with a machine-readable error code. This includes endpoints, handlers, AND middleware. Never return plain JSON errors.
+
 ## Common Mistakes
 - ❌ Business logic in endpoints → Put logic in aggregates/handlers
 - ❌ Missing SSE notification → Add to `MartenCommitListener`
@@ -31,6 +33,7 @@
 - ❌ Manually running Marten async daemon → Async projections are updated by Wolverine
 - ❌ Skipping tenant context → Use tenant-scoped sessions and cache keys
 - ❌ Ignoring ETag checks → Use `IHaveETag` and `ETagHelper`
+- ❌ Returning plain JSON errors → ALL failures must return ProblemDetails with error codes (endpoints, handlers, middleware)
 
 ## Project Layout
 | Path | Purpose |

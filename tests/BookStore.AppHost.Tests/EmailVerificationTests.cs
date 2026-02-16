@@ -54,8 +54,8 @@ public class EmailVerificationTests
     public async Task EmailVerification_FullFlow_ShouldSucceed()
     {
         // 1. Register a new user
-        var email = _faker.Internet.Email();
-        var password = _faker.Internet.Password(8, false, "\\w", "Aa1!");
+        var email = FakeDataGenerators.GenerateFakeEmail();
+        var password = FakeDataGenerators.GenerateFakePassword();
         var registerRequest = new RegisterRequest(email, password);
 
         _ = await _client.RegisterAsync(registerRequest);
@@ -96,8 +96,8 @@ public class EmailVerificationTests
     public async Task ResendVerification_ForAlreadyConfirmedUser_ShouldReturnGenericSuccess()
     {
         // Arrange
-        var email = _faker.Internet.Email();
-        var password = _faker.Internet.Password(8, false, "\\w", "Aa1!");
+        var email = FakeDataGenerators.GenerateFakeEmail();
+        var password = FakeDataGenerators.GenerateFakePassword();
 
         // Register
         _ = await _client.RegisterAsync(new RegisterRequest(email, password));
@@ -113,8 +113,8 @@ public class EmailVerificationTests
     public async Task ResendVerification_ShouldEnforceCooldown()
     {
         // Arrange
-        var email = _faker.Internet.Email();
-        var password = _faker.Internet.Password(8, false, "\\w", "Aa1!");
+        var email = FakeDataGenerators.GenerateFakeEmail();
+        var password = FakeDataGenerators.GenerateFakePassword();
 
         // Register
         _ = await _client.RegisterAsync(new RegisterRequest(email, password));
@@ -144,8 +144,8 @@ public class EmailVerificationTests
     public async Task LoginAttempt_WithUnconfirmedEmail_ReturnsEmailUnconfirmedError(string tenantId)
     {
         // Arrange: Register user in specific tenant
-        var email = _faker.Internet.Email();
-        var password = _faker.Internet.Password(8, false, "\\w", "Aa1!");
+        var email = FakeDataGenerators.GenerateFakeEmail();
+        var password = FakeDataGenerators.GenerateFakePassword();
 
         var tenantClient = RestService.For<IIdentityClient>(HttpClientHelpers.GetUnauthenticatedClient(tenantId));
         _ = await tenantClient.RegisterAsync(new RegisterRequest(email, password));
@@ -168,8 +168,8 @@ public class EmailVerificationTests
     public async Task EmailConfirmation_WithInvalidToken_ReturnsError()
     {
         // Arrange: Register a user
-        var email = _faker.Internet.Email();
-        var password = _faker.Internet.Password(8, false, "\\w", "Aa1!");
+        var email = FakeDataGenerators.GenerateFakeEmail();
+        var password = FakeDataGenerators.GenerateFakePassword();
         _ = await _client.RegisterAsync(new RegisterRequest(email, password));
         await ManuallySetEmailConfirmedAsync(email, false);
 
@@ -193,8 +193,8 @@ public class EmailVerificationTests
     public async Task ResendVerification_RespectsCooldownBoundary(string tenantId)
     {
         // Arrange: Register and set up for verification in specific tenant
-        var email = _faker.Internet.Email();
-        var password = _faker.Internet.Password(8, false, "\\w", "Aa1!");
+        var email = FakeDataGenerators.GenerateFakeEmail();
+        var password = FakeDataGenerators.GenerateFakePassword();
 
         var tenantClient = RestService.For<IIdentityClient>(HttpClientHelpers.GetUnauthenticatedClient(tenantId));
         _ = await tenantClient.RegisterAsync(new RegisterRequest(email, password));
