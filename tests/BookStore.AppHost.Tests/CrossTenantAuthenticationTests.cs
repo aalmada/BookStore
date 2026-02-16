@@ -68,10 +68,10 @@ public class CrossTenantAuthenticationTests
     }
 
     [Test]
-    [Arguments("tenant-a", "tenant-b")]
-    [Arguments("tenant-a", "default")]
-    [Arguments("tenant-b", "default")]
-    public async Task User_RegisteredInSourceTenant_CanLoginInSourceTenant(string sourceTenant, string targetTenant)
+    [Arguments("tenant-a")]
+    [Arguments("tenant-b")]
+    [Arguments("default")]
+    public async Task User_RegisteredInSourceTenant_CanLoginInSourceTenant(string sourceTenant)
     {
         // Arrange: Create a unique user email for this test
         var userEmail = FakeDataGenerators.GenerateFakeEmail();
