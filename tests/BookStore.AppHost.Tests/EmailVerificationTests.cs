@@ -216,7 +216,7 @@ public class EmailVerificationTests
         await tenantClient.ResendVerificationAsync(new ResendVerificationRequest(email));
         var userAfterCooldown = await GetUserAsync(email, tenantId);
 
-        // Assert: Timestamp should be updated after cooldown period  
+        // Assert: Timestamp should be updated after cooldown period
         _ = await Assert.That(userAfterCooldown!.LastVerificationEmailSent!.Value).IsGreaterThan(timestamp1!.Value);
     }
 
