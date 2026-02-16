@@ -60,7 +60,7 @@ public static class AuthenticationHelpers
         publicClient.DefaultRequestHeaders.Add("X-Tenant-ID", actualTenantId);
 
         var email = $"user_{Guid.NewGuid()}@example.com";
-        var password = "Password123!";
+        var password = FakeDataGenerators.GenerateFakePassword();
 
         // Register
         var registerRequest = new { email, password };

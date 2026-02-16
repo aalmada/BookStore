@@ -30,8 +30,8 @@ public class PasskeyDeletionTests
     public async Task DeletePasskey_WithUrlUnsafeId_ShouldSucceed()
     {
         // Arrange
-        var email = _faker.Internet.Email();
-        var password = "Password123!";
+        var email = FakeDataGenerators.GenerateFakeEmail();
+        var password = FakeDataGenerators.GenerateFakePassword();
 
         // 1. Register and login to get token
         _ = await _client.RegisterAsync(new RegisterRequest(email, password));

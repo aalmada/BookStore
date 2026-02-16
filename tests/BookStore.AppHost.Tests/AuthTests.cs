@@ -40,7 +40,7 @@ public class AuthTests
     public async Task Register_WithExistingUser_ShouldReturnOk()
     {
         // Arrange
-        var email = _faker.Internet.Email();
+        var email = FakeDataGenerators.GenerateFakeEmail();
         var password = FakeDataGenerators.GenerateFakePassword();
         var request = new RegisterRequest(email, password);
 
@@ -58,7 +58,7 @@ public class AuthTests
     public async Task Login_WithValidCredentials_ShouldReturnToken()
     {
         // Arrange
-        var email = _faker.Internet.Email();
+        var email = FakeDataGenerators.GenerateFakeEmail();
         var password = FakeDataGenerators.GenerateFakePassword();
 
         // Register first

@@ -12,7 +12,7 @@ public static class FakeDataGenerators
     /// Generates a random password that meets common password requirements.
     /// </summary>
     /// <returns>A password with at least 12 characters including uppercase, lowercase, numbers, and special characters.</returns>
-    public static string GenerateFakePassword() => _faker.Internet.Password(12, false, "", "Aa1!");
+    public static string GenerateFakePassword() => _faker.Internet.Password(12, false, "\\w", "Aa1!");
 
     /// <summary>
     /// Generates a random email address for testing.

@@ -1,5 +1,5 @@
 using BookStore.ApiService.Models;
-using JasperFx;
+using BookStore.Shared;
 using Marten;
 
 namespace BookStore.ApiService.Infrastructure.Tenant;
@@ -9,7 +9,9 @@ public class MartenTenantStore(IDocumentStore store) : ITenantStore
     public async Task<bool> IsValidTenantAsync(string tenantId)
     {
         // Special case for "*DEFAULT*" which might not always be in the DB depending on initialization
-        if (StorageConstants.DefaultTenantId.Equals(tenantId, StringComparison.OrdinalIgnoreCase))
+        // Also accept "default" (case-insensitive) as an alias for the default tenant
+        if (MultiTenancyConstants.DefaultTenantId.Equals(tenantId, StringComparison.OrdinalIgnoreCase) ||
+            MultiTenancyConstants.DefaultTenantAlias.Equals(tenantId, StringComparison.OrdinalIgnoreCase))
         {
             return true;
         }
