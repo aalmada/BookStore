@@ -81,7 +81,7 @@ public class PasskeyRegistrationSecurityTests
         var (email, _, _, tenantId) = await AuthenticationHelpers.RegisterAndLoginUserAsync();
 
         // Get the existing user's ID
-        var store = await DatabaseHelpers.GetDocumentStoreAsync();
+        await using var store = await DatabaseHelpers.GetDocumentStoreAsync();
         await using var session = store.LightweightSession(tenantId);
         var existingUser = await DatabaseHelpers.GetUserByEmailAsync(session, email);
         _ = await Assert.That(existingUser).IsNotNull();

@@ -69,13 +69,34 @@ public static class DatabaseHelpers
     /// Gets a configured IDocumentStore instance for direct database access in tests.
     /// </summary>
     /// <returns>A configured IDocumentStore with multi-tenancy support.</returns>
+    /// <remarks>
+    /// IMPORTANT: Callers MUST dispose the returned IDocumentStore to prevent connection leaks.
+    /// Use the 'await using' pattern:
+    /// <code>
+    /// await using var store = await DatabaseHelpers.GetDocumentStoreAsync();
+    /// await using var session = store.LightweightSession(tenantId);
+    /// // ... use session ...
+    /// </code>
+    /// Each DocumentStore maintains its own connection pool. Failing to dispose will exhaust
+    /// PostgreSQL's connection limit during parallel test execution.
+    /// </remarks>
     public static async Task<IDocumentStore> GetDocumentStoreAsync()
     {
-        var connectionString = await GlobalHooks.App!.GetConnectionStringAsync("bookstore");
+        var baseConnectionString = await GlobalHooks.App!.GetConnectionStringAsync("bookstore");
+
+        // Configure connection pooling to limit connections per DocumentStore
+        // This prevents parallel tests from exhausting PostgreSQL's connection limit
+        var builder = new Npgsql.NpgsqlConnectionStringBuilder(baseConnectionString)
+        {
+            MaxPoolSize = 10,  // Reduced from default 100 - each store gets max 10 connections
+            MinPoolSize = 0,   // Don't pre-allocate connections
+            ConnectionLifetime = 300  // 5 minutes - recycle connections periodically
+        };
+
         return DocumentStore.For(opts =>
         {
             opts.UseSystemTextJsonForSerialization(EnumStorage.AsString, Casing.CamelCase);
-            opts.Connection(connectionString!);
+            opts.Connection(builder.ConnectionString);
             _ = opts.Policies.AllDocumentsAreMultiTenanted();
             opts.Events.TenancyStyle = Marten.Storage.TenancyStyle.Conjoined;
         });

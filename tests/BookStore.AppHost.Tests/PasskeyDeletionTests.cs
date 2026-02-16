@@ -68,7 +68,7 @@ public class PasskeyDeletionTests
         // 5. Assert
 
         // Verify it's gone from DB
-        var store = await DatabaseHelpers.GetDocumentStoreAsync();
+        await using var store = await DatabaseHelpers.GetDocumentStoreAsync();
         await using var session = store.LightweightSession(StorageConstants.DefaultTenantId);
         var user = await session.Query<ApplicationUser>()
             .Where(u => u.NormalizedEmail == email.ToUpperInvariant())
