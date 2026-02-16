@@ -135,9 +135,15 @@ public class BookCrudTests
         // Act
         await BookHelpers.AddToFavoritesAsync(client, createdBook.Id);
 
-        // Assert
-        var getResponse = await client.GetBookAsync(createdBook.Id);
-        _ = await Assert.That(getResponse!.IsFavorite).IsTrue();
+        // Assert - Wait for projection to complete
+        await SseEventHelpers.WaitForConditionAsync(
+            async () =>
+            {
+                var book = await client.GetBookAsync(createdBook.Id);
+                return book?.IsFavorite == true;
+            },
+            TestConstants.DefaultTimeout,
+            "Timed out waiting for book to be marked as favorite after projection update");
     }
 
     [Test]
@@ -150,16 +156,28 @@ public class BookCrudTests
         // Add to favorites first
         await BookHelpers.AddToFavoritesAsync(client, createdBook.Id);
 
-        // Verify it IS favorite initially
-        var initialGet = await client.GetBookAsync(createdBook.Id);
-        _ = await Assert.That(initialGet!.IsFavorite).IsTrue();
+        // Verify it IS favorite initially - Wait for projection to complete
+        await SseEventHelpers.WaitForConditionAsync(
+            async () =>
+            {
+                var book = await client.GetBookAsync(createdBook.Id);
+                return book?.IsFavorite == true;
+            },
+            TestConstants.DefaultTimeout,
+            "Timed out waiting for book to be marked as favorite after projection update");
 
         // Act
         await BookHelpers.RemoveFromFavoritesAsync(client, createdBook.Id);
 
-        // Assert
-        var getResponse = await client.GetBookAsync(createdBook.Id);
-        _ = await Assert.That(getResponse!.IsFavorite).IsFalse();
+        // Assert - Wait for projection to complete
+        await SseEventHelpers.WaitForConditionAsync(
+            async () =>
+            {
+                var book = await client.GetBookAsync(createdBook.Id);
+                return book?.IsFavorite == false;
+            },
+            TestConstants.DefaultTimeout,
+            "Timed out waiting for book to be unmarked as favorite after projection update");
     }
 
     [Test]
