@@ -47,7 +47,7 @@ public static class PasskeyTestHelpers
         byte[] credentialId,
         uint signCount = 0)
     {
-        var store = await DatabaseHelpers.GetDocumentStoreAsync();
+        await using var store = await DatabaseHelpers.GetDocumentStoreAsync();
         await using var session = store.LightweightSession(tenantId);
 
         var user = await DatabaseHelpers.GetUserByEmailAsync(session, email);
@@ -76,7 +76,7 @@ public static class PasskeyTestHelpers
         byte[] credentialId,
         uint signCount)
     {
-        var store = await DatabaseHelpers.GetDocumentStoreAsync();
+        await using var store = await DatabaseHelpers.GetDocumentStoreAsync();
         await using var session = store.LightweightSession(tenantId);
 
         var user = await DatabaseHelpers.GetUserByEmailAsync(session, email);

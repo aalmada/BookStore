@@ -71,7 +71,7 @@ public class PasskeySecurityTests
         });
 
         // Assert - The endpoint should return error, and account should be locked
-        var store = await DatabaseHelpers.GetDocumentStoreAsync();
+        await using var store = await DatabaseHelpers.GetDocumentStoreAsync();
         await using var session = store.LightweightSession(tenantId);
         var user = await DatabaseHelpers.GetUserByEmailAsync(session, email);
         _ = await Assert.That(user).IsNotNull();
@@ -121,7 +121,7 @@ public class PasskeySecurityTests
         await PasskeyTestHelpers.AddPasskeyToUserAsync(tenantId, email, "New Passkey", credentialId, signCount: 0);
 
         // Manually trigger security stamp update like the endpoint does
-        var store = await DatabaseHelpers.GetDocumentStoreAsync();
+        await using var store = await DatabaseHelpers.GetDocumentStoreAsync();
         await using (var session = store.LightweightSession(tenantId))
         {
             var user = await DatabaseHelpers.GetUserByEmailAsync(session, email);
@@ -155,7 +155,7 @@ public class PasskeySecurityTests
 
         // Manually add the same refresh token with a DIFFERENT tenant ID to simulate cross-tenant token theft
         // In a real scenario, this would require a security breach or bug that allows token reuse across tenants
-        var store = await DatabaseHelpers.GetDocumentStoreAsync();
+        await using var store = await DatabaseHelpers.GetDocumentStoreAsync();
         await using (var session = store.LightweightSession(tenant1))
         {
             var user = await DatabaseHelpers.GetUserByEmailAsync(session, email);
@@ -214,7 +214,7 @@ public class PasskeySecurityTests
         await PasskeyTestHelpers.AddPasskeyToUserAsync(tenantId, email, "Login Passkey", credentialId, signCount: 0);
 
         // Simulate the token clearing that happens in passkey login
-        var store = await DatabaseHelpers.GetDocumentStoreAsync();
+        await using var store = await DatabaseHelpers.GetDocumentStoreAsync();
         await using (var session = store.LightweightSession(tenantId))
         {
             var user = await DatabaseHelpers.GetUserByEmailAsync(session, email);
@@ -260,7 +260,7 @@ public class PasskeySecurityTests
         await PasskeyTestHelpers.AddPasskeyToUserAsync(tenant2, sharedEmail, "Tenant2 Passkey", credentialId2);
 
         // Assert: Both passkeys should exist in their respective tenants
-        var store = await DatabaseHelpers.GetDocumentStoreAsync();
+        await using var store = await DatabaseHelpers.GetDocumentStoreAsync();
 
         await using (var session1 = store.LightweightSession(tenant1))
         {
@@ -303,7 +303,7 @@ public class PasskeySecurityTests
         // Get another JWT after password removal (simulate passkey login)
         // In real scenario, user would authenticate via passkey WebAuthn flow
         // For this test, we simulate it by manually checking the user can exist with passkey only
-        var store = await DatabaseHelpers.GetDocumentStoreAsync();
+        await using var store = await DatabaseHelpers.GetDocumentStoreAsync();
         await using var session = store.LightweightSession(tenantId);
         var user = await DatabaseHelpers.GetUserByEmailAsync(session, email);
 
@@ -326,7 +326,7 @@ public class PasskeySecurityTests
         var (email, password, loginResponse, tenantId) = await AuthenticationHelpers.RegisterAndLoginUserAsync();
 
         // Verify user has no passkeys
-        var store = await DatabaseHelpers.GetDocumentStoreAsync();
+        await using var store = await DatabaseHelpers.GetDocumentStoreAsync();
         await using (var session = store.LightweightSession(tenantId))
         {
             var user = await DatabaseHelpers.GetUserByEmailAsync(session, email);
@@ -401,7 +401,7 @@ public class PasskeySecurityTests
         _ = await Assert.That(securityStampClaim).IsNotNull();
 
         // Verify it matches the user's actual security stamp
-        var store = await DatabaseHelpers.GetDocumentStoreAsync();
+        await using var store = await DatabaseHelpers.GetDocumentStoreAsync();
         await using var session = store.LightweightSession(tenantId);
         var user = await DatabaseHelpers.GetUserByEmailAsync(session, email);
 
@@ -419,7 +419,7 @@ public class PasskeySecurityTests
         // Add initial passkey with sign count 0
         await PasskeyTestHelpers.AddPasskeyToUserAsync(tenantId, email, "Test Device", credentialId, signCount: 0);
 
-        var store = await DatabaseHelpers.GetDocumentStoreAsync();
+        await using var store = await DatabaseHelpers.GetDocumentStoreAsync();
 
         // Act - Simulate successful logins that increment the counter
         await PasskeyTestHelpers.UpdatePasskeySignCountAsync(tenantId, email, credentialId, signCount: 1);
