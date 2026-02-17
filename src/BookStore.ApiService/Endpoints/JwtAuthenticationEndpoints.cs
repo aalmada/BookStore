@@ -427,6 +427,8 @@ public static class JwtAuthenticationEndpoints
         var result = await userManager.ChangePasswordAsync(appUser, request.CurrentPassword, request.NewPassword);
         if (result.Succeeded)
         {
+            // Explicitly update security stamp to invalidate existing JWTs
+            _ = await userManager.UpdateSecurityStampAsync(appUser);
             return Results.Ok(new { message = "Password changed successfully." });
         }
 

@@ -64,7 +64,7 @@ public class SecurityStampValidationTests
             HttpClientHelpers.GetAuthenticatedClient(oldAccessToken, tenantId));
 
         var exception = await Assert.That(async () =>
-            await booksClient.GetBooksAsync(new BookSearchRequest()))
+            await booksClient.GetFavoriteBooksAsync(new OrderedPagedRequest()))
             .Throws<ApiException>();
 
         // Assert: Should return unauthorized due to security stamp mismatch
@@ -90,7 +90,7 @@ public class SecurityStampValidationTests
             HttpClientHelpers.GetAuthenticatedClient(oldAccessToken));
 
         var exception = await Assert.That(async () =>
-            await booksClient.GetBooksAsync(new BookSearchRequest()))
+            await booksClient.GetFavoriteBooksAsync(new OrderedPagedRequest()))
             .Throws<ApiException>();
 
         // Assert: Old JWT should be rejected
@@ -125,15 +125,15 @@ public class SecurityStampValidationTests
 
         // Assert: All three JWTs should be rejected
         var booksClient1 = RestService.For<IBooksClient>(HttpClientHelpers.GetAuthenticatedClient(jwt1));
-        var exception1 = await Assert.That(async () => await booksClient1.GetBooksAsync(new BookSearchRequest())).Throws<ApiException>();
+        var exception1 = await Assert.That(async () => await booksClient1.GetFavoriteBooksAsync(new OrderedPagedRequest())).Throws<ApiException>();
         _ = await Assert.That(exception1!.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
 
         var booksClient2 = RestService.For<IBooksClient>(HttpClientHelpers.GetAuthenticatedClient(jwt2));
-        var exception2 = await Assert.That(async () => await booksClient2.GetBooksAsync(new BookSearchRequest())).Throws<ApiException>();
+        var exception2 = await Assert.That(async () => await booksClient2.GetFavoriteBooksAsync(new OrderedPagedRequest())).Throws<ApiException>();
         _ = await Assert.That(exception2!.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
 
         var booksClient3 = RestService.For<IBooksClient>(HttpClientHelpers.GetAuthenticatedClient(jwt3));
-        var exception3 = await Assert.That(async () => await booksClient3.GetBooksAsync(new BookSearchRequest())).Throws<ApiException>();
+        var exception3 = await Assert.That(async () => await booksClient3.GetFavoriteBooksAsync(new OrderedPagedRequest())).Throws<ApiException>();
         _ = await Assert.That(exception3!.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
@@ -158,7 +158,7 @@ public class SecurityStampValidationTests
             HttpClientHelpers.GetAuthenticatedClient(oldAccessToken, tenantId));
 
         var exception = await Assert.That(async () =>
-            await booksClient.GetBooksAsync(new BookSearchRequest()))
+            await booksClient.GetFavoriteBooksAsync(new OrderedPagedRequest()))
             .Throws<ApiException>();
 
         _ = await Assert.That(exception!.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
@@ -194,7 +194,7 @@ public class SecurityStampValidationTests
             HttpClientHelpers.GetAuthenticatedClient(newAccessToken));
 
         var exception = await Assert.That(async () =>
-            await booksClient.GetBooksAsync(new BookSearchRequest()))
+            await booksClient.GetFavoriteBooksAsync(new OrderedPagedRequest()))
             .Throws<ApiException>();
 
         _ = await Assert.That(exception!.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
