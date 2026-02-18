@@ -167,7 +167,8 @@ public class PasskeySecurityTests
                     Token: "malicious-token-123",
                     Expires: DateTimeOffset.UtcNow.AddDays(7),
                     Created: DateTimeOffset.UtcNow,
-                    TenantId: "contoso" // Different tenant!
+                    TenantId: "contoso", // Different tenant!
+                    SecurityStamp: user.SecurityStamp ?? string.Empty
                 ));
                 session.Update(user);
                 await session.SaveChangesAsync();

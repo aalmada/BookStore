@@ -108,7 +108,8 @@ public class JwtTokenService
             newToken,
             DateTimeOffset.UtcNow.AddDays(7),
             DateTimeOffset.UtcNow,
-            tenantId));
+            tenantId,
+            user.SecurityStamp ?? string.Empty));
 
         // 4. Prune old tokens (keep latest 5)
         if (user.RefreshTokens.Count > 5)

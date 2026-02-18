@@ -108,4 +108,5 @@ public record RefreshTokenInfo(
     string Token,
     DateTimeOffset Expires,
     DateTimeOffset Created,
-    string TenantId);
+    string TenantId,
+    string SecurityStamp);

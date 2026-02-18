@@ -61,6 +61,11 @@ public static partial class Log
             Message = "Refresh failed: Token expired or invalid for user {User}")]
         public static partial void RefreshFailedTokenExpiredOrInvalid(ILogger logger, string? user);
 
+        [LoggerMessage(
+            Level = LogLevel.Warning,
+            Message = "Refresh failed: Security stamp mismatch for user {User}")]
+        public static partial void RefreshFailedSecurityStampMismatch(ILogger logger, string? user);
+
         // Passkeys
         [LoggerMessage(
             Level = LogLevel.Error,
