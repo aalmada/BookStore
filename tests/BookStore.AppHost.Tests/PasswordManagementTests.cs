@@ -215,8 +215,9 @@ public class PasswordManagementTests
         await authClient.RemovePasswordAsync(new RemovePasswordRequest());
 
         // Verify password hash is null directly in database
-        // Note: RemovePasswordAsync updates the security stamp, invalidating the current token
-        // This is correct security behavior - security-sensitive operations should invalidate sessions
+        // Note: The RemovePassword endpoint explicitly calls UpdateSecurityStampAsync after
+        // RemovePasswordAsync (which does not update the stamp internally in ASP.NET Identity),
+        // so the current token is invalidated as a result.
         using var verifyStore = await GetStoreAsync();
         await using var verifySession = verifyStore.LightweightSession(StorageConstants.DefaultTenantId);
         var updatedUser = await verifySession.Query<ApplicationUser>()

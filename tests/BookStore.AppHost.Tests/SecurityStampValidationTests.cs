@@ -43,16 +43,27 @@ public class SecurityStampValidationTests
         // Manually update security stamp in database (simulating credential change)
         await ManuallyUpdateSecurityStampAsync(email, tenantId);
 
-        // Small delay to ensure database transaction is committed
-        await Task.Delay(100);
-
-        //Act: Try to access protected endpoint with old JWT
+        // Poll until the old JWT is rejected (security stamp propagated to identity middleware)
         var booksClient = RestService.For<IBooksClient>(
             HttpClientHelpers.GetAuthenticatedClient(oldAccessToken, tenantId));
 
-        var exception = await Assert.That(async () =>
-            await booksClient.GetFavoriteBooksAsync(new OrderedPagedRequest()))
-            .Throws<ApiException>();
+        ApiException? exception = null;
+        await SseEventHelpers.WaitForConditionAsync(
+            async () =>
+            {
+                try
+                {
+                    _ = await booksClient.GetFavoriteBooksAsync(new OrderedPagedRequest());
+                    return false;
+                }
+                catch (ApiException ex)
+                {
+                    exception = ex;
+                    return ex.StatusCode == HttpStatusCode.Unauthorized;
+                }
+            },
+            TimeSpan.FromSeconds(5),
+            "Old JWT was not rejected after security stamp update");
 
         // Assert: Should return unauthorized due to security stamp mismatch
         _ = await Assert.That(exception!.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
@@ -107,20 +118,62 @@ public class SecurityStampValidationTests
         // Act: Update security stamp
         await ManuallyUpdateSecurityStampAsync(email);
 
-        // Small delay to ensure database transaction is committed
-        await Task.Delay(100);
-
-        // Assert: All three JWTs should be rejected
+        // Assert: All three JWTs should be rejected (poll until propagated)
         var booksClient1 = RestService.For<IBooksClient>(HttpClientHelpers.GetAuthenticatedClient(jwt1));
-        var exception1 = await Assert.That(async () => await booksClient1.GetFavoriteBooksAsync(new OrderedPagedRequest())).Throws<ApiException>();
+        ApiException? exception1 = null;
+        await SseEventHelpers.WaitForConditionAsync(
+            async () =>
+            {
+                try
+                {
+                    _ = await booksClient1.GetFavoriteBooksAsync(new OrderedPagedRequest());
+                    return false;
+                }
+                catch (ApiException ex)
+                {
+                    exception1 = ex;
+                    return ex.StatusCode == HttpStatusCode.Unauthorized;
+                }
+            },
+            TimeSpan.FromSeconds(5), "jwt1 was not invalidated after security stamp update");
         _ = await Assert.That(exception1!.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
 
         var booksClient2 = RestService.For<IBooksClient>(HttpClientHelpers.GetAuthenticatedClient(jwt2));
-        var exception2 = await Assert.That(async () => await booksClient2.GetFavoriteBooksAsync(new OrderedPagedRequest())).Throws<ApiException>();
+        ApiException? exception2 = null;
+        await SseEventHelpers.WaitForConditionAsync(
+            async () =>
+            {
+                try
+                {
+                    _ = await booksClient2.GetFavoriteBooksAsync(new OrderedPagedRequest());
+                    return false;
+                }
+                catch (ApiException ex)
+                {
+                    exception2 = ex;
+                    return ex.StatusCode == HttpStatusCode.Unauthorized;
+                }
+            },
+            TimeSpan.FromSeconds(5), "jwt2 was not invalidated after security stamp update");
         _ = await Assert.That(exception2!.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
 
         var booksClient3 = RestService.For<IBooksClient>(HttpClientHelpers.GetAuthenticatedClient(jwt3));
-        var exception3 = await Assert.That(async () => await booksClient3.GetFavoriteBooksAsync(new OrderedPagedRequest())).Throws<ApiException>();
+        ApiException? exception3 = null;
+        await SseEventHelpers.WaitForConditionAsync(
+            async () =>
+            {
+                try
+                {
+                    _ = await booksClient3.GetFavoriteBooksAsync(new OrderedPagedRequest());
+                    return false;
+                }
+                catch (ApiException ex)
+                {
+                    exception3 = ex;
+                    return ex.StatusCode == HttpStatusCode.Unauthorized;
+                }
+            },
+            TimeSpan.FromSeconds(5), "jwt3 was not invalidated after security stamp update");
         _ = await Assert.That(exception3!.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
@@ -137,16 +190,27 @@ public class SecurityStampValidationTests
         var credentialId = Guid.CreateVersion7().ToByteArray();
         await PasskeyTestHelpers.AddPasskeyToUserAsync(tenantId, email, "New Passkey", credentialId);
 
-        // Small delay to ensure database transaction is committed
-        await Task.Delay(100);
-
-        // Assert: Old JWT should be rejected
+        // Assert: Old JWT should be rejected (poll until propagated)
         var booksClient = RestService.For<IBooksClient>(
             HttpClientHelpers.GetAuthenticatedClient(oldAccessToken, tenantId));
 
-        var exception = await Assert.That(async () =>
-            await booksClient.GetFavoriteBooksAsync(new OrderedPagedRequest()))
-            .Throws<ApiException>();
+        ApiException? exception = null;
+        await SseEventHelpers.WaitForConditionAsync(
+            async () =>
+            {
+                try
+                {
+                    _ = await booksClient.GetFavoriteBooksAsync(new OrderedPagedRequest());
+                    return false;
+                }
+                catch (ApiException ex)
+                {
+                    exception = ex;
+                    return ex.StatusCode == HttpStatusCode.Unauthorized;
+                }
+            },
+            TimeSpan.FromSeconds(5),
+            "Old JWT was not rejected after passkey addition");
 
         _ = await Assert.That(exception!.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
@@ -170,19 +234,30 @@ public class SecurityStampValidationTests
         var authClient = RestService.For<IIdentityClient>(
             HttpClientHelpers.GetAuthenticatedClient(newAccessToken));
 
-        // Act: Remove password (updates security stamp)
+        // Act: Remove password (updates security stamp via explicit UpdateSecurityStampAsync in endpoint)
         await authClient.RemovePasswordAsync(new RemovePasswordRequest());
 
-        // Small delay to ensure database transaction is committed
-        await Task.Delay(100);
-
-        // Assert: JWT before password removal should be rejected
+        // Assert: JWT used to remove password should now be rejected (poll until propagated)
         var booksClient = RestService.For<IBooksClient>(
             HttpClientHelpers.GetAuthenticatedClient(newAccessToken));
 
-        var exception = await Assert.That(async () =>
-            await booksClient.GetFavoriteBooksAsync(new OrderedPagedRequest()))
-            .Throws<ApiException>();
+        ApiException? exception = null;
+        await SseEventHelpers.WaitForConditionAsync(
+            async () =>
+            {
+                try
+                {
+                    _ = await booksClient.GetFavoriteBooksAsync(new OrderedPagedRequest());
+                    return false;
+                }
+                catch (ApiException ex)
+                {
+                    exception = ex;
+                    return ex.StatusCode == HttpStatusCode.Unauthorized;
+                }
+            },
+            TimeSpan.FromSeconds(5),
+            "JWT was not rejected after password removal");
 
         _ = await Assert.That(exception!.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }

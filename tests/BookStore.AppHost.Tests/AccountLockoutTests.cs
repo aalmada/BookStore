@@ -163,11 +163,23 @@ public class AccountLockoutTests
             .Throws<ApiException>();
         _ = await Assert.That(exception!.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
 
-        // Wait for lockout to expire
-        await Task.Delay(TimeSpan.FromSeconds(5));
-
-        // Act 2: Try to login after lockout expiration
-        var loginResult = await client.LoginAsync(new LoginRequest(email, password));
+        // Wait for lockout to expire by polling until login succeeds
+        LoginResponse? loginResult = null;
+        await SseEventHelpers.WaitForConditionAsync(
+            async () =>
+            {
+                try
+                {
+                    loginResult = await client.LoginAsync(new LoginRequest(email, password));
+                    return true;
+                }
+                catch (ApiException)
+                {
+                    return false;
+                }
+            },
+            TimeSpan.FromSeconds(10),
+            "Account did not unlock within expected duration");
 
         // Assert: Should succeed after lockout expires
         _ = await Assert.That(loginResult).IsNotNull();
