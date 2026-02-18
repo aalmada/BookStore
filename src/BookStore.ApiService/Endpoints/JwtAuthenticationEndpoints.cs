@@ -352,7 +352,19 @@ public static class JwtAuthenticationEndpoints
             return Result.Failure(Error.Unauthorized(ErrorCodes.Auth.SecurityViolation, "Security violation detected. Account has been locked.")).ToProblemDetails();
         }
 
-        // 4. Generate new tokens using the original tenant from the refresh token
+        // 4. Validate security stamp hasn't changed (invalidates tokens after password change, passkey addition, etc.)
+        if (!string.Equals(existingToken.SecurityStamp, user.SecurityStamp, StringComparison.Ordinal))
+        {
+            Log.Users.RefreshFailedSecurityStampMismatch(logger, user.UserName);
+
+            // Remove the invalid token
+            _ = user.RefreshTokens.Remove(existingToken);
+            _ = await userManager.UpdateAsync(user);
+
+            return Result.Failure(Error.Unauthorized(ErrorCodes.Auth.TokenExpired, "Refresh token has been invalidated due to security changes.")).ToProblemDetails();
+        }
+
+        // 5. Generate new tokens using the original tenant from the refresh token
         var roles = await userManager.GetRolesAsync(user);
         var newAccessToken = jwtTokenService.GenerateAccessToken(user, existingToken.TenantId, roles);
         var newRefreshToken = jwtTokenService.RotateRefreshToken(user, existingToken.TenantId, existingToken.Token);

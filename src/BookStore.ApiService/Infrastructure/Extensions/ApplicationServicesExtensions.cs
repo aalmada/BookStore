@@ -1,3 +1,4 @@
+using Marten;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
@@ -274,9 +275,8 @@ public static class ApplicationServicesExtensions
                         if (!string.IsNullOrEmpty(userId) && Guid.TryParse(userId, out var userGuid))
                         {
                             // Use Query instead of Load to bypass Marten's identity map caching
-                            var user = session.Query<Models.ApplicationUser>()
-                                .Where(u => u.Id == userGuid)
-                                .FirstOrDefault();
+                            var user = await session.Query<Models.ApplicationUser>()
+                                .FirstOrDefaultAsync(u => u.Id == userGuid, context.HttpContext.RequestAborted);
 
                             if (user != null)
                             {
