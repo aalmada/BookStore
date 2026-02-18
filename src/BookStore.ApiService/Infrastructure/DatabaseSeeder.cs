@@ -5,6 +5,7 @@ using BookStore.ApiService.Infrastructure.Logging;
 using BookStore.ApiService.Infrastructure.Tenant;
 using BookStore.ApiService.Projections;
 using BookStore.ApiService.Services;
+using BookStore.Shared;
 using BookStore.Shared.Models;
 using JasperFx;
 using Marten;
@@ -119,9 +120,10 @@ public class DatabaseSeeder(
         ILogger? logger = null)
     {
         // Generate tenant-specific email if not provided
-        var adminEmail = email ?? (StorageConstants.DefaultTenantId.Equals(tenantId, StringComparison.OrdinalIgnoreCase)
-            ? "admin@bookstore.com"
-            : $"admin@{tenantId}.com");
+        var tenantAlias = StorageConstants.DefaultTenantId.Equals(tenantId, StringComparison.OrdinalIgnoreCase)
+            ? MultiTenancyConstants.DefaultTenantAlias
+            : tenantId;
+        var adminEmail = email ?? $"admin@{tenantAlias}.com";
 
         var adminPassword = password ?? "Admin123!";
 
@@ -280,7 +282,7 @@ public class DatabaseSeeder(
             (Key: "LeGuin", Event: new AuthorAdded(Guid.CreateVersion7(), "Ursula K. Le Guin", new Dictionary<string, AuthorTranslation> {
                 ["en"] = new("Ursula Kroeber Le Guin was an American author best known for her works of speculative fiction, including science fiction works set in her Hainish universe, and the Earthsea fantasy series.")
             }, DateTimeOffset.UtcNow)),
-            
+
             // Spanish Authors
             (Key: "Borges", Event: new AuthorAdded(Guid.CreateVersion7(), "Jorge Luis Borges", new Dictionary<string, AuthorTranslation> {
                 ["es"] = new("Jorge Francisco Isidoro Luis Borges fue un escritor, poeta, ensayista y traductor argentino, extensamente considerado una figura clave tanto para la literatura en habla hispana como para la literatura universal."),
@@ -294,7 +296,7 @@ public class DatabaseSeeder(
                 ["es"] = new("Miguel de Cervantes Saavedra fue un novelista, poeta, dramaturgo y soldado español. Es ampliamente considerado una de las máximas figuras de la literatura española."),
                 ["en"] = new("Miguel de Cervantes Saavedra was a Spanish writer widely regarded as the greatest writer in the Spanish language and one of the world's pre-eminent novelists.")
             }, DateTimeOffset.UtcNow)),
-            
+
             // French Authors
             (Key: "Hugo", Event: new AuthorAdded(Guid.CreateVersion7(), "Victor Hugo", new Dictionary<string, AuthorTranslation> {
                 ["fr"] = new("Victor-Marie Hugo est un poète, dramaturge, et prosateur romantique considéré comme l'un des plus importants écrivains de la langue française."),

@@ -38,9 +38,9 @@ Use this file for agent-only context: build and test commands, conventions, and 
 2. Write verification first
 3. Implement
 4. Verify all steps pass
-5. Run `dotnet format` to ensure code style compliance
+5. Run `dotnet format` to ensure code style compliance. Issues not automatically fixed must be resolved manually.
 
-**A feature is not complete until `dotnet format` has been executed successfully.**
+**A feature is not complete until `dotnet format --verify-no-changes` exits with code 0.**
 
 ## Code Rules (MUST follow)
 
@@ -83,6 +83,15 @@ Use this file for agent-only context: build and test commands, conventions, and 
 - SSE not working: run `/frontend__debug_sse`
 - Cache issues: run `/cache__debug_cache`
 - Environment issues: run `/ops__doctor_check`
+
+## MCP Servers for Documentation
+
+Use MCP servers to get up-to-date documentation instead of relying on training data:
+
+- **Context7** (`mcp_context7_resolve-library-id` → `mcp_context7_get-library-docs`): Use for any library in the stack — Marten, Wolverine, Aspire, Refit, Bogus, TUnit, etc.
+- **Microsoft Learn** (`mcp_microsoftdocs_microsoft_docs_search` / `mcp_microsoftdocs_microsoft_docs_fetch`): Use for .NET, ASP.NET Core, Entity Framework, Azure, and any Microsoft technology.
+
+Always prefer MCP server lookups over guessing API shapes or behaviour from training data.
 
 ## Documentation Index
 

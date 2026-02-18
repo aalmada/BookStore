@@ -4,6 +4,7 @@ using Aspire.Hosting.Testing;
 using BookStore.ApiService.Aggregates;
 using BookStore.ApiService.Events;
 using BookStore.AppHost.Tests.Helpers;
+using BookStore.Shared;
 using BookStore.Shared.Models;
 using JasperFx;
 using JasperFx.Core;
@@ -109,32 +110,23 @@ public static class GlobalHooks
         {
             // Tenant documents use Marten's native default tenant bucket
             await using var tenantSession = store.LightweightSession();
-            var tenants = new[] { StorageConstants.DefaultTenantId, "acme", "contoso" };
-            foreach (var tenantId in tenants)
-            {
-                var existingTenant = await tenantSession.LoadAsync<BookStore.ApiService.Models.Tenant>(tenantId);
-                var tenantName = tenantId switch
-                {
-                    "acme" => "Acme Corp",
-                    "contoso" => "Contoso Ltd",
-                    _ => "BookStore"
-                };
+            var defaultTenantId = StorageConstants.DefaultTenantId;
 
-                if (existingTenant == null)
+            var existingDefault = await tenantSession.LoadAsync<BookStore.ApiService.Models.Tenant>(defaultTenantId);
+            if (existingDefault == null)
+            {
+                tenantSession.Store(new BookStore.ApiService.Models.Tenant
                 {
-                    tenantSession.Store(new BookStore.ApiService.Models.Tenant
-                    {
-                        Id = tenantId,
-                        Name = tenantName,
-                        IsEnabled = true,
-                        CreatedAt = DateTimeOffset.UtcNow
-                    });
-                }
-                else
-                {
-                    existingTenant.Name = tenantName;
-                    tenantSession.Update(existingTenant);
-                }
+                    Id = defaultTenantId,
+                    Name = "BookStore",
+                    IsEnabled = true,
+                    CreatedAt = DateTimeOffset.UtcNow
+                });
+            }
+            else
+            {
+                existingDefault.Name = "BookStore";
+                tenantSession.Update(existingDefault);
             }
 
             await tenantSession.SaveChangesAsync();
@@ -142,11 +134,9 @@ public static class GlobalHooks
             // Seed minimal books for testing (default tenant)
             await SeedBooksAsync(store, StorageConstants.DefaultTenantId);
 
-            // We reuse the logic from DatabaseSeeder (or duplicate it for isolation)
-            // Here we duplicate the critical part to avoid dependency on internal implementation details of DatabaseSeeder
+            // Only seed the default tenant admin directly.
+            // Other tenant admins are created via the API as part of tenant creation (full tenant isolation).
             await SeedTenantAdminAsync(store, StorageConstants.DefaultTenantId);
-            await SeedTenantAdminAsync(store, "acme");
-            await SeedTenantAdminAsync(store, "contoso");
         }
 
         // Retry login mechanism (less aggressive now that we control seeding)
@@ -156,7 +146,7 @@ public static class GlobalHooks
             try
             {
                 loginResponse = await httpClient.PostAsJsonAsync("/account/login",
-                    new { Email = "admin@bookstore.com", Password = "Admin123!" });
+                    new { Email = $"admin@{MultiTenancyConstants.DefaultTenantAlias}.com", Password = "Admin123!" });
                 return loginResponse.IsSuccessStatusCode;
             }
             catch
@@ -182,9 +172,10 @@ public static class GlobalHooks
     static async Task SeedTenantAdminAsync(IDocumentStore store, string tenantId)
     {
         await using var session = store.LightweightSession(tenantId);
-        var adminEmail = StorageConstants.DefaultTenantId.Equals(tenantId, StringComparison.OrdinalIgnoreCase)
-            ? "admin@bookstore.com"
-            : $"admin@{tenantId}.com";
+        var tenantAlias = StorageConstants.DefaultTenantId.Equals(tenantId, StringComparison.OrdinalIgnoreCase)
+            ? MultiTenancyConstants.DefaultTenantAlias
+            : tenantId;
+        var adminEmail = $"admin@{tenantAlias}.com";
 
         var existingAdmin = await session.Query<BookStore.ApiService.Models.ApplicationUser>()
             .Where(u => u.Email == adminEmail)

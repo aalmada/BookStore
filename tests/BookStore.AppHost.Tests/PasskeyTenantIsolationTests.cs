@@ -5,6 +5,7 @@ using System.Net.Http.Json;
 using BookStore.ApiService.Models;
 using BookStore.AppHost.Tests.Helpers;
 using BookStore.Client;
+using BookStore.Shared.Models;
 using Marten;
 using Refit;
 using Weasel.Core;
@@ -16,27 +17,37 @@ public class PasskeyTenantIsolationTests
     [Test]
     public async Task Passkeys_AreTenantScoped()
     {
-        // Arrange
-        var (acmeEmail, _, acmeLoginResponse, _) = await AuthenticationHelpers.RegisterAndLoginUserAsync("acme");
-        var (_, _, contosoLoginResponse, _) = await AuthenticationHelpers.RegisterAndLoginUserAsync("contoso");
+        // Arrange: two fresh isolated tenants
+        var tenant1 = FakeDataGenerators.GenerateFakeTenantId();
+        var tenant2 = FakeDataGenerators.GenerateFakeTenantId();
+        await DatabaseHelpers.CreateTenantViaApiAsync(tenant1);
+        await DatabaseHelpers.CreateTenantViaApiAsync(tenant2);
+
+        var (email1, password1, _, _) = await AuthenticationHelpers.RegisterAndLoginUserAsync(tenant1);
+        var (_, _, tenant2LoginResponse, _) = await AuthenticationHelpers.RegisterAndLoginUserAsync(tenant2);
 
         var credentialId = Guid.CreateVersion7().ToByteArray();
-        await PasskeyTestHelpers.AddPasskeyToUserAsync("acme", acmeEmail, "Acme Passkey", credentialId);
+        const string passkeyName = "My Passkey";
+        await PasskeyTestHelpers.AddPasskeyToUserAsync(tenant1, email1, passkeyName, credentialId);
 
-        var acmeClient = RestService.For<IPasskeyClient>(HttpClientHelpers.GetAuthenticatedClient(acmeLoginResponse.AccessToken, "acme"));
-        var contosoClient =
-            RestService.For<IPasskeyClient>(HttpClientHelpers.GetAuthenticatedClient(contosoLoginResponse.AccessToken, "contoso"));
+        // Get fresh token after adding passkey (security stamp changed)
+        var tenant1IdentityClient = RestService.For<IIdentityClient>(HttpClientHelpers.GetUnauthenticatedClient(tenant1));
+        var tenant1RefreshedResponse = await tenant1IdentityClient.LoginAsync(new LoginRequest(email1, password1));
+
+        var tenant1Client = RestService.For<IPasskeyClient>(HttpClientHelpers.GetAuthenticatedClient(tenant1RefreshedResponse.AccessToken, tenant1));
+        var tenant2Client = RestService.For<IPasskeyClient>(HttpClientHelpers.GetAuthenticatedClient(tenant2LoginResponse.AccessToken, tenant2));
 
         // Act
-        var acmePasskeys = await acmeClient.ListPasskeysAsync();
-        var contosoPasskeys = await contosoClient.ListPasskeysAsync();
+        var tenant1Passkeys = await tenant1Client.ListPasskeysAsync();
+        var tenant2Passkeys = await tenant2Client.ListPasskeysAsync();
 
-        // Assert
-        _ = await Assert.That(acmePasskeys.Any(p => p.Name == "Acme Passkey")).IsTrue();
-        _ = await Assert.That(contosoPasskeys.Any(p => p.Name == "Acme Passkey")).IsFalse();
+        // Assert: passkey is visible only in the tenant it was created in
+        _ = await Assert.That(tenant1Passkeys.Any(p => p.Name == passkeyName)).IsTrue();
+        _ = await Assert.That(tenant2Passkeys.Any(p => p.Name == passkeyName)).IsFalse();
 
-        var mismatchedClient =
-            RestService.For<IPasskeyClient>(HttpClientHelpers.GetAuthenticatedClient(acmeLoginResponse.AccessToken, "contoso"));
+        // Assert: using tenant1 token against tenant2 header is rejected
+        var mismatchedClient = RestService.For<IPasskeyClient>(
+            HttpClientHelpers.GetAuthenticatedClient(tenant1RefreshedResponse.AccessToken, tenant2));
         var mismatchException =
             await Assert.That(async () => await mismatchedClient.ListPasskeysAsync()).Throws<ApiException>();
         var isRejected = mismatchException!.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.Unauthorized;
@@ -46,53 +57,70 @@ public class PasskeyTenantIsolationTests
     [Test]
     public async Task DeletePasskey_WithMismatchedTenantHeader_IsRejected()
     {
-        // Arrange
-        var (acmeEmail, _, acmeLoginResponse, _) = await AuthenticationHelpers.RegisterAndLoginUserAsync("acme");
+        // Arrange: a fresh tenant for the real user, and a second tenant whose header will be spoofed
+        var tenant1 = FakeDataGenerators.GenerateFakeTenantId();
+        var tenant2 = FakeDataGenerators.GenerateFakeTenantId();
+        await DatabaseHelpers.CreateTenantViaApiAsync(tenant1);
+        await DatabaseHelpers.CreateTenantViaApiAsync(tenant2);
+
+        var (email, password, _, _) = await AuthenticationHelpers.RegisterAndLoginUserAsync(tenant1);
         var credentialId = Guid.CreateVersion7().ToByteArray();
-        await PasskeyTestHelpers.AddPasskeyToUserAsync("acme", acmeEmail, "Acme Passkey", credentialId);
+        const string passkeyName = "My Passkey";
+        await PasskeyTestHelpers.AddPasskeyToUserAsync(tenant1, email, passkeyName, credentialId);
 
-        var acmeClient = RestService.For<IPasskeyClient>(HttpClientHelpers.GetAuthenticatedClient(acmeLoginResponse.AccessToken, "acme"));
-        var passkeys = await acmeClient.ListPasskeysAsync();
-        var passkeyId = passkeys.Single(p => p.Name == "Acme Passkey").Id;
+        // Get fresh token after adding passkey (security stamp changed)
+        var identityClient = RestService.For<IIdentityClient>(HttpClientHelpers.GetUnauthenticatedClient(tenant1));
+        var refreshedResponse = await identityClient.LoginAsync(new LoginRequest(email, password));
 
-        var mismatchedClient =
-            RestService.For<IPasskeyClient>(HttpClientHelpers.GetAuthenticatedClient(acmeLoginResponse.AccessToken, "contoso"));
+        var tenant1Client = RestService.For<IPasskeyClient>(HttpClientHelpers.GetAuthenticatedClient(refreshedResponse.AccessToken, tenant1));
+        var passkeys = await tenant1Client.ListPasskeysAsync();
+        var passkeyId = passkeys.Single(p => p.Name == passkeyName).Id;
+
+        // Use tenant1 access token but send tenant2 header (cross-tenant attack)
+        var mismatchedClient = RestService.For<IPasskeyClient>(
+            HttpClientHelpers.GetAuthenticatedClient(refreshedResponse.AccessToken, tenant2));
 
         // Act
         var mismatchException = await Assert.That(
             async () => await mismatchedClient.DeletePasskeyAsync(passkeyId, "\"0\""))
             .Throws<ApiException>();
 
-        // Assert
+        // Assert: request is rejected
         var isRejected = mismatchException!.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.Unauthorized;
         _ = await Assert.That(isRejected).IsTrue();
 
-        var remaining = await acmeClient.ListPasskeysAsync();
-        _ = await Assert.That(remaining.Any(p => p.Name == "Acme Passkey")).IsTrue();
+        // Assert: passkey still exists in the correct tenant
+        var remaining = await tenant1Client.ListPasskeysAsync();
+        _ = await Assert.That(remaining.Any(p => p.Name == passkeyName)).IsTrue();
     }
 
     [Test]
     public async Task PasskeyCreationOptions_WithEmailFromOtherTenant_ReturnsFreshUserId()
     {
-        // Arrange
-        var (acmeEmail, _, acmeLoginResponse, _) = await AuthenticationHelpers.RegisterAndLoginUserAsync("acme");
-        var contosoClient = RestService.For<IPasskeyClient>(HttpClientHelpers.GetUnauthenticatedClient("contoso"));
+        // Arrange: two fresh isolated tenants sharing the same email
+        var tenant1 = FakeDataGenerators.GenerateFakeTenantId();
+        var tenant2 = FakeDataGenerators.GenerateFakeTenantId();
+        await DatabaseHelpers.CreateTenantViaApiAsync(tenant1);
+        await DatabaseHelpers.CreateTenantViaApiAsync(tenant2);
 
-        // Get acme user ID from JWT token
-        var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
-        var token = handler.ReadJwtToken(acmeLoginResponse.AccessToken);
-        var acmeUserId = Guid.Parse(token.Claims.First(c => c.Type == "sub").Value);
+        var (sharedEmail, _, tenant1LoginResponse, _) = await AuthenticationHelpers.RegisterAndLoginUserAsync(tenant1);
+        var tenant2PasskeyClient = RestService.For<IPasskeyClient>(HttpClientHelpers.GetUnauthenticatedClient(tenant2));
 
-        // Act
-        var response = await contosoClient.GetPasskeyCreationOptionsAsync(new PasskeyCreationRequest
+        // Get tenant1 user ID from JWT
+        var handler = new JwtSecurityTokenHandler();
+        var token = handler.ReadJwtToken(tenant1LoginResponse.AccessToken);
+        var tenant1UserId = Guid.Parse(token.Claims.First(c => c.Type == "sub").Value);
+
+        // Act: request passkey creation on tenant2 using the same email
+        var response = await tenant2PasskeyClient.GetPasskeyCreationOptionsAsync(new PasskeyCreationRequest
         {
-            Email = acmeEmail
+            Email = sharedEmail
         });
 
-        // Assert
+        // Assert: tenant2 assigns a brand-new user ID (not the same as tenant1's)
         _ = await Assert.That(response).IsNotNull();
         _ = await Assert.That(response.Options).IsNotNull();
-        _ = await Assert.That(Guid.TryParse(response.UserId, out var contosoUserId)).IsTrue();
-        _ = await Assert.That(contosoUserId).IsNotEqualTo(acmeUserId);
+        _ = await Assert.That(Guid.TryParse(response.UserId, out var tenant2UserId)).IsTrue();
+        _ = await Assert.That(tenant2UserId).IsNotEqualTo(tenant1UserId);
     }
 }

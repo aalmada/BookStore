@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using Aspire.Hosting;
 using BookStore.ApiService.Infrastructure.Tenant;
+using BookStore.Shared;
 using JasperFx;
 using Refit;
 
@@ -19,9 +20,10 @@ public static class AuthenticationHelpers
 
     public static async Task<LoginResponse?> LoginAsAdminAsync(HttpClient client, string tenantId)
     {
-        var email = StorageConstants.DefaultTenantId.Equals(tenantId, StringComparison.OrdinalIgnoreCase)
-            ? "admin@bookstore.com"
-            : $"admin@{tenantId}.com";
+        var tenantAlias = StorageConstants.DefaultTenantId.Equals(tenantId, StringComparison.OrdinalIgnoreCase)
+            ? MultiTenancyConstants.DefaultTenantAlias
+            : tenantId;
+        var email = $"admin@{tenantAlias}.com";
 
         var credentials = new { email, password = "Admin123!" };
 

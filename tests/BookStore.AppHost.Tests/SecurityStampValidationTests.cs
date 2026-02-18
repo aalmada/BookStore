@@ -26,21 +26,8 @@ public class SecurityStampValidationTests
             throw new InvalidOperationException("App is not initialized");
         }
 
-        var connectionString = await GlobalHooks.App.GetConnectionStringAsync("bookstore");
-        if (string.IsNullOrEmpty(connectionString))
-        {
-            throw new InvalidOperationException("Could not retrieve connection string for 'bookstore' resource.");
-        }
-
-        using var store = DocumentStore.For(opts =>
-        {
-            opts.Connection(connectionString);
-            _ = opts.Policies.AllDocumentsAreMultiTenanted();
-            opts.Events.TenancyStyle = Marten.Storage.TenancyStyle.Conjoined;
-        });
-
-        await DatabaseHelpers.SeedTenantAsync(store, "tenant-a");
-        await DatabaseHelpers.SeedTenantAsync(store, "tenant-b");
+        await DatabaseHelpers.CreateTenantViaApiAsync("tenant-a");
+        await DatabaseHelpers.CreateTenantViaApiAsync("tenant-b");
     }
 
     [Test]

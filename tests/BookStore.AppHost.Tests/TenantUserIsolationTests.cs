@@ -17,7 +17,8 @@ public class TenantUserIsolationTests
     public async Task RateBook_InSpecificTenant_ShouldUpdateRating()
     {
         // Arrange - Setup tenant and user
-        var tenantId = "acme";
+        var tenantId = FakeDataGenerators.GenerateFakeTenantId();
+        await DatabaseHelpers.CreateTenantViaApiAsync(tenantId);
         var adminClient = await HttpClientHelpers.GetAuthenticatedClientAsync();
         var loginRes = await AuthenticationHelpers.LoginAsAdminAsync(adminClient, tenantId);
         _ = await Assert.That(loginRes).IsNotNull();
@@ -66,7 +67,8 @@ public class TenantUserIsolationTests
     public async Task AddToFavorites_InSpecificTenant_ShouldUpdateFavorites()
     {
         // Arrange
-        var tenantId = "contoso";
+        var tenantId = FakeDataGenerators.GenerateFakeTenantId();
+        await DatabaseHelpers.CreateTenantViaApiAsync(tenantId);
         var adminClient = await HttpClientHelpers.GetAuthenticatedClientAsync();
         var loginRes = await AuthenticationHelpers.LoginAsAdminAsync(adminClient, tenantId);
         _ = await Assert.That(loginRes).IsNotNull();
@@ -117,7 +119,8 @@ public class TenantUserIsolationTests
     public async Task AddToCart_InSpecificTenant_ShouldPersistInTenant()
     {
         // Arrange - Setup tenant-specific context
-        var tenantId = "acme";
+        var tenantId = FakeDataGenerators.GenerateFakeTenantId();
+        await DatabaseHelpers.CreateTenantViaApiAsync(tenantId);
         var adminClient = await HttpClientHelpers.GetAuthenticatedClientAsync();
         var loginRes = await AuthenticationHelpers.LoginAsAdminAsync(adminClient, tenantId);
         _ = await Assert.That(loginRes).IsNotNull();
@@ -162,9 +165,11 @@ public class TenantUserIsolationTests
     [Test]
     public async Task UserData_ShouldBeIsolatedBetweenTenants()
     {
-        // Arrange - Create users in two different tenants
-        var tenant1 = "acme";
-        var tenant2 = "contoso";
+        // Arrange - Create users in two fresh isolated tenants
+        var tenant1 = FakeDataGenerators.GenerateFakeTenantId();
+        var tenant2 = FakeDataGenerators.GenerateFakeTenantId();
+        await DatabaseHelpers.CreateTenantViaApiAsync(tenant1);
+        await DatabaseHelpers.CreateTenantViaApiAsync(tenant2);
 
         var adminClient = await HttpClientHelpers.GetAuthenticatedClientAsync();
 

@@ -1,6 +1,7 @@
 using System.Net;
 using BookStore.AppHost.Tests.Helpers;
 using BookStore.Client;
+using BookStore.Shared;
 using Refit;
 using SharedModels = BookStore.Shared.Models;
 
@@ -22,7 +23,7 @@ public class RateLimitTests
 
         // Act & Assert
         // Make an initial request to login endpoint
-        var loginRequest = new SharedModels.LoginRequest("admin@bookstore.com", "WrongPassword!");
+        var loginRequest = new SharedModels.LoginRequest($"admin@{MultiTenancyConstants.DefaultTenantAlias}.com", "WrongPassword!");
 
         try
         {

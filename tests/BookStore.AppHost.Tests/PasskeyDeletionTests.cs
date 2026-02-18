@@ -50,6 +50,11 @@ public class PasskeyDeletionTests
             "Unsafe Passkey",
             unsafeCredentialId);
 
+        // Get fresh token after adding passkey (security stamp changed)
+        var refreshedLoginResult = await _client.LoginAsync(new LoginRequest(email, password));
+        var refreshedAuthClient = HttpClientHelpers.GetAuthenticatedClient(refreshedLoginResult.AccessToken);
+        authenticatedPasskeyClient = RestService.For<IPasskeyClient>(refreshedAuthClient);
+
         // 3. List passkeys to get the encoded ID
         var passkeys = await authenticatedPasskeyClient.ListPasskeysAsync();
 

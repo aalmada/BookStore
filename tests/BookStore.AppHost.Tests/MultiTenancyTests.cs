@@ -2,13 +2,15 @@ using System.Net;
 using BookStore.AppHost.Tests.Helpers;
 using BookStore.Client;
 using BookStore.Shared.Models;
-using Marten;
 using Refit;
 
 namespace BookStore.AppHost.Tests;
 
 public class MultiTenancyTests
 {
+    static string _tenant1 = string.Empty;
+    static string _tenant2 = string.Empty;
+
     [Before(Class)]
     public static async Task ClassSetup()
     {
@@ -17,65 +19,49 @@ public class MultiTenancyTests
             throw new InvalidOperationException("App is not initialized");
         }
 
-        var connectionString = await GlobalHooks.App.GetConnectionStringAsync("bookstore");
-        if (string.IsNullOrEmpty(connectionString))
-        {
-            throw new InvalidOperationException("Could not retrieve connection string for 'bookstore' resource.");
-        }
-
-        using var store = DocumentStore.For(opts =>
-        {
-            opts.Connection(connectionString);
-            _ = opts.Policies.AllDocumentsAreMultiTenanted();
-            opts.Events.TenancyStyle = Marten.Storage.TenancyStyle.Conjoined;
-        });
-
-        await DatabaseHelpers.SeedTenantAsync(store, "acme");
-        await DatabaseHelpers.SeedTenantAsync(store, "contoso");
+        _tenant1 = FakeDataGenerators.GenerateFakeTenantId();
+        _tenant2 = FakeDataGenerators.GenerateFakeTenantId();
+        await DatabaseHelpers.CreateTenantViaApiAsync(_tenant1);
+        await DatabaseHelpers.CreateTenantViaApiAsync(_tenant2);
     }
 
     [Test]
     public async Task EntitiesAreIsolatedByTenant()
     {
         // 1. Setup Clients
-        // Login as Acme Admin
-        var acmeLogin = await AuthenticationHelpers.LoginAsAdminAsync("acme");
-        _ = await Assert.That(acmeLogin).IsNotNull();
-        var acmeClient =
-            RestService.For<IBooksClient>(HttpClientHelpers.GetAuthenticatedClient(acmeLogin!.AccessToken, "acme"));
+        var tenant1Login = await AuthenticationHelpers.LoginAsAdminAsync(_tenant1);
+        _ = await Assert.That(tenant1Login).IsNotNull();
+        var tenant1Client =
+            RestService.For<IBooksClient>(HttpClientHelpers.GetAuthenticatedClient(tenant1Login!.AccessToken, _tenant1));
 
-        // Login as Contoso Admin
-        var contosoLogin = await AuthenticationHelpers.LoginAsAdminAsync("contoso");
-        _ = await Assert.That(contosoLogin).IsNotNull();
-        var contosoClient =
-            RestService.For<IBooksClient>(HttpClientHelpers.GetAuthenticatedClient(contosoLogin!.AccessToken, "contoso"));
+        var tenant2Login = await AuthenticationHelpers.LoginAsAdminAsync(_tenant2);
+        _ = await Assert.That(tenant2Login).IsNotNull();
+        var tenant2Client =
+            RestService.For<IBooksClient>(HttpClientHelpers.GetAuthenticatedClient(tenant2Login!.AccessToken, _tenant2));
 
-        // 2. Create Book in ACME
+        // 2. Create Book in tenant1
         var createRequest = FakeDataGenerators.GenerateFakeBookRequest();
-        // Use CreateBookAsync helper that handles dependencies and SSE waiting
-        // Wait, BookHelpers.CreateBookAsync takes IBooksClient and CreateBookRequest.
-        // It should handle it.
-        var createdBook = await BookHelpers.CreateBookAsync(acmeClient, createRequest);
+        var createdBook = await BookHelpers.CreateBookAsync(tenant1Client, createRequest);
         _ = await Assert.That(createdBook).IsNotNull();
         var bookId = createdBook.Id;
 
-        // 3. Verify visible in ACME
-        var acmeBook = await acmeClient.GetBookAsync(bookId);
-        _ = await Assert.That(acmeBook).IsNotNull();
-        _ = await Assert.That(acmeBook.Id).IsEqualTo(bookId);
+        // 3. Verify visible in tenant1
+        var tenant1Book = await tenant1Client.GetBookAsync(bookId);
+        _ = await Assert.That(tenant1Book).IsNotNull();
+        _ = await Assert.That(tenant1Book.Id).IsEqualTo(bookId);
 
-        // 4. Verify NOT visible in CONTOSO
-        var exception = await Assert.That(async () => await contosoClient.GetBookAsync(bookId)).Throws<ApiException>();
+        // 4. Verify NOT visible in tenant2
+        var exception = await Assert.That(async () => await tenant2Client.GetBookAsync(bookId)).Throws<ApiException>();
         _ = await Assert.That(exception!.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
 
-        // 5. Verify Search Isolation
-        var acmeSearch = await acmeClient.GetBooksAsync(new BookSearchRequest { Search = createdBook.Title });
-        _ = await Assert.That(acmeSearch).IsNotNull();
-        _ = await Assert.That(acmeSearch.Items.Any(b => b.Id == bookId)).IsTrue();
+        // 5. Verify search isolation
+        var tenant1Search = await tenant1Client.GetBooksAsync(new BookSearchRequest { Search = createdBook.Title });
+        _ = await Assert.That(tenant1Search).IsNotNull();
+        _ = await Assert.That(tenant1Search.Items.Any(b => b.Id == bookId)).IsTrue();
 
-        var contosoSearch = await contosoClient.GetBooksAsync(new BookSearchRequest { Search = createdBook.Title });
-        _ = await Assert.That(contosoSearch).IsNotNull();
-        _ = await Assert.That(contosoSearch.Items.Any(b => b.Id == bookId)).IsFalse();
+        var tenant2Search = await tenant2Client.GetBooksAsync(new BookSearchRequest { Search = createdBook.Title });
+        _ = await Assert.That(tenant2Search).IsNotNull();
+        _ = await Assert.That(tenant2Search.Items.Any(b => b.Id == bookId)).IsFalse();
     }
 
     [Test]

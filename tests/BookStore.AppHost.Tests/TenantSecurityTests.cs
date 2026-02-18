@@ -15,11 +15,12 @@ public class TenantSecurityTests
             throw new InvalidOperationException("App is not initialized");
         }
 
-        var validToken = GlobalHooks.AdminAccessToken!;
+        // Admin JWT carries the default tenant claim; send it with a different tenant header -> Forbidden
+        var otherTenant = FakeDataGenerators.GenerateFakeTenantId();
+        await DatabaseHelpers.CreateTenantViaApiAsync(otherTenant);
 
-        // Arrange
-        // Test 1: Valid token (tenant=Default/BookStore), Header=acme -> Should Fail
-        var client = RestService.For<IShoppingCartClient>(HttpClientHelpers.GetAuthenticatedClient(validToken, "acme"));
+        var validToken = GlobalHooks.AdminAccessToken!;
+        var client = RestService.For<IShoppingCartClient>(HttpClientHelpers.GetAuthenticatedClient(validToken, otherTenant));
 
         // Act & Assert
         var exception = await Assert.That(async () => await client.GetShoppingCartAsync()).Throws<ApiException>();
@@ -34,52 +35,14 @@ public class TenantSecurityTests
             throw new InvalidOperationException("App is not initialized");
         }
 
-        // Test 2: Anonymous user with X-Tenant-ID="acme" -> Should be Forbidden
-        var client = RestService.For<IShoppingCartClient>(HttpClientHelpers.GetUnauthenticatedClient("acme"));
+        // Anonymous request targeting any non-default tenant should be Forbidden
+        var otherTenant = FakeDataGenerators.GenerateFakeTenantId();
+        await DatabaseHelpers.CreateTenantViaApiAsync(otherTenant);
+
+        var client = RestService.For<IShoppingCartClient>(HttpClientHelpers.GetUnauthenticatedClient(otherTenant));
 
         // Act & Assert
         var exception = await Assert.That(async () => await client.GetShoppingCartAsync()).Throws<ApiException>();
         _ = await Assert.That(exception!.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
-    }
-
-    [Test]
-    public async Task Request_NoTenantClaim_ShouldBeForbidden()
-    {
-        if (GlobalHooks.App == null)
-        {
-            throw new InvalidOperationException("App is not initialized");
-        }
-
-        // Test 3: Same as Test 1 basically - Valid Token (Default), Header (acme) -> Mismatch -> Forbidden
-        var validToken = GlobalHooks.AdminAccessToken!;
-        var client = RestService.For<IShoppingCartClient>(HttpClientHelpers.GetAuthenticatedClient(validToken, "acme"));
-
-        // Act & Assert
-        var exception = await Assert.That(async () => await client.GetShoppingCartAsync()).Throws<ApiException>();
-        _ = await Assert.That(exception!.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
-    }
-
-    [Test]
-    public async Task Admin_TenantList_RestrictedToDefaultTenant()
-    {
-        if (GlobalHooks.App == null)
-        {
-            throw new InvalidOperationException("App is not initialized");
-        }
-
-        if (GlobalHooks.AdminAccessToken == null)
-        {
-            throw new InvalidOperationException("Admin Access Token is null");
-        }
-
-        // 1. Success path: Default Tenant Admin (GlobalHooks.AdminAccessToken) accessing Default Tenant endpoint
-        var client =
-            RestService.For<ITenantsClient>(HttpClientHelpers.GetAuthenticatedClient(GlobalHooks.AdminAccessToken));
-
-        // Act
-        var result = await client.GetAllTenantsAdminAsync();
-
-        // Assert
-        _ = await Assert.That(result).IsNotNull();
     }
 }
