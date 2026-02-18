@@ -2,9 +2,7 @@ using System.Net;
 using BookStore.AppHost.Tests.Helpers;
 using BookStore.Client;
 using BookStore.Shared.Models;
-using Marten;
 using Refit;
-using Weasel.Core;
 using CreateAuthorRequest = BookStore.Client.CreateAuthorRequest;
 using CreateBookRequest = BookStore.Client.CreateBookRequest;
 
@@ -18,18 +16,8 @@ public class BookFilterRegressionTests
         // Debugging Multi-Tenant Author Filter
         var tenantId = $"book-filter-test-{Guid.NewGuid():N}";
 
-        // Seed Tenant
-        var connectionString = await GlobalHooks.App!.GetConnectionStringAsync("bookstore");
-        using (var store = DocumentStore.For(opts =>
-               {
-                   opts.Connection(connectionString!);
-                   _ = opts.Policies.AllDocumentsAreMultiTenanted();
-                   opts.Events.TenancyStyle = Marten.Storage.TenancyStyle.Conjoined;
-                   opts.UseSystemTextJsonForSerialization(EnumStorage.AsString, Casing.CamelCase);
-               }))
-        {
-            await DatabaseHelpers.SeedTenantAsync(store, tenantId);
-        }
+        // Seed Tenant via API
+        await DatabaseHelpers.CreateTenantViaApiAsync(tenantId);
 
         // Authenticate as Admin in the new tenant
         var loginRes = await AuthenticationHelpers.LoginAsAdminAsync(tenantId);

@@ -11,7 +11,7 @@ namespace BookStore.ApiService.Infrastructure.Extensions;
 
 public static class RateLimitingExtensions
 {
-    public static IServiceCollection AddCustomRateLimiting(this IServiceCollection services, IConfiguration configuration, IHostEnvironment environment) => services.AddRateLimiter(options =>
+    public static IServiceCollection AddCustomRateLimiting(this IServiceCollection services, IConfiguration configuration) => services.AddRateLimiter(options =>
     {
         options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 

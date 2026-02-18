@@ -12,10 +12,7 @@ public class DiagnoseRegistrationTests
 {
     readonly IIdentityClient _client;
 
-    public DiagnoseRegistrationTests()
-    {
-        _client = RestService.For<IIdentityClient>(HttpClientHelpers.GetUnauthenticatedClient());
-    }
+    public DiagnoseRegistrationTests() => _client = RestService.For<IIdentityClient>(HttpClientHelpers.GetUnauthenticatedClient());
 
     [Test]
     public async Task DiagnoseRegistrationFailure_CaptureActualErrorMessage()
@@ -70,7 +67,7 @@ public class DiagnoseRegistrationTests
     {
         Console.WriteLine($"=== TESTING 10 PASSWORD GENERATIONS ===");
 
-        for (int i = 1; i <= 10; i++)
+        for (var i = 1; i <= 10; i++)
         {
             var password = FakeDataGenerators.GenerateFakePassword();
             var hasUpper = password.Any(char.IsUpper);

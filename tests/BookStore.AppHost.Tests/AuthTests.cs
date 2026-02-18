@@ -4,6 +4,7 @@ using BookStore.AppHost.Tests.Helpers;
 using BookStore.Client;
 using BookStore.Shared.Models;
 using Refit;
+using TUnit;
 
 namespace BookStore.AppHost.Tests;
 
@@ -111,8 +112,9 @@ public class AuthTests
     [Test]
     public async Task Login_AsTenantAdmin_ShouldSucceed()
     {
-        // Arrange
-        var tenantId = "contoso";
+        // Arrange: create a fresh tenant so the admin user is guaranteed to exist
+        var tenantId = FakeDataGenerators.GenerateFakeTenantId();
+        await DatabaseHelpers.CreateTenantViaApiAsync(tenantId);
         var email = $"admin@{tenantId}.com";
         var password = "Admin123!";
 

@@ -25,21 +25,8 @@ public class RefreshTokenSecurityTests
             throw new InvalidOperationException("App is not initialized");
         }
 
-        var connectionString = await GlobalHooks.App.GetConnectionStringAsync("bookstore");
-        if (string.IsNullOrEmpty(connectionString))
-        {
-            throw new InvalidOperationException("Could not retrieve connection string for 'bookstore' resource.");
-        }
-
-        using var store = DocumentStore.For(opts =>
-        {
-            opts.Connection(connectionString);
-            _ = opts.Policies.AllDocumentsAreMultiTenanted();
-            opts.Events.TenancyStyle = Marten.Storage.TenancyStyle.Conjoined;
-        });
-
-        await DatabaseHelpers.SeedTenantAsync(store, "tenant-a");
-        await DatabaseHelpers.SeedTenantAsync(store, "tenant-b");
+        await DatabaseHelpers.CreateTenantViaApiAsync("tenant-a");
+        await DatabaseHelpers.CreateTenantViaApiAsync("tenant-b");
     }
 
     [Test]
@@ -142,11 +129,12 @@ public class RefreshTokenSecurityTests
     }
 
     [Test]
-    [Arguments("tenant-a")]
-    [Arguments("tenant-b")]
-    public async Task RefreshToken_KeepsLatestFiveTokens(string tenantId)
+    public async Task RefreshToken_KeepsLatestFiveTokens()
     {
-        // Arrange: Create user
+        // Arrange: Use a unique tenant per run to avoid parallel token-pool contamination
+        var tenantId = FakeDataGenerators.GenerateFakeTenantId();
+        await DatabaseHelpers.CreateTenantViaApiAsync(tenantId);
+
         var (email, password, loginResponse, _) = await AuthenticationHelpers.RegisterAndLoginUserAsync(tenantId);
 
         var tokens = new List<(string RefreshToken, string AccessToken)>
@@ -154,22 +142,21 @@ public class RefreshTokenSecurityTests
             (loginResponse.RefreshToken, loginResponse.AccessToken)
         };
 
-        var client = RestService.For<IIdentityClient>(
-            HttpClientHelpers.GetAuthenticatedClient(loginResponse.AccessToken, tenantId));
-
-        // Act: Rotate tokens 6 times to exceed the limit of 5
+        // Act: Simulate 6 additional login sessions (multi-device scenario) to exceed the limit of 5
+        // Use separate logins rather than rotations because rotation removes the old token immediately.
+        // The 5-token limit applies to concurrent sessions (e.g. multiple devices).
+        var unauthClient = RestService.For<IIdentityClient>(HttpClientHelpers.GetUnauthenticatedClient(tenantId));
         for (var i = 0; i < 6; i++)
         {
-            var currentClient = RestService.For<IIdentityClient>(
-                HttpClientHelpers.GetAuthenticatedClient(tokens[^1].AccessToken, tenantId));
-
-            var refreshResult = await currentClient.RefreshTokenAsync(
-                new RefreshRequest(tokens[^1].RefreshToken));
-
-            tokens.Add((refreshResult.RefreshToken, refreshResult.AccessToken));
+            var loginResult = await unauthClient.LoginAsync(new LoginRequest(email, password));
+            tokens.Add((loginResult.RefreshToken, loginResult.AccessToken));
         }
 
-        // Assert: First token should be invalid (beyond the 5-token limit)
+        // After 7 sessions, the pool is pruned to 5 newest.
+        // tokens[0] and tokens[1] are the oldest and should have been removed.
+        // tokens[^2] (tokens[5]) and tokens[^1] (tokens[6]) should still be valid.
+
+        // Assert: First token should be invalid (pruned as beyond the 5-token limit)
         var firstTokenClient = RestService.For<IIdentityClient>(
             HttpClientHelpers.GetAuthenticatedClient(tokens[0].AccessToken, tenantId));
 

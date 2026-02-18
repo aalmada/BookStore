@@ -8,16 +8,16 @@ public class PasswordGeneratorTests
     public async Task GenerateFakePassword_ShouldMeetAllRequirements()
     {
         // Generate 100 passwords and verify they all meet requirements
-        for (int i = 0; i < 100; i++)
+        for (var i = 0; i < 100; i++)
         {
             var password = FakeDataGenerators.GenerateFakePassword();
 
             // ASP.NET Core Identity requirements
-            await Assert.That(password.Length).IsGreaterThanOrEqualTo(8);
-            await Assert.That(password.Any(char.IsUpper)).IsTrue();
-            await Assert.That(password.Any(char.IsLower)).IsTrue();
-            await Assert.That(password.Any(char.IsDigit)).IsTrue();
-            await Assert.That(password.Any(c => !char.IsLetterOrDigit(c))).IsTrue();
+            _ = await Assert.That(password.Length).IsGreaterThanOrEqualTo(8);
+            _ = await Assert.That(password.Any(char.IsUpper)).IsTrue();
+            _ = await Assert.That(password.Any(char.IsLower)).IsTrue();
+            _ = await Assert.That(password.Any(char.IsDigit)).IsTrue();
+            _ = await Assert.That(password.Any(c => !char.IsLetterOrDigit(c))).IsTrue();
         }
     }
 
@@ -25,7 +25,7 @@ public class PasswordGeneratorTests
     public void GenerateFakePassword_OutputSamples()
     {
         // Output 10 sample passwords for manual inspection
-        for (int i = 0; i < 10; i++)
+        for (var i = 0; i < 10; i++)
         {
             var password = FakeDataGenerators.GenerateFakePassword();
             var hasUpper = password.Any(char.IsUpper);

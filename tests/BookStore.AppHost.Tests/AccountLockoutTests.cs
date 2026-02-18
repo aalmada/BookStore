@@ -25,21 +25,8 @@ public class AccountLockoutTests
             throw new InvalidOperationException("App is not initialized");
         }
 
-        var connectionString = await GlobalHooks.App.GetConnectionStringAsync("bookstore");
-        if (string.IsNullOrEmpty(connectionString))
-        {
-            throw new InvalidOperationException("Could not retrieve connection string for 'bookstore' resource.");
-        }
-
-        using var store = DocumentStore.For(opts =>
-        {
-            opts.Connection(connectionString);
-            _ = opts.Policies.AllDocumentsAreMultiTenanted();
-            opts.Events.TenancyStyle = Marten.Storage.TenancyStyle.Conjoined;
-        });
-
-        await DatabaseHelpers.SeedTenantAsync(store, "tenant-a");
-        await DatabaseHelpers.SeedTenantAsync(store, "tenant-b");
+        await DatabaseHelpers.CreateTenantViaApiAsync("tenant-a");
+        await DatabaseHelpers.CreateTenantViaApiAsync("tenant-b");
     }
 
     [Test]
@@ -167,8 +154,8 @@ public class AccountLockoutTests
         var client = RestService.For<IIdentityClient>(HttpClientHelpers.GetUnauthenticatedClient());
         _ = await client.RegisterAsync(new RegisterRequest(email, password));
 
-        // Lock account with short duration (1 second)
-        await ManuallyLockAccountAsync(email, DateTimeOffset.UtcNow.AddSeconds(1));
+        // Lock account with short duration (3 seconds) — generous enough for parallel test load
+        await ManuallyLockAccountAsync(email, DateTimeOffset.UtcNow.AddSeconds(3));
 
         // Act 1: Verify account is locked
         var exception = await Assert.That(async () =>
@@ -177,7 +164,7 @@ public class AccountLockoutTests
         _ = await Assert.That(exception!.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
 
         // Wait for lockout to expire
-        await Task.Delay(TimeSpan.FromSeconds(2));
+        await Task.Delay(TimeSpan.FromSeconds(5));
 
         // Act 2: Try to login after lockout expiration
         var loginResult = await client.LoginAsync(new LoginRequest(email, password));

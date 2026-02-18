@@ -21,6 +21,13 @@ public static class FakeDataGenerators
     public static string GenerateFakeEmail() => _faker.Internet.Email();
 
     /// <summary>
+    /// Generates a random tenant ID that satisfies the TenantIdValidator rules:
+    /// lowercase letters, digits, and hyphens only; minimum 3 characters.
+    /// </summary>
+    /// <returns>A URL-friendly lowercase tenant ID.</returns>
+    public static string GenerateFakeTenantId() => _faker.Internet.DomainWord();
+
+    /// <summary>
     /// Generates a fake book creation request with random data using Bogus.
     /// </summary>
     /// <param name="publisherId">Optional publisher ID. If null, the book will have no publisher.</param>

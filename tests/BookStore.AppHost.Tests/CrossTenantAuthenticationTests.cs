@@ -3,11 +3,8 @@ using BookStore.ApiService.Models;
 using BookStore.AppHost.Tests.Helpers;
 using BookStore.Client;
 using BookStore.Shared.Models;
-using JasperFx;
-using Marten;
 using Refit;
 using TUnit;
-using Weasel.Core;
 
 namespace BookStore.AppHost.Tests;
 
@@ -25,22 +22,8 @@ public class CrossTenantAuthenticationTests
             throw new InvalidOperationException("App is not initialized");
         }
 
-        // Ensure tenants exist
-        var connectionString = await GlobalHooks.App.GetConnectionStringAsync("bookstore");
-        if (string.IsNullOrEmpty(connectionString))
-        {
-            throw new InvalidOperationException("Could not retrieve connection string for 'bookstore' resource.");
-        }
-
-        using var store = DocumentStore.For(opts =>
-        {
-            opts.Connection(connectionString);
-            _ = opts.Policies.AllDocumentsAreMultiTenanted();
-            opts.Events.TenancyStyle = Marten.Storage.TenancyStyle.Conjoined;
-        });
-
-        await DatabaseHelpers.SeedTenantAsync(store, "tenant-a");
-        await DatabaseHelpers.SeedTenantAsync(store, "tenant-b");
+        await DatabaseHelpers.CreateTenantViaApiAsync("tenant-a");
+        await DatabaseHelpers.CreateTenantViaApiAsync("tenant-b");
     }
 
     [Test]
@@ -97,19 +80,23 @@ public class CrossTenantAuthenticationTests
     public async Task Passkey_RegisteredInSourceTenant_FailsAuthenticationInTargetTenant(string sourceTenant, string targetTenant)
     {
         // Arrange: Create user with passkey in source tenant
-        var (email, _, loginResponse, _) = await AuthenticationHelpers.RegisterAndLoginUserAsync(sourceTenant);
+        var (email, password, loginResponse, _) = await AuthenticationHelpers.RegisterAndLoginUserAsync(sourceTenant);
         var credentialId = Guid.CreateVersion7().ToByteArray();
         await PasskeyTestHelpers.AddPasskeyToUserAsync(sourceTenant, email, "Test Passkey", credentialId);
 
+        // Get fresh token after adding passkey (security stamp changed)
+        var identityClient = RestService.For<IIdentityClient>(HttpClientHelpers.GetUnauthenticatedClient(sourceTenant));
+        var refreshedResponse = await identityClient.LoginAsync(new LoginRequest(email, password));
+
         // Get passkey list from source tenant to verify it exists
         var sourcePasskeyClient = RestService.For<IPasskeyClient>(
-            HttpClientHelpers.GetAuthenticatedClient(loginResponse.AccessToken, sourceTenant));
+            HttpClientHelpers.GetAuthenticatedClient(refreshedResponse.AccessToken, sourceTenant));
         var sourcePasskeys = await sourcePasskeyClient.ListPasskeysAsync();
         _ = await Assert.That(sourcePasskeys.Any(p => p.Name == "Test Passkey")).IsTrue();
 
         // Act: Try to list passkeys in target tenant using source tenant JWT
         var targetPasskeyClient = RestService.For<IPasskeyClient>(
-            HttpClientHelpers.GetAuthenticatedClient(loginResponse.AccessToken, targetTenant));
+            HttpClientHelpers.GetAuthenticatedClient(refreshedResponse.AccessToken, targetTenant));
 
         var exception = await Assert.That(async () => await targetPasskeyClient.ListPasskeysAsync()).Throws<ApiException>();
 

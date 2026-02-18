@@ -1,6 +1,7 @@
 using System.Net;
 using BookStore.AppHost.Tests.Helpers;
 using BookStore.Client;
+using BookStore.Shared;
 using BookStore.Shared.Models;
 using JasperFx;
 using Refit;
@@ -33,7 +34,7 @@ public class AdminUserTests
         _ = await Assert.That(users).IsNotNull();
         _ = await Assert.That(users).IsNotEmpty();
 
-        var admin = users.First(u => u.Email == "admin@bookstore.com");
+        var admin = users.First(u => u.Email == $"admin@{MultiTenancyConstants.DefaultTenantAlias}.com");
         _ = await Assert.That(admin).IsNotNull();
         _ = await Assert.That(admin.HasPassword).IsTrue();
         _ = await Assert.That(admin.HasPasskey).IsFalse();
@@ -75,7 +76,7 @@ public class AdminUserTests
 
         var result = await client.GetUsersAsync();
         var users = result.Items;
-        var self = users.First(u => u.Email == "admin@bookstore.com");
+        var self = users.First(u => u.Email == $"admin@{MultiTenancyConstants.DefaultTenantAlias}.com");
 
         // Act & Assert
         var exception = await Assert.That(async () => await client.PromoteToAdminAsync(self.Id)).Throws<ApiException>();
@@ -94,7 +95,7 @@ public class AdminUserTests
 
         var result = await client.GetUsersAsync();
         var users = result.Items;
-        var self = users.First(u => u.Email == "admin@bookstore.com");
+        var self = users.First(u => u.Email == $"admin@{MultiTenancyConstants.DefaultTenantAlias}.com");
 
         // Act & Assert
         var exception = await Assert.That(async () => await client.DemoteFromAdminAsync(self.Id))
@@ -223,7 +224,7 @@ public class AdminUserTests
         var updatedUsers = updatedResult.Items;
         var promotedUser = updatedUsers.First(u => u.Id == user.Id);
         _ = await Assert.That(promotedUser.Roles).Contains("Admin");
-        // We can't strictly assert DoesNotContain("admin") unless we trust the backend normalization, 
+        // We can't strictly assert DoesNotContain("admin") unless we trust the backend normalization,
         // but checking Contains("Admin") is the key requirement.
     }
 

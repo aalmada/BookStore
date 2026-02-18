@@ -308,15 +308,15 @@ public static class JwtAuthenticationEndpoints
         RefreshRequest request,
         JwtTokenService jwtTokenService,
         UserManager<ApplicationUser> userManager,
-        Marten.IDocumentSession session,
+        IDocumentStore store,
         ITenantContext tenantContext,
         ILogger<Program> logger,
         CancellationToken cancellationToken)
     {
-        // 1. Find user with this refresh token
-        // Since we store tokens in the user document, we need to query based on the token
-        var user = await session.Query<ApplicationUser>()
-            .FirstOrDefaultAsync(u => u.RefreshTokens.Any(rt => rt.Token == request.RefreshToken), cancellationToken);
+        // 1. Find user with this refresh token across ALL tenants (needed for cross-tenant theft detection)
+        await using var globalSession = store.LightweightSession();
+        var user = await globalSession.Query<ApplicationUser>()
+            .FirstOrDefaultAsync(u => u.AnyTenant() && u.RefreshTokens.Any(rt => rt.Token == request.RefreshToken), cancellationToken);
 
         if (user == null)
         {
@@ -344,12 +344,30 @@ public static class JwtAuthenticationEndpoints
             // CRITICAL SECURITY VIOLATION: Cross-tenant token theft attempt
             Log.Users.CrossTenantTokenTheft(logger, user.Id, existingToken.TenantId, tenantContext.TenantId);
 
-            // Lock account and clear all refresh tokens
-            _ = await userManager.SetLockoutEndDateAsync(user, DateTimeOffset.UtcNow.AddHours(24));
-            user.RefreshTokens.Clear();
-            _ = await userManager.UpdateAsync(user);
+            // Lock account and clear all refresh tokens.
+            // NOTE: We bypass UserManager here because it is scoped to an IDocumentSession.
+            // The user's actual home tenant may differ from tenantContext.TenantId:
+            //   - Spoofed token scenario: user IS in tenantContext.TenantId, token.TenantId is fake
+            //   - Cross-tenant use scenario: user IS in existingToken.TenantId, request targets wrong tenant
+            // Determine the home tenant by checking which one actually contains the user.
+            var lockTenantId = tenantContext.TenantId;
+            await using (var checkSession = store.QuerySession(tenantContext.TenantId))
+            {
+                var userInCurrentTenant = await checkSession.LoadAsync<ApplicationUser>(user.Id, cancellationToken);
+                if (userInCurrentTenant is null)
+                {
+                    lockTenantId = existingToken.TenantId;
+                }
+            }
 
-            return Result.Failure(Error.Unauthorized(ErrorCodes.Auth.SecurityViolation, "Security violation detected. Account has been locked.")).ToProblemDetails();
+            user.LockoutEnd = DateTimeOffset.UtcNow.AddHours(24);
+            user.LockoutEnabled = true;
+            user.RefreshTokens.Clear();
+            await using var victimSession = store.LightweightSession(lockTenantId);
+            victimSession.Update(user);
+            await victimSession.SaveChangesAsync(cancellationToken);
+
+            return Result.Failure(Error.Forbidden(ErrorCodes.Auth.SecurityViolation, "Security violation detected. Account has been locked.")).ToProblemDetails();
         }
 
         // 4. Validate security stamp hasn't changed (invalidates tokens after password change, passkey addition, etc.)

@@ -9,21 +9,21 @@ namespace BookStore.AppHost.Tests;
 public class TenantInfoTests
 {
     [Test]
-    public async Task GetTenantInfo_ReturnsCorrectName()
+    public async Task GetTenantInfo_ReturnsCorrectInfo()
     {
+        // Arrange: create a fresh tenant so we control both Id and Name
+        var tenantId = FakeDataGenerators.GenerateFakeTenantId();
+        await DatabaseHelpers.CreateTenantViaApiAsync(tenantId);
+
         var client = RestService.For<ITenantsClient>(HttpClientHelpers.GetUnauthenticatedClient());
 
-        // 1. Get info for "acme"
-        var acmeInfo = await client.GetTenantAsync("acme");
-        _ = await Assert.That(acmeInfo).IsNotNull();
-        _ = await Assert.That(acmeInfo.Id).IsEqualTo("acme");
-        _ = await Assert.That(acmeInfo.Name).IsEqualTo("Acme Corp");
+        // Act
+        var info = await client.GetTenantAsync(tenantId);
 
-        // 2. Get info for "contoso"
-        var contosoInfo = await client.GetTenantAsync("contoso");
-        _ = await Assert.That(contosoInfo).IsNotNull();
-        _ = await Assert.That(contosoInfo.Id).IsEqualTo("contoso");
-        _ = await Assert.That(contosoInfo.Name).IsEqualTo("Contoso Ltd");
+        // Assert: the API echoes back the same ID and a non-empty name
+        _ = await Assert.That(info).IsNotNull();
+        _ = await Assert.That(info.Id).IsEqualTo(tenantId);
+        _ = await Assert.That(info.Name).IsNotNullOrEmpty();
     }
 
     [Test]

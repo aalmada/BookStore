@@ -1,67 +1,63 @@
 using Aspire.Hosting;
 using BookStore.ApiService.Infrastructure.Tenant;
+using BookStore.Client;
+using BookStore.Shared.Models;
 using JasperFx;
 using Marten;
+using Refit;
 using Weasel.Core;
 
 namespace BookStore.AppHost.Tests.Helpers;
 
 public static class DatabaseHelpers
 {
-    public static async Task SeedTenantAsync(Marten.IDocumentStore store, string tenantId)
+    /// <summary>
+    /// Creates a tenant and its admin user via the API (enforcing full tenant isolation).
+    /// Uses the default tenant admin token to call POST /api/admin/tenants.
+    /// Idempotent: if the tenant already exists the 409 conflict is silently ignored.
+    /// </summary>
+    public static async Task SeedTenantAsync(Marten.IDocumentStore _, string tenantId)
     {
-        // 1. Ensure Tenant document exists in Marten's native default bucket (for validation)
-        await using (var tenantSession = store.LightweightSession())
+        // Default tenant is bootstrapped directly in GlobalSetup — skip here.
+        if (StorageConstants.DefaultTenantId.Equals(tenantId, StringComparison.OrdinalIgnoreCase))
         {
-            var existingTenant = await tenantSession.LoadAsync<BookStore.ApiService.Models.Tenant>(tenantId);
-            if (existingTenant == null)
-            {
-                tenantSession.Store(new BookStore.ApiService.Models.Tenant
-                {
-                    Id = tenantId,
-                    Name = StorageConstants.DefaultTenantId.Equals(tenantId, StringComparison.OrdinalIgnoreCase)
-                        ? "BookStore"
-                        : (char.ToUpper(tenantId[0]) + tenantId[1..] + " Corp"),
-                    IsEnabled = true,
-                    CreatedAt = DateTimeOffset.UtcNow
-                });
-                await tenantSession.SaveChangesAsync();
-            }
+            return;
         }
 
-        // 2. Seed Admin User in the tenant's own bucket
-        await using var session = store.LightweightSession(tenantId);
+        await CreateTenantViaApiAsync(tenantId);
+    }
 
-        var adminEmail = StorageConstants.DefaultTenantId.Equals(tenantId, StringComparison.OrdinalIgnoreCase)
-            ? "admin@bookstore.com"
-            : $"admin@{tenantId}.com";
-
-        // We still use manual store here as TestHelpers might be used in light setup contexts
-        // but we fix the normalization mismatch
-        var existingUser = await session.Query<BookStore.ApiService.Models.ApplicationUser>()
-            .Where(u => u.Email == adminEmail)
-            .FirstOrDefaultAsync();
-
-        if (existingUser == null)
+    /// <summary>
+    /// Creates a tenant via the admin API, which also seeds the tenant admin user.
+    /// The admin email follows the convention admin@{tenantId}.com with password Admin123!.
+    /// Idempotent: duplicate-tenant responses (400/409) are silently ignored.
+    /// </summary>
+    public static async Task CreateTenantViaApiAsync(string tenantId)
+    {
+        if (GlobalHooks.AdminAccessToken == null)
         {
-            var adminUser = new BookStore.ApiService.Models.ApplicationUser
-            {
-                UserName = adminEmail,
-                NormalizedUserName = adminEmail.ToUpperInvariant(),
-                Email = adminEmail,
-                NormalizedEmail = adminEmail.ToUpperInvariant(),
-                EmailConfirmed = true,
-                Roles = ["Admin"],
-                SecurityStamp = Guid.CreateVersion7().ToString("D"),
-                ConcurrencyStamp = Guid.CreateVersion7().ToString("D")
-            };
+            throw new InvalidOperationException("AdminAccessToken is not set. Ensure GlobalSetup has completed.");
+        }
 
-            var hasher =
-                new Microsoft.AspNetCore.Identity.PasswordHasher<BookStore.ApiService.Models.ApplicationUser>();
-            adminUser.PasswordHash = hasher.HashPassword(adminUser, "Admin123!");
+        var tenantName = char.ToUpper(tenantId[0]) + tenantId[1..];
 
-            session.Store(adminUser);
-            await session.SaveChangesAsync();
+        var client = RestService.For<ITenantsClient>(HttpClientHelpers.GetAuthenticatedClient(GlobalHooks.AdminAccessToken));
+
+        try
+        {
+            await client.CreateTenantAsync(new CreateTenantCommand(
+                Id: tenantId,
+                Name: tenantName,
+                Tagline: null,
+                ThemePrimaryColor: null,
+                IsEnabled: true,
+                AdminEmail: $"admin@{tenantId}.com",
+                AdminPassword: "Admin123!"));
+        }
+        catch (Refit.ApiException ex) when (ex.StatusCode is System.Net.HttpStatusCode.Conflict
+                                                            or System.Net.HttpStatusCode.BadRequest)
+        {
+            // Tenant already exists — idempotent, ignore.
         }
     }
 

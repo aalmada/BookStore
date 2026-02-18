@@ -1,9 +1,7 @@
 using BookStore.AppHost.Tests.Helpers;
 using BookStore.Client;
 using BookStore.Shared.Models;
-using Marten;
 using Refit;
-using Weasel.Core;
 using CreateAuthorRequest = BookStore.Client.CreateAuthorRequest;
 using CreateBookRequest = BookStore.Client.CreateBookRequest;
 
@@ -25,7 +23,7 @@ public class RefitMartenRegressionTests
         // Assert
         _ = await Assert.That(response).IsNotNull();
         _ = await Assert.That(response.Items).IsNotNull();
-        // The endpoint might return empty list if no publishers 
+        // The endpoint might return empty list if no publishers
     }
 
     [Test]
@@ -187,24 +185,7 @@ public class RefitMartenRegressionTests
         // Arrange
         var tenantId = $"author-filter-test-{Guid.NewGuid():N}";
 
-        // We need to seed the tenant manually effectively because GlobalHooks doesn't expose the Store.
-        var connectionString = await GlobalHooks.App!.GetConnectionStringAsync("bookstore");
-        if (string.IsNullOrEmpty(connectionString))
-        {
-            Assert.Fail("Could not retrieve connection string for 'bookstore' resource.");
-        }
-
-        using (var store = DocumentStore.For(opts =>
-               {
-                   opts.Connection(connectionString!);
-                   _ = opts.Policies.AllDocumentsAreMultiTenanted();
-                   opts.Events.TenancyStyle = Marten.Storage.TenancyStyle.Conjoined;
-                   // Use SystemTextJson to match the app
-                   opts.UseSystemTextJsonForSerialization(EnumStorage.AsString, Casing.CamelCase);
-               }))
-        {
-            await DatabaseHelpers.SeedTenantAsync(store, tenantId);
-        }
+        await DatabaseHelpers.CreateTenantViaApiAsync(tenantId);
 
         // 1. Authenticate as Admin in the new tenant
         var loginRes = await AuthenticationHelpers.LoginAsAdminAsync(tenantId);
@@ -247,18 +228,8 @@ public class RefitMartenRegressionTests
         var tenantA = $"tenant-a-{Guid.NewGuid():N}";
         var tenantB = $"tenant-b-{Guid.NewGuid():N}";
 
-        // Seed Tenants
-        var connectionString = await GlobalHooks.App!.GetConnectionStringAsync("bookstore");
-        using var store = DocumentStore.For(opts =>
-        {
-            opts.Connection(connectionString!);
-            _ = opts.Policies.AllDocumentsAreMultiTenanted();
-            opts.Events.TenancyStyle = Marten.Storage.TenancyStyle.Conjoined;
-            opts.UseSystemTextJsonForSerialization(EnumStorage.AsString, Casing.CamelCase);
-        });
-
-        await DatabaseHelpers.SeedTenantAsync(store, tenantA);
-        await DatabaseHelpers.SeedTenantAsync(store, tenantB);
+        await DatabaseHelpers.CreateTenantViaApiAsync(tenantA);
+        await DatabaseHelpers.CreateTenantViaApiAsync(tenantB);
 
         var loginResA = await AuthenticationHelpers.LoginAsAdminAsync(tenantA);
         var adminClientA =

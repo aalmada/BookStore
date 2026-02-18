@@ -161,4 +161,21 @@ public class AdminTenantTests
         _ = await Assert.That(user!.EmailConfirmed).IsTrue();
         _ = await Assert.That(user.Roles).Contains("Admin");
     }
+
+    [Test]
+    public async Task Admin_CanListAllTenants()
+    {
+        if (GlobalHooks.App == null || GlobalHooks.AdminAccessToken == null)
+        {
+            throw new InvalidOperationException("App or AdminAccessToken is not initialized");
+        }
+
+        var client =
+            RestService.For<ITenantsClient>(HttpClientHelpers.GetAuthenticatedClient(GlobalHooks.AdminAccessToken));
+
+        var result = await client.GetAllTenantsAdminAsync();
+
+        _ = await Assert.That(result).IsNotNull();
+        _ = await Assert.That(result).IsNotEmpty();
+    }
 }
