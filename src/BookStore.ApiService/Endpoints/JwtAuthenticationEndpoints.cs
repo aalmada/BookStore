@@ -457,8 +457,8 @@ public static class JwtAuthenticationEndpoints
         var result = await userManager.ChangePasswordAsync(appUser, request.CurrentPassword, request.NewPassword);
         if (result.Succeeded)
         {
-            // Explicitly update security stamp to invalidate existing JWTs
-            _ = await userManager.UpdateSecurityStampAsync(appUser);
+            // ChangePasswordAsync already calls UpdateSecurityStampAsync internally,
+            // so no explicit call is needed here.
             return Results.Ok(new { message = "Password changed successfully." });
         }
 
@@ -497,6 +497,9 @@ public static class JwtAuthenticationEndpoints
         var result = await userManager.RemovePasswordAsync(appUser);
         if (result.Succeeded)
         {
+            // RemovePasswordAsync does NOT update the security stamp internally in ASP.NET Identity,
+            // so we do it explicitly to invalidate all existing JWTs.
+            _ = await userManager.UpdateSecurityStampAsync(appUser);
             return Results.Ok(new { message = "Password removed successfully." });
         }
 
@@ -517,6 +520,9 @@ public static class JwtAuthenticationEndpoints
         var result = await userManager.AddPasswordAsync(appUser, request.NewPassword);
         if (result.Succeeded)
         {
+            // AddPasswordAsync does NOT update the security stamp internally in ASP.NET Identity,
+            // so we do it explicitly to invalidate all existing JWTs.
+            _ = await userManager.UpdateSecurityStampAsync(appUser);
             return Results.Ok(new { message = "Password set successfully." });
         }
 
