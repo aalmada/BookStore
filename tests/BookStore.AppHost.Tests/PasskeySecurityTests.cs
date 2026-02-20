@@ -118,19 +118,9 @@ public class PasskeySecurityTests
         var initialStatus = await authClient.GetPasswordStatusAsync();
         _ = await Assert.That(initialStatus).IsNotNull();
 
-        // Act - Add a passkey (this updates security stamp via UpdateSecurityStampAsync)
-        var credentialId = Guid.CreateVersion7().ToByteArray();
-        await PasskeyTestHelpers.AddPasskeyToUserAsync(tenantId, email, "New Passkey", credentialId, signCount: 0);
-
-        // Manually trigger security stamp update like the endpoint does
-        await using var store = await DatabaseHelpers.GetDocumentStoreAsync();
-        await using (var session = store.LightweightSession(tenantId))
-        {
-            var user = await DatabaseHelpers.GetUserByEmailAsync(session, email);
-            user!.SecurityStamp = Guid.CreateVersion7().ToString();
-            session.Update(user);
-            await session.SaveChangesAsync();
-        }
+        // Act - Add a passkey via the real WebAuthn endpoint (which calls UpdateSecurityStampAsync internally)
+        await using var webAuthn = await WebAuthnTestHelper.CreateAsync();
+        _ = await webAuthn.RegisterPasskeyAsync(email, tenantId, loginResponse.AccessToken);
 
         // Assert - Old token should now be rejected
         var exception = await Assert.That(async () =>
