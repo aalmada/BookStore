@@ -14,28 +14,32 @@ public class TenantSecurityTests
     [Test]
     public async Task Request_WithNoTenantIdClaim_ShouldBeForbidden()
     {
-        // Arrange: Forge a valid JWT that is deliberately missing the tenant_id claim.
-        // The server's JWT signature validation passes (correct key, issuer, audience),
-        // but TenantSecurityMiddleware rejects it because the tenant_id claim is absent.
+        // Arrange: Register a real user so their sub resolves in the OnTokenValidated DB check.
+        // Then re-sign a new token using all the real claims EXCEPT tenant_id.
+        // This ensures JWT Bearer authentication succeeds and TenantSecurityMiddleware sees an
+        // authenticated user whose tenant_id claim is absent — triggering 403 Forbidden.
+        var (_, _, loginResponse, tenantId) = await AuthenticationHelpers.RegisterAndLoginUserAsync();
+
         var signingKey = new SymmetricSecurityKey(
             System.Text.Encoding.UTF8.GetBytes("your-secret-key-must-be-at-least-32-characters-long-for-hs256"));
 
-        var tokenDescriptor = new JwtSecurityToken(
+        var handler = new JwtSecurityTokenHandler();
+        var realToken = handler.ReadJwtToken(loginResponse.AccessToken);
+        var claimsWithoutTenantId = realToken.Claims
+            .Where(c => c.Type != "tenant_id")
+            .ToList();
+
+        var forgedToken = new JwtSecurityToken(
             issuer: "BookStore.ApiService",
             audience: "BookStore.Web",
-            claims:
-            [
-                new Claim("sub", Guid.CreateVersion7().ToString()),
-                new Claim("email", FakeDataGenerators.GenerateFakeEmail()),
-                // Deliberately omit the "tenant_id" claim
-            ],
+            claims: claimsWithoutTenantId,
             expires: DateTime.UtcNow.AddHours(1),
             signingCredentials: new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256));
 
-        var tokenWithoutTenantClaim = new JwtSecurityTokenHandler().WriteToken(tokenDescriptor);
+        var tokenWithoutTenantClaim = handler.WriteToken(forgedToken);
 
         var client = RestService.For<IShoppingCartClient>(
-            HttpClientHelpers.GetAuthenticatedClient(tokenWithoutTenantClaim, StorageConstants.DefaultTenantId));
+            HttpClientHelpers.GetAuthenticatedClient(tokenWithoutTenantClaim, tenantId));
 
         // Act & Assert
         var exception = await Assert.That(async () => await client.GetShoppingCartAsync()).Throws<ApiException>();

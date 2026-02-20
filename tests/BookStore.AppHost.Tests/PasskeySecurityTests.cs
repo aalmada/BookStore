@@ -369,9 +369,11 @@ public class PasskeySecurityTests
 
         var lastPasskeyId = passkeys[0].Id;
 
-        // Assert: Deleting the only passkey when the user has no password is rejected
+        // Assert: Deleting the only passkey when the user has no password is rejected.
+        // The "*" wildcard ETag passes ETagValidationMiddleware (which only checks presence);
+        // the 400 comes from business logic, not from ETag value mismatch.
         var exception = await Assert.That(async () =>
-            await passkeyClient.DeletePasskeyAsync(lastPasskeyId))
+            await passkeyClient.DeletePasskeyAsync(lastPasskeyId, "*"))
             .Throws<ApiException>();
         _ = await Assert.That(exception!.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
 
