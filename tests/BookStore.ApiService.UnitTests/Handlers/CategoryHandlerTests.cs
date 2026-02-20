@@ -63,7 +63,7 @@ public class CategoryHandlerTests : HandlerTestBase
             Guid.CreateVersion7(),
             new Dictionary<string, CategoryTranslationDto> { ["en"] = new CategoryTranslationDto("Technology Updated") }
         )
-        { ETag = "test-etag" };
+        { ETag = "\"1\"" };
 
         // Mock Stream State
         _ = Session.Events.FetchStreamStateAsync(command.Id).Returns(new Marten.Events.StreamState { Version = 1 });

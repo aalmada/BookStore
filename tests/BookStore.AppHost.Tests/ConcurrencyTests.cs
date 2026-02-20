@@ -93,11 +93,10 @@ public class ConcurrencyTests
 
         var updateRequest = FakeDataGenerators.GenerateFakeUpdateAuthorRequest();
 
-        // Act - Update without ETag should fail (once we make it mandatory)
+        // Act - Update without ETag should fail
         var updateResponse = await client.UpdateAuthorWithResponseAsync(author.Id, updateRequest, null);
 
         // Assert
-        // Currently it might succeed because it's optional. TDD: we want it to fail.
         _ = await Assert.That((int)updateResponse.StatusCode).IsEqualTo((int)HttpStatusCode.PreconditionRequired);
     }
 }

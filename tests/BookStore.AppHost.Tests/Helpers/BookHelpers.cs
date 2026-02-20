@@ -145,10 +145,6 @@ public static class BookHelpers
                 updateRequest.Headers.IfMatch.Add(new System.Net.Http.Headers.EntityTagHeaderValue(etag));
 
                 var updateResponse = await client.SendAsync(updateRequest);
-                if (!updateResponse.IsSuccessStatusCode)
-                {
-                }
-
                 _ = await Assert.That(updateResponse.IsSuccessStatusCode).IsTrue();
             },
             TestConstants.DefaultEventTimeout,
@@ -222,10 +218,6 @@ public static class BookHelpers
                 deleteRequest.Headers.IfMatch.Add(new System.Net.Http.Headers.EntityTagHeaderValue(etag));
 
                 var deleteResponse = await client.SendAsync(deleteRequest);
-                if (!deleteResponse.IsSuccessStatusCode)
-                {
-                }
-
                 _ = await Assert.That(deleteResponse.IsSuccessStatusCode).IsTrue();
             },
             TestConstants.DefaultEventTimeout,
@@ -278,10 +270,6 @@ public static class BookHelpers
             async () =>
             {
                 var restoreResponse = await client.PostAsync($"/api/admin/books/{bookId}/restore", null);
-                if (!restoreResponse.IsSuccessStatusCode)
-                {
-                }
-
                 _ = await Assert.That(restoreResponse.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
             },
             TestConstants.DefaultEventTimeout,

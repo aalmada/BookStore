@@ -63,7 +63,7 @@ public class AuthorHandlerTests : HandlerTestBase
             "Robert C. Martin Updated",
             new Dictionary<string, AuthorTranslationDto> { ["en"] = new AuthorTranslationDto("Uncle Bob Updated") }
         )
-        { ETag = "test-etag" };
+        { ETag = "\"1\"" };
 
         // Mock Stream State
         _ = Session.Events.FetchStreamStateAsync(command.Id).Returns(new Marten.Events.StreamState { Version = 1 });
