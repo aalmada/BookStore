@@ -166,6 +166,16 @@ public class RefreshTokenSecurityTests
 
         _ = await Assert.That(exception!.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
 
+        // Assert: Second oldest token is also invalid (both oldest are pruned to keep exactly 5)
+        var secondTokenClient = RestService.For<IIdentityClient>(
+            HttpClientHelpers.GetAuthenticatedClient(tokens[1].AccessToken, tenantId));
+
+        var exception2 = await Assert.That(async () =>
+            await secondTokenClient.RefreshTokenAsync(new RefreshRequest(tokens[1].RefreshToken)))
+            .Throws<ApiException>();
+
+        _ = await Assert.That(exception2!.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+
         // Assert: One of the recent tokens should still be valid
         var recentTokenClient = RestService.For<IIdentityClient>(
             HttpClientHelpers.GetAuthenticatedClient(tokens[^2].AccessToken, tenantId));
