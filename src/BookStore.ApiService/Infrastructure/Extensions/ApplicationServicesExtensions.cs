@@ -233,24 +233,11 @@ public static class ApplicationServicesExtensions
                 // Validate security stamp on each request to detect token revocation
                 options.Events = new Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerEvents
                 {
-                    OnMessageReceived = context =>
-                    {
-                        System.IO.File.AppendAllText("/tmp/jwt_events.txt", $"[{DateTimeOffset.UtcNow:HH:mm:ss}] OnMessageReceived - Path: {context.Request.Path}\n");
-                        return System.Threading.Tasks.Task.CompletedTask;
-                    },
-                    OnAuthenticationFailed = context =>
-                    {
-                        System.IO.File.AppendAllText("/tmp/jwt_events.txt", $"[{DateTimeOffset.UtcNow:HH:mm:ss}] OnAuthenticationFailed - Exception: {context.Exception?.Message}\n");
-                        return System.Threading.Tasks.Task.CompletedTask;
-                    },
                     OnChallenge = async context =>
                     {
-                        System.IO.File.AppendAllText("/tmp/jwt_events.txt", $"[{DateTimeOffset.UtcNow:HH:mm:ss}] OnChallenge - Error: {context.Error}, ErrorDescription: {context.ErrorDescription}, HasFailure: {context.AuthenticateFailure != null}\n");
-
                         // If authentication failed (either by exception or by calling context.Fail()), ensure 401 is returned
                         if (context.AuthenticateFailure != null || !string.IsNullOrEmpty(context.Error))
                         {
-                            System.IO.File.AppendAllText("/tmp/jwt_events.txt", $"[{DateTimeOffset.UtcNow:HH:mm:ss}] *** SETTING 401 RESPONSE ***\n");
                             context.HandleResponse(); // Prevent default challenge behavior
                             context.Response.StatusCode = 401;
                             context.Response.ContentType = "application/json";
@@ -259,18 +246,13 @@ public static class ApplicationServicesExtensions
                                 error = context.Error ?? "unauthorized",
                                 error_description = context.ErrorDescription ?? context.AuthenticateFailure?.Message ?? "Authentication failed"
                             });
-                            System.IO.File.AppendAllText("/tmp/jwt_events.txt", $"[{DateTimeOffset.UtcNow:HH:mm:ss}] *** 401 RESPONSE WRITTEN ***\n");
                         }
                     },
                     OnTokenValidated = async context =>
                     {
-                        System.IO.File.AppendAllText("/tmp/jwt_events.txt", $"[{DateTimeOffset.UtcNow:HH:mm:ss}] ===== OnTokenValidated FIRED =====\n");
-
                         // Get user directly from Marten session to bypass identity map caching
                         var session = context.HttpContext.RequestServices.GetRequiredService<Marten.IDocumentSession>();
                         var userId = context.Principal?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-
-                        System.IO.File.AppendAllText("/tmp/jwt_events.txt", $"[{DateTimeOffset.UtcNow:HH:mm:ss}] OnTokenValidated - UserId: {userId}\n");
 
                         if (!string.IsNullOrEmpty(userId) && Guid.TryParse(userId, out var userGuid))
                         {
@@ -283,15 +265,12 @@ public static class ApplicationServicesExtensions
                                 // Get security stamp from token (null if claim doesn't exist)
                                 var tokenSecurityStamp = context.Principal?.FindFirst("security_stamp")?.Value;
 
-                                System.IO.File.AppendAllText("/tmp/jwt_events.txt", $"[{DateTimeOffset.UtcNow:HH:mm:ss}] TokenStamp={tokenSecurityStamp}, UserStamp={user.SecurityStamp}\n");
-
                                 // Only validate if token HAS a security_stamp claim and user HAS a security stamp
                                 // This allows old tokens without the claim to work (backward compatibility)
                                 if (!string.IsNullOrEmpty(tokenSecurityStamp) &&
                                     !string.IsNullOrEmpty(user.SecurityStamp) &&
                                     tokenSecurityStamp != user.SecurityStamp)
                                 {
-                                    System.IO.File.AppendAllText("/tmp/jwt_events.txt", $"[{DateTimeOffset.UtcNow:HH:mm:ss}] *** REJECTING TOKEN - STAMP MISMATCH ***\n");
                                     // CRITICAL: Clear the principal to prevent downstream middleware from seeing an authenticated user
                                     context.HttpContext.User = new System.Security.Claims.ClaimsPrincipal();
                                     context.Fail("Token has been revoked due to security stamp change.");
@@ -299,7 +278,6 @@ public static class ApplicationServicesExtensions
                             }
                             else
                             {
-                                System.IO.File.AppendAllText("/tmp/jwt_events.txt", $"[{DateTimeOffset.UtcNow:HH:mm:ss}] *** REJECTING TOKEN - USER NOT FOUND ***\n");
                                 // CRITICAL: Clear the principal
                                 context.HttpContext.User = new System.Security.Claims.ClaimsPrincipal();
                                 context.Fail("User not found.");

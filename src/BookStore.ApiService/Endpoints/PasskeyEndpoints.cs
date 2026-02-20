@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text.Json;
 using BookStore.ApiService.Infrastructure.Extensions;
 using BookStore.ApiService.Infrastructure.Logging;
 using BookStore.ApiService.Infrastructure.Tenant;
@@ -202,91 +203,102 @@ public static class PasskeyEndpoints
                 // 4. Verify Attestation
                 // We need the User Handle (ID) that was signed by the client.
                 // This is critical because the authenticator is now bound to THAT ID.
-                var attestationNew = await signInManager.PerformPasskeyAttestationAsync(request.CredentialJson);
-                if (!attestationNew.Succeeded)
+                // Wrap in try-catch: PerformPasskeyAttestationAsync throws when the session
+                // challenge has already been consumed (e.g., concurrent duplicate requests).
+                try
                 {
-                    return Result.Failure(Error.Validation(ErrorCodes.Passkey.AttestationFailed, $"Attestation failed: {attestationNew.Failure?.Message}")).ToProblemDetails();
-                }
-
-                // Capture Device Name from User-Agent
-                var registrationUserAgent = context.Request.Headers.UserAgent.ToString();
-                if (attestationNew.Passkey != null)
-                {
-                    attestationNew.Passkey.Name = BookStore.ApiService.Infrastructure.DeviceNameParser.Parse(registrationUserAgent);
-                }
-
-                Log.Users.PasskeyCreatingNewUser(logger, newUserGuid, userIdSource);
-
-                var newUser = new ApplicationUser
-                {
-                    Id = newUserGuid,
-                    UserName = request.Email,
-                    Email = request.Email,
-                    EmailConfirmed = !verificationRequired
-                };
-
-                // Create the user in DB
-                var createResult = await userManager.CreateAsync(newUser);
-                if (!createResult.Succeeded)
-                {
-                    // Security: Mask "User already exists" errors
-                    if (createResult.Errors.Any(e => e.Code is "DuplicateUserName" or "DuplicateEmail"))
+                    var attestationNew = await signInManager.PerformPasskeyAttestationAsync(request.CredentialJson);
+                    if (!attestationNew.Succeeded)
                     {
-                        Log.Users.RegistrationFailed(logger, request.Email, "Passkey Registration: User already exists (masked)");
+                        return Result.Failure(Error.Validation(ErrorCodes.Passkey.AttestationFailed, $"Attestation failed: {attestationNew.Failure?.Message}")).ToProblemDetails();
+                    }
 
-                        // Return success message.
-                        // Note: If email verification is required, we might trigger a "Password Reset" or "Account Exists" email here in a real app.
-                        // For now, we mimic the success response.
+                    // Capture Device Name from User-Agent
+                    var registrationUserAgent = context.Request.Headers.UserAgent.ToString();
+                    if (attestationNew.Passkey != null)
+                    {
+                        attestationNew.Passkey.Name = BookStore.ApiService.Infrastructure.DeviceNameParser.Parse(registrationUserAgent);
+                    }
+
+                    Log.Users.PasskeyCreatingNewUser(logger, newUserGuid, userIdSource);
+
+                    var newUser = new ApplicationUser
+                    {
+                        Id = newUserGuid,
+                        UserName = request.Email,
+                        Email = request.Email,
+                        EmailConfirmed = !verificationRequired
+                    };
+
+                    // Create the user in DB
+                    var createResult = await userManager.CreateAsync(newUser);
+                    if (!createResult.Succeeded)
+                    {
+                        // Security: Mask "User already exists" errors
+                        if (createResult.Errors.Any(e => e.Code is "DuplicateUserName" or "DuplicateEmail"))
+                        {
+                            Log.Users.RegistrationFailed(logger, request.Email, "Passkey Registration: User already exists (masked)");
+
+                            // Return success message.
+                            // Note: If email verification is required, we might trigger a "Password Reset" or "Account Exists" email here in a real app.
+                            // For now, we mimic the success response.
+                            return Results.Ok(new { Message = "Registration successful. Please check your email to verify your account." });
+                        }
+
+                        return Result.Failure(Error.Validation(ErrorCodes.Auth.InvalidCredentials, string.Join(", ", createResult.Errors.Select(e => e.Description)))).ToProblemDetails();
+                    }
+
+                    if (attestationNew.Passkey != null)
+                    {
+                        var addResult = await userManager.AddOrUpdatePasskeyAsync(newUser, attestationNew.Passkey);
+                        if (!addResult.Succeeded)
+                        {
+                            _ = await userManager.DeleteAsync(newUser);
+                            return Result.Failure(Error.Validation(ErrorCodes.Passkey.InvalidCredential, string.Join(", ", addResult.Errors.Select(e => e.Description)))).ToProblemDetails();
+                        }
+
+                        _ = await userManager.UpdateSecurityStampAsync(newUser);
+                    }
+                    else
+                    {
+                        Log.Users.PasskeyIsNull(logger);
+                        _ = await userManager.DeleteAsync(newUser);
+                        return Result.Failure(Error.Validation(ErrorCodes.Passkey.AttestationFailed, "Failed to create passkey")).ToProblemDetails();
+                    }
+
+                    // Initialize UserProfile stream on account creation
+                    _ = session.Events.StartStream<UserProfile>(newUser.Id, new UserProfileCreated(newUser.Id));
+                    await session.SaveChangesAsync(cancellationToken);
+
+                    if (verificationRequired)
+                    {
+                        var code = await userManager.GenerateEmailConfirmationTokenAsync(newUser);
+                        await bus.PublishAsync(new Messages.Commands.SendUserVerificationEmail(newUser.Id, newUser.Email!, code, newUser.UserName!));
+
+                        // Don't auto-login when verification is required
                         return Results.Ok(new { Message = "Registration successful. Please check your email to verify your account." });
                     }
 
-                    return Result.Failure(Error.Validation(ErrorCodes.Auth.InvalidCredentials, string.Join(", ", createResult.Errors.Select(e => e.Description)))).ToProblemDetails();
-                }
+                    // Auto Login - Issue Token (only when verification is not required)
+                    // Build claims and generate tokens
+                    var accessToken = tokenService.GenerateAccessToken(newUser, tenantContext.TenantId, []);
+                    var refreshToken = tokenService.RotateRefreshToken(newUser, tenantContext.TenantId);
 
-                if (attestationNew.Passkey != null)
+                    _ = await userManager.UpdateAsync(newUser);
+
+                    return Results.Ok(new LoginResponse(
+                        "Bearer",
+                        accessToken,
+                        3600,
+                        refreshToken
+                    ));
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
                 {
-                    var addResult = await userManager.AddOrUpdatePasskeyAsync(newUser, attestationNew.Passkey);
-                    if (!addResult.Succeeded)
-                    {
-                        _ = await userManager.DeleteAsync(newUser);
-                        return Result.Failure(Error.Validation(ErrorCodes.Passkey.InvalidCredential, string.Join(", ", addResult.Errors.Select(e => e.Description)))).ToProblemDetails();
-                    }
-
-                    _ = await userManager.UpdateSecurityStampAsync(newUser);
+                    // Attestation threw (e.g., session challenge already consumed by a concurrent request)
+                    Log.Users.PasskeyAttestationFailed(logger, request.Email, ex.Message);
+                    return Result.Failure(Error.Validation(ErrorCodes.Passkey.AttestationFailed, "Attestation failed. Please try again.")).ToProblemDetails();
                 }
-                else
-                {
-                    Log.Users.PasskeyIsNull(logger);
-                    _ = await userManager.DeleteAsync(newUser);
-                    return Result.Failure(Error.Validation(ErrorCodes.Passkey.AttestationFailed, "Failed to create passkey")).ToProblemDetails();
-                }
-
-                // Initialize UserProfile stream on account creation
-                _ = session.Events.StartStream<UserProfile>(newUser.Id, new UserProfileCreated(newUser.Id));
-                await session.SaveChangesAsync(cancellationToken);
-
-                if (verificationRequired)
-                {
-                    var code = await userManager.GenerateEmailConfirmationTokenAsync(newUser);
-                    await bus.PublishAsync(new Messages.Commands.SendUserVerificationEmail(newUser.Id, newUser.Email!, code, newUser.UserName!));
-
-                    // Don't auto-login when verification is required
-                    return Results.Ok(new { Message = "Registration successful. Please check your email to verify your account." });
-                }
-
-                // Auto Login - Issue Token (only when verification is not required)
-                // Build claims and generate tokens
-                var accessToken = tokenService.GenerateAccessToken(newUser, tenantContext.TenantId, []);
-                var refreshToken = tokenService.RotateRefreshToken(newUser, tenantContext.TenantId);
-
-                _ = await userManager.UpdateAsync(newUser);
-
-                return Results.Ok(new LoginResponse(
-                    "Bearer",
-                    accessToken,
-                    3600,
-                    refreshToken
-                ));
             }
             catch (Exception ex)
             {
@@ -328,6 +340,37 @@ public static class PasskeyEndpoints
                 var assertion = await signInManager.PerformPasskeyAssertionAsync(request.CredentialJson);
                 if (!assertion.Succeeded || assertion.User is null)
                 {
+                    // Check if the assertion failed due to a sign counter mismatch (possible cloned authenticator).
+                    // The framework validates the counter before returning the result, so if the failure
+                    // message indicates a counter issue, we must find the user and trigger a lockout.
+                    if (assertion.Failure?.Message.Contains("signature counter", StringComparison.OrdinalIgnoreCase) == true
+                        && userStore is IUserPasskeyStore<ApplicationUser> passkeyStoreForLockout)
+                    {
+                        try
+                        {
+                            using var doc = JsonDocument.Parse(request.CredentialJson);
+                            if (doc.RootElement.TryGetProperty("id", out var idElement))
+                            {
+                                var credentialIdBase64Url = idElement.GetString();
+                                if (!string.IsNullOrEmpty(credentialIdBase64Url))
+                                {
+                                    var credentialId = WebEncoders.Base64UrlDecode(credentialIdBase64Url);
+                                    var lockedUser = await passkeyStoreForLockout.FindByPasskeyIdAsync(credentialId, cancellationToken);
+                                    if (lockedUser != null)
+                                    {
+                                        Log.Users.PasskeyCounterMismatch(logger, lockedUser.Email, 0, 0);
+                                        _ = await userManager.SetLockoutEndDateAsync(lockedUser, DateTimeOffset.UtcNow.AddHours(1));
+                                        _ = await userManager.UpdateAsync(lockedUser);
+                                    }
+                                }
+                            }
+                        }
+                        catch (JsonException)
+                        {
+                            // If JSON parsing fails, continue with the generic failure response
+                        }
+                    }
+
                     Log.Users.PasskeyAssertionFailed(logger, false, false, false);
                     return Result.Failure(Error.Unauthorized(ErrorCodes.Passkey.AssertionFailed, "Invalid passkey assertion.")).ToProblemDetails();
                 }
@@ -354,26 +397,6 @@ public static class PasskeyEndpoints
 
                 if (assertion.Passkey is not null)
                 {
-                    // Validate credential counter to detect cloned authenticators
-                    if (userStore is IUserPasskeyStore<ApplicationUser> passkeyStore)
-                    {
-                        var storedPasskey = await passkeyStore.FindPasskeyAsync(user, assertion.Passkey.CredentialId, cancellationToken);
-                        if (storedPasskey != null && storedPasskey.SignCount > 0)
-                        {
-                            // Log counter validation for security monitoring
-                            Log.Users.PasskeyCounterValidationTriggered(logger, user.Email, storedPasskey.SignCount, assertion.Passkey.SignCount);
-
-                            // Counter should always increment. If it doesn't, the authenticator may be cloned.
-                            if (assertion.Passkey.SignCount <= storedPasskey.SignCount)
-                            {
-                                Log.Users.PasskeyCounterMismatch(logger, user.Email, storedPasskey.SignCount, assertion.Passkey.SignCount);
-                                _ = await userManager.SetLockoutEndDateAsync(user, DateTimeOffset.UtcNow.AddHours(1));
-                                _ = await userManager.UpdateAsync(user);
-                                return Result.Failure(Error.Unauthorized(ErrorCodes.Passkey.CounterMismatch, "Security violation detected. Account temporarily locked.")).ToProblemDetails();
-                            }
-                        }
-                    }
-
                     var updateResult = await userManager.AddOrUpdatePasskeyAsync(user, assertion.Passkey);
                     if (!updateResult.Succeeded)
                     {

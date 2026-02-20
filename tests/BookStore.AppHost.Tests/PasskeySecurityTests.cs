@@ -39,30 +39,45 @@ public class PasskeySecurityTests
     [Test]
     public async Task PasskeyLogin_WithClonedAuthenticator_LocksAccount()
     {
-        // Arrange - Create user with a passkey that has a sign count of 5
-        var (email, password, _, tenantId) = await AuthenticationHelpers.RegisterAndLoginUserAsync();
+        // Arrange: Register user and attach a real passkey via the virtual authenticator
+        var (email, _, loginResponse, tenantId) = await AuthenticationHelpers.RegisterAndLoginUserAsync();
 
-        var credentialId = Guid.CreateVersion7().ToByteArray();
-        const uint initialSignCount = 5;
-        await PasskeyTestHelpers.AddPasskeyToUserAsync(tenantId, email, "Test Passkey", credentialId, initialSignCount);
+        await using var webAuthn = await WebAuthnTestHelper.CreateAsync();
+        var passkey = await webAuthn.RegisterPasskeyAsync(email, tenantId, loginResponse.AccessToken);
 
-        // Simulate a cloned authenticator by setting the sign count LOWER than stored value
-        // This would happen if an attacker cloned the hardware key
-        await PasskeyTestHelpers.UpdatePasskeySignCountAsync(tenantId, email, credentialId, signCount: 3);
-
-        // Act - Try to use a passkey with a DECREASING counter (cloned authenticator)
-        var client = HttpClientHelpers.GetUnauthenticatedClient(tenantId);
-        var response = await client.PostAsJsonAsync("/account/assertion/result", new
-        {
-            credentialJson = "{\"mock\":\"data\"}", // Would normally be WebAuthn credential
-        });
-
-        // Assert - The endpoint should return error, and account should be locked
+        // Read the credential ID from the DB so we can manipulate its sign counter
         await using var store = await DatabaseHelpers.GetDocumentStoreAsync();
-        await using var session = store.LightweightSession(tenantId);
-        var user = await DatabaseHelpers.GetUserByEmailAsync(session, email);
-        _ = await Assert.That(user).IsNotNull();
-        // The actual lockout would be tested via a full WebAuthn flow which requires browser automation
+        byte[] credentialId;
+        await using (var readSession = store.LightweightSession(tenantId))
+        {
+            var u = await DatabaseHelpers.GetUserByEmailAsync(readSession, email);
+            _ = await Assert.That(u).IsNotNull();
+            credentialId = u!.Passkeys.First().CredentialId;
+        }
+
+        // Inflate the stored counter far above what the virtual authenticator will produce next
+        // (virtual authenticator counter ~= 1 on first assertion, 100 >> 1 → mismatch → lockout)
+        await PasskeyTestHelpers.UpdatePasskeySignCountAsync(tenantId, email, credentialId, signCount: 100);
+
+        // Act: Attempt passkey login — assertion counter (~1) ≤ stored (100) → should trigger lockout
+        _ = await Assert.That(
+            async () => await webAuthn.LoginWithPasskeyAsync(passkey))
+            .Throws<Exception>();
+
+        // Assert: Account should now be locked in the database
+        var isLocked = false;
+        await SseEventHelpers.WaitForConditionAsync(
+            async () =>
+            {
+                await using var lockSession = store.LightweightSession(tenantId);
+                var lockedUser = await DatabaseHelpers.GetUserByEmailAsync(lockSession, email);
+                isLocked = lockedUser?.LockoutEnd != null && lockedUser.LockoutEnd.Value > DateTimeOffset.UtcNow;
+                return isLocked;
+            },
+            TimeSpan.FromSeconds(5),
+            "Account was not locked after counter-mismatch passkey assertion");
+
+        _ = await Assert.That(isLocked).IsTrue();
     }
 
     [Test]
@@ -189,32 +204,24 @@ public class PasskeySecurityTests
     [Test]
     public async Task PasskeyLogin_ClearsAllExistingRefreshTokens()
     {
-        // Arrange - Create user and establish multiple sessions with refresh tokens
+        // Arrange: Create user and establish 3 separate password sessions (3 refresh tokens)
         var (email, password, login1, tenantId) = await AuthenticationHelpers.RegisterAndLoginUserAsync();
 
-        // Create 2 additional sessions (with RegisterAndLoginUserAsync we already have 1)
         var client = HttpClientHelpers.GetUnauthenticatedClient(tenantId);
         var loginResponse2 = await client.PostAsJsonAsync("/account/login", new { email, password });
         var login2 = await loginResponse2.Content.ReadFromJsonAsync<AuthenticationHelpers.LoginResponse>();
         var loginResponse3 = await client.PostAsJsonAsync("/account/login", new { email, password });
         var login3 = await loginResponse3.Content.ReadFromJsonAsync<AuthenticationHelpers.LoginResponse>();
 
-        // Act - Add a passkey and trigger passkey login flow
-        // In a real passkey login, all refresh tokens are cleared for security
-        var credentialId = Guid.CreateVersion7().ToByteArray();
-        await PasskeyTestHelpers.AddPasskeyToUserAsync(tenantId, email, "Login Passkey", credentialId, signCount: 0);
+        // Register a real passkey using the access token from the first session
+        await using var webAuthn = await WebAuthnTestHelper.CreateAsync();
+        var passkey = await webAuthn.RegisterPasskeyAsync(email, tenantId, login1.AccessToken);
 
-        // Simulate the token clearing that happens in passkey login
-        await using var store = await DatabaseHelpers.GetDocumentStoreAsync();
-        await using (var session = store.LightweightSession(tenantId))
-        {
-            var user = await DatabaseHelpers.GetUserByEmailAsync(session, email);
-            user!.RefreshTokens.Clear();
-            session.Update(user);
-            await session.SaveChangesAsync();
-        }
+        // Act: Perform a real passkey login — this MUST clear all existing refresh tokens
+        var passkeyLogin = await webAuthn.LoginWithPasskeyAsync(passkey);
+        _ = await Assert.That(passkeyLogin).IsNotNull();
 
-        // Assert - All old refresh tokens should be invalid, even token1 and token2
+        // Assert: All 3 old refresh tokens should now be rejected
         var response1 = await client.PostAsJsonAsync("/account/refresh-token", new { refreshToken = login1.RefreshToken });
         var response2 = await client.PostAsJsonAsync("/account/refresh-token", new { refreshToken = login2!.RefreshToken });
         var response3 = await client.PostAsJsonAsync("/account/refresh-token", new { refreshToken = login3!.RefreshToken });
@@ -223,11 +230,18 @@ public class PasskeySecurityTests
         _ = await Assert.That(response2.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
         _ = await Assert.That(response3.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
 
-        // Verify database state
+        // Verify the DB contains only the new passkey-login refresh token, not the old ones
+        await using var store = await DatabaseHelpers.GetDocumentStoreAsync();
         await using var sessionFinal = store.LightweightSession(tenantId);
         var userAfter = await DatabaseHelpers.GetUserByEmailAsync(sessionFinal, email);
 
-        _ = await Assert.That(userAfter!.RefreshTokens).IsEmpty();
+        _ = await Assert.That(userAfter).IsNotNull();
+        var oldTokens = userAfter!.RefreshTokens
+            .Where(t => t.Token == login1.RefreshToken
+                     || t.Token == login2.RefreshToken
+                     || t.Token == login3.RefreshToken)
+            .ToList();
+        _ = await Assert.That(oldTokens).IsEmpty();
     }
 
     [Test]
@@ -402,26 +416,34 @@ public class PasskeySecurityTests
     [Test]
     public async Task PasskeySignCount_MustBeStoredAndIncrement()
     {
-        // Arrange
-        var (email, _, _, tenantId) = await AuthenticationHelpers.RegisterAndLoginUserAsync();
-        var credentialId = Guid.CreateVersion7().ToByteArray();
+        // Arrange: Register user and attach a real passkey via the virtual authenticator
+        var (email, _, loginResponse, tenantId) = await AuthenticationHelpers.RegisterAndLoginUserAsync();
 
-        // Add initial passkey with sign count 0
-        await PasskeyTestHelpers.AddPasskeyToUserAsync(tenantId, email, "Test Device", credentialId, signCount: 0);
+        await using var webAuthn = await WebAuthnTestHelper.CreateAsync();
+        var passkey = await webAuthn.RegisterPasskeyAsync(email, tenantId, loginResponse.AccessToken);
 
         await using var store = await DatabaseHelpers.GetDocumentStoreAsync();
 
-        // Act - Simulate successful logins that increment the counter
-        await PasskeyTestHelpers.UpdatePasskeySignCountAsync(tenantId, email, credentialId, signCount: 1);
-        await PasskeyTestHelpers.UpdatePasskeySignCountAsync(tenantId, email, credentialId, signCount: 2);
-        await PasskeyTestHelpers.UpdatePasskeySignCountAsync(tenantId, email, credentialId, signCount: 3);
+        // Helper: read the stored sign count for this passkey from the DB
+        async Task<uint> GetStoredSignCountAsync()
+        {
+            await using var session = store.LightweightSession(tenantId);
+            var u = await DatabaseHelpers.GetUserByEmailAsync(session, email);
+            return u!.Passkeys.First().SignCount;
+        }
 
-        // Assert - Verify counter is properly stored and incremented
-        await using var session = store.LightweightSession(tenantId);
-        var user = await DatabaseHelpers.GetUserByEmailAsync(session, email);
+        var countAfterRegistration = await GetStoredSignCountAsync();
 
-        _ = await Assert.That(user).IsNotNull();
-        var passkey = user!.Passkeys.First(p => p.CredentialId.SequenceEqual(credentialId));
-        _ = await Assert.That(passkey.SignCount).IsEqualTo(3u);
+        // Act: First passkey login — virtual authenticator produces counter 1
+        _ = await webAuthn.LoginWithPasskeyAsync(passkey);
+        var countAfterLogin1 = await GetStoredSignCountAsync();
+
+        // Second passkey login — virtual authenticator produces counter 2
+        _ = await webAuthn.LoginWithPasskeyAsync(passkey);
+        var countAfterLogin2 = await GetStoredSignCountAsync();
+
+        // Assert: counter must strictly increase with each successful assertion
+        _ = await Assert.That(countAfterLogin1).IsGreaterThan(countAfterRegistration);
+        _ = await Assert.That(countAfterLogin2).IsGreaterThan(countAfterLogin1);
     }
 }

@@ -6,6 +6,7 @@
 - **Test**: `dotnet test tests/BookStore.AppHost.Tests/`
 - **Filter**: `dotnet test --filter "FullyQualifiedName~BookCrudTests"`
 - **Helpers**: `tests/BookStore.AppHost.Tests/TestHelpers.cs`
+- **Playwright browsers**: Must be installed before first run — see setup note below
 
 ## Key Rules (MUST follow)
 ```
@@ -18,8 +19,21 @@
 ✅ Verify tenant isolation        ❌ Shared data across tenants
 ```
 
+## Playwright Setup
+
+These tests use **Microsoft.Playwright** for browser-based authentication flows. Playwright browsers must be installed separately after building the project:
+
+```bash
+dotnet build tests/BookStore.AppHost.Tests/BookStore.AppHost.Tests.csproj
+node tests/BookStore.AppHost.Tests/bin/Debug/net10.0/.playwright/package/index.js install chromium
+```
+
+> [!IMPORTANT]
+> The `node` command path is relative to the repo root. The `.playwright` directory is created by the build; run the build step first. Re-run after a `dotnet clean` or switching build configurations (`Debug`/`Release`).
+
 ## Common Mistakes
 - ❌ Ignoring tests/AGENTS.md rules → This file extends `tests/AGENTS.md`
+- ❌ Running browser tests without installing Playwright browsers → Run the install step above first
 - ❌ Using polling/delays for async commands → Always await SSE events
 - ❌ Redundant polling after event helpers → `ExecuteAndWaitForEventAsync` already ensures consistency
 - ❌ Skipping infra startup → Use Aspire `DistributedApplicationTestingBuilder`

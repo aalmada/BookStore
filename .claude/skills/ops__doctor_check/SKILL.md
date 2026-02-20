@@ -20,7 +20,16 @@ Perform a health check on the development environment to ensure all prerequisite
    - **Requirement**: Aspire CLI must be installed.
    - *Action*: If missing, see [Install instructions](https://aspire.dev/get-started/install-cli/)
 
-5. **Report Summary**
+5. **Playwright Browsers** (for `BookStore.AppHost.Tests`)
+   - Check if the chromium binary exists inside the build output: `ls tests/BookStore.AppHost.Tests/bin/Debug/net10.0/.playwright/package/` (requires the project to have been built)
+   - **Requirement**: Chromium must be installed for browser-based integration tests.
+   - *Action*: If missing or the project hasn't been built yet, run:
+     ```bash
+     dotnet build tests/BookStore.AppHost.Tests/BookStore.AppHost.Tests.csproj
+     node tests/BookStore.AppHost.Tests/bin/Debug/net10.0/.playwright/package/index.js install chromium
+     ```
+
+6. **Report Summary**
    - If all checks pass: "✅ Environment is healthy"
    - If issues found: List specific missing tools with installation instructions
 

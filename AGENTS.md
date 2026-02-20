@@ -6,11 +6,26 @@ Use this file for agent-only context: build and test commands, conventions, and 
 
 ## Quick Reference
 
-- **Stack**: .NET 10, C# 14, Marten, Wolverine, HybridCache, Aspire
+- **Stack**: .NET 10, C# 14, Marten, Wolverine, HybridCache, Aspire, Playwright
 - **Solution**: `BookStore.slnx` (new .NET 10 solution format)
 - **Common commands**: `dotnet restore`, `aspire run`, `dotnet test`, `dotnet format`
 - **Docs**: `docs/getting-started.md`, `docs/guides/`
 - **Testing instructions**: `tests/AGENTS.md`
+
+### Running Tests (TUnit)
+
+TUnit-specific arguments must be passed after `--` so they are forwarded as program arguments rather than parsed by `dotnet test`:
+
+```bash
+# Run all tests (uses all available cores by default)
+dotnet test
+
+# Limit parallelism in resource-constrained environments
+dotnet test -- --maximum-parallel-tests 4
+
+# Filter tests by category
+dotnet test -- --treenode-filter "/*/*/*/*[Category=Integration]"
+```
 
 ## Repository Map
 
@@ -83,6 +98,7 @@ Use this file for agent-only context: build and test commands, conventions, and 
 - SSE not working: run `/frontend__debug_sse`
 - Cache issues: run `/cache__debug_cache`
 - Environment issues: run `/ops__doctor_check`
+- Playwright browser missing (integration tests fail with browser launch error): install browsers with `node tests/BookStore.AppHost.Tests/bin/Debug/net10.0/.playwright/package/index.js install chromium` (build the project first)
 
 ## MCP Servers for Documentation
 
