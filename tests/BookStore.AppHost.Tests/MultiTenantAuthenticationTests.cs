@@ -151,35 +151,35 @@ public class MultiTenantAuthenticationTests : IDisposable
         var tenant1Login = await AuthenticationHelpers.LoginAsAdminAsync(_client!, _tenant1);
         _ = await Assert.That(tenant1Login).IsNotNull();
 
-        var request = new CreateBookRequest
-        {
-            Id = Guid.CreateVersion7(),
-            Title = "Test Book",
-            Isbn = "978-0-00-000000-0",
-            Language = "en",
-            AuthorIds = [],
-            CategoryIds = [],
-            Prices = new Dictionary<string, decimal> { ["USD"] = 29.99m },
-            PublicationDate = new PartialDate(2024),
-            Translations = new Dictionary<string, BookTranslationDto>()
-        };
-
+        // Build tenant1-scoped HTTP client
         var tenantHttpClient = GlobalHooks.App!.CreateHttpClient("apiservice");
         tenantHttpClient.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", tenant1Login!.AccessToken);
         tenantHttpClient.DefaultRequestHeaders.Add("X-Tenant-ID", _tenant1);
+
+        // Create tenant1-scoped Refit clients
+        var publishersClient = RestService.For<IPublishersClient>(tenantHttpClient);
+        var authorsClient = RestService.For<IAuthorsClient>(tenantHttpClient);
+        var categoriesClient = RestService.For<ICategoriesClient>(tenantHttpClient);
         var booksClient = RestService.For<IBooksClient>(tenantHttpClient);
 
-        try
-        {
-            _ = await booksClient.CreateBookAsync(request);
-            return;
-        }
-        catch (ApiException ex) when (ex.StatusCode == HttpStatusCode.BadRequest)
-        {
-            // Validation failure means authorization succeeded.
-            return;
-        }
+        // Create required dependencies within tenant1
+        var publisher = await PublisherHelpers.CreatePublisherAsync(
+            publishersClient, FakeDataGenerators.GenerateFakePublisherRequest());
+        var author = await AuthorHelpers.CreateAuthorAsync(
+            authorsClient, FakeDataGenerators.GenerateFakeAuthorRequest());
+        var category = await CategoryHelpers.CreateCategoryAsync(
+            categoriesClient, FakeDataGenerators.GenerateFakeCategoryRequest());
+
+        var createBookRequest = FakeDataGenerators.GenerateFakeBookRequest(
+            publisher.Id, [author.Id], [category.Id]);
+
+        // Act - Create a book inside tenant1
+        var book = await BookHelpers.CreateBookAsync(booksClient, createBookRequest);
+
+        // Assert - Book was created and belongs to tenant1
+        _ = await Assert.That(book).IsNotNull();
+        _ = await Assert.That(book.Id).IsNotEqualTo(Guid.Empty);
     }
 
     [Test]
