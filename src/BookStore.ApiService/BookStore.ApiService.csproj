@@ -4,13 +4,13 @@
     <!-- Garbage Collection Optimization for Server Workloads -->
     <!-- Server GC: Uses multiple heaps and threads for better throughput -->
     <ServerGarbageCollection>true</ServerGarbageCollection>
-    
+
     <!-- Concurrent GC: Reduces pause times by running GC concurrently with application -->
     <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
-    
+
     <!-- Retain VM: Keeps virtual memory allocated for better performance -->
     <RetainVMGarbageCollection>true</RetainVMGarbageCollection>
-    
+
     <!-- Dynamic PGO: Profile-guided optimization for hot paths -->
     <TieredCompilation>true</TieredCompilation>
     <TieredCompilationQuickJit>true</TieredCompilationQuickJit>
