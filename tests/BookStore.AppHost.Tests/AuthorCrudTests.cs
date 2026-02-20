@@ -26,10 +26,6 @@ public class AuthorCrudTests
             ["AuthorCreated", "AuthorUpdated"],
             async () => await client.CreateAuthorAsync(createAuthorRequest),
             TestConstants.DefaultEventTimeout);
-        // The original assertion for 'author' cannot be directly translated as ExecuteAndWaitForEventAsync doesn't return the author.
-        // If the intent was to verify the author was created, a subsequent GetAuthor call would be needed.
-        // For now, removing the assertion that relies on the 'author' variable.
-        // _ = await Assert.That(author!.Id).IsNotEqualTo(Guid.Empty);
     }
 
     [Test]

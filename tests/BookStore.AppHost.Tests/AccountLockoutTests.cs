@@ -4,10 +4,8 @@ using BookStore.AppHost.Tests.Helpers;
 using BookStore.Client;
 using BookStore.Shared.Models;
 using JasperFx;
-using Marten;
 using Refit;
 using TUnit;
-using Weasel.Core;
 
 namespace BookStore.AppHost.Tests;
 
@@ -193,29 +191,13 @@ public class AccountLockoutTests
         _ = await Assert.That(loginResult.AccessToken).IsNotEmpty();
     }
 
-    async Task<IDocumentStore> GetStoreAsync()
-    {
-        var connectionString = await GlobalHooks.App!.GetConnectionStringAsync("bookstore");
-        return DocumentStore.For(opts =>
-        {
-            opts.UseSystemTextJsonForSerialization(EnumStorage.AsString, Casing.CamelCase);
-            opts.Connection(connectionString!);
-            _ = opts.Policies.AllDocumentsAreMultiTenanted();
-            opts.Events.TenancyStyle = Marten.Storage.TenancyStyle.Conjoined;
-        });
-    }
-
     async Task ManuallyLockAccountAsync(string email, DateTimeOffset lockoutEnd, string? tenantId = null)
     {
-        using var store = await GetStoreAsync();
+        await using var store = await DatabaseHelpers.GetDocumentStoreAsync();
         var actualTenantId = tenantId ?? StorageConstants.DefaultTenantId;
         await using var session = store.LightweightSession(actualTenantId);
 
-        var normalizedEmail = email.ToUpperInvariant();
-        var user = await session.Query<ApplicationUser>()
-            .Where(u => u.NormalizedEmail == normalizedEmail)
-            .FirstOrDefaultAsync();
-
+        var user = await DatabaseHelpers.GetUserByEmailAsync(session, email);
         _ = await Assert.That(user).IsNotNull();
 
         if (user != null)
@@ -226,41 +208,33 @@ public class AccountLockoutTests
         }
     }
 
-    async Task<bool> WaitForAccountLockoutAsync(string email, string? tenantId = null, int maxAttempts = 10)
+    async Task<bool> WaitForAccountLockoutAsync(string email, string? tenantId = null)
     {
-        using var store = await GetStoreAsync();
         var actualTenantId = tenantId ?? StorageConstants.DefaultTenantId;
+        var isLocked = false;
 
-        for (var i = 0; i < maxAttempts; i++)
-        {
-            await using var session = store.LightweightSession(actualTenantId);
-            var normalizedEmail = email.ToUpperInvariant();
-            var user = await session.Query<ApplicationUser>()
-                .Where(u => u.NormalizedEmail == normalizedEmail)
-                .FirstOrDefaultAsync();
-
-            if (user?.LockoutEnd != null && user.LockoutEnd > DateTimeOffset.UtcNow)
+        await using var store = await DatabaseHelpers.GetDocumentStoreAsync();
+        await SseEventHelpers.WaitForConditionAsync(
+            async () =>
             {
-                return true;
-            }
+                await using var session = store.LightweightSession(actualTenantId);
+                var user = await DatabaseHelpers.GetUserByEmailAsync(session, email);
+                isLocked = user?.LockoutEnd != null && user.LockoutEnd > DateTimeOffset.UtcNow;
+                return isLocked;
+            },
+            TimeSpan.FromSeconds(5),
+            $"Account was not locked for {email}");
 
-            await Task.Delay(TestConstants.DefaultPollingInterval);
-        }
-
-        return false;
+        return isLocked;
     }
 
     async Task ManuallySetPasskeySignCountAsync(string email, byte[] credentialId, uint signCount, string? tenantId = null)
     {
-        using var store = await GetStoreAsync();
+        await using var store = await DatabaseHelpers.GetDocumentStoreAsync();
         var actualTenantId = tenantId ?? StorageConstants.DefaultTenantId;
         await using var session = store.LightweightSession(actualTenantId);
 
-        var normalizedEmail = email.ToUpperInvariant();
-        var user = await session.Query<ApplicationUser>()
-            .Where(u => u.NormalizedEmail == normalizedEmail)
-            .FirstOrDefaultAsync();
-
+        var user = await DatabaseHelpers.GetUserByEmailAsync(session, email);
         _ = await Assert.That(user).IsNotNull();
 
         if (user != null)

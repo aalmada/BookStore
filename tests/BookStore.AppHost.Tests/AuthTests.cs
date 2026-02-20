@@ -1,5 +1,4 @@
 using System.Net;
-using Bogus;
 using BookStore.AppHost.Tests.Helpers;
 using BookStore.Client;
 using BookStore.Shared.Models;
@@ -11,13 +10,11 @@ namespace BookStore.AppHost.Tests;
 public class AuthTests
 {
     readonly IIdentityClient _client;
-    readonly Faker _faker;
 
     public AuthTests()
     {
         var httpClient = HttpClientHelpers.GetUnauthenticatedClient();
         _client = RestService.For<IIdentityClient>(httpClient);
-        _faker = new Faker();
     }
 
     [Test]

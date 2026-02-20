@@ -166,17 +166,4 @@ public class CrossTenantAuthenticationTests
             .Throws<ApiException>();
         _ = await Assert.That(wrongPasswordException2!.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
-
-    /// <summary>
-    /// Provides tenant pair combinations for data-driven tests.
-    /// </summary>
-    public static IEnumerable<(string Source, string Target)> GetTenantPairs()
-    {
-        yield return ("tenant-a", "tenant-b");
-        yield return ("tenant-a", "default");
-        yield return ("tenant-b", "tenant-a");
-        yield return ("tenant-b", "default");
-        yield return ("default", "tenant-a");
-        yield return ("default", "tenant-b");
-    }
 }

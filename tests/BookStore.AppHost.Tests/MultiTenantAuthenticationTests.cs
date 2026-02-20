@@ -9,7 +9,7 @@ using Refit;
 
 namespace BookStore.AppHost.Tests;
 
-public class MultiTenantAuthenticationTests : IDisposable
+public class MultiTenantAuthenticationTests
 {
     static string _tenant1 = string.Empty;
     static string _tenant2 = string.Empty;
@@ -45,12 +45,6 @@ public class MultiTenantAuthenticationTests : IDisposable
 
     [After(Test)]
     public void Cleanup() => _client?.Dispose();
-
-    public void Dispose()
-    {
-        Cleanup();
-        GC.SuppressFinalize(this);
-    }
 
     /// <summary>
     /// Helper to login as admin for aspecific tenant

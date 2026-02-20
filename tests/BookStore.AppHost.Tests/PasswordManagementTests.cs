@@ -1,5 +1,4 @@
 using System.Net;
-using Bogus;
 using BookStore.ApiService.Models;
 using BookStore.AppHost.Tests.Helpers;
 using BookStore.Client;
@@ -15,13 +14,11 @@ namespace BookStore.AppHost.Tests;
 public class PasswordManagementTests
 {
     readonly IIdentityClient _client;
-    readonly Faker _faker;
 
     public PasswordManagementTests()
     {
         var httpClient = HttpClientHelpers.GetUnauthenticatedClient();
         _client = RestService.For<IIdentityClient>(httpClient);
-        _faker = new Faker();
     }
 
     [Test]

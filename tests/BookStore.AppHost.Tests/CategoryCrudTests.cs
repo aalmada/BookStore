@@ -65,7 +65,6 @@ public class CategoryCrudTests
         createdCategory = await CategoryHelpers.DeleteCategoryAsync(client, createdCategory!);
 
         // Verify it's gone from public API
-        // Verify it's gone from public API
         var publicClient =
             RestService.For<ICategoriesClient>(
                 HttpClientHelpers.GetUnauthenticatedClient(StorageConstants.DefaultTenantId));

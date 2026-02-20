@@ -5,10 +5,8 @@ using BookStore.AppHost.Tests.Helpers;
 using BookStore.Client;
 using BookStore.Shared.Models;
 using JasperFx;
-using Marten;
 using Refit;
 using TUnit;
-using Weasel.Core;
 
 namespace BookStore.AppHost.Tests;
 
@@ -279,29 +277,13 @@ public class SecurityStampValidationTests
         _ = await Assert.That(securityStampClaim!.Value).IsNotEmpty();
     }
 
-    async Task<IDocumentStore> GetStoreAsync()
-    {
-        var connectionString = await GlobalHooks.App!.GetConnectionStringAsync("bookstore");
-        return DocumentStore.For(opts =>
-        {
-            opts.UseSystemTextJsonForSerialization(EnumStorage.AsString, Casing.CamelCase);
-            opts.Connection(connectionString!);
-            _ = opts.Policies.AllDocumentsAreMultiTenanted();
-            opts.Events.TenancyStyle = Marten.Storage.TenancyStyle.Conjoined;
-        });
-    }
-
     async Task ManuallyUpdateSecurityStampAsync(string email, string? tenantId = null)
     {
-        using var store = await GetStoreAsync();
+        await using var store = await DatabaseHelpers.GetDocumentStoreAsync();
         var actualTenantId = tenantId ?? StorageConstants.DefaultTenantId;
         await using var session = store.LightweightSession(actualTenantId);
 
-        var normalizedEmail = email.ToUpperInvariant();
-        var user = await session.Query<ApplicationUser>()
-            .Where(u => u.NormalizedEmail == normalizedEmail)
-            .FirstOrDefaultAsync();
-
+        var user = await DatabaseHelpers.GetUserByEmailAsync(session, email);
         _ = await Assert.That(user).IsNotNull();
 
         if (user != null)

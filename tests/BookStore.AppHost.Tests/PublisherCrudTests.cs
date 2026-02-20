@@ -60,7 +60,6 @@ public class PublisherCrudTests
         createdPublisher = await PublisherHelpers.DeletePublisherAsync(client, createdPublisher);
 
         // Verify it's gone from public API
-        // Verify it's gone from public API
         var publicClient =
             Refit.RestService.For<IPublishersClient>(
                 HttpClientHelpers.GetUnauthenticatedClient(StorageConstants.DefaultTenantId));
