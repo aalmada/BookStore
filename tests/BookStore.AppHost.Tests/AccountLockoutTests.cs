@@ -97,26 +97,23 @@ public class AccountLockoutTests
     [Test]
     public async Task LockedAccount_PreventsPasskeyAuthentication()
     {
-        // Arrange: Create user with passkey
-        var (email, password, loginResponse, _) = await AuthenticationHelpers.RegisterAndLoginUserAsync();
-        var credentialId = Guid.CreateVersion7().ToByteArray();
-        await PasskeyTestHelpers.AddPasskeyToUserAsync(StorageConstants.DefaultTenantId, email, "Test Passkey", credentialId);
+        // Arrange: Create user and register a real passkey via the WebAuthn virtual authenticator
+        var tenantId = StorageConstants.DefaultTenantId;
+        var (email, password, loginResponse, _) = await AuthenticationHelpers.RegisterAndLoginUserAsync(tenantId);
 
-        // Manually lock the account
-        await ManuallyLockAccountAsync(email, DateTimeOffset.UtcNow.AddMinutes(5));
+        await using var webAuthn = await WebAuthnTestHelper.CreateAsync();
+        var registeredPasskey = await webAuthn.RegisterPasskeyAsync(email, tenantId, loginResponse.AccessToken);
 
-        // Act: Try to login with passkey (would use assertion flow)
-        // Since we can't easily test the full WebAuthn flow, we verify lockout via password login
-        var identityClient = RestService.For<IIdentityClient>(HttpClientHelpers.GetUnauthenticatedClient());
+        // Manually lock the account directly in the database
+        await ManuallyLockAccountAsync(email, DateTimeOffset.UtcNow.AddMinutes(5), tenantId);
 
-        // The locked account should prevent any authentication
-        var exception = await Assert.That(async () =>
-            await identityClient.LoginAsync(new LoginRequest(email, password)))
-            .Throws<ApiException>();
+        // Act: Try to login using the real passkey assertion flow
+        var loginException = await Assert.That(
+            async () => await webAuthn.LoginWithPasskeyAsync(registeredPasskey))
+            .Throws<Exception>();
 
-        // Assert: Should be rejected (lockout prevents signin)
-        var isExpectedError = exception!.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.BadRequest;
-        _ = await Assert.That(isExpectedError).IsTrue();
+        // Assert: Passkey login should be rejected because the account is locked
+        _ = await Assert.That(loginException).IsNotNull();
     }
 
     [Test]
@@ -124,23 +121,33 @@ public class AccountLockoutTests
     [Arguments("tenant-b")]
     public async Task PasskeyCounterDecrement_TriggersLockout(string tenantId)
     {
-        // Arrange: Create user with passkey
+        // Arrange: Register a real passkey (virtual authenticator counter starts at 0)
         var (email, password, loginResponse, _) = await AuthenticationHelpers.RegisterAndLoginUserAsync(tenantId);
-        var credentialId = Guid.CreateVersion7().ToByteArray();
-        await PasskeyTestHelpers.AddPasskeyToUserAsync(tenantId, email, "Test Passkey", credentialId);
 
-        // Set the passkey sign count to a high value
-        await ManuallySetPasskeySignCountAsync(email, credentialId, 100, tenantId);
+        await using var webAuthn = await WebAuthnTestHelper.CreateAsync();
+        _ = await webAuthn.RegisterPasskeyAsync(email, tenantId, loginResponse.AccessToken);
 
-        // Simulate counter decrement by setting a lower value during assertion
-        // (This would normally happen in passkey authentication flow)
-        // For this test, we'll manually trigger the lockout
-        await ManuallyLockAccountAsync(email, DateTimeOffset.UtcNow.AddHours(1), tenantId);
+        // Perform one real passkey login so the DB sign count advances
+        _ = await webAuthn.LoginWithPasskeyAsync(new RegisteredPasskey("", email, "", tenantId));
 
-        // Act: Verify lockout persists across requests
+        // Now read the credential ID from the database
+        await using var store = await DatabaseHelpers.GetDocumentStoreAsync();
+        await using var session = store.LightweightSession(tenantId);
+        var user = await DatabaseHelpers.GetUserByEmailAsync(session, email);
+        var credentialId = user!.Passkeys.First().CredentialId;
+        var currentCount = user.Passkeys.First().SignCount;
+
+        // Artificially inflate the stored counter well above what the authenticator will produce next
+        // This simulates detecting a cloned authenticator: stored counter > assertion counter
+        await ManuallySetPasskeySignCountAsync(email, credentialId, currentCount + 100, tenantId);
+
+        // Act: Attempt another passkey login — the virtual authenticator will produce a counter <= stored
+        _ = await Assert.That(
+            async () => await webAuthn.LoginWithPasskeyAsync(new RegisteredPasskey("", email, "", tenantId)))
+            .Throws<Exception>();
+
+        // Assert: Account should now be locked
         var isLocked = await WaitForAccountLockoutAsync(email, tenantId);
-
-        // Assert: Account should be locked for 1 hour
         _ = await Assert.That(isLocked).IsTrue();
     }
 

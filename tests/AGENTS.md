@@ -1,7 +1,7 @@
 # Tests — Agent Instructions
 
 ## Quick Reference
-- **Stack**: .NET 10, TUnit, Bogus, NSubstitute
+- **Stack**: .NET 10, TUnit, Bogus, NSubstitute, Playwright
 - **Docs**: `docs/guides/testing-guide.md`, `docs/guides/integration-testing-guide.md`
 - **Test**: `dotnet test` | **Project**: `dotnet test --project tests/<Project>/<Project>.csproj`
 - **Helpers**: `tests/BookStore.AppHost.Tests/TestHelpers.cs`
@@ -42,6 +42,7 @@
 - **Flaky tests**: Ensure per-test data creation and unique IDs
 - **Write-side timing**: Prefer SSE helpers over polling or delays
 - **Analyzer tests failing**: Keep `TestData` inputs out of compilation
+- **Playwright browser missing**: Build `BookStore.AppHost.Tests` first, then run `node tests/BookStore.AppHost.Tests/bin/Debug/net10.0/.playwright/package/index.js install chromium`
 
 ## Documentation Index
 | Topic | Guide |

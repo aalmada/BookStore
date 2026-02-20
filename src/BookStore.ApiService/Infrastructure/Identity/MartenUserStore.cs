@@ -2,6 +2,7 @@ using BookStore.ApiService.Models;
 using Marten;
 using Marten.Linq.MatchesSql;
 using Microsoft.AspNetCore.Identity;
+using Npgsql;
 
 namespace BookStore.ApiService.Infrastructure.Identity;
 
@@ -27,9 +28,43 @@ public sealed class MartenUserStore :
 
     public async Task<IdentityResult> CreateAsync(ApplicationUser user, CancellationToken cancellationToken)
     {
-        _session.Store(user);
-        await _session.SaveChangesAsync(cancellationToken);
-        return IdentityResult.Success;
+        try
+        {
+            _session.Store(user);
+            await _session.SaveChangesAsync(cancellationToken);
+            return IdentityResult.Success;
+        }
+        catch (Exception ex) when (IsUniqueConstraintViolation(ex))
+        {
+            // PostgreSQL unique constraint violation (error code 23505) occurs during
+            // concurrent registration attempts with the same email/username.
+            // Return a structured Identity error so the caller can react appropriately.
+            return IdentityResult.Failed(new IdentityError
+            {
+                Code = "DuplicateUserName",
+                Description = $"A user with the name '{user.Email}' already exists."
+            });
+        }
+    }
+
+    /// <summary>
+    /// Determines whether the exception chain contains a PostgreSQL unique constraint
+    /// violation (error code 23505).
+    /// </summary>
+    static bool IsUniqueConstraintViolation(Exception ex)
+    {
+        var current = ex;
+        while (current is not null)
+        {
+            if (current is PostgresException pgEx && pgEx.SqlState == "23505")
+            {
+                return true;
+            }
+
+            current = current.InnerException;
+        }
+
+        return false;
     }
 
     public async Task<IdentityResult> UpdateAsync(ApplicationUser user, CancellationToken cancellationToken)

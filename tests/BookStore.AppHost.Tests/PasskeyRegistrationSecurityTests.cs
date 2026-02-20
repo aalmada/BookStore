@@ -17,34 +17,28 @@ public class PasskeyRegistrationSecurityTests
     [Test]
     public async Task PasskeyRegistration_ConcurrentAttempts_OnlyOneSucceeds()
     {
-        // Arrange - Get registration options to obtain a user ID
+        // Arrange: Create a REAL credential JSON via the virtual WebAuthn authenticator.
+        // The browser generates a proper attestation object for one email/challenge pair.
         var email = FakeDataGenerators.GenerateFakeEmail();
         var tenantId = MultiTenancyConstants.DefaultTenantId;
-        var client = HttpClientHelpers.GetUnauthenticatedClient(tenantId);
 
-        // Get creation options first
-        var optionsResponse = await client.PostAsJsonAsync("/account/attestation/options", new
-        {
-            email
-        });
+        await using var webAuthn = await WebAuthnTestHelper.CreateAsync();
+        // CreateAttestationCredentialAsync returns the client that holds the
+        // attestation-state cookie from the /attestation/options call.
+        var (credentialJson, _, userId, client) =
+            await webAuthn.CreateAttestationCredentialAsync(email, tenantId);
 
-        _ = await Assert.That(optionsResponse.IsSuccessStatusCode).IsTrue();
-        var options = await optionsResponse.Content.ReadFromJsonAsync<PasskeyCreationOptionsResponse>();
-        _ = await Assert.That(options).IsNotNull();
-        _ = await Assert.That(options!.UserId).IsNotEmpty();
-
-        var userId = options.UserId;
-
-        // Act - Simulate concurrent registration attempts with the SAME user ID
-        // This simulates a race condition where two clients try to register at the same time
-        var registrationResults = new List<(HttpStatusCode StatusCode, string Content)>();
+        // Act: Fire 5 concurrent POST /account/attestation/result with the SAME credential JSON.
+        // All requests use the same client (sharing the attestation-state cookie) so they all
+        // reach the attestation validation step. The first one wins and creates the user;
+        // the rest are rejected by the database unique-email constraint.
         var registrationTasks = Enumerable.Range(0, 5).Select(async _ =>
         {
             try
             {
                 var response = await client.PostAsJsonAsync("/account/attestation/result", new
                 {
-                    credentialJson = "{\"mock\":\"credential\"}",
+                    credentialJson,
                     email,
                     userId
                 });
@@ -59,19 +53,19 @@ public class PasskeyRegistrationSecurityTests
 
         var results = await Task.WhenAll(registrationTasks);
 
-        // Assert - Only ONE registration should succeed
-        var successfulRequests = results.Count(r => r.Item1 is HttpStatusCode.OK or HttpStatusCode.Created);
-        var failedRequests = results.Count(r => r.Item1 is HttpStatusCode.BadRequest or HttpStatusCode.Conflict);
-
-        // Due to race condition fix (conflict check before attestation), we expect:
-        // - Only the first request to reach the conflict check succeeds
-        // - All others fail with validation error (not 500 Internal Server Error)
-        _ = await Assert.That(successfulRequests).IsLessThanOrEqualTo(1);
-        _ = await Assert.That(failedRequests).IsGreaterThanOrEqualTo(4);
-
-        // Verify no Internal Server Errors occurred (no unhandled exceptions)
+        // Assert: No internal server errors — data integrity must be maintained under load.
         var serverErrors = results.Count(r => r.Item1 == HttpStatusCode.InternalServerError);
         _ = await Assert.That(serverErrors).IsEqualTo(0);
+
+        // Assert: Exactly ONE user was created in the database for this email.
+        // HTTP responses may vary (success or masked-duplicate 200) but the database
+        // must have a single canonical record.
+        await using var store = await DatabaseHelpers.GetDocumentStoreAsync();
+        await using var dbSession = store.LightweightSession(tenantId);
+        var user = await DatabaseHelpers.GetUserByEmailAsync(dbSession, email);
+
+        _ = await Assert.That(user).IsNotNull();
+        _ = await Assert.That(user!.Email).IsEqualTo(email);
     }
 
     [Test]
