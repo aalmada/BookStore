@@ -53,6 +53,11 @@ public class AuthTests
 
         // Assert - Should return OK to prevent enumeration (mapped to successful response in Refit)
         _ = await Assert.That(response).IsNotNull();
+
+        // Assert - The original user's credentials still work (re-registration did not overwrite the account)
+        var loginResult = await _client.LoginAsync(new LoginRequest(email, password));
+        _ = await Assert.That(loginResult).IsNotNull();
+        _ = await Assert.That(loginResult.AccessToken).IsNotEmpty();
     }
 
     [Test]
