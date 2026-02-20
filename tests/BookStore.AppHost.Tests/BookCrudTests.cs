@@ -26,29 +26,12 @@ public class BookCrudTests
         _ = await Assert.That(etag).IsNotNull();
 
         // Create dummy image content
-        var fileContent = new ByteArrayContent([0xFF, 0xD8, 0xFF, 0xE0]); // JPEG header mostly
-        fileContent.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
-
-        // Act
-        // Refit StreamPart uses stream.
         using var stream = new MemoryStream([0xFF, 0xD8, 0xFF, 0xE0]);
         var streamPart = new StreamPart(stream, "cover.jpg", "image/jpeg");
 
+        // Act
         await client.UploadBookCoverAsync(createdBook.Id, streamPart, etag);
-
-        // Assert
-        // Refit throws if not success, so if we reached here it's OK.
-        // But we can assert on verified response if we wanted, or catching assertions.
-        // Verify via Get? The test checked StatusCode OK/NoContent. Refit void task implies success.
-        // We can double check strict status if we change return type to Task<IApiResponse>, but Task is fine for "ShouldReturnOk".
     }
-
-    // I will modify ONLY the parts that DON'T need ETag for now?
-    // No, most tests use ETag.
-    // I absolutely need to solve the ETag retrieval with Refit.
-    // Standard Refit pattern: use ApiResponse<T>.
-
-    // Let's assume I CAN update IGetBookEndpoint.
 
     [Test]
     public async Task CreateBook_EndToEndFlow_ShouldReturnOk()

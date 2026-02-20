@@ -67,29 +67,18 @@ public static class AuthenticationHelpers
         // Register
         var registerRequest = new { email, password };
         var registerResponse = await publicClient.PostAsJsonAsync("/account/register", registerRequest);
-        if (!registerResponse.IsSuccessStatusCode)
-        {
-        }
-
         _ = registerResponse.EnsureSuccessStatusCode();
 
         // Login
         var loginRequest = new { email, password };
         var loginResponse = await publicClient.PostAsJsonAsync("/account/login", loginRequest);
-        if (!loginResponse.IsSuccessStatusCode)
-        {
-        }
-
         _ = loginResponse.EnsureSuccessStatusCode();
 
         var tokenResponse = await loginResponse.Content.ReadFromJsonAsync<LoginResponse>();
 
-        // Decode JWT to verify claims
+        // Decode JWT to extract the user ID
         var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
-        _ = handler.ReadJwtToken(tokenResponse!.AccessToken);
-
-        var userId = Guid.Parse(handler.ReadJwtToken(tokenResponse!.AccessToken).Claims.First(c => c.Type == "sub")
-            .Value);
+        var userId = Guid.Parse(handler.ReadJwtToken(tokenResponse!.AccessToken).Claims.First(c => c.Type == "sub").Value);
 
         // Create authenticated client
         var authenticatedClient = app.CreateHttpClient("apiservice");

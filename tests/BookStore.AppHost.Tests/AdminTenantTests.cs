@@ -3,10 +3,8 @@ using BookStore.ApiService.Models;
 using BookStore.AppHost.Tests.Helpers;
 using BookStore.Client;
 using BookStore.Shared.Models;
-using JasperFx.Events;
 using Marten;
 using Refit;
-using Weasel.Core;
 
 namespace BookStore.AppHost.Tests;
 
@@ -133,24 +131,9 @@ public class AdminTenantTests
 
         _ = await Assert.That(received).IsTrue();
 
-        // Verify side effect: User in tenant DB has EmailConfirmed = false
-        // (Assuming the test environment has Email:DeliveryMethod != "None")
-        // In our tests, it usually is "Logging" which means verification is REQUIRED.
-
-        var connectionString = await GlobalHooks.App.GetConnectionStringAsync("bookstore");
-        using var store = DocumentStore.For(opts =>
-        {
-            opts.Connection(connectionString!);
-            opts.UseSystemTextJsonForSerialization(EnumStorage.AsString, Casing.CamelCase);
-            _ = opts.Policies.AllDocumentsAreMultiTenanted();
-
-            opts.Events.AppendMode = EventAppendMode.Quick;
-            opts.Events.UseArchivedStreamPartitioning = true;
-            opts.Events.EnableEventSkippingInProjectionsOrSubscriptions = true;
-
-            opts.Events.TenancyStyle = Marten.Storage.TenancyStyle.Conjoined;
-        });
-
+        // Verify side effect: The admin user in the new tenant is created with EmailConfirmed = true
+        // because Email:DeliveryMethod=None is configured in GlobalSetup (no email verification required).
+        await using var store = await DatabaseHelpers.GetDocumentStoreAsync();
         await using var session = store.LightweightSession(tenantId);
 
         var user = await session.Query<ApplicationUser>()
