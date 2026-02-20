@@ -11,7 +11,7 @@ public class SearchTests
     {
         // Arrange
         var adminClient = await HttpClientHelpers.GetAuthenticatedClientAsync<IBooksClient>();
-        var uniqueTitle = $"UniqueSearchTerm-{Guid.NewGuid()}";
+        var uniqueTitle = $"UniqueSearchTerm-{Guid.CreateVersion7()}";
 
         // Create a book with a unique title using proper request model
         var createRequest = new CreateBookRequest
@@ -49,7 +49,7 @@ public class SearchTests
         _ = await globalHooks!.WaitForResourceHealthyAsync("apiservice", CancellationToken.None)
             .WaitAsync(TestConstants.DefaultTimeout);
 
-        var impossibleTerm = $"ImpossibleTerm-{Guid.NewGuid()}";
+        var impossibleTerm = $"ImpossibleTerm-{Guid.CreateVersion7()}";
 
         // Act
         var response = await publicClient.GetBooksAsync(new BookSearchRequest { Search = impossibleTerm });

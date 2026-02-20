@@ -214,9 +214,9 @@ public static class GlobalHooks
             return;
         }
 
-        var publisherId = Guid.NewGuid();
-        var authorId = Guid.NewGuid();
-        var categoryId = Guid.NewGuid();
+        var publisherId = Guid.CreateVersion7();
+        var authorId = Guid.CreateVersion7();
+        var categoryId = Guid.CreateVersion7();
 
         // Seed Publisher
         var publisherEvent = new PublisherAdded(publisherId, "Test Publisher", DateTimeOffset.UtcNow);
@@ -235,7 +235,7 @@ public static class GlobalHooks
         // Seed Books
         for (var i = 1; i <= 5; i++)
         {
-            var bookId = Guid.NewGuid();
+            var bookId = Guid.CreateVersion7();
             var bookEvent = new BookAdded(
                 bookId,
                 $"Test Book {i}",

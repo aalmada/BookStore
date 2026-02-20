@@ -34,7 +34,7 @@ public class PriceFilterRegressionTests
         var publicClient = Refit.RestService.For<IBooksClient>(publicHttpClient);
 
         var uniqueTitle =
-            $"PriceScenario-{originalPrice.ToString(CultureInfo.InvariantCulture)}-{discountPercentage.ToString(CultureInfo.InvariantCulture)}-{Guid.NewGuid()}";
+            $"PriceScenario-{originalPrice.ToString(CultureInfo.InvariantCulture)}-{discountPercentage.ToString(CultureInfo.InvariantCulture)}-{Guid.CreateVersion7()}";
 
         var createRequest = new CreateBookRequest
         {
@@ -98,7 +98,7 @@ public class PriceFilterRegressionTests
         var publicHttpClient = HttpClientHelpers.GetUnauthenticatedClient();
         var publicClient = Refit.RestService.For<IBooksClient>(publicHttpClient);
 
-        var uniqueTitle = $"Mixed-NoMatch-{Guid.NewGuid()}";
+        var uniqueTitle = $"Mixed-NoMatch-{Guid.CreateVersion7()}";
         // USD=10, EUR=200. Range [50, 150]. No single currency fits.
         var createRequest = new CreateBookRequest
         {
@@ -138,7 +138,7 @@ public class PriceFilterRegressionTests
         var publicHttpClient = HttpClientHelpers.GetUnauthenticatedClient();
         var publicClient = Refit.RestService.For<IBooksClient>(publicHttpClient);
 
-        var uniqueTitle = $"UpdateResetsDiscount-{Guid.NewGuid()}";
+        var uniqueTitle = $"UpdateResetsDiscount-{Guid.CreateVersion7()}";
         var createRequest = new CreateBookRequest
         {
             Id = Guid.CreateVersion7(),

@@ -28,9 +28,9 @@ public class UnverifiedAccountCleanupTests
             opts.UseSystemTextJsonForSerialization(EnumStorage.AsString, Casing.CamelCase);
         });
 
-        var staleUnverifiedEmail = $"stale_unverified_{Guid.NewGuid()}@example.com";
-        var freshUnverifiedEmail = $"fresh_unverified_{Guid.NewGuid()}@example.com";
-        var staleVerifiedEmail = $"stale_verified_{Guid.NewGuid()}@example.com";
+        var staleUnverifiedEmail = $"stale_unverified_{Guid.CreateVersion7()}@example.com";
+        var freshUnverifiedEmail = $"fresh_unverified_{Guid.CreateVersion7()}@example.com";
+        var staleVerifiedEmail = $"stale_verified_{Guid.CreateVersion7()}@example.com";
 
         await using (var session = store.LightweightSession())
         {

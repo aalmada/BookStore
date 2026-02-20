@@ -57,9 +57,13 @@ public class PasskeyRegistrationSecurityTests
         var serverErrors = results.Count(r => r.Item1 == HttpStatusCode.InternalServerError);
         _ = await Assert.That(serverErrors).IsEqualTo(0);
 
+        // Assert: Exactly ONE HTTP request succeeded. The test name claims "OnlyOneSucceeds"
+        // so we must verify that at the HTTP level only one 2xx response was produced.
+        var successCount = results.Count(r =>
+            r.Item1 is HttpStatusCode.OK or HttpStatusCode.Created or HttpStatusCode.NoContent);
+        _ = await Assert.That(successCount).IsEqualTo(1);
+
         // Assert: Exactly ONE user was created in the database for this email.
-        // HTTP responses may vary (success or masked-duplicate 200) but the database
-        // must have a single canonical record.
         await using var store = await DatabaseHelpers.GetDocumentStoreAsync();
         await using var dbSession = store.LightweightSession(tenantId);
         var user = await DatabaseHelpers.GetUserByEmailAsync(dbSession, email);

@@ -34,7 +34,7 @@ public class RefitMartenRegressionTests
         var publicClient = RestService.For<IBooksClient>(HttpClientHelpers.GetUnauthenticatedClient());
 
         // Create a book with a specific price to ensure we have data to query against
-        var uniqueTitle = $"PriceTest-{Guid.NewGuid()}";
+        var uniqueTitle = $"PriceTest-{Guid.CreateVersion7()}";
         var createRequest = new CreateBookRequest
         {
             Id = Guid.CreateVersion7(),
@@ -71,7 +71,7 @@ public class RefitMartenRegressionTests
         var publicClient = RestService.For<IBooksClient>(HttpClientHelpers.GetUnauthenticatedClient());
 
         // Create a book with price 20.0 (outside range 5-15)
-        var uniqueTitle = $"OutOfRange-{Guid.NewGuid()}";
+        var uniqueTitle = $"OutOfRange-{Guid.CreateVersion7()}";
         var createRequest = new CreateBookRequest
         {
             Id = Guid.CreateVersion7(),
@@ -104,7 +104,7 @@ public class RefitMartenRegressionTests
         // Arrange
         // Create a book to ensure data exists with the new PublicationDateString field populated
         var authClient = await HttpClientHelpers.GetAuthenticatedClientAsync<IBooksClient>();
-        var uniqueTitle = $"DateSort-{Guid.NewGuid()}";
+        var uniqueTitle = $"DateSort-{Guid.CreateVersion7()}";
         _ = await BookHelpers.CreateBookAsync(authClient,
             new CreateBookRequest
             {
@@ -141,7 +141,7 @@ public class RefitMartenRegressionTests
         var authClient = await HttpClientHelpers.GetAuthenticatedClientAsync<IBooksClient>();
         var publicClient = RestService.For<IBooksClient>(HttpClientHelpers.GetUnauthenticatedClient());
 
-        var uniqueTitle = $"CurrencyMismatch-{Guid.NewGuid()}";
+        var uniqueTitle = $"CurrencyMismatch-{Guid.CreateVersion7()}";
         var createRequest = new CreateBookRequest
         {
             Id = Guid.CreateVersion7(),
@@ -183,7 +183,7 @@ public class RefitMartenRegressionTests
         // "the author filter works fine in the default tenant but not in other tenants"
 
         // Arrange
-        var tenantId = $"author-filter-test-{Guid.NewGuid():N}";
+        var tenantId = $"author-filter-test-{Guid.CreateVersion7():N}";
 
         await DatabaseHelpers.CreateTenantViaApiAsync(tenantId);
 
@@ -225,8 +225,8 @@ public class RefitMartenRegressionTests
         // Root cause suspect: GetAuthors cache key does not include TenantId.
 
         // Arrange
-        var tenantA = $"tenant-a-{Guid.NewGuid():N}";
-        var tenantB = $"tenant-b-{Guid.NewGuid():N}";
+        var tenantA = $"tenant-a-{Guid.CreateVersion7():N}";
+        var tenantB = $"tenant-b-{Guid.CreateVersion7():N}";
 
         await DatabaseHelpers.CreateTenantViaApiAsync(tenantA);
         await DatabaseHelpers.CreateTenantViaApiAsync(tenantB);

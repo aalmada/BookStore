@@ -13,7 +13,7 @@ public class MultiLanguageTranslationTests
     {
         // Arrange
         var client = await HttpClientHelpers.GetAuthenticatedClientAsync<IAuthorsClient>();
-        var authorName = "Translation Author " + Guid.NewGuid().ToString()[..8];
+        var authorName = "Translation Author " + Guid.CreateVersion7().ToString()[..8];
 
         var createRequest = new CreateAuthorRequest
         {
@@ -58,7 +58,7 @@ public class MultiLanguageTranslationTests
     {
         // Arrange
         var client = await HttpClientHelpers.GetAuthenticatedClientAsync<ICategoriesClient>();
-        var englishName = "English Cat " + Guid.NewGuid().ToString()[..8];
+        var englishName = "English Cat " + Guid.CreateVersion7().ToString()[..8];
 
         var createRequest = new CreateCategoryRequest
         {
@@ -102,7 +102,7 @@ public class MultiLanguageTranslationTests
         // 1. Create Book with Translations
         var client = await HttpClientHelpers.GetAuthenticatedClientAsync<IBooksClient>();
 
-        var title = "TransBook " + Guid.NewGuid().ToString()[..8];
+        var title = "TransBook " + Guid.CreateVersion7().ToString()[..8];
 
         var createRequest = new CreateBookRequest
         {

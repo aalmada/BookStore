@@ -84,7 +84,7 @@ public class AdminTenantTests
             RestService.For<ITenantsClient>(HttpClientHelpers.GetAuthenticatedClient(GlobalHooks.AdminAccessToken!));
 
         // Arrange
-        var tenantId = $"valid-tenant-{Guid.NewGuid():N}";
+        var tenantId = $"valid-tenant-{Guid.CreateVersion7():N}";
         var command = new CreateTenantCommand(
             Id: tenantId,
             Name: "Valid Tenant",
@@ -111,7 +111,7 @@ public class AdminTenantTests
             RestService.For<ITenantsClient>(HttpClientHelpers.GetAuthenticatedClient(GlobalHooks.AdminAccessToken!));
 
         // Arrange
-        var tenantId = $"verify-tenant-{Guid.NewGuid():N}";
+        var tenantId = $"verify-tenant-{Guid.CreateVersion7():N}";
         var adminEmail = FakeDataGenerators.GenerateFakeEmail();
         var command = new CreateTenantCommand(
             Id: tenantId,

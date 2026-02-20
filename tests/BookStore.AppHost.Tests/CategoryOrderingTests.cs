@@ -13,7 +13,7 @@ public class CategoryOrderingTests
     string _prefix = "";
 
     [Before(Test)]
-    public async Task Before() => _prefix = Guid.NewGuid().ToString("N")[..8];
+    public async Task Before() => _prefix = Guid.CreateVersion7().ToString("N")[^8..];
 
     [Test]
     public async Task GetCategories_OrderedByName_ShouldReturnInCorrectOrder()

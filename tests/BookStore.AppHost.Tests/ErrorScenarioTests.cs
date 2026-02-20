@@ -52,7 +52,7 @@ public class ErrorScenarioTests
     {
         // Arrange
         var client = RestService.For<IBooksClient>(HttpClientHelpers.GetUnauthenticatedClient());
-        var nonExistentId = Guid.NewGuid();
+        var nonExistentId = Guid.CreateVersion7();
 
         // Act & Assert
         var exception = await Assert.That(async () => await client.GetBookAsync(nonExistentId)).Throws<ApiException>();

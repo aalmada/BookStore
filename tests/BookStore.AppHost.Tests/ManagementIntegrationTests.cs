@@ -18,7 +18,7 @@ public class ManagementIntegrationTests
         var categoriesClient = await HttpClientHelpers.GetAuthenticatedClientAsync<ICategoriesClient>();
         var publishersClient = await HttpClientHelpers.GetAuthenticatedClientAsync<IPublishersClient>();
 
-        var suffix = Guid.NewGuid().ToString()[..8];
+        var suffix = Guid.CreateVersion7().ToString()[..8];
         var authorName = $"GetAll Auth {suffix}";
         var catName = $"GetAll Cat {suffix}";
         var pubName = $"GetAll Pub {suffix}";
@@ -93,7 +93,7 @@ public class ManagementIntegrationTests
         var categoriesClient = await HttpClientHelpers.GetAuthenticatedClientAsync<ICategoriesClient>();
         var publishersClient = await HttpClientHelpers.GetAuthenticatedClientAsync<IPublishersClient>();
 
-        var suffix = Guid.NewGuid().ToString()[..8];
+        var suffix = Guid.CreateVersion7().ToString()[..8];
         var authorName = $"SearchMatch Auth {suffix}";
         var catName = $"SearchMatch Cat {suffix}";
         var pubName = $"SearchMatch Pub {suffix}";
@@ -125,7 +125,7 @@ public class ManagementIntegrationTests
     {
         // Arrange
         var authorsClient = await HttpClientHelpers.GetAuthenticatedClientAsync<IAuthorsClient>();
-        var suffix = Guid.NewGuid().ToString()[..8];
+        var suffix = Guid.CreateVersion7().ToString()[..8];
         var authorName = $"Delete Auth {suffix}";
 
         var author = await AuthorHelpers.CreateAuthorAsync(authorsClient,
