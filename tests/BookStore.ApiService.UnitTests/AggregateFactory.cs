@@ -12,6 +12,7 @@ public static class AggregateFactory
     {
         var aggregate = (T)Activator.CreateInstance(typeof(T), true)!;
         var type = typeof(T);
+        long version = 0;
 
         foreach (var @event in events)
         {
@@ -23,6 +24,7 @@ public static class AggregateFactory
             if (applyMethod != null)
             {
                 _ = applyMethod.Invoke(aggregate, [@event]);
+                version++;
             }
             else
             {
@@ -30,6 +32,11 @@ public static class AggregateFactory
                     $"Aggregate {type.Name} does not have an Apply method for event type {@event.GetType().Name}");
             }
         }
+
+        // Mimic Marten's behaviour: Version equals the number of events applied
+        var versionProperty = type.GetProperty("Version",
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        versionProperty?.SetValue(aggregate, version);
 
         return aggregate;
     }

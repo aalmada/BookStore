@@ -71,23 +71,23 @@ public static class AuthorHelpers
 
     public static async Task<AuthorDto> DeleteAuthorAsync(IAuthorsClient client, AuthorDto author)
     {
-        var received = await SseEventHelpers.ExecuteAndWaitForEventAsync(
+        var etag = author.ETag;
+        if (string.IsNullOrEmpty(etag))
+        {
+            var latestAuthor = await client.GetAuthorAdminAsync(author.Id);
+            etag = latestAuthor?.ETag;
+        }
+
+        var version = BookStore.ApiService.Infrastructure.ETagHelper.ParseETag(etag) ?? 0;
+        var received = await SseEventHelpers.ExecuteAndWaitForEventWithVersionAsync(
             author.Id,
             "AuthorDeleted",
-            async () =>
-            {
-                var etag = author.ETag;
-                if (string.IsNullOrEmpty(etag))
-                {
-                    var latestAuthor = await client.GetAuthorAdminAsync(author.Id);
-                    etag = latestAuthor?.ETag;
-                }
+            async () => await client.SoftDeleteAuthorAsync(author.Id, etag),
+            TestConstants.DefaultEventTimeout,
+            minVersion: version + 1,
+            minTimestamp: DateTimeOffset.UtcNow);
 
-                await client.SoftDeleteAuthorAsync(author.Id, etag);
-            },
-            TestConstants.DefaultEventTimeout);
-
-        if (!received)
+        if (!received.Success)
         {
             throw new Exception("Failed to receive AuthorDeleted event after DeleteAuthor.");
         }
@@ -97,23 +97,23 @@ public static class AuthorHelpers
 
     public static async Task<AdminAuthorDto> DeleteAuthorAsync(IAuthorsClient client, AdminAuthorDto author)
     {
-        var received = await SseEventHelpers.ExecuteAndWaitForEventAsync(
+        var etag = author.ETag;
+        if (string.IsNullOrEmpty(etag))
+        {
+            var latestAuthor = await client.GetAuthorAdminAsync(author.Id);
+            etag = latestAuthor?.ETag;
+        }
+
+        var version = BookStore.ApiService.Infrastructure.ETagHelper.ParseETag(etag) ?? 0;
+        var received = await SseEventHelpers.ExecuteAndWaitForEventWithVersionAsync(
             author.Id,
             "AuthorDeleted",
-            async () =>
-            {
-                var etag = author.ETag;
-                if (string.IsNullOrEmpty(etag))
-                {
-                    var latestAuthor = await client.GetAuthorAdminAsync(author.Id);
-                    etag = latestAuthor?.ETag;
-                }
+            async () => await client.SoftDeleteAuthorAsync(author.Id, etag),
+            TestConstants.DefaultEventTimeout,
+            minVersion: version + 1,
+            minTimestamp: DateTimeOffset.UtcNow);
 
-                await client.SoftDeleteAuthorAsync(author.Id, etag);
-            },
-            TestConstants.DefaultEventTimeout);
-
-        if (!received)
+        if (!received.Success)
         {
             throw new Exception("Failed to receive AuthorDeleted event after DeleteAuthor.");
         }
@@ -123,19 +123,19 @@ public static class AuthorHelpers
 
     public static async Task<AuthorDto> RestoreAuthorAsync(IAuthorsClient client, AuthorDto author)
     {
-        var received = await SseEventHelpers.ExecuteAndWaitForEventAsync(
+        var latestAuthor = await client.GetAuthorAdminAsync(author.Id);
+        var etag = latestAuthor?.ETag;
+        var version = BookStore.ApiService.Infrastructure.ETagHelper.ParseETag(etag) ?? 0;
+
+        var received = await SseEventHelpers.ExecuteAndWaitForEventWithVersionAsync(
             author.Id,
             "AuthorUpdated",
-            async () =>
-            {
-                var latestAuthor = await client.GetAuthorAdminAsync(author.Id);
-                var etag = latestAuthor?.ETag;
+            async () => await client.RestoreAuthorAsync(author.Id, etag),
+            TestConstants.DefaultEventTimeout,
+            minVersion: version + 1,
+            minTimestamp: DateTimeOffset.UtcNow);
 
-                await client.RestoreAuthorAsync(author.Id, etag);
-            },
-            TestConstants.DefaultEventTimeout);
-
-        if (!received)
+        if (!received.Success)
         {
             throw new Exception("Failed to receive AuthorUpdated event after RestoreAuthor.");
         }
@@ -145,19 +145,19 @@ public static class AuthorHelpers
 
     public static async Task<AdminAuthorDto> RestoreAuthorAsync(IAuthorsClient client, AdminAuthorDto author)
     {
-        var received = await SseEventHelpers.ExecuteAndWaitForEventAsync(
+        var latestAuthor = await client.GetAuthorAdminAsync(author.Id);
+        var etag = latestAuthor?.ETag;
+        var version = BookStore.ApiService.Infrastructure.ETagHelper.ParseETag(etag) ?? 0;
+
+        var received = await SseEventHelpers.ExecuteAndWaitForEventWithVersionAsync(
             author.Id,
             "AuthorUpdated",
-            async () =>
-            {
-                var latestAuthor = await client.GetAuthorAdminAsync(author.Id);
-                var etag = latestAuthor?.ETag;
+            async () => await client.RestoreAuthorAsync(author.Id, etag),
+            TestConstants.DefaultEventTimeout,
+            minVersion: version + 1,
+            minTimestamp: DateTimeOffset.UtcNow);
 
-                await client.RestoreAuthorAsync(author.Id, etag);
-            },
-            TestConstants.DefaultEventTimeout);
-
-        if (!received)
+        if (!received.Success)
         {
             throw new Exception("Failed to receive AuthorUpdated event after RestoreAuthor.");
         }

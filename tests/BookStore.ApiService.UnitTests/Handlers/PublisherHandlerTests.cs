@@ -32,7 +32,7 @@ public class PublisherHandlerTests : HandlerTestBase
     public async Task UpdatePublisherHandler_ShouldAppendPublisherUpdatedEvent()
     {
         // Arrange
-        var command = new UpdatePublisher(Guid.CreateVersion7(), "O'Reilly Media Updated") { ETag = "test-etag" };
+        var command = new UpdatePublisher(Guid.CreateVersion7(), "O'Reilly Media Updated") { ETag = "\"1\"" };
 
         // Mock Stream State
         _ = Session.Events.FetchStreamStateAsync(command.Id).Returns(new Marten.Events.StreamState { Version = 1 });
