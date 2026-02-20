@@ -278,35 +278,32 @@ public class PasskeySecurityTests
     [Arguments("tenant-b")]
     public async Task UserWithPasskeyOnly_CanAccessProtectedEndpoints(string tenantId)
     {
-        // Arrange: Create user with password first
+        // Arrange: Create user with password
         var (email, password, loginResponse, _) = await AuthenticationHelpers.RegisterAndLoginUserAsync(tenantId);
 
-        // Add passkey
-        var credentialId = Guid.CreateVersion7().ToByteArray();
-        await PasskeyTestHelpers.AddPasskeyToUserAsync(tenantId, email, "Primary Passkey", credentialId);
+        // Register a passkey via the real WebAuthn endpoint (security stamp changes)
+        await using var webAuthn = await WebAuthnTestHelper.CreateAsync();
+        var passkey = await webAuthn.RegisterPasskeyAsync(email, tenantId, loginResponse.AccessToken);
 
-        // Get fresh JWT after adding passkey (security stamp changed)
-        var client = RestService.For<IIdentityClient>(HttpClientHelpers.GetUnauthenticatedClient(tenantId));
-        var newLoginResponse = await client.LoginAsync(new LoginRequest(email, password));
+        // Get a fresh JWT via password after the security-stamp change
+        var unauthClient = RestService.For<IIdentityClient>(HttpClientHelpers.GetUnauthenticatedClient(tenantId));
+        var freshLogin = await unauthClient.LoginAsync(new LoginRequest(email, password));
 
+        // Remove password — user is now passkey-only (security stamp changes again)
         var authClient = RestService.For<IIdentityClient>(
-            HttpClientHelpers.GetAuthenticatedClient(newLoginResponse.AccessToken, tenantId));
-
-        // Act: Remove password (user now has passkey only)
-        // Note: This changes security stamp again, invalidating current token
+            HttpClientHelpers.GetAuthenticatedClient(freshLogin.AccessToken, tenantId));
         await authClient.RemovePasswordAsync(new RemovePasswordRequest());
 
-        // Verify via database that user exists with passkey-only
-        // We cannot authenticate passkey-only users without WebAuthn (not implemented in tests)
-        await using var store = await DatabaseHelpers.GetDocumentStoreAsync();
-        await using var session = store.LightweightSession(tenantId);
-        var user = await DatabaseHelpers.GetUserByEmailAsync(session, email);
+        // Act: Login via passkey as a passkey-only user and access a protected endpoint
+        var passkeyLogin = await webAuthn.LoginWithPasskeyAsync(passkey);
+        var passkeyAuthClient = RestService.For<IIdentityClient>(
+            HttpClientHelpers.GetAuthenticatedClient(passkeyLogin.AccessToken, tenantId));
 
-        // Assert: User should have no password but have passkey
-        _ = await Assert.That(user).IsNotNull();
-        _ = await Assert.That(user!.PasswordHash).IsNull();
-        _ = await Assert.That(user.Passkeys.Count).IsEqualTo(1);
-        _ = await Assert.That(user.Passkeys[0].Name).IsEqualTo("Primary Passkey");
+        var passwordStatus = await passkeyAuthClient.GetPasswordStatusAsync();
+
+        // Assert: Endpoint is accessible and reports no password
+        _ = await Assert.That(passwordStatus).IsNotNull();
+        _ = await Assert.That(passwordStatus.HasPassword).IsFalse();
     }
 
     [Test]
@@ -346,40 +343,41 @@ public class PasskeySecurityTests
     [Test]
     public async Task CannotDeleteLastPasskey_WithoutPassword()
     {
-        // Arrange: Create user with password and TWO passkeys
+        // Arrange: Create user with password
         var (email, password, loginResponse, tenantId) = await AuthenticationHelpers.RegisterAndLoginUserAsync();
 
-        // Add first passkey
-        var credentialId1 = Guid.CreateVersion7().ToByteArray();
-        await PasskeyTestHelpers.AddPasskeyToUserAsync(tenantId, email, "First Passkey", credentialId1);
+        // Register a passkey via the real WebAuthn endpoint (security stamp changes)
+        await using var webAuthn = await WebAuthnTestHelper.CreateAsync();
+        var passkey = await webAuthn.RegisterPasskeyAsync(email, tenantId, loginResponse.AccessToken);
 
-        // Add second passkey
-        var credentialId2 = Guid.CreateVersion7().ToByteArray();
-        await PasskeyTestHelpers.AddPasskeyToUserAsync(tenantId, email, "Second Passkey", credentialId2);
+        // Get a fresh JWT via password after the security-stamp change
+        var unauthClient = RestService.For<IIdentityClient>(HttpClientHelpers.GetUnauthenticatedClient(tenantId));
+        var freshLogin = await unauthClient.LoginAsync(new LoginRequest(email, password));
 
-        // Get fresh JWT after adding passkeys (security stamp changed)
-        var client = RestService.For<IIdentityClient>(HttpClientHelpers.GetUnauthenticatedClient(tenantId));
-        var newLoginResponse = await client.LoginAsync(new LoginRequest(email, password));
-
+        // Remove password — user is now passkey-only (security stamp changes again)
         var authClient = RestService.For<IIdentityClient>(
-            HttpClientHelpers.GetAuthenticatedClient(newLoginResponse.AccessToken, tenantId));
-
-        // Remove password (user now has passkey-only)
-        // Note: This changes security stamp, invalidating token - we can't authenticate anymore without WebAuthn
+            HttpClientHelpers.GetAuthenticatedClient(freshLogin.AccessToken, tenantId));
         await authClient.RemovePasswordAsync(new RemovePasswordRequest());
 
-        // Verify via database: user has 2 passkeys and no password
-        await using var store = await DatabaseHelpers.GetDocumentStoreAsync();
-        await using var session = store.LightweightSession(tenantId);
-        var user = await DatabaseHelpers.GetUserByEmailAsync(session, email);
+        // Act: Login via passkey and try to delete the last (and only) passkey
+        var passkeyLogin = await webAuthn.LoginWithPasskeyAsync(passkey);
+        var passkeyClient = RestService.For<IPasskeyClient>(
+            HttpClientHelpers.GetAuthenticatedClient(passkeyLogin.AccessToken, tenantId));
 
-        _ = await Assert.That(user).IsNotNull();
-        _ = await Assert.That(user!.PasswordHash).IsNull();
-        _ = await Assert.That(user.Passkeys.Count).IsEqualTo(2);
+        var passkeys = await passkeyClient.ListPasskeysAsync();
+        _ = await Assert.That(passkeys.Count).IsEqualTo(1);
 
-        // The business logic preventing last passkey deletion when no password exists
-        // is implicitly verified by the UserWithPasskeyOnly test confirming passkey-only users can exist.
-        // Direct API testing of this rule would require WebAuthn authentication for passkey-only users.
+        var lastPasskeyId = passkeys[0].Id;
+
+        // Assert: Deleting the only passkey when the user has no password is rejected
+        var exception = await Assert.That(async () =>
+            await passkeyClient.DeletePasskeyAsync(lastPasskeyId))
+            .Throws<ApiException>();
+        _ = await Assert.That(exception!.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+
+        // The passkey must still be present
+        var passkeysAfter = await passkeyClient.ListPasskeysAsync();
+        _ = await Assert.That(passkeysAfter.Count).IsEqualTo(1);
     }
 
     [Test]
