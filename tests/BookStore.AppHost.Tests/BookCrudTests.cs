@@ -55,12 +55,17 @@ public class BookCrudTests
     {
         // Arrange
         var client = await HttpClientHelpers.GetAuthenticatedClientAsync<IBooksClient>();
+        var createRequest = FakeDataGenerators.GenerateFakeBookRequest();
 
         // Act
-        var createdBook = await BookHelpers.CreateBookAsync(client);
+        var createdBook = await BookHelpers.CreateBookAsync(client, createRequest);
 
-        // Assert
+        // Assert: verify the returned book reflects the creation request
         _ = await Assert.That(createdBook).IsNotNull();
+        _ = await Assert.That(createdBook.Id).IsEqualTo(createRequest.Id);
+        _ = await Assert.That(createdBook.Title).IsEqualTo(createRequest.Title);
+        _ = await Assert.That(createdBook.Isbn).IsEqualTo(createRequest.Isbn);
+        _ = await Assert.That(createdBook.Language).IsEqualTo(createRequest.Language);
     }
 
     [Test]

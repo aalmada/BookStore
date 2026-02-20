@@ -11,7 +11,7 @@ public class ValidationTests
     public async Task BookAggregate_Validation_ReturnsResult()
     {
         // Arrange
-        var id = Guid.NewGuid();
+        var id = Guid.CreateVersion7();
         var title = ""; // Invalid
         var isbn = "123"; // Invalid
 
@@ -38,7 +38,7 @@ public class ValidationTests
     public async Task AuthorAggregate_Validation_ReturnsResult()
     {
         // Arrange
-        var id = Guid.NewGuid();
+        var id = Guid.CreateVersion7();
         var name = ""; // Invalid
 
         // Act
@@ -54,7 +54,7 @@ public class ValidationTests
     public async Task CategoryAggregate_Validation_ReturnsResult()
     {
         // Arrange
-        var id = Guid.NewGuid();
+        var id = Guid.CreateVersion7();
 
         // Act
         var result = CategoryAggregate.CreateEvent(id, []);

@@ -49,7 +49,7 @@ public class BlobStorageTests
     public async Task UploadBookCoverAsync_ShouldUploadAndReturnUri()
     {
         // Arrange
-        var bookId = Guid.NewGuid();
+        var bookId = Guid.CreateVersion7();
         var content = new byte[] { 0x1, 0x2, 0x3, 0x4 };
         using var stream = new MemoryStream(content);
         var contentType = "image/jpeg";
@@ -75,7 +75,7 @@ public class BlobStorageTests
     public async Task GetBookCoverAsync_ShouldRetrieveContent()
     {
         // Arrange
-        var bookId = Guid.NewGuid();
+        var bookId = Guid.CreateVersion7();
         var content = new byte[] { 0xCA, 0xFE, 0xBA, 0xBE };
         using var stream = new MemoryStream(content);
         var contentType = "image/png";
@@ -97,7 +97,7 @@ public class BlobStorageTests
     public async Task GetBookCoverAsync_WhenBookDoesNotExist_ShouldThrowFileNotFoundException()
     {
         // Arrange
-        var bookId = Guid.NewGuid();
+        var bookId = Guid.CreateVersion7();
 
         // Act & Assert
         _ = await Assert.That(async () => await _blobStorageService!.GetBookCoverAsync(bookId))
@@ -109,7 +109,7 @@ public class BlobStorageTests
     public async Task DeleteBookCoverAsync_ShouldRemoveBlob()
     {
         // Arrange
-        var bookId = Guid.NewGuid();
+        var bookId = Guid.CreateVersion7();
         var content = new byte[] { 0xDE, 0xAD, 0xBE, 0xEF };
         using var stream = new MemoryStream(content);
         var contentType = "image/webp";

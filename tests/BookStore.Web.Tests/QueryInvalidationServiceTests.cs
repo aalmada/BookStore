@@ -15,7 +15,7 @@ public class QueryInvalidationServiceTests
     [Test]
     public async Task ShouldInvalidate_ReturnsTrue_WhenKeyMatches()
     {
-        var notification = new BookCreatedNotification(Guid.NewGuid(), Guid.NewGuid(), "Title", DateTimeOffset.UtcNow);
+        var notification = new BookCreatedNotification(Guid.CreateVersion7(), Guid.CreateVersion7(), "Title", DateTimeOffset.UtcNow);
         var keys = new[] { "Books" };
 
         var result = _sut.ShouldInvalidate(notification, keys);
@@ -26,8 +26,8 @@ public class QueryInvalidationServiceTests
     [Test]
     public async Task ShouldInvalidate_ReturnsTrue_WhenEntityKeyMatches()
     {
-        var bookId = Guid.NewGuid();
-        var notification = new BookUpdatedNotification(Guid.NewGuid(), bookId, "Title", DateTimeOffset.UtcNow);
+        var bookId = Guid.CreateVersion7();
+        var notification = new BookUpdatedNotification(Guid.CreateVersion7(), bookId, "Title", DateTimeOffset.UtcNow);
         var keys = new[] { $"Book:{bookId}" };
 
         var result = _sut.ShouldInvalidate(notification, keys);
@@ -38,8 +38,8 @@ public class QueryInvalidationServiceTests
     [Test]
     public async Task ShouldInvalidate_ReturnsFalse_WhenNoKeyMatches()
     {
-        var bookId = Guid.NewGuid();
-        var notification = new BookUpdatedNotification(Guid.NewGuid(), bookId, "Title", DateTimeOffset.UtcNow);
+        var bookId = Guid.CreateVersion7();
+        var notification = new BookUpdatedNotification(Guid.CreateVersion7(), bookId, "Title", DateTimeOffset.UtcNow);
         var keys = new[] { "Authors" };
 
         var result = _sut.ShouldInvalidate(notification, keys);
@@ -50,8 +50,8 @@ public class QueryInvalidationServiceTests
     [Test]
     public async Task ShouldInvalidate_UserVerified_MatchesUserKey()
     {
-        var userId = Guid.NewGuid();
-        var notification = new UserVerifiedNotification(Guid.NewGuid(), userId, "email@example.com", DateTimeOffset.UtcNow);
+        var userId = Guid.CreateVersion7();
+        var notification = new UserVerifiedNotification(Guid.CreateVersion7(), userId, "email@example.com", DateTimeOffset.UtcNow);
         var keys = new[] { $"User:{userId}" };
 
         var result = _sut.ShouldInvalidate(notification, keys);
@@ -123,7 +123,7 @@ public class QueryInvalidationServiceTests
 
         if (type == typeof(Guid))
         {
-            return Guid.NewGuid();
+            return Guid.CreateVersion7();
         }
 
         if (type == typeof(DateTimeOffset))

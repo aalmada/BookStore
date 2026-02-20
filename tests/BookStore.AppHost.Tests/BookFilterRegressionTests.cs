@@ -14,7 +14,7 @@ public class BookFilterRegressionTests
     public async Task SearchBooks_InNonDefaultTenant_ShouldRespectAuthorFilter()
     {
         // Debugging Multi-Tenant Author Filter
-        var tenantId = $"book-filter-test-{Guid.NewGuid():N}";
+        var tenantId = $"book-filter-test-{Guid.CreateVersion7():N}";
 
         // Seed Tenant via API
         await DatabaseHelpers.CreateTenantViaApiAsync(tenantId);
@@ -69,7 +69,7 @@ public class BookFilterRegressionTests
         var authClient = await HttpClientHelpers.GetAuthenticatedClientAsync<IBooksClient>();
         var publicClient = RestService.For<IBooksClient>(HttpClientHelpers.GetUnauthenticatedClient());
 
-        var uniqueTitle = $"MultiCurrency-{Guid.NewGuid()}";
+        var uniqueTitle = $"MultiCurrency-{Guid.CreateVersion7()}";
         // Create book with: USD=10, EUR=50
         var createRequest = new CreateBookRequest
         {
@@ -119,7 +119,7 @@ public class BookFilterRegressionTests
         var authClient = await HttpClientHelpers.GetAuthenticatedClientAsync<IBooksClient>();
         var publicClient = RestService.For<IBooksClient>(HttpClientHelpers.GetUnauthenticatedClient());
 
-        var uniqueTitle = $"SaleBook-{Guid.NewGuid()}";
+        var uniqueTitle = $"SaleBook-{Guid.CreateVersion7()}";
         // Create book with Price=50 USD
         var createRequest = new CreateBookRequest
         {

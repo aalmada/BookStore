@@ -20,9 +20,9 @@ public class CorrelationTests
 
         var httpClient = await HttpClientHelpers.GetAuthenticatedClientAsync();
 
-        var correlationId = Guid.NewGuid().ToString();
+        var correlationId = Guid.CreateVersion7().ToString();
         var fakeBookId =
-            Guid.NewGuid(); // Random ID, it will fail conceptually but event should be stored or rejected, 
+            Guid.CreateVersion7(); // Random ID, it will fail conceptually but event should be stored or rejected, 
         // actually better to use a real action that succeeds to guarantee persistence.
         // Let's use AddToCart which doesn't check for book existence in the aggregate *before* stream load?
         // Actually UserCommandHandler loads user profile.
@@ -124,7 +124,7 @@ public class CorrelationTests
 
         var httpClient = await HttpClientHelpers.GetAuthenticatedClientAsync();
 
-        var fakeBookId = Guid.NewGuid();
+        var fakeBookId = Guid.CreateVersion7();
 
         var request = new HttpRequestMessage(HttpMethod.Post, $"/api/books/{fakeBookId}/rating");
         request.Content = JsonContent.Create(new { Rating = 4 });

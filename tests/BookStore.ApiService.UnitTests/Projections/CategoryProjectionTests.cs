@@ -11,7 +11,7 @@ public class CategoryProjectionTests
     public async Task Create_ShouldInitializeProjectionFromEvent()
     {
         // Arrange
-        var id = Guid.NewGuid();
+        var id = Guid.CreateVersion7();
         var timestamp = DateTimeOffset.UtcNow;
         var @event = new CategoryAdded(
             id,
@@ -41,7 +41,7 @@ public class CategoryProjectionTests
         // Arrange
         var projection = new CategoryProjection
         {
-            Id = Guid.NewGuid(),
+            Id = Guid.CreateVersion7(),
             Names = new Dictionary<string, string> { ["en"] = "Old Tech" }
         };
 

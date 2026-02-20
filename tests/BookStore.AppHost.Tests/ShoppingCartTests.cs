@@ -161,7 +161,7 @@ public class ShoppingCartTests
 
         // Act & Assert
         var exception = await Assert
-            .That(() => client.AddToCartAsync(new AddToCartClientRequest(Guid.NewGuid(), quantity)))
+            .That(() => client.AddToCartAsync(new AddToCartClientRequest(Guid.CreateVersion7(), quantity)))
             .Throws<ApiException>();
         _ = await Assert.That(exception!.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
         var error = await exception.GetContentAsAsync<AuthenticationHelpers.ErrorResponse>();
@@ -189,7 +189,7 @@ public class ShoppingCartTests
         // Act & Assert - Add to cart
         try
         {
-            await client.AddToCartAsync(new AddToCartClientRequest(Guid.NewGuid(), 1));
+            await client.AddToCartAsync(new AddToCartClientRequest(Guid.CreateVersion7(), 1));
             Assert.Fail("Should have thrown ApiException");
         }
         catch (ApiException ex)
@@ -200,7 +200,7 @@ public class ShoppingCartTests
         // Act & Assert - Update cart item
         try
         {
-            await client.UpdateCartItemAsync(Guid.NewGuid(), new UpdateCartItemClientRequest(5));
+            await client.UpdateCartItemAsync(Guid.CreateVersion7(), new UpdateCartItemClientRequest(5));
             Assert.Fail("Should have thrown ApiException");
         }
         catch (ApiException ex)
@@ -211,7 +211,7 @@ public class ShoppingCartTests
         // Act & Assert - Remove from cart
         try
         {
-            await client.RemoveFromCartAsync(Guid.NewGuid());
+            await client.RemoveFromCartAsync(Guid.CreateVersion7());
             Assert.Fail("Should have thrown ApiException");
         }
         catch (ApiException ex)

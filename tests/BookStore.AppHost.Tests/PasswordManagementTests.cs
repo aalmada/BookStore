@@ -195,7 +195,7 @@ public class PasswordManagementTests
             _ = await Assert.That(user).IsNotNull();
 
             user!.Passkeys.Add(new UserPasskeyInfo(
-                Guid.NewGuid().ToByteArray(), // credentialId
+                Guid.CreateVersion7().ToByteArray(), // credentialId
                 [], // publicKey
                 DateTimeOffset.UtcNow, // createdAt
                 0, // signCount

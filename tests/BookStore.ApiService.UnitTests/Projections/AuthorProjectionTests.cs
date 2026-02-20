@@ -11,7 +11,7 @@ public class AuthorProjectionTests
     public async Task Create_ShouldInitializeProjectionFromEvent()
     {
         // Arrange
-        var id = Guid.NewGuid();
+        var id = Guid.CreateVersion7();
         var timestamp = DateTimeOffset.UtcNow;
         var @event = new AuthorAdded(
             id,
@@ -43,7 +43,7 @@ public class AuthorProjectionTests
         // Arrange
         var projection = new AuthorProjection
         {
-            Id = Guid.NewGuid(),
+            Id = Guid.CreateVersion7(),
             Name = "Old Name",
             Biographies = new Dictionary<string, string> { ["en"] = "Old Bio" }
         };

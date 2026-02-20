@@ -30,7 +30,7 @@ public class TenantUserIsolationTests
         var createRequest = new CreateBookRequest
         {
             Id = Guid.CreateVersion7(),
-            Title = $"TenantBook-{Guid.NewGuid()}",
+            Title = $"TenantBook-{Guid.CreateVersion7()}",
             Isbn = "1234567890",
             Language = "en",
             Translations =
@@ -79,7 +79,7 @@ public class TenantUserIsolationTests
         var createRequest = new CreateBookRequest
         {
             Id = Guid.CreateVersion7(),
-            Title = $"FavBook-{Guid.NewGuid()}",
+            Title = $"FavBook-{Guid.CreateVersion7()}",
             Isbn = "1234567890",
             Language = "en",
             Translations =
@@ -131,7 +131,7 @@ public class TenantUserIsolationTests
         var createRequest = new CreateBookRequest
         {
             Id = Guid.CreateVersion7(),
-            Title = $"CartBook-{Guid.NewGuid()}",
+            Title = $"CartBook-{Guid.CreateVersion7()}",
             Isbn = "1234567890",
             Language = "en",
             Translations =
@@ -183,7 +183,7 @@ public class TenantUserIsolationTests
             var createRequest = new CreateBookRequest
             {
                 Id = Guid.CreateVersion7(),
-                Title = $"IsoBook-{tid}-{Guid.NewGuid()}",
+                Title = $"IsoBook-{tid}-{Guid.CreateVersion7()}",
                 Isbn = "1234567890",
                 Language = "en",
                 Translations =

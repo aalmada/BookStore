@@ -61,7 +61,7 @@ public static class AuthenticationHelpers
         var actualTenantId = tenantId ?? StorageConstants.DefaultTenantId;
         publicClient.DefaultRequestHeaders.Add("X-Tenant-ID", actualTenantId);
 
-        var email = $"user_{Guid.NewGuid()}@example.com";
+        var email = $"user_{Guid.CreateVersion7()}@example.com";
         var password = FakeDataGenerators.GenerateFakePassword();
 
         // Register

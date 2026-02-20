@@ -14,9 +14,9 @@ public class BookSearchProjectionTests
     public async Task Create_ShouldInitializeProjectionAndLoadDenormalizedData()
     {
         // Arrange
-        var id = Guid.NewGuid();
-        var publisherId = Guid.NewGuid();
-        var authorId = Guid.NewGuid();
+        var id = Guid.CreateVersion7();
+        var publisherId = Guid.CreateVersion7();
+        var authorId = Guid.CreateVersion7();
 
         var @event = new BookAdded(
             id,
@@ -68,10 +68,10 @@ public class BookSearchProjectionTests
     public async Task Apply_ShouldUpdateProjectionAndReloadDenormalizedData()
     {
         // Arrange
-        var projection = new BookSearchProjection { Id = Guid.NewGuid(), Title = "Old Title" };
+        var projection = new BookSearchProjection { Id = Guid.CreateVersion7(), Title = "Old Title" };
 
-        var publisherId = Guid.NewGuid();
-        var authorId = Guid.NewGuid();
+        var publisherId = Guid.CreateVersion7();
+        var authorId = Guid.CreateVersion7();
 
         var @event = new BookUpdated(
             projection.Id,
@@ -134,7 +134,7 @@ public class BookSearchProjectionTests
     public async Task Apply_BookSaleScheduled_ShouldAddSale()
     {
         // Arrange
-        var projection = new BookSearchProjection { Id = Guid.NewGuid() };
+        var projection = new BookSearchProjection { Id = Guid.CreateVersion7() };
         var sale = new BookSale(10m, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddDays(1));
         var @event = new BookSaleScheduled(projection.Id, sale);
 
@@ -156,7 +156,7 @@ public class BookSearchProjectionTests
     public async Task Apply_BookSaleScheduled_WithExistingOverlap_ShouldReplace()
     {
         // Arrange
-        var projection = new BookSearchProjection { Id = Guid.NewGuid() };
+        var projection = new BookSearchProjection { Id = Guid.CreateVersion7() };
         var start = DateTimeOffset.UtcNow;
         var existingSale = new BookSale(10m, start, start.AddDays(1));
         projection.Sales.Add(existingSale);
@@ -183,7 +183,7 @@ public class BookSearchProjectionTests
     public async Task Apply_BookSaleCancelled_ShouldRemoveSale()
     {
         // Arrange
-        var projection = new BookSearchProjection { Id = Guid.NewGuid() };
+        var projection = new BookSearchProjection { Id = Guid.CreateVersion7() };
         var start = DateTimeOffset.UtcNow;
         var sale = new BookSale(10m, start, start.AddDays(1));
         projection.Sales.Add(sale);
@@ -207,7 +207,7 @@ public class BookSearchProjectionTests
     public async Task Apply_BookDiscountUpdated_ShouldRecalculateCurrentPrices()
     {
         // Arrange
-        var id = Guid.NewGuid();
+        var id = Guid.CreateVersion7();
         var projection = new BookSearchProjection
         {
             Id = id,
@@ -236,7 +236,7 @@ public class BookSearchProjectionTests
     public async Task Apply_BookDiscountUpdated_WithZeroDiscount_ShouldResetToOriginalPrices()
     {
         // Arrange
-        var id = Guid.NewGuid();
+        var id = Guid.CreateVersion7();
         var projection = new BookSearchProjection
         {
             Id = id,
@@ -263,7 +263,7 @@ public class BookSearchProjectionTests
     public async Task Apply_BookUpdated_ShouldPreserveDiscount()
     {
         // Arrange
-        var id = Guid.NewGuid();
+        var id = Guid.CreateVersion7();
         var projection = new BookSearchProjection
         {
             Id = id,

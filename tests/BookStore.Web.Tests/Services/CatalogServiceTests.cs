@@ -16,7 +16,7 @@ public class CatalogServiceTests
     CatalogService _sut = null!;
 
     BookDto CreateBookDto(Guid id = default, bool isFavorite = false, int userRating = 0) => new(
-            Id: id == default ? Guid.NewGuid() : id,
+            Id: id == default ? Guid.CreateVersion7() : id,
             Title: "Test Book",
             Isbn: "1234567890",
             Language: "en",

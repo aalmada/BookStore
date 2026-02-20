@@ -21,7 +21,7 @@ public class UpdateTests
 
         var updateRequest = new UpdateAuthorRequest
         {
-            Name = $"Updated Author {Guid.NewGuid()}",
+            Name = $"Updated Author {Guid.CreateVersion7()}",
             Translations = new Dictionary<string, AuthorTranslationDto>
             {
                 ["en"] = new("Updated Biography EN"),

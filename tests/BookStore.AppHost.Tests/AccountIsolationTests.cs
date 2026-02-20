@@ -59,31 +59,6 @@ public class AccountIsolationTests
     }
 
     [Test]
-    public async Task User_RegisteredOnTenantA_CannotLoginOnTenantB_Reverse()
-    {
-        // Arrange: two fresh isolated tenants and a unique user
-        var tenantA = FakeDataGenerators.GenerateFakeTenantId();
-        var tenantB = FakeDataGenerators.GenerateFakeTenantId();
-        await DatabaseHelpers.CreateTenantViaApiAsync(tenantA);
-        await DatabaseHelpers.CreateTenantViaApiAsync(tenantB);
-
-        var userEmail = FakeDataGenerators.GenerateFakeEmail();
-        var password = FakeDataGenerators.GenerateFakePassword();
-
-        var clientA = RestService.For<IIdentityClient>(HttpClientHelpers.GetUnauthenticatedClient(tenantA));
-        var clientB = RestService.For<IIdentityClient>(HttpClientHelpers.GetUnauthenticatedClient(tenantB));
-
-        // Act 1: Register user on tenant B
-        _ = await clientB.RegisterAsync(new RegisterRequest(userEmail, password));
-
-        // Act 2: Attempt login on tenant A with same credentials
-        var exception = await Assert.That(async () =>
-            await clientA.LoginAsync(new LoginRequest(userEmail, password)))
-            .Throws<ApiException>();
-        _ = await Assert.That(exception!.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
-    }
-
-    [Test]
     public async Task User_RegisteredOnDefault_CannotLoginOnAnotherTenant()
     {
         // Arrange: a fresh non-default tenant and a unique user

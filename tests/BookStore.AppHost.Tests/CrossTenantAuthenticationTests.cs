@@ -77,9 +77,11 @@ public class CrossTenantAuthenticationTests
     [Test]
     [Arguments("tenant-a", "tenant-b")]
     [Arguments("tenant-b", "tenant-a")]
-    public async Task Passkey_RegisteredInSourceTenant_FailsAuthenticationInTargetTenant(string sourceTenant, string targetTenant)
+    public async Task Passkey_ListWithCrossTenantJWT_IsRejected(string sourceTenant, string targetTenant)
     {
-        // Arrange: Create user with passkey in source tenant
+        // Arrange: Create a user with a passkey in the source tenant.
+        // This test verifies that a JWT issued for the source tenant is REJECTED when used
+        // to list passkeys on the target tenant — it does NOT test passkey-based login.
         var (email, password, loginResponse, _) = await AuthenticationHelpers.RegisterAndLoginUserAsync(sourceTenant);
         var credentialId = Guid.CreateVersion7().ToByteArray();
         await PasskeyTestHelpers.AddPasskeyToUserAsync(sourceTenant, email, "Test Passkey", credentialId);
@@ -88,19 +90,19 @@ public class CrossTenantAuthenticationTests
         var identityClient = RestService.For<IIdentityClient>(HttpClientHelpers.GetUnauthenticatedClient(sourceTenant));
         var refreshedResponse = await identityClient.LoginAsync(new LoginRequest(email, password));
 
-        // Get passkey list from source tenant to verify it exists
+        // Verify passkey exists in source tenant
         var sourcePasskeyClient = RestService.For<IPasskeyClient>(
             HttpClientHelpers.GetAuthenticatedClient(refreshedResponse.AccessToken, sourceTenant));
         var sourcePasskeys = await sourcePasskeyClient.ListPasskeysAsync();
         _ = await Assert.That(sourcePasskeys.Any(p => p.Name == "Test Passkey")).IsTrue();
 
-        // Act: Try to list passkeys in target tenant using source tenant JWT
+        // Act: Send a source-tenant JWT to a target-tenant passkey endpoint.
         var targetPasskeyClient = RestService.For<IPasskeyClient>(
             HttpClientHelpers.GetAuthenticatedClient(refreshedResponse.AccessToken, targetTenant));
 
         var exception = await Assert.That(async () => await targetPasskeyClient.ListPasskeysAsync()).Throws<ApiException>();
 
-        // Assert: Should be rejected due to tenant mismatch
+        // Assert: Cross-tenant JWT must be rejected (403 Forbidden or 401 Unauthorized).
         var isRejected = exception!.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.Unauthorized;
         _ = await Assert.That(isRejected).IsTrue();
     }

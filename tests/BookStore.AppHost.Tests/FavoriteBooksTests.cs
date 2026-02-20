@@ -112,11 +112,11 @@ public class FavoriteBooksTests
 
         // Create books with specific titles for sorting
         var requestA = FakeDataGenerators.GenerateFakeBookRequest();
-        requestA.Title = $"AAA Book {Guid.NewGuid()}";
+        requestA.Title = $"AAA Book {Guid.CreateVersion7()}";
         var bookA = await BookHelpers.CreateBookAsync(adminClient, requestA);
 
         var requestZ = FakeDataGenerators.GenerateFakeBookRequest();
-        requestZ.Title = $"ZZZ Book {Guid.NewGuid()}";
+        requestZ.Title = $"ZZZ Book {Guid.CreateVersion7()}";
         var bookZ = await BookHelpers.CreateBookAsync(adminClient, requestZ);
 
         // Add to favorites
