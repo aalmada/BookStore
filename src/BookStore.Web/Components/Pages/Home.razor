@@ -24,15 +24,28 @@
 
 <PageTitle>@TenantService.CurrentTenantName - Discover Your Next Great Read</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.ExtraExtraLarge" Class="mt-6">
-@* Hero Section *@
-<MudPaper Elevation="0" Class="pa-6 mb-6" Style="background: var(--mud-palette-primary); color: var(--mud-palette-primary-text); border-radius: 16px;">
-    <MudText Typo="Typo.h3" Color="Color.Inherit" Class="mb-2">
-        <MudIcon Icon="@Icons.Material.Filled.MenuBook" Size="Size.Large"/> @TenantService.CurrentTenantName
-    </MudText>
-    <MudText Typo="Typo.h6" Color="Color.Inherit" Style="opacity: 0.9;">
-        @TenantService.CurrentTenantTagline
-    </MudText>
+<MudContainer MaxWidth="MaxWidth.ExtraExtraLarge">
+@* ─── Hero Section ──────────────────────────────────────────────────── *@
+<MudPaper Elevation="0" Class="mb-6 hero-banner"
+          Style="@((!string.IsNullOrEmpty(TenantService.CurrentTenantHeroBannerUrl)
+              ? $"background: url('{TenantService.CurrentTenantHeroBannerUrl}') center/cover no-repeat"
+              : $"background: linear-gradient(135deg, {TenantService.CurrentTenantPrimaryColor} 0%, {TenantService.CurrentTenantSecondaryColor} 100%)")
+              + "; border-radius: 20px; overflow: hidden; min-height: 320px; position: relative; display: flex; align-items: flex-end;")">
+    @* overlay for readability over images *@
+    <div class="hero-overlay" style="position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.1) 60%); border-radius: 20px;"></div>
+    <div style="position: relative; z-index: 1; padding: 2.5rem;">
+        <MudText Typo="Typo.h3" Style="color: #fff; font-weight: 700; letter-spacing: -0.03em; text-shadow: 0 2px 12px rgba(0,0,0,0.35);" Class="mb-2">
+            @TenantService.CurrentTenantName
+        </MudText>
+        <MudText Typo="Typo.h6" Style="color: rgba(255,255,255,0.88); font-weight: 400;" Class="mb-4">
+            @TenantService.CurrentTenantTagline
+        </MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Surface" Size="Size.Large"
+                   StartIcon="@Icons.Material.Filled.MenuBook"
+                   Style="font-weight: 600; border-radius: 50px; padding: 0 1.75rem;">
+            Browse Books
+        </MudButton>
+    </div>
 </MudPaper>
 
 <MudGrid Spacing="6">
@@ -226,7 +239,7 @@
             @foreach (var book in pagedBooks.Items)
             {
                 <MudItem xs="12" sm="6" md="4" lg="4">
-                    <MudCard Elevation="2" Class="@($"book-card {(book.IsDeleted ? "deleted-book" : "")}")" Style="height: 100%; border-radius: 12px; transition: all 0.3s ease; position: relative; overflow: hidden;">
+                    <MudCard Elevation="1" Class="@($"book-card {(book.IsDeleted ? "deleted-book" : "")}")" Style="height: 100%; transition: all 0.25s ease; position: relative; overflow: hidden;">
                         @* Heart Overlay *@
                         <AuthorizeView>
                             <Authorized>

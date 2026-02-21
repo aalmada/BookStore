@@ -2,8 +2,9 @@
 
 @if (Sale != null)
 {
-    <MudChip T="string" Color="Color.Error" Size="Size.Small" Class="ml-2 font-weight-bold">
-        SAVE @Sale.Value.Percentage.ToString("0")%
+    <MudChip T="string" Color="Color.Error" Size="Size.Small" Class="ml-2 font-weight-bold"
+             Icon="@Icons.Material.Filled.LocalOffer" Style="font-weight: 700; letter-spacing: 0.03em;">
+        -@Sale.Value.Percentage.ToString("0")%
     </MudChip>
 }
 
