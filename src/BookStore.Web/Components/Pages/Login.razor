@@ -16,16 +16,44 @@
 
 <PageTitle>Login - BookStore</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Small" Class="mt-8">
-    <MudPaper Elevation="4" Class="pa-8" Style="border-radius: 12px;">
-        <MudText Typo="Typo.h4" Align="Align.Center" Class="mb-6">
-            <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Large" Class="mr-2"/>
-            Login
-        </MudText>
+<div class="auth-page">
+<MudGrid Spacing="0" Style="min-height: calc(100vh - 64px);">
+    @* ─── Left Brand Panel ───────────────────────────────────────────── *@
+    <MudItem xs="12" md="6"
+             Style="@($"background: linear-gradient(160deg, {TenantService.CurrentTenantPrimaryColor} 0%, {TenantService.CurrentTenantSecondaryColor} 100%); display: flex; align-items: center; justify-content: center; padding: 3rem;")">
+        <MudStack AlignItems="AlignItems.Center" Spacing="4" Style="text-align: center;">
+            @if (!string.IsNullOrEmpty(TenantService.CurrentTenantLogoUrl))
+            {
+                <img src="@TenantService.CurrentTenantLogoUrl" alt="@TenantService.CurrentTenantName"
+                     style="max-height: 80px; object-fit: contain;"
+                     onerror="this.style.display='none'"/>
+            }
+            else
+            {
+                <MudIcon Icon="@Icons.Material.Filled.MenuBook" Style="font-size: 5rem; color: rgba(255,255,255,0.9);"/>
+            }
+            <MudText Typo="Typo.h3" Style="color: #fff; font-weight: 700; letter-spacing: -0.02em;">
+                @TenantService.CurrentTenantName
+            </MudText>
+            @if (!string.IsNullOrEmpty(TenantService.CurrentTenantTagline))
+            {
+                <MudText Typo="Typo.h6" Style="color: rgba(255,255,255,0.8); font-weight: 400; max-width: 340px;">
+                    @TenantService.CurrentTenantTagline
+                </MudText>
+            }
+        </MudStack>
+    </MudItem>
 
-        <MudText Typo="Typo.h6" Align="Align.Center" Color="Color.Primary" Class="mb-6">
-            @TenantService.CurrentTenantName
-        </MudText>
+    @* ─── Right Form Panel ──────────────────────────────────────────── *@
+    <MudItem xs="12" md="6" Style="display: flex; align-items: center; justify-content: center; padding: 3rem;">
+        <MudPaper Elevation="0" Class="pa-8" Style="width: 100%; max-width: 480px; border-radius: 16px;">
+            <MudText Typo="Typo.h5" Align="Align.Center" Class="mb-2" Style="font-weight: 700;">
+                <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Medium" Class="mr-2"/>
+                Welcome back
+            </MudText>
+            <MudText Typo="Typo.body2" Align="Align.Center" Color="Color.Secondary" Class="mb-6">
+                Sign in to continue to @TenantService.CurrentTenantName
+            </MudText>
 
         @if (!string.IsNullOrEmpty(errorMessage))
         {
@@ -121,8 +149,10 @@
             Don't have an account?
             <MudLink Href="/register" Color="Color.Primary">Register here</MudLink>
         </MudText>
-    </MudPaper>
-</MudContainer>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+</div>
 
 @code {
     MudForm? form;
