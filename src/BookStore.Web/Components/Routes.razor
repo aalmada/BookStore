@@ -1,6 +1,7 @@
 ﻿@using BookStore.Web.Services
 @inject TenantService TenantService
 @inject ThemeService ThemeInfo
+@inject IJSRuntime JS
 @implements IDisposable
 
 <MudThemeProvider @ref="_mudThemeProvider" @bind-IsDarkMode="_isDarkMode" Theme="@_currentTheme"/>
@@ -19,6 +20,7 @@
     private MudTheme _currentTheme = new();
     private bool _isDarkMode;
     private MudThemeProvider _mudThemeProvider = null!;
+    private bool _jsAvailable;
 
     protected override async Task OnInitializedAsync()
     {
@@ -32,6 +34,8 @@
     {
         if (firstRender)
         {
+            _jsAvailable = true;
+            await LoadGoogleFontAsync();
             await ApplyThemeAsync();
         }
     }
@@ -68,31 +72,86 @@
 
     private void UpdateTheme()
     {
+        var fontFamily = new[] { TenantService.CurrentTenantFontFamily, "Helvetica", "Arial", "sans-serif" };
+        var borderRadius = TenantService.CurrentTenantBorderRadiusStyle switch
+        {
+            "sharp" => "4px",
+            "default" => "8px",
+            "pill" => "28px",
+            _ => "14px" // "rounded"
+        };
+
         _currentTheme = new MudTheme
         {
             PaletteLight = new PaletteLight
             {
                 Primary = TenantService.CurrentTenantPrimaryColor,
-                AppbarBackground = TenantService.CurrentTenantPrimaryColor
+                Secondary = TenantService.CurrentTenantSecondaryColor,
+                AppbarBackground = TenantService.CurrentTenantPrimaryColor,
+                AppbarText = "#FFFFFF",
+                Success = TenantService.CurrentTenantSuccessColor,
+                Error = TenantService.CurrentTenantErrorColor,
+                Background = "#F8F9FA",
+                Surface = "#FFFFFF",
+                DrawerBackground = "#FFFFFF",
+                DrawerText = "rgba(0,0,0,0.87)",
+                TextPrimary = "rgba(0,0,0,0.87)",
+                TextSecondary = "rgba(0,0,0,0.60)"
             },
             PaletteDark = new PaletteDark
             {
                 Primary = TenantService.CurrentTenantPrimaryColor,
+                Secondary = TenantService.CurrentTenantSecondaryColor,
                 AppbarBackground = "#1e1e2d",
+                AppbarText = "rgba(255,255,255,0.90)",
+                Success = TenantService.CurrentTenantSuccessColor,
+                Error = TenantService.CurrentTenantErrorColor,
                 Background = "#121212",
                 Surface = "#1e1e2d",
                 DrawerBackground = "#121212",
-                TextPrimary = "rgba(255,255,255, 0.90)",
-                TextSecondary = "rgba(255,255,255, 0.70)",
+                DrawerText = "rgba(255,255,255,0.87)",
+                TextPrimary = "rgba(255,255,255,0.90)",
+                TextSecondary = "rgba(255,255,255,0.70)",
                 ActionDefault = "#adadb1",
-                ActionDisabled = "rgba(255,255,255, 0.26)",
-                ActionDisabledBackground = "rgba(255,255,255, 0.12)",
-                Divider = "rgba(255,255,255, 0.12)",
-                LinesDefault = "rgba(255,255,255, 0.12)",
-                TableLines = "rgba(255,255,255, 0.12)"
+                ActionDisabled = "rgba(255,255,255,0.26)",
+                ActionDisabledBackground = "rgba(255,255,255,0.12)",
+                Divider = "rgba(255,255,255,0.12)",
+                LinesDefault = "rgba(255,255,255,0.12)",
+                TableLines = "rgba(255,255,255,0.12)"
+            },
+            Typography = new Typography
+            {
+                Default = new DefaultTypography
+                {
+                    FontFamily = fontFamily
+                }
+            },
+            LayoutProperties = new LayoutProperties
+            {
+                DefaultBorderRadius = borderRadius
             }
         };
+
+        if (_jsAvailable)
+        {
+            _ = LoadGoogleFontAsync();
+        }
+
         StateHasChanged();
+    }
+
+    private async Task LoadGoogleFontAsync()
+    {
+        try
+        {
+            var module = await JS.InvokeAsync<IJSObjectReference>("import", "/js/theme.js");
+            await module.InvokeVoidAsync("loadGoogleFont", TenantService.CurrentTenantFontFamily);
+            await module.DisposeAsync();
+        }
+        catch
+        {
+            // Ignore JS errors during prerendering or SSR
+        }
     }
 
     public void Dispose()
