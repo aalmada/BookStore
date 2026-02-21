@@ -1,0 +1,92 @@
+/* ─── Book Card ──────────────────────────────────────────────────── */
+/* ::deep removes scope so the rule applies inside child MudCard component */
+::deep .book-card {
+    cursor: pointer;
+    transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1),
+                box-shadow 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+::deep .book-card:hover {
+    transform: translateY(-8px) scale(1.01);
+    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.25) !important;
+}
+
+/* Cover area - rendered directly in Home.razor, so scoping works */
+.book-cover {
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+/* Dark gradient fade at the bottom of actual cover images */
+.book-cover::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.45), transparent);
+    pointer-events: none;
+}
+
+/* No-cover generated placeholder */
+.book-cover-generated {
+    position: relative;
+    overflow: hidden;
+    height: 240px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 1.25rem 1rem;
+}
+
+/* Large decorative letter in generated covers */
+.book-cover-letter {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -55%);
+    font-size: 9rem;
+    font-weight: 900;
+    color: rgba(255, 255, 255, 0.1);
+    line-height: 1;
+    user-select: none;
+    pointer-events: none;
+    letter-spacing: -0.05em;
+}
+
+/* ─── Hover "View Details" overlay ─────────────────────────────── */
+/* Both .book-cover and .book-view-overlay are in Home.razor scope */
+.book-view-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    z-index: 5;
+    backdrop-filter: blur(2px);
+    text-decoration: none;
+}
+
+.book-cover:hover .book-view-overlay {
+    opacity: 1;
+}
+
+/* ─── Filter sidebar ─────────────────────────────────────────────── */
+.filter-panel {
+    position: sticky;
+    top: 20px;
+}
+
+/* ─── Results header ────────────────────────────────────────────── */
+.results-count-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 600;
+}
