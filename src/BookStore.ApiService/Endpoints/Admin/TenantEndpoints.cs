@@ -35,7 +35,9 @@ public static class TenantEndpoints
 
         var tenants = await session.Query<Tenant>()
             .OrderBy(t => t.Id)
-            .Select(t => new TenantInfoDto(t.Id, t.Name, t.Tagline, t.ThemePrimaryColor, t.IsEnabled))
+            .Select(t => new TenantInfoDto(t.Id, t.Name, t.Tagline, t.ThemePrimaryColor, t.IsEnabled, null,
+                t.ThemeSecondaryColor, t.LogoUrl, t.FontFamily, t.BorderRadiusStyle,
+                t.HeroBannerUrl, t.SuccessColor, t.ErrorColor))
             .ToListAsync(ct);
 
         return Results.Ok(tenants);
@@ -100,6 +102,13 @@ public static class TenantEndpoints
             Name = request.Name,
             Tagline = request.Tagline,
             ThemePrimaryColor = request.ThemePrimaryColor,
+            ThemeSecondaryColor = request.ThemeSecondaryColor,
+            LogoUrl = request.LogoUrl,
+            FontFamily = request.FontFamily,
+            BorderRadiusStyle = request.BorderRadiusStyle,
+            HeroBannerUrl = request.HeroBannerUrl,
+            SuccessColor = request.SuccessColor,
+            ErrorColor = request.ErrorColor,
             IsEnabled = request.IsEnabled,
             CreatedAt = DateTimeOffset.UtcNow
         };
@@ -154,6 +163,13 @@ public static class TenantEndpoints
         tenant.Name = request.Name;
         tenant.Tagline = request.Tagline;
         tenant.ThemePrimaryColor = request.ThemePrimaryColor;
+        tenant.ThemeSecondaryColor = request.ThemeSecondaryColor;
+        tenant.LogoUrl = request.LogoUrl;
+        tenant.FontFamily = request.FontFamily;
+        tenant.BorderRadiusStyle = request.BorderRadiusStyle;
+        tenant.HeroBannerUrl = request.HeroBannerUrl;
+        tenant.SuccessColor = request.SuccessColor;
+        tenant.ErrorColor = request.ErrorColor;
         tenant.IsEnabled = request.IsEnabled;
         tenant.UpdatedAt = DateTimeOffset.UtcNow;
 
