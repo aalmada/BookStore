@@ -73,6 +73,13 @@ public class TenantService : IDisposable
         "Discover your next great read from our curated collection";
 
     public string CurrentTenantPrimaryColor { get; private set; } = "#594AE2";
+    public string CurrentTenantSecondaryColor { get; private set; } = "#FF6B35";
+    public string? CurrentTenantLogoUrl { get; private set; }
+    public string CurrentTenantFontFamily { get; private set; } = "Inter";
+    public string CurrentTenantBorderRadiusStyle { get; private set; } = "rounded";
+    public string? CurrentTenantHeroBannerUrl { get; private set; }
+    public string CurrentTenantSuccessColor { get; private set; } = "#2ECC71";
+    public string CurrentTenantErrorColor { get; private set; } = "#E74C3C";
     public bool IsLoading { get; private set; }
     public List<TenantInfoDto> AvailableTenants { get; private set; } = [];
 
@@ -158,6 +165,18 @@ public class TenantService : IDisposable
             CurrentTenantTagline = info.Tagline ?? "Discover your next great read from our curated collection";
             CurrentTenantPrimaryColor =
                 !string.IsNullOrEmpty(info.ThemePrimaryColor) ? info.ThemePrimaryColor : "#594AE2";
+            CurrentTenantSecondaryColor =
+                !string.IsNullOrEmpty(info.ThemeSecondaryColor) ? info.ThemeSecondaryColor! : "#FF6B35";
+            CurrentTenantLogoUrl = info.LogoUrl;
+            CurrentTenantFontFamily =
+                !string.IsNullOrEmpty(info.FontFamily) ? info.FontFamily! : "Inter";
+            CurrentTenantBorderRadiusStyle =
+                !string.IsNullOrEmpty(info.BorderRadiusStyle) ? info.BorderRadiusStyle! : "rounded";
+            CurrentTenantHeroBannerUrl = info.HeroBannerUrl;
+            CurrentTenantSuccessColor =
+                !string.IsNullOrEmpty(info.SuccessColor) ? info.SuccessColor! : "#2ECC71";
+            CurrentTenantErrorColor =
+                !string.IsNullOrEmpty(info.ErrorColor) ? info.ErrorColor! : "#E74C3C";
 
             // Save to localStorage
             await _localStorage.SetItemAsStringAsync("selected-tenant", tenantId, cancellationToken);
@@ -192,6 +211,13 @@ public class TenantService : IDisposable
                 CurrentTenantName = "BookStore";
                 CurrentTenantTagline = "Discover your next great read from our curated collection";
                 CurrentTenantPrimaryColor = "#594AE2";
+                CurrentTenantSecondaryColor = "#FF6B35";
+                CurrentTenantLogoUrl = null;
+                CurrentTenantFontFamily = "Inter";
+                CurrentTenantBorderRadiusStyle = "rounded";
+                CurrentTenantHeroBannerUrl = null;
+                CurrentTenantSuccessColor = "#2ECC71";
+                CurrentTenantErrorColor = "#E74C3C";
             }
 
             return ex.ToResult();

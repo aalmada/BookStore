@@ -1,19 +1,28 @@
 ﻿<MudNavMenu>
-    <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Books</MudNavLink>
-    <AuthorizeView Roles="Admin">
-        <MudNavLink Href="admin/authors" Icon="@Icons.Material.Filled.Person">Authors</MudNavLink>
-        <MudNavLink Href="admin/publishers" Icon="@Icons.Material.Filled.Business">Publishers</MudNavLink>
-        <MudNavLink Href="admin/categories" Icon="@Icons.Material.Filled.Category">Categories</MudNavLink>
-        <MudNavLink Href="admin/sales" Icon="@Icons.Material.Filled.AttachMoney">Sales</MudNavLink>
-    </AuthorizeView>
+    <MudTooltip Text="Books" Placement="Placement.Right">
+        <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.MenuBook">Books</MudNavLink>
+    </MudTooltip>
+
     <AuthorizeView>
-        <MudNavLink Href="cart" Icon="@Icons.Material.Filled.ShoppingCart">Cart</MudNavLink>
+        <MudTooltip Text="My Cart" Placement="Placement.Right">
+            <MudNavLink Href="cart" Icon="@Icons.Material.Filled.ShoppingCart">My Cart</MudNavLink>
+        </MudTooltip>
     </AuthorizeView>
+
     <AuthorizeView Roles="Admin">
-        <MudNavLink Href="admin/books" Icon="@Icons.Material.Filled.Book">Books</MudNavLink>
-        <MudNavLink Href="admin/users" Icon="@Icons.Material.Filled.Group">Users</MudNavLink>
+        <MudNavGroup Title="Admin" Icon="@Icons.Material.Filled.AdminPanelSettings" Expanded="false">
+            <MudNavLink Href="admin/books" Icon="@Icons.Material.Filled.LibraryBooks">Manage Books</MudNavLink>
+            <MudNavLink Href="admin/authors" Icon="@Icons.Material.Filled.Person">Authors</MudNavLink>
+            <MudNavLink Href="admin/publishers" Icon="@Icons.Material.Filled.Business">Publishers</MudNavLink>
+            <MudNavLink Href="admin/categories" Icon="@Icons.Material.Filled.Category">Categories</MudNavLink>
+            <MudNavLink Href="admin/sales" Icon="@Icons.Material.Filled.LocalOffer">Sales</MudNavLink>
+            <MudNavLink Href="admin/users" Icon="@Icons.Material.Filled.Group">Users</MudNavLink>
+        </MudNavGroup>
     </AuthorizeView>
+
     <AuthorizeView Policy="SystemAdmin">
-        <MudNavLink Href="admin/tenants" Icon="@Icons.Material.Filled.Settings">Tenants</MudNavLink>
+        <MudTooltip Text="Tenants" Placement="Placement.Right">
+            <MudNavLink Href="admin/tenants" Icon="@Icons.Material.Filled.Domain">Tenants</MudNavLink>
+        </MudTooltip>
     </AuthorizeView>
 </MudNavMenu>

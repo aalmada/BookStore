@@ -26,7 +26,9 @@ public static class TenantInfoEndpoints
         var tenants = await session.Query<Tenant>()
             .Where(t => t.IsEnabled)
             .OrderBy(t => t.Id)
-            .Select(t => new TenantInfoDto(t.Id, t.Name, t.Tagline, t.ThemePrimaryColor))
+            .Select(t => new TenantInfoDto(t.Id, t.Name, t.Tagline, t.ThemePrimaryColor, true, null,
+                t.ThemeSecondaryColor, t.LogoUrl, t.FontFamily, t.BorderRadiusStyle,
+                t.HeroBannerUrl, t.SuccessColor, t.ErrorColor))
             .ToListAsync(ct);
 
         return Results.Ok(tenants);
@@ -47,6 +49,8 @@ public static class TenantInfoEndpoints
             return Results.NotFound();
         }
 
-        return Results.Ok(new TenantInfoDto(tenant.Id, tenant.Name, tenant.Tagline, tenant.ThemePrimaryColor));
+        return Results.Ok(new TenantInfoDto(tenant.Id, tenant.Name, tenant.Tagline, tenant.ThemePrimaryColor, tenant.IsEnabled, null,
+            tenant.ThemeSecondaryColor, tenant.LogoUrl, tenant.FontFamily, tenant.BorderRadiusStyle,
+            tenant.HeroBannerUrl, tenant.SuccessColor, tenant.ErrorColor));
     }
 }

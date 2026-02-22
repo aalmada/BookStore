@@ -24,24 +24,34 @@
 
 <PageTitle>@TenantService.CurrentTenantName - Discover Your Next Great Read</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.ExtraExtraLarge" Class="mt-6">
-@* Hero Section *@
-<MudPaper Elevation="0" Class="pa-6 mb-6" Style="background: var(--mud-palette-primary); color: var(--mud-palette-primary-text); border-radius: 16px;">
-    <MudText Typo="Typo.h3" Color="Color.Inherit" Class="mb-2">
-        <MudIcon Icon="@Icons.Material.Filled.MenuBook" Size="Size.Large"/> @TenantService.CurrentTenantName
-    </MudText>
-    <MudText Typo="Typo.h6" Color="Color.Inherit" Style="opacity: 0.9;">
-        @TenantService.CurrentTenantTagline
-    </MudText>
+<MudContainer MaxWidth="MaxWidth.ExtraExtraLarge">
+@* ─── Hero Section ──────────────────────────────────────────────────── *@
+<MudPaper Elevation="0" Class="mb-6 hero-banner"
+          Style="@((!string.IsNullOrEmpty(TenantService.CurrentTenantHeroBannerUrl)
+              ? $"background: url('{TenantService.CurrentTenantHeroBannerUrl}') center/cover no-repeat"
+              : $"background: linear-gradient(135deg, {TenantService.CurrentTenantPrimaryColor} 0%, {TenantService.CurrentTenantSecondaryColor} 100%)")
+              + "; border-radius: 20px; overflow: hidden; min-height: 320px; position: relative; display: flex; align-items: flex-end;")">
+    @* overlay for readability over images *@
+    <div class="hero-overlay" style="position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.1) 60%); border-radius: 20px;"></div>
+    <div style="position: relative; z-index: 1; padding: 2.5rem;">
+        <MudText Typo="Typo.h3" Style="color: #fff; font-weight: 700; letter-spacing: -0.03em; text-shadow: 0 2px 12px rgba(0,0,0,0.35);" Class="mb-2">
+            @TenantService.CurrentTenantName
+        </MudText>
+        <MudText Typo="Typo.h6" Style="color: rgba(255,255,255,0.88); font-weight: 400;" Class="mb-4">
+            @TenantService.CurrentTenantTagline
+        </MudText>
+    </div>
 </MudPaper>
 
 <MudGrid Spacing="6">
 @* Filters Sidebar *@
 <MudItem xs="12" md="3">
-    <MudPaper Class="pa-4 mb-6" Elevation="2" Style="border-radius: 12px; position: sticky; top: 20px;">
-        <MudText Typo="Typo.h6" Class="mb-4">
-            <MudIcon Icon="@Icons.Material.Filled.FilterList" Class="mr-2"/> Filters
-        </MudText>
+    <MudPaper Class="pa-4 mb-6 filter-panel" Elevation="2" Style="border-radius: 16px;">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+            <MudText Typo="Typo.h6" Style="font-weight: 700; letter-spacing: -0.01em;">
+                <MudIcon Icon="@Icons.Material.Filled.Tune" Class="mr-1"/> Filters
+            </MudText>
+        </MudStack>
 
         <MudStack Spacing="3">
             @* Sort *@
@@ -121,23 +131,20 @@
 @* Main Content *@
 <MudItem xs="12" md="9">
     @* Search Bar *@
-    <MudPaper Elevation="2" Class="pa-4 mb-6" Style="border-radius: 12px;">
-        <MudTextField @bind-Value="searchQuery"
-                      Label="Search books"
-                      Placeholder="Search by title, author, ISBN, or publisher..."
-                      Variant="Variant.Outlined"
-                      Adornment="Adornment.End"
-                      AdornmentIcon="@Icons.Material.Filled.Search"
-                      AdornmentColor="Color.Primary"
-                      OnAdornmentClick="SearchBooks"
-                      OnKeyUp="OnSearchKeyUp"
-                      Clearable="true"
-                      OnClearButtonClick="ClearSearch"
-                      Immediate="true"
-                      FullWidth="true"
-                      UserAttributes="@(new Dictionary<string, object> { { "aria-label", "Search books" } })"
-                      Class="mud-text-field-large"/>
-    </MudPaper>
+    <MudTextField @bind-Value="searchQuery"
+                  Placeholder="Search by title, author, ISBN, or publisher..."
+                  Variant="Variant.Outlined"
+                  Adornment="Adornment.End"
+                  AdornmentIcon="@Icons.Material.Filled.Search"
+                  AdornmentColor="Color.Primary"
+                  OnAdornmentClick="SearchBooks"
+                  OnKeyUp="OnSearchKeyUp"
+                  Clearable="true"
+                  OnClearButtonClick="ClearSearch"
+                  Immediate="true"
+                  FullWidth="true"
+                  UserAttributes="@(new Dictionary<string, object> { { "aria-label", "Search books" } })"
+                  Style="margin-bottom: 24px;"/>
 
     @if (isLoading && pagedBooks == null)
     {
@@ -169,12 +176,19 @@
     else if (pagedBooks != null)
     {
         @* Results Info *@
-        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
-            <MudText Typo="Typo.body2" Color="Color.Secondary">
-                Showing @pagedBooks.Items.Count of @pagedBooks.TotalItemCount books
+        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-3">
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="results-count-badge">
+                <MudText Typo="Typo.body2" Color="Color.Primary" Style="font-weight: 700; display: inline;">
+                    @pagedBooks.Items.Count
+                </MudText>
+                &nbsp;of&nbsp;
+                <MudText Typo="Typo.body2" Color="Color.Primary" Style="font-weight: 700; display: inline;">
+                    @pagedBooks.TotalItemCount
+                </MudText>
+                &nbsp;books
                 @if (!string.IsNullOrWhiteSpace(searchQuery))
                 {
-                    <MudChip T="string" Size="Size.Small" Color="Color.Primary" Class="ml-2">@searchQuery</MudChip>
+                    <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled" Class="ml-2">@searchQuery</MudChip>
                 }
             </MudText>
             <MudSpacer/>
@@ -198,26 +212,16 @@
             @* Optimistic books (being saved) *@
             @foreach (var optimisticBook in OptimisticService.GetOptimisticBooks())
             {
-                <MudItem xs="12" sm="6" md="4" lg="4">
-                    <MudCard Elevation="4" Class="optimistic-card" Style="height: 100%; border-radius: 12px;">
-                        <MudPaper Elevation="0" Height="200px" Style="background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); display: flex; align-items: center; justify-content: center;">
-                            <MudIcon Icon="@Icons.Material.Filled.MenuBook" Size="Size.Large" Color="Color.Secondary" Style="font-size: 4rem;"/>
-                        </MudPaper>
-                        <MudCardContent>
-                            <MudText Typo="Typo.h6" Class="mb-2">@optimisticBook.Title</MudText>
-                            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-1">
-                                <MudIcon Icon="@UIConstants.Icons.Author" Size="Size.Small" Class="mr-1"/> @optimisticBook.AuthorNames
-                            </MudText>
-                            @if (!string.IsNullOrWhiteSpace(optimisticBook.PublisherName))
-                            {
-                                <MudText Typo="Typo.body2" Color="Color.Secondary">
-                                    <MudIcon Icon="@UIConstants.Icons.Publisher" Size="Size.Small" Class="mr-1"/> @optimisticBook.PublisherName
-                                </MudText>
-                            }
+                <MudItem xs="12" sm="6" md="4" lg="3">
+                    <MudCard Elevation="2" Class="optimistic-card" Style="height: 100%; border-radius: 16px; overflow: hidden;">
+                        <div style="@($"background: linear-gradient({GetBookGradient(optimisticBook.Title, optimisticBook.AuthorNames)}); height: 240px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding: 1.25rem 1rem; position: relative;")">
+                            <span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-55%);font-size:9rem;font-weight:900;color:rgba(255,255,255,0.1);line-height:1;user-select:none;">@(optimisticBook.Title?.FirstOrDefault().ToString().ToUpperInvariant())</span>
+                            <MudText Style="color:#fff;font-weight:700;font-size:1.05rem;text-align:center;text-shadow:0 2px 10px rgba(0,0,0,0.4);line-height:1.3;z-index:1;" Class="mb-1 line-clamp-2">@optimisticBook.Title</MudText>
+                            <MudText Style="color:rgba(255,255,255,0.75);font-size:0.78rem;text-align:center;z-index:1;">@optimisticBook.AuthorNames</MudText>
+                        </div>
+                        <MudCardContent Class="pa-3">
+                            <MudChip T="string" Size="Size.Small" Color="Color.Info" Icon="@Icons.Material.Filled.CloudUpload" Variant="Variant.Filled">Saving...</MudChip>
                         </MudCardContent>
-                        <MudCardActions>
-                            <MudChip T="string" Size="Size.Small" Color="Color.Info" Icon="@Icons.Material.Filled.CloudUpload">Saving...</MudChip>
-                        </MudCardActions>
                     </MudCard>
                 </MudItem>
             }
@@ -225,105 +229,133 @@
             @* Actual books from server *@
             @foreach (var book in pagedBooks.Items)
             {
-                <MudItem xs="12" sm="6" md="4" lg="4">
-                    <MudCard Elevation="2" Class="@($"book-card {(book.IsDeleted ? "deleted-book" : "")}")" Style="height: 100%; border-radius: 12px; transition: all 0.3s ease; position: relative; overflow: hidden;">
-                        @* Heart Overlay *@
-                        <AuthorizeView>
-                            <Authorized>
-                                <MudIconButton Icon="@(book.IsFavorite ? UIConstants.Icons.Favorite : UIConstants.Icons.FavoriteBorder)"
-                                               Color="@(book.IsFavorite ? Color.Error : Color.Default)"
-                                               OnClick="@(() => ToggleFavorite(book))"
-                                               Class="favorite-overlay"
-                                               aria-label="@(book.IsFavorite ? "Remove from favorites" : "Add to favorites")"
-                                               Style="position: absolute; top: 12px; right: 12px; z-index: 10; background-color: rgba(255,255,255,0.8); backdrop-filter: blur(4px);"
-                                               Size="Size.Medium"/>
-                            </Authorized>
-                        </AuthorizeView>
+                <MudItem xs="12" sm="6" md="4" lg="3">
+                    <MudCard Elevation="2" Class="@($"book-card {(book.IsDeleted ? "deleted-book" : "")}")"
+                             Style="height: 100%; border-radius: 16px; overflow: hidden; display: flex; flex-direction: column;">
 
-                        @* Deleted Overlay/Badge *@
-                        @if (book.IsDeleted)
-                        {
-                            <MudChip T="string" Color="Color.Error" Size="Size.Small" Class="deleted-badge"
-                                     Style="position: absolute; top: 12px; left: 12px; z-index: 10;">
-                                DELETED
-                            </MudChip>
-                        }
+                        @* ── Cover ─────────────────────────────────────── *@
+                        <div class="book-cover" style="height: 240px; flex-shrink: 0;">
+                            @* Hover overlay *@
+                            <a href="@($"/book/{book.Id}")" class="book-view-overlay" aria-label="View @book.Title">
+                                <MudPaper Elevation="4" Style="background: rgba(255,255,255,0.15); border-radius: 50px; padding: 0.5rem 1.5rem; backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.3);">
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                        <MudIcon Icon="@Icons.Material.Filled.Visibility" Style="color:#fff; font-size:1.1rem;"/>
+                                        <MudText Style="color:#fff; font-weight:600; font-size:0.9rem;">View Details</MudText>
+                                    </MudStack>
+                                </MudPaper>
+                            </a>
 
-                        @if (!string.IsNullOrEmpty(book.CoverImageUrl))
-                        {
-                            <MudImage Src="@book.CoverImageUrl" Alt="@book.Title" ObjectFit="@ObjectFit.Cover" Height="200" Fluid="true" Class="rounded-lg"/>
-                        }
-                        else
-                        {
-                            <MudPaper Elevation="0" Height="200px" Style="background: var(--mud-palette-primary); color: var(--mud-palette-primary-text); display: flex; align-items: center; justify-content: center;">
-                                <MudIcon Icon="@UIConstants.Icons.Book" Size="Size.Large" Color="Color.Inherit" Style="font-size: 4rem;"/>
-                            </MudPaper>
-                        }
-                        <MudCardContent>
-                            <MudText Typo="Typo.h6" Class="mb-2" Style="min-height: 3rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
-                                @book.Title
-                            </MudText>
-                            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-1">
-                                <MudIcon Icon="@UIConstants.Icons.Author" Size="Size.Small" Class="mr-1"/> @string.Join(", ", book.Authors.Select(a => a.Name))
-                            </MudText>
-                            @if (book.Categories?.Count > 0)
+                            @* Favorite button *@
+                            <AuthorizeView>
+                                <Authorized>
+                                    <MudIconButton Icon="@(book.IsFavorite ? UIConstants.Icons.Favorite : UIConstants.Icons.FavoriteBorder)"
+                                                   Color="@(book.IsFavorite ? Color.Error : Color.Default)"
+                                                   OnClick="@(() => ToggleFavorite(book))"
+                                                   aria-label="@(book.IsFavorite ? "Remove from favorites" : "Add to favorites")"
+                                                   Style="position: absolute; top: 10px; right: 10px; z-index: 10; background: rgba(0,0,0,0.4); border-radius: 50%; backdrop-filter: blur(4px);"
+                                                   Size="Size.Small"/>
+                                </Authorized>
+                            </AuthorizeView>
+
+                            @* Deleted badge *@
+                            @if (book.IsDeleted)
                             {
-                                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-1">
-                                    <MudIcon Icon="@UIConstants.Icons.Category" Size="Size.Small" Class="mr-1"/>
-                                    @foreach (var category in book.Categories)
-                                    {
-                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" Class="mr-1">@category.Name</MudChip>
-                                    }
-                                </MudText>
+                                <MudChip T="string" Color="Color.Error" Size="Size.Small"
+                                         Style="position: absolute; top: 10px; left: 10px; z-index: 10;">
+                                    DELETED
+                                </MudChip>
                             }
-                            @if (book.Publisher != null)
+
+                            @* Sale badge *@
+                            @if (book.ActiveSale != null)
                             {
-                                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-1">
-                                    <MudIcon Icon="@UIConstants.Icons.Publisher" Size="Size.Small" Class="mr-1"/> @book.Publisher.Name
-                                </MudText>
-                            }
-                            @if (book.PublicationDate.HasValue)
-                            {
-                                <MudText Typo="Typo.body2" Color="Color.Secondary">
-                                    <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small"/> @book.PublicationDate.Value.Year
-                                </MudText>
-                            }
-                            @if (book.ActiveSale != null && book.Prices != null && book.Prices.TryGetValue(CurrencyService.CurrentCurrency, out var originalPrice))
-                            {
-                                var discountedPrice = book.ActiveSale.Value.CalculateDiscountedPrice(originalPrice);
-                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mt-2">
-                                    <MudText Typo="Typo.body2" Style="text-decoration: line-through; color: var(--mud-palette-text-secondary); opacity: 0.7;">
-                                        @CurrencyService.FormatPrice(originalPrice)
-                                    </MudText>
-                                    <MudText Typo="Typo.h6" Color="Color.Error" Class="font-weight-bold">
-                                        @CurrencyService.FormatPrice(discountedPrice)
-                                    </MudText>
+                                <div style="position: absolute; bottom: 10px; left: 10px; z-index: 6;">
                                     <BookSaleBadge Sale="@book.ActiveSale"/>
-                                </MudStack>
+                                </div>
+                            }
+
+                            @if (!string.IsNullOrEmpty(book.CoverImageUrl))
+                            {
+                                <img src="@book.CoverImageUrl" alt="@book.Title"
+                                     style="width: 100%; height: 240px; object-fit: cover; display: block;"/>
                             }
                             else
                             {
-                                <MudText Typo="Typo.h6" Color="Color.Primary" Class="mt-2 font-weight-bold">
-                                    @CurrencyService.FormatPrice(book.Prices)
-                                </MudText>
+                                @* Generated gradient cover *@
+                                <div class="book-cover-generated"
+                                     style="@($"background: linear-gradient({GetBookGradient(book.Title, book.Authors.FirstOrDefault()?.Name)});")">
+                                    <span class="book-cover-letter">@(book.Title.FirstOrDefault().ToString().ToUpperInvariant())</span>
+                                    <MudText Style="color: #fff; font-weight: 700; font-size: 1.05rem; text-align: center; text-shadow: 0 2px 10px rgba(0,0,0,0.4); line-height: 1.3; z-index: 1;"
+                                             Class="mb-1 line-clamp-2">
+                                        @book.Title
+                                    </MudText>
+                                    <MudText Style="color: rgba(255,255,255,0.75); font-size: 0.78rem; text-align: center; z-index: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%;">
+                                        @string.Join(", ", book.Authors.Take(2).Select(a => a.Name))
+                                    </MudText>
+                                </div>
                             }
-                        </MudCardContent>
-                        <MudCardActions>
-                            <MudButton Href="@($"/book/{book.Id}")" Variant="Variant.Text" Color="Color.Primary" FullWidth="true" StartIcon="@Icons.Material.Filled.Visibility">
-                                View Details
-                            </MudButton>
-                            <MudSpacer/>
-                            @if (book.RatingCount > 0)
+                        </div>
+
+                        @* ── Content ───────────────────────────────────── *@
+                        <MudCardContent Class="pa-3" Style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
+                            <MudText Typo="Typo.subtitle1"
+                                     Style="font-weight: 600; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.7rem;">
+                                @book.Title
+                            </MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary"
+                                     Style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.8rem;">
+                                @string.Join(", ", book.Authors.Select(a => a.Name))
+                            </MudText>
+
+                            @if (book.Categories?.Count > 0)
                             {
-                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                                    <MudIcon Icon="@UIConstants.Icons.Star" Color="Color.Warning" Size="Size.Small"/>
-                                    <MudText Typo="Typo.caption">@book.AverageRating.ToString("F1")</MudText>
-                                </MudStack>
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
+                                         Style="margin: 0; height: 20px; font-size: 0.7rem; border-radius: 4px;">
+                                    @book.Categories.First().Name
+                                </MudChip>
                             }
-                            <MudChip T="string" Size="Size.Small" Icon="@UIConstants.Icons.Favorite" Color="Color.Error" Variant="Variant.Text">
-                                @book.LikeCount
-                            </MudChip>
-                        </MudCardActions>
+
+                            <MudSpacer/>
+
+                            @* Price row *@
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mt-1">
+                                @if (book.ActiveSale != null && book.Prices != null && book.Prices.TryGetValue(CurrencyService.CurrentCurrency, out var originalPrice))
+                                {
+                                    var discountedPrice = book.ActiveSale.Value.CalculateDiscountedPrice(originalPrice);
+                                    <MudStack Row="true" AlignItems="AlignItems.Baseline" Spacing="1">
+                                        <MudText Typo="Typo.body2" Style="text-decoration: line-through; opacity: 0.5; font-size: 0.78rem;">
+                                            @CurrencyService.FormatPrice(originalPrice)
+                                        </MudText>
+                                        <MudText Color="Color.Error" Style="font-weight: 700; font-size: 1.05rem;">
+                                            @CurrencyService.FormatPrice(discountedPrice)
+                                        </MudText>
+                                    </MudStack>
+                                }
+                                else
+                                {
+                                    <MudText Color="Color.Primary" Style="font-weight: 700; font-size: 1.05rem;">
+                                        @CurrencyService.FormatPrice(book.Prices)
+                                    </MudText>
+                                }
+
+                                @if (book.RatingCount > 0)
+                                {
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="0">
+                                        <MudIcon Icon="@UIConstants.Icons.Star" Color="Color.Warning" Size="Size.Small"/>
+                                        <MudText Typo="Typo.caption" Style="font-weight: 600;">
+                                            @book.AverageRating.ToString("F1")
+                                        </MudText>
+                                    </MudStack>
+                                }
+                                else if (book.LikeCount > 0)
+                                {
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="0">
+                                        <MudIcon Icon="@UIConstants.Icons.Favorite" Color="Color.Error" Size="Size.Small"/>
+                                        <MudText Typo="Typo.caption">@book.LikeCount</MudText>
+                                    </MudStack>
+                                }
+                            </MudStack>
+                        </MudCardContent>
                     </MudCard>
                 </MudItem>
             }
@@ -713,6 +745,33 @@
     {
         // Clean up stale optimistic books every 5 seconds
         cleanupTimer = new System.Threading.Timer(_ => { OptimisticService.CleanupStaleBooks(); }, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+    }
+
+    /// <summary>Returns a deterministic CSS gradient string based on hashed book title + author.</summary>
+    private static string GetBookGradient(string? title, string? author = null)
+    {
+        var key = (title ?? "") + (author ?? "");
+        var hash = (uint)Math.Abs(key.GetHashCode());
+        ReadOnlySpan<string> palettes =
+        [
+            "135deg, #667eea 0%, #764ba2 100%",
+            "135deg, #f093fb 0%, #f5576c 100%",
+            "135deg, #4facfe 0%, #00f2fe 100%",
+            "135deg, #43e97b 0%, #38f9d7 100%",
+            "160deg, #fa709a 0%, #fee140 100%",
+            "135deg, #a18cd1 0%, #fbc2eb 100%",
+            "160deg, #fd7043 0%, #cc2b5e 100%",
+            "135deg, #11998e 0%, #38ef7d 100%",
+            "135deg, #ee0979 0%, #ff6a00 100%",
+            "135deg, #0575e6 0%, #021b79 100%",
+            "160deg, #f7971e 0%, #ffd200 100%",
+            "135deg, #373b44 0%, #4286f4 100%",
+            "160deg, #c94b4b 0%, #4b134f 100%",
+            "135deg, #2c3e50 0%, #3498db 100%",
+            "160deg, #134e5e 0%, #71b280 100%",
+            "135deg, #1a1a2e 0%, #0f3460 100%",
+        ];
+        return palettes[(int)(hash % (uint)palettes.Length)];
     }
 
 

@@ -41,7 +41,10 @@
                 <MudText Typo="Typo.body2" Color="Color.Secondary">@context.Tagline</MudText>
             </MudTd>
             <MudTd DataLabel="Theme">
-                <div style='@($"width: 24px; height: 24px; border-radius: 50%; background-color: {context.ThemePrimaryColor ?? "#594AE2"}; border: 1px solid #ccc;")'></div>
+                <MudStack Row="true" Spacing="1">
+                    <div style='@($"width: 24px; height: 24px; border-radius: 50%; background-color: {context.ThemePrimaryColor ?? "#594AE2"}; border: 1px solid #ccc;")' title="Primary"></div>
+                    <div style='@($"width: 24px; height: 24px; border-radius: 50%; background-color: {context.ThemeSecondaryColor ?? "#FF6B35"}; border: 1px solid #ccc;")' title="Secondary"></div>
+                </MudStack>
             </MudTd>
             <MudTd DataLabel="Status">
                 <MudChip T="string" Color="@(context.IsEnabled ? Color.Success : Color.Error)" Size="Size.Small">
@@ -88,6 +91,35 @@
                 <MudTextField @bind-Value="_model.Tagline" Label="Tagline" HelperText="A catchy tagline for the tenant's homepage"/>
 
                 <MudColorPicker @bind-Text="_model.ThemePrimaryColor" Label="Primary Color" ColorPickerView="ColorPickerView.Palette" HelperText="Main color used for branding and themes"/>
+
+                <MudDivider Class="my-2"/>
+                <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">Branding &amp; Appearance</MudText>
+
+                <MudColorPicker @bind-Text="_model.ThemeSecondaryColor" Label="Secondary Color" ColorPickerView="ColorPickerView.Palette" HelperText="Accent color for buttons and highlights"/>
+                <MudColorPicker @bind-Text="_model.SuccessColor" Label="Success Color" ColorPickerView="ColorPickerView.Palette" HelperText="Color for success states"/>
+                <MudColorPicker @bind-Text="_model.ErrorColor" Label="Error Color" ColorPickerView="ColorPickerView.Palette" HelperText="Color for error states"/>
+
+                <MudSelect T="string" @bind-Value="_model.FontFamily" Label="Font Family" HelperText="Google Font for the tenant UI">
+                    <MudSelectItem Value="@("Inter")">Inter</MudSelectItem>
+                    <MudSelectItem Value="@("Roboto")">Roboto</MudSelectItem>
+                    <MudSelectItem Value="@("Lato")">Lato</MudSelectItem>
+                    <MudSelectItem Value="@("Montserrat")">Montserrat</MudSelectItem>
+                    <MudSelectItem Value="@("Open Sans")">Open Sans</MudSelectItem>
+                    <MudSelectItem Value="@("Poppins")">Poppins</MudSelectItem>
+                    <MudSelectItem Value="@("Playfair Display")">Playfair Display</MudSelectItem>
+                    <MudSelectItem Value="@("Merriweather")">Merriweather</MudSelectItem>
+                </MudSelect>
+
+                <MudSelect T="string" @bind-Value="_model.BorderRadiusStyle" Label="Border Radius Style" HelperText="Corner rounding style across the UI">
+                    <MudSelectItem Value="@("sharp")">Sharp</MudSelectItem>
+                    <MudSelectItem Value="@("default")">Default</MudSelectItem>
+                    <MudSelectItem Value="@("rounded")">Rounded</MudSelectItem>
+                    <MudSelectItem Value="@("pill")">Pill</MudSelectItem>
+                </MudSelect>
+
+                <MudTextField @bind-Value="_model.LogoUrl" Label="Logo URL" HelperText="URL to the tenant logo image (shown in AppBar)"/>
+                <MudTextField @bind-Value="_model.HeroBannerUrl" Label="Hero Banner URL" HelperText="URL to the full-width hero image on the home page"/>
+
                 <MudCheckBox @bind-Value="_model.IsEnabled" Label="Enabled" Color="Color.Primary" Dense="true"/>
 
                 @if (!_isEditing)
@@ -145,7 +177,7 @@
     private List<string> _passwordErrors = new();
     private bool _passwordVisibility;
     private MudForm? _form;
-    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
+    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Medium, FullWidth = true };
 
     protected override async Task OnInitializedAsync()
     {
@@ -233,7 +265,16 @@
     private void OpenCreateDialog()
     {
         _isEditing = false;
-        _model = new TenantModel { IsEnabled = true, ThemePrimaryColor = "#594AE2" };
+        _model = new TenantModel
+        {
+            IsEnabled = true,
+            ThemePrimaryColor = "#594AE2",
+            ThemeSecondaryColor = "#FF6B35",
+            FontFamily = "Inter",
+            BorderRadiusStyle = "rounded",
+            SuccessColor = "#2ECC71",
+            ErrorColor = "#E74C3C"
+        };
         _idErrors = new();
         _passwordErrors = new();
         _passwordVisibility = false;
@@ -249,6 +290,13 @@
             Name = tenant.Name,
             Tagline = tenant.Tagline,
             ThemePrimaryColor = tenant.ThemePrimaryColor ?? "#594AE2",
+            ThemeSecondaryColor = tenant.ThemeSecondaryColor ?? "#FF6B35",
+            FontFamily = tenant.FontFamily ?? "Inter",
+            BorderRadiusStyle = tenant.BorderRadiusStyle ?? "rounded",
+            LogoUrl = tenant.LogoUrl,
+            HeroBannerUrl = tenant.HeroBannerUrl,
+            SuccessColor = tenant.SuccessColor ?? "#2ECC71",
+            ErrorColor = tenant.ErrorColor ?? "#E74C3C",
             IsEnabled = tenant.IsEnabled,
             ETag = tenant.ETag
         };
@@ -272,7 +320,14 @@
                     Name: _model.Name,
                     Tagline: _model.Tagline,
                     ThemePrimaryColor: _model.ThemePrimaryColor,
-                    IsEnabled: _model.IsEnabled
+                    IsEnabled: _model.IsEnabled,
+                    ThemeSecondaryColor: _model.ThemeSecondaryColor,
+                    FontFamily: _model.FontFamily,
+                    BorderRadiusStyle: _model.BorderRadiusStyle,
+                    LogoUrl: _model.LogoUrl,
+                    HeroBannerUrl: _model.HeroBannerUrl,
+                    SuccessColor: _model.SuccessColor,
+                    ErrorColor: _model.ErrorColor
                 ), _model.ETag);
                 Snackbar.Add("Tenant updated successfully", Severity.Success);
             }
@@ -286,7 +341,14 @@
                     ThemePrimaryColor: _model.ThemePrimaryColor,
                     IsEnabled: _model.IsEnabled,
                     AdminEmail: _model.AdminEmail,
-                    AdminPassword: _model.AdminPassword
+                    AdminPassword: _model.AdminPassword,
+                    ThemeSecondaryColor: _model.ThemeSecondaryColor,
+                    FontFamily: _model.FontFamily,
+                    BorderRadiusStyle: _model.BorderRadiusStyle,
+                    LogoUrl: _model.LogoUrl,
+                    HeroBannerUrl: _model.HeroBannerUrl,
+                    SuccessColor: _model.SuccessColor,
+                    ErrorColor: _model.ErrorColor
                 ));
                 Snackbar.Add("Tenant created successfully", Severity.Success);
             }
@@ -327,6 +389,13 @@
         public string Name { get; set; } = string.Empty;
         public string? Tagline { get; set; }
         public string? ThemePrimaryColor { get; set; }
+        public string? ThemeSecondaryColor { get; set; }
+        public string? FontFamily { get; set; }
+        public string? BorderRadiusStyle { get; set; }
+        public string? LogoUrl { get; set; }
+        public string? HeroBannerUrl { get; set; }
+        public string? SuccessColor { get; set; }
+        public string? ErrorColor { get; set; }
         public bool IsEnabled { get; set; }
         public string? AdminEmail { get; set; }
         public string? AdminPassword { get; set; }

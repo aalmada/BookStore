@@ -1,29 +1,4 @@
-html, body {
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-}
-
-a, .btn-link {
-    color: #006bb7;
-}
-
-.btn-primary {
-    color: #fff;
-    background-color: #1b6ec2;
-    border-color: #1861ac;
-}
-
-.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
-}
-
-.content {
-    padding-top: 1.1rem;
-}
-
-h1:focus {
-    outline: none;
-}
-
+/* Blazor form validation */
 .valid.modified:not([type=checkbox]) {
     outline: 1px solid #26b050;
 }
@@ -46,13 +21,9 @@ h1:focus {
         content: "An error has occurred."
     }
 
-.form-floating > .form-control-plaintext::placeholder, .form-floating > .form-control::placeholder {
-    color: var(--bs-secondary-color);
-    text-align: end;
-}
-
-.form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
-    text-align: start;
+/* Auth pages: two-column split layout */
+.auth-page {
+    margin: -1rem;
 }
 
 /* Catalog Improvements */
@@ -79,10 +50,7 @@ h1:focus {
     /* These can be specifically filtered if we remove filter from .deleted-book */
 }
 
-.book-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2) !important;
-}
+
 
 .optimistic-card {
     animation: pulse 2s ease-in-out infinite;
@@ -92,4 +60,12 @@ h1:focus {
 @keyframes pulse {
     0%, 100% { opacity: 0.9; }
     50% { opacity: 1; }
+}
+
+/* Utility */
+.line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }

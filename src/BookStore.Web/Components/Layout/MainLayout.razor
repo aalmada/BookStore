@@ -2,20 +2,32 @@
 
 <MudLayout>
     <BookStore.Web.Components.Shared.LogEnricher/>
-    <MudAppBar Elevation="1">
+    <MudAppBar Elevation="0" Style="backdrop-filter: blur(8px); border-bottom: 1px solid rgba(0,0,0,0.08);">
         <MudTooltip Text="Toggle Navigation" Arrow="true" Placement="Placement.Bottom">
             <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer" aria-label="Toggle Navigation"/>
         </MudTooltip>
-        <MudText Typo="Typo.h5" Class="ml-3">
-            @if (TenantService.IsLoading)
-            {
-                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2"/>
-            }
-            @TenantService.CurrentTenantName
-        </MudText>
+
+        @if (!string.IsNullOrEmpty(TenantService.CurrentTenantLogoUrl))
+        {
+            <img src="@TenantService.CurrentTenantLogoUrl" alt="@TenantService.CurrentTenantName"
+                 style="height:34px; max-width:160px; object-fit:contain; margin-left:8px;"
+                 onerror="this.style.display='none'"/>
+        }
+        else
+        {
+            <MudText Typo="Typo.h6" Class="ml-2 fw-semibold" Style="letter-spacing: -0.02em;">
+                @if (TenantService.IsLoading)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2"/>
+                }
+                @TenantService.CurrentTenantName
+            </MudText>
+        }
+
         <MudSpacer/>
+
         <MudTooltip Text="Switch Tenant" Arrow="true" Placement="Placement.Bottom" Disabled="@_isTenantMenuOpen">
-            <MudMenu @bind-Open="@_isTenantMenuOpen" Icon="@Icons.Material.Filled.Business" Color="Color.Inherit" Class="mr-2" aria-label="Switch Tenant">
+            <MudMenu @bind-Open="@_isTenantMenuOpen" Icon="@Icons.Material.Filled.Business" Color="Color.Inherit" Class="mr-1" aria-label="Switch Tenant">
                 @foreach (var tenant in TenantService.AvailableTenants)
                 {
                     <MudMenuItem OnClick="@(() => SwitchTenant(tenant.Id))">@tenant.Name</MudMenuItem>
@@ -27,12 +39,13 @@
         <LoginDisplay/>
     </MudAppBar>
 
-    <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2">
+    <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="0" Variant="DrawerVariant.Mini"
+               Style="border-right: 1px solid rgba(0,0,0,0.06); transition: width 0.25s ease;">
         <NavMenu/>
     </MudDrawer>
 
     <MudMainContent>
-        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4 pb-8">
             @Body
         </MudContainer>
     </MudMainContent>
@@ -44,7 +57,7 @@
 @implements IDisposable
 
 @code {
-    bool _drawerOpen = true;
+    bool _drawerOpen = false;
     bool _isTenantMenuOpen;
 
     void ToggleDrawer() => _drawerOpen = !_drawerOpen;

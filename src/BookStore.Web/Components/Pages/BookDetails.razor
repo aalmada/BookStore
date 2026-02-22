@@ -22,7 +22,7 @@
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-6">
     @if (isLoading)
     {
-        <MudPaper Elevation="2" Class="pa-6" Style="border-radius: 12px;">
+        <MudPaper Elevation="2" Class="pa-6" Style="border-radius: 20px;">
             <MudGrid>
                 <MudItem xs="12" md="4">
                     <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="400px"/>
@@ -52,17 +52,17 @@
         @* Breadcrumbs *@
         <MudBreadcrumbs Items="_breadcrumbItems" Class="mb-4"/>
 
-        <MudPaper Elevation="2" Class="pa-6" Style="border-radius: 12px;">
+        <MudPaper Elevation="2" Class="pa-6" Style="border-radius: 20px;">
             <MudGrid>
                 @* Book Cover *@
                 <MudItem xs="12" md="4">
                     @if (!string.IsNullOrEmpty(book.CoverImageUrl))
                     {
-                        <MudImage Src="@book.CoverImageUrl" Alt="@book.Title" ObjectFit="ObjectFit.Cover" Elevation="4" Class="rounded-lg" Style="height: 500px; width: 100%;"/>
+                        <MudImage Src="@book.CoverImageUrl" Alt="@book.Title" ObjectFit="ObjectFit.Cover" Elevation="6" Class="rounded-lg" Style="height: 500px; width: 100%; border-radius: 16px;"/>
                     }
                     else
                     {
-                        <MudPaper Elevation="4" Style="border-radius: 12px; overflow: hidden; background: var(--mud-palette-primary); color: var(--mud-palette-primary-text); height: 500px; display: flex; align-items: center; justify-content: center;">
+                        <MudPaper Elevation="6" Style="border-radius: 16px; overflow: hidden; background: var(--mud-palette-primary); color: var(--mud-palette-primary-text); height: 500px; display: flex; align-items: center; justify-content: center;">
                             <MudIcon Icon="@UIConstants.Icons.Book" Size="Size.Large" Color="Color.Inherit" Style="font-size: 10rem;"/>
                         </MudPaper>
                     }
@@ -191,17 +191,20 @@
                     @* Add to Cart *@
                     <AuthorizeView>
                         <Authorized>
-                            <MudPaper Elevation="0" Class="pa-4 mb-4" Style="background-color: rgba(0,0,0,0.02); border-radius: 8px;">
-                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="4">
+                            <MudPaper Elevation="0" Class="pa-4 mb-4" Style="background-color: rgba(0,0,0,0.02); border-radius: 12px;">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3" Class="mb-3">
                                     <MudNumericField @bind-Value="quantity" Label="Quantity" Variant="Variant.Outlined" Min="1" Max="99" Class="mb-0" Style="max-width: 100px;"/>
-                                    <MudButton Variant="Variant.Filled"
-                                               Color="Color.Primary"
-                                               StartIcon="@Icons.Material.Filled.ShoppingCart"
-                                               OnClick="AddToCartAsync"
-                                               Size="Size.Large">
-                                        Add to Cart
-                                    </MudButton>
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">in stock</MudText>
                                 </MudStack>
+                                <MudButton Variant="Variant.Filled"
+                                           Color="Color.Primary"
+                                           StartIcon="@Icons.Material.Filled.ShoppingCart"
+                                           OnClick="AddToCartAsync"
+                                           Size="Size.Large"
+                                           FullWidth="true"
+                                           Style="font-weight: 700; border-radius: 50px; padding: 0.75rem 2rem; font-size: 1.05rem;">
+                                    Add to Cart
+                                </MudButton>
                             </MudPaper>
                         </Authorized>
                     </AuthorizeView>
