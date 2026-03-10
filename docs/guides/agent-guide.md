@@ -14,7 +14,7 @@ Together, these components ensure agents work consistently with established patt
 
 **System Overview**:
 - **12 AGENTS.md files** providing context-aware guidance
-- **17 skills** covering the complete development lifecycle
+- **19 skills** covering the complete development lifecycle
 - **Fully cross-referenced** - all skills link to related workflows
 - **~85 cross-reference links** creating an interconnected skill graph
 - **Standards compliant** with GitHub Copilot and agents.md specifications
@@ -111,34 +111,26 @@ Skills live in `.claude/skills/{skill-name}/SKILL.md` and contain:
 Users or agents invoke skills using slash commands:
 
 ```
-/wolverine__create_operation      # Add a new mutation/command endpoint
-/marten__aggregate_scaffold       # Create event-sourced aggregate
+/wolverine__guide                 # Add a new mutation/command endpoint
+/marten__guide                    # Create event-sourced aggregate
 /test__verify_feature             # Run build, format check, and tests
 /frontend__debug_sse              # Troubleshoot SSE issues
-/deploy__azure_container_apps     # Deploy to Azure Container Apps
+/deploy__rollback                 # Rollback a failed deployment
 ```
 
 The agent then follows the skill's instructions step-by-step.
 
-### Complete Skill Catalog (28 Skills)
+### Complete Skill Catalog (19 Skills)
 
 #### Aspire Runbooks (2)
 - **`/aspire__start_solution`** - Launch the Aspire-hosted stack locally.
 - **`/aspire__setup_mcp`** - Configure the Aspire MCP bridge for observability.
 
-#### Wolverine Command Skills (3)
-- **`/wolverine__create_operation`** - POST endpoints + start-stream handlers.
-- **`/wolverine__update_operation`** - PUT/PATCH handlers that append events.
-- **`/wolverine__delete_operation`** - Delete/tombstone workflows.
+#### Wolverine Skills (1)
+- **`/wolverine__guide`** — All write operations: CREATE (POST/start-stream), UPDATE (PUT/PATCH/append-event), DELETE (soft-delete/tombstone). Load `operations.md` for the relevant section.
 
-#### Marten Modeling Skills (7)
-- **`/marten__aggregate_scaffold`** - Event-sourced aggregates with Apply methods.
-- **`/marten__get_by_id`** - Cached GET-by-id endpoints.
-- **`/marten__list_query`** - Filtered, paginated list endpoints.
-- **`/marten__single_stream_projection`** - Per-stream read models.
-- **`/marten__multi_stream_projection`** - Cross-stream dashboards.
-- **`/marten__composite_projection`** - Combine projections for throughput/reuse.
-- **`/marten__event_projection`** - Document-per-event projections.
+#### Marten Skills (1)
+- **`/marten__guide`** — All modeling and queries: aggregates, projections (single-stream, multi-stream, composite, event), and query endpoints (get-by-id, paged list). Load the relevant sub-file (`aggregate.md`, `projections.md`, `queries.md`).
 
 #### Frontend & Realtime (2)
 - **`/frontend__feature_scaffold`** - Blazor features with ReactiveQuery + optimistic updates.
@@ -150,9 +142,7 @@ The agent then follows the skill's instructions step-by-step.
 - **`/test__verify_feature`** - Definition-of-done pipeline (build/format/tests).
 - **`/test__integration_scaffold`** - Author integration tests with SSE guards.
 
-#### Deployment (3)
-- **`/deploy__azure_container_apps`** - Ship with azd to Azure Container Apps.
-- **`/deploy__kubernetes_cluster`** - Apply Aspire manifests to Kubernetes.
+#### Deployment (1)
 - **`/deploy__rollback`** - Roll back safely after failed releases.
 
 #### Operations & Cache (3)
@@ -160,23 +150,23 @@ The agent then follows the skill's instructions step-by-step.
 - **`/ops__rebuild_clean`** - Full rebuild to clear flaky artifacts.
 - **`/cache__debug_cache`** - HybridCache/Redis troubleshooting.
 
-#### Documentation & Meta (4)
+#### Documentation & Language Patterns (4)
 - **`/meta__cheat_sheet`** - Quick reference to stack rules + commands.
-- **`/meta__create_skill`** - Scaffold new skills with templates + linting.
-- **`/meta__write_agents_md`** - Author AGENTS.md files.
 - **`/lang__docfx_guide`** - Produce DocFX-friendly guides.
+- **`/lang__logger_message`** - Add high-performance logging with LoggerMessage source generator.
+- **`/lang__problem_details`** - Add RFC 7807 ProblemDetails error responses.
 
 ### Skill Cross-Referencing System
 
-All 28 skills include "Related Skills" sections that reference each other, creating an interconnected ecosystem:
+All 19 skills include "Related Skills" sections that reference each other, creating an interconnected ecosystem:
 
 **Example**: `/test__integration_scaffold` references:
-- **Prerequisites**: `/wolverine__create_operation`, `/marten__list_query`, `/frontend__feature_scaffold`
+- **Prerequisites**: `/wolverine__guide`, `/marten__guide`, `/frontend__feature_scaffold`
 - **Next Steps**: `/test__verify_feature`
 - **See Also**: Links to test runner skills for execution
 
 **Coverage**:
-- All 28 skills have "Related Skills" sections
+- All 19 skills have "Related Skills" sections
 - ~85 cross-reference links between skills
 - 4 end-to-end workflow paths documented
 - Common commands centralized (test runners, environment checks)
@@ -189,7 +179,7 @@ All 28 skills include "Related Skills" sections that reference each other, creat
 
 ### Creating New Skills
 
-The project includes `/meta__create_skill` to create new workflows. This ensures consistency in skill structure across the project.
+Create a new directory under `.claude/skills/<prefix>__<slug>/` with a `SKILL.md` file. Follow the naming conventions in `.claude/skills/NAMING-CONVENTIONS.md` and the structure in `.claude/skills/README.md`.
 
 All skills follow these standards:
 - ✅ YAML frontmatter with `name` and `description`
@@ -207,7 +197,7 @@ When working with an AI agent on this project:
 
 1. **Let the agent read AGENTS.md** - They provide context the agent needs
 2. **Use skills for common tasks** - Don't write manual steps when a skill exists
-3. **Follow skill workflows** - Use cross-references to navigate (e.g., `/marten__aggregate_scaffold` → `/wolverine__create_operation` → `/test__verify_feature`)
+3. **Follow skill workflows** - Use cross-references to navigate (e.g., `/marten__guide` → `/wolverine__guide` → `/test__verify_feature`)
 4. **Trust the analyzers** - Build warnings (BS1xxx-BS4xxx) indicate pattern violations
 5. **Verify with `/test__verify_feature`** - Ensures build, format, and tests pass
 
@@ -228,10 +218,10 @@ When extending the agent configuration:
 ### Complete Feature Development Path
 
 ```
-/marten__aggregate_scaffold
-  → /marten__single_stream_projection
-    → /wolverine__create_operation
-      → /marten__list_query
+/marten__guide (aggregate.md)
+  → /marten__guide (projections.md)
+    → /wolverine__guide (operations.md — Create section)
+      → /marten__guide (queries.md)
         → /frontend__feature_scaffold
           → /test__integration_scaffold
             → /test__verify_feature ✅
@@ -254,7 +244,7 @@ Issue Detected
 
 ```
 /ops__doctor_check (check environment)
-  → /deploy__azure_container_apps OR /deploy__kubernetes_cluster
+  → deploy via `azd up` (Azure) or `kubectl apply` (Kubernetes)
     → /test__verify_feature (test deployment)
       → If issues: /deploy__rollback
 ```
@@ -286,8 +276,8 @@ The agent system complements (but doesn't replace) comprehensive documentation:
 - **Event Sourcing Guide** (docs/) explains *why* and *how* Event Sourcing works (for humans)
 - **ApiService AGENTS.md** reminds agents to use `DateTimeOffset` and past-tense event names
 - **BS1xxx analyzers** enforce events as records with immutable properties (compile-time)
-- **`/wolverine__create_operation` skill** provides the exact steps to implement a new command
-- **`/marten__aggregate_scaffold` skill** shows how to create event-sourced aggregates with Apply methods
+- **`/wolverine__guide` skill** provides the exact steps to implement new commands (create, update, delete)
+- **`/marten__guide` skill** shows how to create event-sourced aggregates, projections, and query endpoints
 
 ---
 
@@ -350,8 +340,8 @@ This reduces iteration time by preventing common mistakes upfront.
 ### Skill Ecosystem *(new)*
 
 Skills are now interconnected:
-- **Prerequisites**: Skills can require other skills to run first (e.g., `/deploy__azure_container_apps` requires `/ops__doctor_check`)
-- **Alternatives**: Skills can suggest alternative approaches (e.g., `/deploy__kubernetes_cluster` as alternative to `/deploy__azure_container_apps`)
+- **Prerequisites**: Skills can require other skills to run first (e.g., `/deploy__rollback` requires a prior deployment)
+- **Alternatives**: Skills can suggest alternative approaches (e.g., `/cache__debug_cache` or `/frontend__debug_sse` for production issues)
 - **Next Steps**: Skills guide to logical next step (e.g., `/test__integration_scaffold` → `/test__verify_feature`)
 - **Recovery**: Skills document failure recovery (e.g., `/deploy__rollback` for failed deployments)
 
@@ -363,8 +353,8 @@ This creates a self-documenting workflow system where agents discover related sk
 
 ### System Coverage
 - **AGENTS.md Coverage**: 12/12 files
-- **Skills**: 17 covering complete development lifecycle
-- **Cross-Reference Coverage**: 17/17 skills
+- **Skills**: 19 covering complete development lifecycle
+- **Cross-Reference Coverage**: 19/19 skills
 - **Cross-Reference Links**: ~85 total
 - **Skill Lines**: ~2,355 lines
 - **AGENTS.md Lines**: ~1,030 lines
@@ -422,4 +412,4 @@ The BookStore project follows these standards to ensure agent compatibility and 
 
 ### Skills Reference
 - **Skills**: [.claude/skills/README.md](../../.claude/skills/README.md) - Complete skill catalog
-- **Skills Directory**: [.claude/skills/](../../.claude/skills/) - Browse all 17 skills
+- **Skills Directory**: [.claude/skills/](../../.claude/skills/) - Browse all 19 skills

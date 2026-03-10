@@ -13,15 +13,15 @@ Use the prefix that matches the dominant technology or artifact the skill target
 
 | Prefix | Stack Focus | Use For | Example Rename |
 | --- | --- | --- | --- |
-| `meta__` | Skill/AGENTS.md authoring, catalogs, governance | Maintaining the cheat sheet, creating new skills, reviewing naming lint tools | `cheat-sheet → meta__cheat_sheet`, `scaffold-skill → meta__create_skill`
+| `meta__` | Skill/AGENTS.md authoring, catalogs, governance | Maintaining the cheat sheet, creating new skills, reviewing naming lint tools | `cheat-sheet → meta__cheat_sheet`
 | `lang__` | Language or framework primers (C#, Razor, TUnit, HybridCache APIs) | Syntax refreshers, analyzer checklists, code-style codification | `write-documentation-guide → lang__docfx_guide`
-| `marten__` | Event sourcing, projections, document storage | Aggregate scaffolding, single/multi-stream projections, Marten troubleshooting | `scaffold-single-stream-projection → marten__single_stream_projection`, `scaffold-aggregate → marten__aggregate_scaffold`
+| `marten__` | Event sourcing, projections, document storage | Aggregate scaffolding, single/multi-stream projections, query endpoints, Marten troubleshooting | `marten__aggregate_scaffold + marten__*_projection + marten__get_by_id → marten__guide`
 | `wolverine__` | Wolverine messaging, command handlers, Wolverine diagnostics | Handler templates, Wolverine-specific debugging | (future) `wolverine__handler_scaffold`
 | `aspire__` | Aspire orchestration, AppHost utilities, MCP integration | Starting the solution, setup scripts, pipeline hooks | `start-solution → aspire__start_solution`, `setup-aspire-mcp → aspire__setup_mcp`
 | `cache__` | HybridCache + Redis tuning | Cache debugging, invalidation playbooks | `debug-cache → cache__debug_cache`
 | `frontend__` | Blazor features, ReactiveQuery patterns, SSE UX | UI scaffolding, optimistic update flows | `scaffold-frontend-feature → frontend__feature_scaffold`
 | `ops__` | Local runbooks unrelated to a single stack (doctor, rebuild) | Environment health checks, clean rebuilds | `doctor → ops__doctor_check`, `rebuild-clean → ops__rebuild_clean`
-| `deploy__` | Azure/Kubernetes shipping plus rollbacks | `aspire run` deployment helpers, rollback procedures | `deploy-to-azure → deploy__azure_container_apps`, `deploy-kubernetes → deploy__kubernetes_cluster`, `rollback-deployment → deploy__rollback`
+| `deploy__` | Azure/Kubernetes shipping plus rollbacks | `aspire run` deployment helpers, rollback procedures | `rollback-deployment → deploy__rollback`
 | `test__` | Unit/integration verification, feature validation | Running suites, verify-feature workflows | `run-unit-tests → test__unit_suite`, `verify-feature → test__verify_feature`
 | `doc__` | Documentation production aimed at end users | Publishing architecture notes, guides, onboarding docs | `write-end-user-guide → doc__end_user_guide`
 
@@ -29,7 +29,7 @@ Use the prefix that matches the dominant technology or artifact the skill target
 
 ## How to Name a New Skill
 1. **Identify the dominant stack** the instructions rely on. If it is Marten, you should land under `marten__`. If it primarily ensures AGENTS.md hygiene, use `meta__`.
-2. **Describe the outcome** using a short slug. Prefer `verb_object` or `object_action` depending on clarity (e.g., `marten__aggregate_scaffold`, `aspire__start_solution`).
+2. **Describe the outcome** using a short slug. Prefer `verb_object` or `object_action` depending on clarity (e.g., `marten__guide`, `aspire__start_solution`). When a single skill covers an entire library's workflows, a broad slug like `guide` is appropriate.
 3. **Populate `SKILL.md`** with the new name in YAML frontmatter, keep the description action-oriented, list prerequisites, and document numbered steps per Claude skill guidelines.
 4. **Update references**: `AGENTS.md`, `.claude/skills/README.md`, docs, and any slash-command cheat sheets must reflect the new name immediately.
 

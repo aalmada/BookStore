@@ -4,7 +4,7 @@
 
 Reusable, step-by-step workflows that guide AI agents through complex tasks in the BookStore project. Each skill encodes best practices and architectural patterns.
 
-## Available Skills (28 total)
+## Available Skills (19 total)
 
 ### Aspire Runbooks
 
@@ -13,19 +13,11 @@ Reusable, step-by-step workflows that guide AI agents through complex tasks in t
 
 ### Wolverine Operations
 
-- **`wolverine__create_operation`** - Scaffold POST commands (event streams, HTTP endpoints).
-- **`wolverine__update_operation`** - Add mutations that append events to existing streams.
-- **`wolverine__delete_operation`** - Implement delete/tombstone workflows.
+- **`wolverine__guide`** - All write operations: CREATE (POST/start-stream), UPDATE (PUT/PATCH/append-event), DELETE (soft-delete/tombstone). Read `operations.md` for the relevant section.
 
 ### Marten Modeling
 
-- **`marten__aggregate_scaffold`** - Create event-sourced aggregates with Apply methods.
-- **`marten__get_by_id`** - Add cached GET endpoints for documents.
-- **`marten__list_query`** - Build paged list queries with filters and caching.
-- **`marten__single_stream_projection`** - Project a single stream into a read model.
-- **`marten__multi_stream_projection`** - Aggregate multiple streams (dashboards, rollups).
-- **`marten__composite_projection`** - Chain projections for throughput/reuse.
-- **`marten__event_projection`** - Emit documents per event for side tables.
+- **`marten__guide`** - All Marten tasks: event-sourced aggregates, projections (single-stream, multi-stream, composite, event), and query endpoints (get-by-id, paged list). Read `aggregate.md`, `projections.md`, or `queries.md` for the relevant section.
 
 ### Frontend & Realtime
 
@@ -41,8 +33,6 @@ Reusable, step-by-step workflows that guide AI agents through complex tasks in t
 
 ### Deployment
 
-- **`deploy__azure_container_apps`** - Ship via azd to Azure Container Apps.
-- **`deploy__kubernetes_cluster`** - Apply Aspire manifests to Kubernetes.
 - **`deploy__rollback`** - Roll back a faulty deployment.
 
 ### Operations & Cache
@@ -51,20 +41,20 @@ Reusable, step-by-step workflows that guide AI agents through complex tasks in t
 - **`ops__rebuild_clean`** - Force a clean rebuild to fix flaky assets.
 - **`cache__debug_cache`** - Diagnose HybridCache/Redis issues.
 
-### Documentation & Meta
+### Documentation & Language Patterns
 
 - **`meta__cheat_sheet`** - Quick reference of stack rules and commands.
-- **`meta__create_skill`** - Scaffold new skills with templates and linting.
-- **`meta__write_agents_md`** - Author AGENTS.md files that delegate to skills.
 - **`lang__docfx_guide`** - Write DocFX-friendly guides.
+- **`lang__logger_message`** - Add high-performance logging with LoggerMessage source generator.
+- **`lang__problem_details`** - Add RFC 7807 ProblemDetails error responses with typed error codes.
 
 ## Usage
 
 Skills are invoked using slash commands:
 
 ```
-/wolverine__create_operation   # Create new mutation endpoint
-/marten__aggregate_scaffold    # Build event-sourced aggregate
+/wolverine__guide              # Create new mutation endpoint
+/marten__guide                 # Build event-sourced aggregate or projection
 /test__verify_feature          # Run all verification checks
 /frontend__debug_sse           # Troubleshoot SSE issues
 ```
@@ -77,7 +67,7 @@ Each skill is a directory containing:
 
 ## Creating New Skills
 
-Use `/meta__create_skill` to create new agent capabilities following the established pattern.
+Create a new directory under `.claude/skills/<prefix>__<slug>/` with a `SKILL.md` file following the structure below. Follow naming conventions in `NAMING-CONVENTIONS.md`.
 
 ## License
 

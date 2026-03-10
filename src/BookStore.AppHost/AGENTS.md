@@ -7,8 +7,7 @@
 - `docs/guides/aspire-deployment-guide.md` - Azure deployment
 
 ## Skills
-- `/deploy__azure_container_apps` - Deploy to Azure Container Apps
-- `/deploy__kubernetes_cluster` - Deploy to Kubernetes
+- `/deploy__rollback` - Roll back a failed deployment
 - `/ops__doctor_check` - Verify environment
 
 ## Rules
