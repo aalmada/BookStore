@@ -7,6 +7,7 @@ public class Tenant
 {
     [Identity]
     public string Id { get; set; } = string.Empty;
+    public Guid Version { get; set; }
     public string Name { get; set; } = string.Empty;
     public string? Tagline { get; set; }
     public string? ThemePrimaryColor { get; set; } = string.Empty;

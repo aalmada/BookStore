@@ -129,6 +129,7 @@ public static class ErrorCodes
         public const string TenantAlreadyExists = "ERR_TENANT_ALREADY_EXISTS";
         public const string TenantNotFound = "ERR_TENANT_NOT_FOUND";
         public const string AccessDenied = "ERR_TENANT_ACCESS_DENIED";
+        public const string ConcurrencyConflict = "ERR_TENANT_CONCURRENCY_CONFLICT";
     }
 
     // Passkey Codes

@@ -35,10 +35,9 @@ public static class TenantEndpoints
 
         var tenants = await session.Query<Tenant>()
             .OrderBy(t => t.Id)
-            .Select(t => new TenantInfoDto(t.Id, t.Name, t.Tagline, t.ThemePrimaryColor, t.IsEnabled))
             .ToListAsync(ct);
 
-        return Results.Ok(tenants);
+        return Results.Ok(tenants.Select(t => new TenantInfoDto(t.Id, t.Name, t.Tagline, t.ThemePrimaryColor, t.IsEnabled, t.Version.ToString())));
     }
 
     // POST /api/admin/tenants
@@ -135,6 +134,7 @@ public static class TenantEndpoints
         IDocumentStore store,
         ITenantContext tenantContext,
         ITenantStore tenantStore,
+        HttpContext httpContext,
         CancellationToken ct)
     {
         // Security check: Only System Admin can update tenant definitions
@@ -149,6 +149,12 @@ public static class TenantEndpoints
         if (tenant == null)
         {
             return Result.Failure(Error.NotFound(ErrorCodes.Tenancy.TenantNotFound, "Tenant not found.")).ToProblemDetails();
+        }
+
+        var ifMatch = httpContext.Request.Headers["If-Match"].FirstOrDefault();
+        if (!string.IsNullOrEmpty(ifMatch) && Guid.TryParse(ifMatch.Trim('"'), out var expectedVersion) && tenant.Version != expectedVersion)
+        {
+            return Result.Failure(Error.Conflict(ErrorCodes.Tenancy.ConcurrencyConflict, "Tenant has been modified by another request. Please reload and try again.")).ToProblemDetails();
         }
 
         tenant.Name = request.Name;
