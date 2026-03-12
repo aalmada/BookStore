@@ -74,31 +74,34 @@ public class AuthenticationService(
     }
 
     /// <summary>
-    /// Register a new user
+    /// Register a new user. Returns tokens when email verification is not required.
     /// </summary>
-    public async Task<Result> RegisterAsync(string email, string password,
+    public async Task<Result<LoginResponse?>> RegisterAsync(string email, string password,
         CancellationToken cancellationToken = default)
     {
         // Validate password strength
         var validationError = ValidatePassword(password);
         if (validationError != null)
         {
-            return Result.Failure(Error.Validation(ErrorCodes.Auth.PasswordMismatch, validationError));
+            return Result.Failure<LoginResponse?>(Error.Validation(ErrorCodes.Auth.PasswordMismatch, validationError));
         }
 
         try
         {
             var request = new RegisterRequest(email, password);
-            _ = await identityClient.RegisterAsync(request, cancellationToken);
-            return Result.Success();
+            var response = await identityClient.RegisterAsync(request, cancellationToken);
+            // When email verification is not required the server returns a full LoginResponse with tokens.
+            // When verification is required it returns an anonymous message object, so AccessToken is null.
+            return Result.Success<LoginResponse?>(
+                string.IsNullOrEmpty(response?.AccessToken) ? null : response);
         }
         catch (Refit.ApiException ex)
         {
-            return ex.ToResult();
+            return ex.ToResult<LoginResponse?>();
         }
         catch (Exception ex)
         {
-            return Result.Failure(Error.Failure("ERR_REGISTRATION_FAILED", ex.Message));
+            return Result.Failure<LoginResponse?>(Error.Failure("ERR_REGISTRATION_FAILED", ex.Message));
         }
     }
 

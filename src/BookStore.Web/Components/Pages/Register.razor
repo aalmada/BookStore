@@ -36,7 +36,7 @@
                 }
                 else
                 {
-                    <text> Redirecting to login...</text>
+                    <text> You are now logged in. Redirecting...</text>
                 }
             </MudAlert>
         }
@@ -239,7 +239,30 @@
             if (result.IsSuccess)
             {
                 registrationSuccess = true;
-                requiresVerification = true; // Safe default for UI message.
+
+                if (result.Value is { AccessToken: not null } loginResponse)
+                {
+                    // Email verification is not required — auto-login the user immediately.
+                    requiresVerification = false;
+                    await AuthStateProvider.NotifyUserAuthentication(loginResponse.AccessToken, loginResponse.RefreshToken);
+
+                    try
+                    {
+                        await JS.InvokeVoidAsync("authBroadcast.notifyLogin");
+                    }
+                    catch
+                    {
+                        // BroadcastChannel might not be available, continue anyway
+                    }
+
+                    await Task.Delay(1500);
+                    Navigation.NavigateTo("/");
+                }
+                else
+                {
+                    // Email verification is required — user must confirm email first.
+                    requiresVerification = true;
+                }
             }
             else
             {
