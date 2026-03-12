@@ -81,9 +81,6 @@ app.UseRequestLocalization(requestLocalizationOptions);
 // Add Tenant Resolution Middleware
 app.UseTenantResolution();
 
-// Add Tenant Resolution Middleware
-app.UseTenantResolution();
-
 // Add Marten metadata middleware to set correlation/causation IDs
 app.UseMartenMetadata();
 
