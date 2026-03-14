@@ -1,0 +1,20 @@
+{
+  "hooks": {
+    "SubagentStart": [
+      {
+        "type": "command",
+        "command": "python3 .github/hooks/scripts/subagent_start.py",
+        "windows": "py -3 .github\\hooks\\scripts\\subagent_start.py",
+        "timeout": 5
+      }
+    ],
+    "SubagentStop": [
+      {
+        "type": "command",
+        "command": "python3 .github/hooks/scripts/subagent_stop.py",
+        "windows": "py -3 .github\\hooks\\scripts\\subagent_stop.py",
+        "timeout": 130
+      }
+    ]
+  }
+}

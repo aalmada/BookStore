@@ -1,0 +1,12 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "type": "command",
+        "command": "python3 .github/hooks/scripts/check_code_rules.py",
+        "windows": "py -3 .github\\hooks\\scripts\\check_code_rules.py",
+        "timeout": 10
+      }
+    ]
+  }
+}

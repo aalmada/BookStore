@@ -1,0 +1,12 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "type": "command",
+        "command": "python3 .github/hooks/scripts/audit_prompt.py",
+        "windows": "py -3 .github\\hooks\\scripts\\audit_prompt.py",
+        "timeout": 5
+      }
+    ]
+  }
+}

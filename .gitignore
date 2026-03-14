@@ -489,3 +489,6 @@ $RECYCLE.BIN/
 # DocFX site
 _site/
 api/
+
+# Agent hook audit logs (local only)
+.github/hooks/logs/

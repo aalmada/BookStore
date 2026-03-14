@@ -8,13 +8,17 @@ The BookStore project uses a structured approach to help AI coding assistants (a
 
 1. **AGENTS.md Files** - Context-aware guidance documents distributed throughout the codebase
 2. **Claude Skills** - Reusable automation workflows with step-by-step instructions and cross-references
-3. **Roslyn Analyzers** - Compile-time enforcement of architectural patterns
+3. **GitHub Copilot Agent Team** - Six specialist agents that collaborate end-to-end via memory handoffs
+4. **Lifecycle Hooks** - Deterministic validation guards that fire automatically at every stage of an agent session
+5. **Roslyn Analyzers** - Compile-time enforcement of architectural patterns
 
 Together, these components ensure agents work consistently with established patterns without needing to ask basic questions or make architectural mistakes.
 
 **System Overview**:
 - **12 AGENTS.md files** providing context-aware guidance
 - **19 skills** covering the complete development lifecycle
+- **6 GitHub Copilot agents** covering the full feature lifecycle (Orchestrator → Planner → Backend/Frontend → Tests → Review)
+- **9 lifecycle hook scripts** enforcing code rules, security, and build correctness automatically
 - **Fully cross-referenced** - all skills link to related workflows
 - **~85 cross-reference links** creating an interconnected skill graph
 - **Standards compliant** with GitHub Copilot and agents.md specifications
@@ -281,6 +285,245 @@ The agent system complements (but doesn't replace) comprehensive documentation:
 
 ---
 
+## GitHub Copilot Agent Team
+
+Beyond individual skills and AGENTS.md files, the project ships a **pre-built team of autonomous GitHub Copilot agents** that collaborate to deliver complete features end-to-end.
+
+Agents live in `.github/agents/` as `.agent.md` files. Each file is a self-contained agent definition: instructions, allowed tools, model selection, and handoff buttons to other agents.
+
+### Agent Roster
+
+| Agent | Role | Model | Writes to memory |
+|---|---|---|---|
+| **Orchestrator** | Routes tasks to specialists; never writes code | GPT-4o | `task-brief.md` |
+| **Planner** | Researches codebase; produces implementation plan | Claude Sonnet 4.6 | `plan.md` |
+| **BackendDeveloper** | Wolverine handlers, Marten aggregates, API endpoints | GPT-5.3-Codex | `backend-output.md` |
+| **FrontendDeveloper** | Blazor pages/components, SSE subscriptions, HybridCache | Claude Sonnet 4.5 | `frontend-output.md` |
+| **TestEngineer** | TUnit unit tests, Aspire integration tests, Playwright E2E | Claude Sonnet 4.5 | `test-output.md` |
+| **CodeReviewer** | Security (OWASP Top 10), pattern & convention review; no edits | GPT-5.4 | `review.md` |
+
+### Orchestrator Design
+
+The Orchestrator has `disable-model-invocation: true` — it **cannot** reason about implementation details, suggest code, or influence technical choices. Its sole function is to:
+
+1. Clarify the task with `vscode/askQuestions`
+2. Write `/memories/session/task-brief.md`
+3. Route tasks to specialists via handoff buttons
+4. Read the final `review.md` and report to the user
+
+This ensures the Orchestrator acts as a pure coordinator and never contaminates the specialist agents' technical judgment.
+
+### Handoff Chain
+
+```
+User request
+  → Orchestrator (clarify → write task-brief.md)
+    → Planner (research → write plan.md)
+      → BackendDeveloper  ┐ (parallel if full-stack)
+      → FrontendDeveloper ┘
+        → TestEngineer (run tests → write test-output.md)
+          → CodeReviewer (review → write review.md)
+            → Orchestrator (report to user)
+```
+
+Each agent-to-agent transition is performed via **handoff buttons** rendered by VS Code — the sender agent proposes the handoff and the user confirms it.
+
+### Memory Handoff Protocol
+
+Agents communicate via six designated files under `/memories/session/`:
+
+| File | Written by | Read by |
+|---|---|---|
+| `task-brief.md` | Orchestrator | Planner |
+| `plan.md` | Planner | All coding agents + CodeReviewer |
+| `backend-output.md` | BackendDeveloper | TestEngineer, CodeReviewer |
+| `frontend-output.md` | FrontendDeveloper | TestEngineer, CodeReviewer |
+| `test-output.md` | TestEngineer | CodeReviewer |
+| `review.md` | CodeReviewer | Orchestrator |
+
+The **memory-protocol hook** (see [Lifecycle Hooks](#lifecycle-hooks)) enforces that agents only write to their designated files, blocking accidental cross-agent writes.
+
+### Invoking the Team
+
+Invoke the **Orchestrator** agent in VS Code and describe the feature:
+
+```
+@Orchestrator Add a new Publisher domain with CRUD endpoints, Blazor management page, and full test coverage.
+```
+
+The Orchestrator clarifies, writes the brief, and routes to the Planner. From there, use the handoff buttons. The whole pipeline runs without manual prompting between steps.
+
+You can also invoke individual agents directly for partial tasks:
+
+```
+@Planner Research how to add ISBN validation to the Book aggregate.
+@CodeReviewer Review all changes in /memories/session/backend-output.md
+@TestEngineer Write integration tests for the Publisher CREATE endpoint.
+```
+
+### Agent File Structure
+
+Each `.agent.md` file uses GitHub Copilot frontmatter:
+
+```yaml
+---
+name: BackendDeveloper
+description: Implements Wolverine command handlers, Marten event-sourced aggregates ...
+argument-hint: Describe the backend feature to implement, or say "Read the plan"
+target: vscode
+model: GPT-5.3-Codex (copilot)
+tools: ['search', 'read', 'edit', 'vscode/memory', 'execute/runInTerminal']
+handoffs:
+  - label: "Write tests"
+    agent: TestEngineer
+    prompt: '...'
+    send: true
+---
+```
+
+Key fields:
+- **`target: vscode`** — marks it as a VS Code Copilot agent
+- **`model`** — the LLM to use; chosen per role (reasoning vs. coding vs. review)
+- **`tools`** — tool permissions; CodeReviewer has no `edit` tool by design
+- **`disable-model-invocation: true`** — Orchestrator only; prevents reasoning about implementation
+- **`handoffs`** — one-click buttons to route to the next agent with a pre-written prompt
+
+---
+
+## Lifecycle Hooks
+
+The project uses **VS Code Copilot lifecycle hooks** to enforce deterministic rules at every stage of an agent session. Hooks fire automatically — agents cannot bypass them.
+
+Hooks live in `.github/hooks/`:
+
+```
+.github/hooks/
+├── code-rules.json         # PreToolUse → check_code_rules.py
+├── security.json           # PreToolUse → check_security.py
+├── memory-protocol.json    # PreToolUse → check_memory_protocol.py
+├── session.json            # SessionStart + PreCompact + Stop
+├── subagent.json           # SubagentStart + SubagentStop
+├── audit.json              # UserPromptSubmit → audit_prompt.py
+└── scripts/
+    ├── check_code_rules.py
+    ├── check_security.py
+    ├── check_memory_protocol.py
+    ├── session_start.py
+    ├── session_precompact.py
+    ├── session_stop.py
+    ├── subagent_start.py
+    ├── subagent_stop.py
+    └── audit_prompt.py
+```
+
+### Hook Events
+
+| Event | When | Script | What it Does |
+|---|---|---|---|
+| `SessionStart` | At the start of every session | `session_start.py` | Injects git branch, SDK version, code rules, memory map as context |
+| `UserPromptSubmit` | On every user message | `audit_prompt.py` | Appends prompt to `.github/hooks/logs/audit.log` (never blocks) |
+| `PreToolUse` | Before any tool call | `check_code_rules.py` | Blocks `.cs` edits with banned patterns (see below) |
+| `PreToolUse` | Before any tool call | `check_security.py` | Blocks OWASP Top 10 violations in `.cs`/`.razor` edits |
+| `PreToolUse` | Before any tool call | `check_memory_protocol.py` | Blocks writes outside designated `/memories/session/` files |
+| `PreCompact` | Before context truncation | `session_precompact.py` | Reminds the agent to re-read memory files after compaction |
+| `SubagentStart` | When a specialist agent spawns | `subagent_start.py` | Injects role-specific context: which files to read/write and key rules |
+| `SubagentStop` | When a coding agent finishes | `subagent_stop.py` | Runs `dotnet build` + `dotnet format --verify-no-changes`; blocks if either fails |
+| `Stop` | At the end of the session | `session_stop.py` | Final build gate — blocks session close if the solution does not compile |
+
+### Code Rules Hook (`check_code_rules.py`)
+
+Scans every `.cs` file in `editFiles` and `replaceStringInFile` tool calls and **denies** the edit if any AGENTS.md rule is violated:
+
+| Pattern Blocked | Correct Alternative |
+|---|---|
+| `Guid.NewGuid()` | `Guid.CreateVersion7()` |
+| `DateTime.Now` | `DateTimeOffset.UtcNow` |
+| `_logger.Log{Info\|Warn\|Error\|Debug}(` | `[LoggerMessage]` source generator |
+| `namespace X { }` (block-scoped) | `namespace X;` (file-scoped) |
+| `"*DEFAULT*"` / `"default"` (tenant) | `MultiTenancyConstants.*` |
+
+The hook returns a `permissionDecision: "deny"` with the exact violation listed, so the agent knows what to fix.
+
+### Security Hook (`check_security.py`)
+
+Scans `.cs` and `.razor` files for OWASP Top 10 patterns:
+
+- Hardcoded credentials (`password =`, `apikey =`, connection strings with literals)
+- String-interpolated SQL (`$"SELECT ... {userInput}"`)
+- Unsafe `[AllowAnonymous]` (allowed only when preceded by `// safe:` comment)
+- `MarkupString` raw HTML injection in `.razor` (allowed only with `// safe:` comment)
+
+### Memory Protocol Hook (`check_memory_protocol.py`)
+
+Guards the `vscode/memory` tool. A write is **allowed** only if the target is one of the six designated session files:
+
+```
+/memories/session/task-brief.md
+/memories/session/plan.md
+/memories/session/backend-output.md
+/memories/session/frontend-output.md
+/memories/session/test-output.md
+/memories/session/review.md
+```
+
+Any write to `/memories/` (user scope) or an unknown session filename is blocked, preventing agents from polluting persistent memory.
+
+### Build Gate Hook (`subagent_stop.py`)
+
+When `BackendDeveloper`, `FrontendDeveloper`, or `TestEngineer` finishes its turn, the hook runs:
+
+```bash
+dotnet build --no-restore -q
+dotnet format --verify-no-changes --no-restore
+```
+
+If either command fails the agent is **blocked** from completing — it must fix the errors before handing off. This eliminates broken builds from ever reaching the CodeReviewer.
+
+> **Design note**: Build validation runs once per agent turn (at `SubagentStop`), not on every file edit. Running a full build after each individual `.cs` edit would be wasteful and slow. The hook fires only when the agent considers its work complete.
+
+### Hook I/O Protocol
+
+Every script reads a JSON payload from **stdin** and writes a JSON decision to **stdout**:
+
+```python
+# PreToolUse deny shape
+{
+  "hookSpecificOutput": {
+    "hookEventName": "PreToolUse",
+    "permissionDecision": "deny",
+    "permissionDecisionReason": "BookStore code rule violations:\n  • Foo.cs: Use Guid.CreateVersion7() instead of Guid.NewGuid()"
+  }
+}
+
+# SubagentStop/Stop block shape
+{ "decision": "block", "reason": "Build failed:\nerror CS0234 ..." }
+
+# SessionStart / SubagentStart context injection shape
+{
+  "hookSpecificOutput": {
+    "hookEventName": "SessionStart",
+    "additionalContext": "## BookStore Session Context\n..."
+  }
+}
+```
+
+Exit codes:
+- **0** — success; VS Code parses stdout for a decision
+- **2** — hard error; stderr is shown to the agent as a warning (non-blocking)
+
+### Extending the Hooks
+
+To add a new guard:
+
+1. Create a Python script in `.github/hooks/scripts/`
+2. Read the tool payload from `sys.stdin` as JSON
+3. Emit the appropriate output shape to `sys.stdout`
+4. Register the event + script in one of the existing JSON config files (or a new one)
+
+Hook config files use the `github.copilot.chat.agent.hookFilesLocations` VS Code setting. The `.github/hooks/` directory is registered by default in this project.
+
+---
+
 ## Benefits of This Approach
 
 ### For AI Agents
@@ -358,6 +601,8 @@ This creates a self-documenting workflow system where agents discover related sk
 - **Cross-Reference Links**: ~85 total
 - **Skill Lines**: ~2,355 lines
 - **AGENTS.md Lines**: ~1,030 lines
+- **GitHub Copilot Agents**: 6 (Orchestrator, Planner, BackendDeveloper, FrontendDeveloper, TestEngineer, CodeReviewer)
+- **Lifecycle Hook Scripts**: 9 covering all 8 VS Code hook events
 - **Standards Compliance**: GitHub Copilot + agents.md specifications
 
 ### Developer Productivity
@@ -413,3 +658,12 @@ The BookStore project follows these standards to ensure agent compatibility and 
 ### Skills Reference
 - **Skills**: [.claude/skills/README.md](../../.claude/skills/README.md) - Complete skill catalog
 - **Skills Directory**: [.claude/skills/](../../.claude/skills/) - Browse all 19 skills
+
+### Agent Team Reference
+- **Agent Files**: [.github/agents/](../../.github/agents/) - Browse all 6 agent definitions
+- **Orchestrator**: [.github/agents/orchestrator.agent.md](../../.github/agents/orchestrator.agent.md)
+- **Planner**: [.github/agents/planner.agent.md](../../.github/agents/planner.agent.md)
+
+### Lifecycle Hooks Reference
+- **Hook Configs**: [.github/hooks/](../../.github/hooks/) - The 6 JSON hook config files
+- **Hook Scripts**: [.github/hooks/scripts/](../../.github/hooks/scripts/) - The 9 Python guard scripts

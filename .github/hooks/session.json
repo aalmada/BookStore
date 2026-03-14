@@ -1,0 +1,28 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "type": "command",
+        "command": "python3 .github/hooks/scripts/session_start.py",
+        "windows": "py -3 .github\\hooks\\scripts\\session_start.py",
+        "timeout": 10
+      }
+    ],
+    "PreCompact": [
+      {
+        "type": "command",
+        "command": "python3 .github/hooks/scripts/session_precompact.py",
+        "windows": "py -3 .github\\hooks\\scripts\\session_precompact.py",
+        "timeout": 5
+      }
+    ],
+    "Stop": [
+      {
+        "type": "command",
+        "command": "python3 .github/hooks/scripts/session_stop.py",
+        "windows": "py -3 .github\\hooks\\scripts\\session_stop.py",
+        "timeout": 130
+      }
+    ]
+  }
+}

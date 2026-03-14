@@ -1,0 +1,12 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "type": "command",
+        "command": "python3 .github/hooks/scripts/check_memory_protocol.py",
+        "windows": "py -3 .github\\hooks\\scripts\\check_memory_protocol.py",
+        "timeout": 5
+      }
+    ]
+  }
+}
