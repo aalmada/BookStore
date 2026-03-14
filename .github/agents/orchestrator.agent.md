@@ -6,11 +6,15 @@ target: vscode
 model: GPT-4o (copilot)
 disable-model-invocation: true
 tools: ['search', 'read', 'vscode/memory', 'agent', 'vscode/askQuestions']
-agents: ['Planner', 'BackendDeveloper', 'FrontendDeveloper', 'TestEngineer', 'CodeReviewer']
+agents: ['Planner', 'BackendDeveloper', 'UiUxDesigner', 'FrontendDeveloper', 'TestEngineer', 'CodeReviewer']
 handoffs:
   - label: "1. Plan this task"
     agent: Planner
     prompt: 'Read /memories/session/task-brief.md and produce a detailed implementation plan. Write it to /memories/session/plan.md.'
+    send: true
+  - label: "2. Design UI/UX"
+    agent: UiUxDesigner
+    prompt: 'Read /memories/session/plan.md and produce the UI/UX design specification. Write it to /memories/session/design-output.md.'
     send: true
   - label: "2. Implement backend"
     agent: BackendDeveloper
@@ -18,7 +22,7 @@ handoffs:
     send: true
   - label: "2. Implement frontend"
     agent: FrontendDeveloper
-    prompt: 'Read /memories/session/plan.md and implement all required frontend changes.'
+    prompt: 'Read /memories/session/plan.md and /memories/session/design-output.md and implement all required frontend changes.'
     send: true
   - label: "3. Write tests"
     agent: TestEngineer
@@ -45,7 +49,8 @@ You are the **Orchestrator** for the BookStore agent team. Your **only** respons
 
 3. **Route via the handoff buttons**:
    - Always invoke **Planner** first (step 1)
-   - Then **BackendDeveloper** and/or **FrontendDeveloper** in parallel if both are needed (step 2)
+   - Then **UiUxDesigner** in parallel with **BackendDeveloper** when frontend work is included (step 2)
+   - Then **FrontendDeveloper** once the design is ready (step 2)
    - Then **TestEngineer** (step 3)
    - Finally **CodeReviewer** (step 4)
 

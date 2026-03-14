@@ -17,7 +17,7 @@ Together, these components ensure agents work consistently with established patt
 **System Overview**:
 - **12 AGENTS.md files** providing context-aware guidance
 - **19 skills** covering the complete development lifecycle
-- **6 GitHub Copilot agents** covering the full feature lifecycle (Orchestrator → Planner → Backend/Frontend → Tests → Review)
+- **7 GitHub Copilot agents** covering the full feature lifecycle (Orchestrator → Planner → Backend/UiUxDesigner/Frontend → Tests → Review)
 - **9 lifecycle hook scripts** enforcing code rules, security, and build correctness automatically
 - **Fully cross-referenced** - all skills link to related workflows
 - **~85 cross-reference links** creating an interconnected skill graph
@@ -298,6 +298,7 @@ Agents live in `.github/agents/` as `.agent.md` files. Each file is a self-conta
 | **Orchestrator** | Routes tasks to specialists; never writes code | GPT-4o | `task-brief.md` |
 | **Planner** | Researches codebase; produces implementation plan | Claude Sonnet 4.6 | `plan.md` |
 | **BackendDeveloper** | Wolverine handlers, Marten aggregates, API endpoints | GPT-5.3-Codex | `backend-output.md` |
+| **UiUxDesigner** | Blazor component hierarchy, component choices, interaction flows, design specs; no code edits | Claude Sonnet 4.6 | `design-output.md` |
 | **FrontendDeveloper** | Blazor pages/components, SSE subscriptions, HybridCache | Claude Sonnet 4.5 | `frontend-output.md` |
 | **TestEngineer** | TUnit unit tests, Aspire integration tests, Playwright E2E | Claude Sonnet 4.5 | `test-output.md` |
 | **CodeReviewer** | Security (OWASP Top 10), pattern & convention review; no edits | GPT-5.4 | `review.md` |
@@ -320,10 +321,11 @@ User request
   → Orchestrator (clarify → write task-brief.md)
     → Planner (research → write plan.md)
       → BackendDeveloper  ┐ (parallel if full-stack)
-      → FrontendDeveloper ┘
-        → TestEngineer (run tests → write test-output.md)
-          → CodeReviewer (review → write review.md)
-            → Orchestrator (report to user)
+      → UiUxDesigner      ┘ (parallel with BackendDeveloper for UI features)
+        → FrontendDeveloper (reads plan.md + design-output.md → write frontend-output.md)
+          → TestEngineer (run tests → write test-output.md)
+            → CodeReviewer (review → write review.md)
+              → Orchestrator (report to user)
 ```
 
 Each agent-to-agent transition is performed via **handoff buttons** rendered by VS Code — the sender agent proposes the handoff and the user confirms it.
@@ -336,6 +338,7 @@ Agents communicate via six designated files under `/memories/session/`:
 |---|---|---|
 | `task-brief.md` | Orchestrator | Planner |
 | `plan.md` | Planner | All coding agents + CodeReviewer |
+| `design-output.md` | UiUxDesigner | FrontendDeveloper, CodeReviewer |
 | `backend-output.md` | BackendDeveloper | TestEngineer, CodeReviewer |
 | `frontend-output.md` | FrontendDeveloper | TestEngineer, CodeReviewer |
 | `test-output.md` | TestEngineer | CodeReviewer |
@@ -601,7 +604,7 @@ This creates a self-documenting workflow system where agents discover related sk
 - **Cross-Reference Links**: ~85 total
 - **Skill Lines**: ~2,355 lines
 - **AGENTS.md Lines**: ~1,030 lines
-- **GitHub Copilot Agents**: 6 (Orchestrator, Planner, BackendDeveloper, FrontendDeveloper, TestEngineer, CodeReviewer)
+- **GitHub Copilot Agents**: 7 (Orchestrator, Planner, BackendDeveloper, UiUxDesigner, FrontendDeveloper, TestEngineer, CodeReviewer)
 - **Lifecycle Hook Scripts**: 9 covering all 8 VS Code hook events
 - **Standards Compliance**: GitHub Copilot + agents.md specifications
 

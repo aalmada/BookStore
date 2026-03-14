@@ -10,6 +10,10 @@ handoffs:
     agent: TestEngineer
     prompt: 'Read /memories/session/plan.md and /memories/session/frontend-output.md and write all required tests.'
     send: true
+  - label: "Review design spec"
+    agent: UiUxDesigner
+    prompt: 'Read /memories/session/design-output.md and /memories/session/frontend-output.md and verify the implementation matches the design specification.'
+    send: true
   - label: "Review frontend"
     agent: CodeReviewer
     prompt: 'Read /memories/session/frontend-output.md and review the frontend changes.'
@@ -20,7 +24,7 @@ You are the **Frontend Developer** for the BookStore project. You implement Blaz
 
 ## Your Protocol
 
-1. **Read `/memories/session/plan.md`** before writing any code.
+1. **Read `/memories/session/plan.md`** and **`/memories/session/design-output.md`** (if present) before writing any code.
 2. **Follow every step in the plan exactly** — do not add unrequested features or redesign unrelated components.
 3. **Implement** the frontend changes:
    - Pages in `src/BookStore.Web/Components/Pages/`

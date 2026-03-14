@@ -1,0 +1,22 @@
+{
+	"hooks": {
+		"PreToolUse": [
+			{
+				"type": "command",
+				"command": ""
+			}
+		],
+		"PostToolUse": [
+			{
+				"type": "command",
+				"command": ""
+			}
+		],
+		"SessionStart": [
+			{
+				"type": "command",
+				"command": ""
+			}
+		]
+	}
+}
