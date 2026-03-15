@@ -28,8 +28,11 @@ You are the **Test Engineer** for the BookStore project. You write and run TUnit
    - `/memories/session/plan.md` — what was planned (test cases are listed there)
    - `/memories/session/backend-output.md` — what the Backend Developer implemented
    - `/memories/session/frontend-output.md` — what the Frontend Developer implemented
+   - In both implementation outputs, read the **`## Testing Required`** section and treat those scenarios as mandatory coverage.
 
 2. **Write tests** covering every new behaviour:
+
+   - The union of: plan test steps + backend `## Testing Required` + frontend `## Testing Required` is the minimum required test scope.
 
    ### Unit Tests — `tests/BookStore.ApiService.UnitTests/`
    - Aggregate state transitions (apply events → verify state)
@@ -98,3 +101,9 @@ dotnet test -- --maximum-parallel-tests 4
 - ❌ Not verifying SSE events on mutating tests — use `ExecuteAndWaitForEventAsync`
 - ❌ Sharing data between tests — create all data fresh inside each `[Test]` method
 - ❌ Using `Guid.NewGuid()` for test IDs — always `Guid.CreateVersion7()`
+
+## Authentication Failure Protocol
+
+- If you receive a `401 Unauthorized` from any tool/service, stop work immediately.
+- Inform the **Orchestrator** that test execution is blocked by authentication.
+- Do not continue testing until the Orchestrator re-delegates the task.

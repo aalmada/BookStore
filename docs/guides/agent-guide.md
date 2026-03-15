@@ -314,6 +314,16 @@ The Orchestrator has `disable-model-invocation: true` — it **cannot** reason a
 
 This ensures the Orchestrator acts as a pure coordinator and never contaminates the specialist agents' technical judgment.
 
+### 401 Escalation Policy
+
+All specialist agents must treat `401 Unauthorized` as a hard stop:
+
+1. Stop current work immediately.
+2. Inform the **Orchestrator** that work is blocked by authentication.
+3. Wait for re-delegation.
+
+When the Orchestrator receives a 401 escalation, it must pause the workflow, notify the user, and retry later by delegating the same step back to the appropriate specialist agent.
+
 ### Handoff Chain
 
 ```
