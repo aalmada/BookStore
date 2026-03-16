@@ -1,0 +1,22 @@
+<span class="badge @CssClass">@Label</span>
+
+@code {
+    [Parameter] public string Label { get; set; } = string.Empty;
+    [Parameter] public StatusVariant Variant { get; set; }
+
+    private string CssClass => Variant switch
+    {
+        StatusVariant.Success => "alert-success",
+        StatusVariant.Warning => "alert-warning",
+        StatusVariant.Error => "alert-error",
+        _ => "alert-info"
+    };
+
+    public enum StatusVariant
+    {
+        Info,
+        Success,
+        Warning,
+        Error
+    }
+}

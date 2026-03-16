@@ -1,0 +1,3 @@
+.catalog-filters {
+    animation: fade-in var(--duration-normal) var(--ease-standard);
+}

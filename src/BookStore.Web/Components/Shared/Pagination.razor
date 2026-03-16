@@ -1,0 +1,17 @@
+@if (PageCount > 1)
+{
+    <nav class="pagination" aria-label="Pagination">
+        <button class="btn btn-ghost" disabled="@(!HasPreviousPage)" @onclick="OnPrev">Previous</button>
+        <span>Page @PageNumber of @PageCount</span>
+        <button class="btn btn-ghost" disabled="@(!HasNextPage)" @onclick="OnNext">Next</button>
+    </nav>
+}
+
+@code {
+    [Parameter] public int PageNumber { get; set; }
+    [Parameter] public int PageCount { get; set; }
+    [Parameter] public bool HasPreviousPage { get; set; }
+    [Parameter] public bool HasNextPage { get; set; }
+    [Parameter] public EventCallback OnPrev { get; set; }
+    [Parameter] public EventCallback OnNext { get; set; }
+}

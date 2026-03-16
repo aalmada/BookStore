@@ -30,62 +30,37 @@
             <p>Curated titles, live updates, and shelf-ready filters.</p>
         </div>
         <div class="catalog-search-shell">
-            <input class="input-field"
-                   type="search"
-                   @bind="searchQuery"
-                   @onkeyup="OnSearchKeyUp"
-                   placeholder="Search by title, ISBN, author, or publisher" />
+            <CatalogSearchBar SearchQuery="@searchQuery"
+                              SearchQueryChanged="@(value => searchQuery = value)"
+                              OnSearch="@(_ => SearchBooks())"
+                              Placeholder="Search by title, ISBN, author, or publisher" />
         </div>
     </header>
 
     <div class="catalog-layout">
-        <aside class="catalog-filters" aria-label="Filters">
-            <h2>Filters</h2>
-
-            <label class="field-label">Sort By</label>
-            <select class="input-field" @bind="sortBy" @bind:after="SortChanged">
-                <option value="title">Title</option>
-                <option value="date">Date Added</option>
-                <option value="publisher">Publisher</option>
-            </select>
-
-            <label class="field-label">Order</label>
-            <select class="input-field" @bind="sortOrder" @bind:after="SortChanged">
-                <option value="asc">Ascending</option>
-                <option value="desc">Descending</option>
-            </select>
-
-            <div class="catalog-filter-separator"></div>
-
-            <label class="field-label">Author</label>
-            <input class="input-field" type="text" @bind="authorFilter" @bind:event="oninput" @bind:after="FilterChanged" placeholder="Search authors" />
-
-            <label class="field-label">Category</label>
-            <input class="input-field" type="text" @bind="categoryFilter" @bind:event="oninput" @bind:after="FilterChanged" placeholder="Search categories" />
-
-            <label class="field-label">Publisher</label>
-            <input class="input-field" type="text" @bind="publisherFilter" @bind:event="oninput" @bind:after="FilterChanged" placeholder="Search publishers" />
-
-            <div class="catalog-filter-separator"></div>
-
-            <label class="field-label">Price Range</label>
-            <div class="catalog-price-grid">
-                <input class="input-field" type="number" @bind="minPrice" @bind:after="FilterChanged" placeholder="Min" />
-                <input class="input-field" type="number" @bind="maxPrice" @bind:after="FilterChanged" placeholder="Max" />
-            </div>
-
-            <label class="catalog-check-row">
-                <input type="checkbox" @bind="onSale" @bind:after="FilterChanged" />
-                <span>On Sale Only</span>
-            </label>
-
-            <button class="btn btn-ghost" @onclick="ClearFilters">Reset Filters</button>
-        </aside>
+        <CatalogFilters SortBy="@sortBy"
+                        SortByChanged="@(value => sortBy = value)"
+                        SortOrder="@sortOrder"
+                        SortOrderChanged="@(value => sortOrder = value)"
+                        Author="@authorFilter"
+                        AuthorChanged="@(value => authorFilter = value)"
+                        Category="@categoryFilter"
+                        CategoryChanged="@(value => categoryFilter = value)"
+                        Publisher="@publisherFilter"
+                        PublisherChanged="@(value => publisherFilter = value)"
+                        MinPrice="@minPrice"
+                        MinPriceChanged="@(value => minPrice = value)"
+                        MaxPrice="@maxPrice"
+                        MaxPriceChanged="@(value => maxPrice = value)"
+                        OnSale="@onSale"
+                        OnSaleChanged="@(value => onSale = value)"
+                        OnChanged="FilterChanged"
+                        OnReset="ClearFilters" />
 
         <section class="catalog-results">
             @if (isLoading && pagedBooks == null)
             {
-                <div class="book-grid">
+                <BookGrid>
                     @for (int i = 0; i < 8; i++)
                     {
                         <article class="book-card catalog-book-skeleton">
@@ -94,7 +69,7 @@
                             <div class="catalog-book-line short shimmer"></div>
                         </article>
                     }
-                </div>
+                </BookGrid>
             }
             else if (errorMessage != null)
             {
@@ -117,7 +92,7 @@
                     </div>
                 </div>
 
-                <div class="book-grid">
+                <BookGrid>
                     @foreach (var optimisticBook in OptimisticService.GetOptimisticBooks())
                     {
                         <article class="book-card optimistic-card">
@@ -130,74 +105,31 @@
 
                     @foreach (var book in pagedBooks.Items)
                     {
-                        <article class="book-card @(book.IsDeleted ? "deleted-book" : string.Empty)">
-                            <AuthorizeView>
-                                <Authorized>
-                                    <button class="favorite-btn" @onclick="@(() => ToggleFavorite(book))" aria-label="Toggle Favorite">
-                                        @(book.IsFavorite ? "Unlike" : "Like")
-                                    </button>
-                                </Authorized>
-                            </AuthorizeView>
-
-                            @if (book.IsDeleted)
-                            {
-                                <span class="badge deleted-badge">Deleted</span>
-                            }
-
-                            @if (!string.IsNullOrEmpty(book.CoverImageUrl))
-                            {
-                                <img src="@book.CoverImageUrl" alt="@book.Title" class="book-cover" />
-                            }
-                            else
-                            {
-                                <div class="book-cover-placeholder">No Image</div>
-                            }
-
-                            <h3>@book.Title</h3>
-                            <p>@string.Join(", ", book.Authors.Select(a => a.Name))</p>
-
-                            @if (book.Categories?.Count > 0)
-                            {
-                                <div class="catalog-tags">
-                                    @foreach (var category in book.Categories)
-                                    {
-                                        <span class="badge">@category.Name</span>
-                                    }
-                                </div>
-                            }
-
-                            @if (book.ActiveSale != null && book.Prices != null && book.Prices.TryGetValue(CurrencyService.CurrentCurrency, out var originalPrice))
-                            {
-                                var discountedPrice = book.ActiveSale.Value.CalculateDiscountedPrice(originalPrice);
-                                <div class="catalog-book-price">
-                                    <span class="catalog-price-old">@CurrencyService.FormatPrice(originalPrice)</span>
-                                    <span class="catalog-price-new">@CurrencyService.FormatPrice(discountedPrice)</span>
-                                    <BookSaleBadge Sale="@book.ActiveSale" />
-                                </div>
-                            }
-                            else
-                            {
-                                <div class="catalog-book-price">
-                                    <span class="catalog-price-new">@CurrencyService.FormatPrice(book.Prices)</span>
-                                </div>
-                            }
-
-                            <div class="catalog-card-footer">
-                                <button class="btn btn-primary" @onclick="() => ViewDetails(book)">View Details</button>
-                                <span class="catalog-card-metric">Rating: @(book.RatingCount > 0 ? book.AverageRating.ToString("F1") : "N/A")</span>
-                            </div>
-                        </article>
+                        <BookCard Book="@book" OnViewDetails="@(() => ViewDetails(book))">
+                            <FavoriteContent>
+                                <FavoriteButton BookId="@book.Id"
+                                                IsFavorite="@book.IsFavorite"
+                                                ETag="@book.ETag"
+                                                OnToggled="@(isFavorite => ToggleFavoriteFromComponent(book, isFavorite))" />
+                            </FavoriteContent>
+                        </BookCard>
                     }
-                </div>
+                </BookGrid>
 
                 @if (pagedBooks.Items.Count == 0)
                 {
-                    <div class="catalog-empty">
-                        <h2>No books found</h2>
-                        <p>Try adjusting your filters or search query.</p>
-                        <button class="btn btn-primary" @onclick="ClearFilters">Clear All Filters</button>
-                    </div>
+                    <EmptyState Title="No books found"
+                                Message="Try adjusting your filters or search query."
+                                ActionLabel="Clear All Filters"
+                                OnAction="ClearFilters" />
                 }
+
+                <Pagination PageNumber="@currentPage"
+                            PageCount="@Math.Max(1, (int)pagedBooks.PageCount)"
+                            HasPreviousPage="@CanGoToPreviousPage"
+                            HasNextPage="@CanGoToNextPage"
+                            OnPrev="@(() => LoadPage(currentPage - 1))"
+                            OnNext="@(() => LoadPage(currentPage + 1))" />
             }
         </section>
     </div>
@@ -551,6 +483,28 @@
                 );
             }),
             cancellationToken: _cts.Token);
+    }
+
+    private Task ToggleFavoriteFromComponent(BookDto book, bool isFavorite)
+    {
+        bookQuery?.MutateData(currentList =>
+        {
+            var items = currentList.Items.ToList();
+            var index = items.FindIndex(b => b.Id == book.Id);
+            if (index != -1)
+            {
+                var likeCount = isFavorite ? items[index].LikeCount + 1 : Math.Max(0, items[index].LikeCount - 1);
+                items[index] = items[index] with { IsFavorite = isFavorite, LikeCount = likeCount };
+            }
+
+            return new PagedListDto<BookDto>(
+                items,
+                currentList.PageNumber,
+                currentList.PageSize,
+                currentList.TotalItemCount);
+        });
+
+        return Task.CompletedTask;
     }
 
     private void ViewDetails(BookDto book)

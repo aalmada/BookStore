@@ -3,13 +3,13 @@ using Blazored.LocalStorage;
 using BookStore.Client;
 using BookStore.Client.Infrastructure;
 using BookStore.Client.Services;
+using BookStore.Shared;
 using BookStore.Web.Components;
 using BookStore.Web.Infrastructure;
 using BookStore.Web.Services;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Http.Resilience;
-using MudBlazor.Services;
 using Polly;
 using Polly.CircuitBreaker;
 using Polly.Retry;
@@ -48,9 +48,6 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 });
 
 builder.Services.AddCascadingAuthenticationState();
-
-// Keep MudBlazor infrastructure available until all remaining Mud-based routes are migrated.
-builder.Services.AddMudServices();
 
 // Get API base URL from service discovery (Aspire)
 var apiServiceUrl = builder.Configuration[$"services:{BookStore.ServiceDefaults.ResourceNames.ApiService}:https:0"]
@@ -199,7 +196,7 @@ builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredServ
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddAuthorizationCore(options => options.AddPolicy("SystemAdmin",
     policy => policy.RequireRole("Admin")
-        .RequireClaim("tenant_id", "*DEFAULT*")));
+        .RequireClaim("tenant_id", MultiTenancyConstants.DefaultTenantId)));
 
 // Add Polly resilience policies to all HTTP clients
 // builder.Services.ConfigureHttpClientDefaults(http =>

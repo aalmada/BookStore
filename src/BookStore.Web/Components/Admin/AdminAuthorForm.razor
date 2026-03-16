@@ -1,0 +1,27 @@
+<div class="entity-form">
+    <label class="form-label" for="author-name">Name</label>
+    <input id="author-name" class="form-input" value="@Model.Name" @oninput="OnNameChanged" />
+
+    <label class="form-label" for="author-biography">Biography</label>
+    <textarea id="author-biography" class="form-input" rows="4" value="@_biography" @oninput="OnBiographyChanged"></textarea>
+
+    <button class="btn btn-primary" @onclick="SubmitAsync">Save</button>
+</div>
+
+@code {
+    [Parameter] public CreateAuthorRequest Model { get; set; } = new();
+    [Parameter] public EventCallback<CreateAuthorRequest> OnSubmit { get; set; }
+
+    private string _biography = string.Empty;
+
+    private void OnNameChanged(ChangeEventArgs args) => Model.Name = args.Value?.ToString() ?? string.Empty;
+
+    private void OnBiographyChanged(ChangeEventArgs args)
+    {
+        _biography = args.Value?.ToString() ?? string.Empty;
+        Model.Translations ??= new Dictionary<string, AuthorTranslationDto>();
+        Model.Translations["en"] = new AuthorTranslationDto(_biography);
+    }
+
+    private Task SubmitAsync() => OnSubmit.InvokeAsync(Model);
+}

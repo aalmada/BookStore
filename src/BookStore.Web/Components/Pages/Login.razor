@@ -16,15 +16,10 @@
 
 <PageTitle>Login - BookStore</PageTitle>
 
-<div class="container mt-8">
-    <div class="card" style="padding: var(--space-8); border-radius: var(--radius-lg);">
-        <h4 class="text-center mb-6">
-            Login
-        </h4>
-
-        <h6 class="text-center text-primary mb-6">
-            @TenantService.CurrentTenantName
-        </h6>
+<section class="auth-shell">
+    <article class="card auth-card centered-card" style="max-width:420px;">
+        <h1 class="mb-2">Sign In</h1>
+        <p class="muted mb-4">Tenant: @TenantService.CurrentTenantName</p>
 
         @if (!string.IsNullOrEmpty(errorMessage))
         {
@@ -43,61 +38,40 @@
             <div class="alert alert-success mb-4 text-center">@resendMessage</div>
         }
 
-        <div class="tabs">
-            <div class="tab-panel">
-                <h5>Standard Login</h5>
-                <form @onsubmit="HandleLogin">
-                    <label for="email" class="form-label">Email</label>
-                    <input id="email" type="email" @bind="email" required placeholder="Enter your email" class="form-input mb-4" aria-label="Email Address" />
-                    @if (!string.IsNullOrWhiteSpace(emailValidationError))
-                    {
-                        <div class="validation-message mb-4">@emailValidationError</div>
-                    }
+        <form @onsubmit="HandleLogin">
+            <label for="email" class="form-label">Email</label>
+            <input id="email" type="email" @bind="email" required placeholder="you@example.com" class="form-input mb-2" aria-label="Email Address" />
+            @if (!string.IsNullOrWhiteSpace(emailValidationError))
+            {
+                <div class="validation-message mb-3">@emailValidationError</div>
+            }
 
-                    <label for="password" class="form-label">Password</label>
-                    <input id="password" type="password" @bind="password" required placeholder="Enter your password" class="form-input mb-4" aria-label="Password" />
-                    @if (!string.IsNullOrWhiteSpace(passwordValidationError))
-                    {
-                        <div class="validation-message mb-4">@passwordValidationError</div>
-                    }
+            <label for="password" class="form-label">Password</label>
+            <input id="password" type="password" @bind="password" required placeholder="Enter your password" class="form-input mb-2" aria-label="Password" />
+            @if (!string.IsNullOrWhiteSpace(passwordValidationError))
+            {
+                <div class="validation-message mb-3">@passwordValidationError</div>
+            }
 
-                    <button type="submit" class="btn btn-primary btn-large" disabled="@isLoading">
-                        @if (isLoading)
-                        {
-                            <span>Logging in...</span>
-                        }
-                        else
-                        {
-                            <span>Login</span>
-                        }
-                    </button>
-                </form>
-            </div>
-            <div class="tab-panel">
-                <h5>Passkey Login</h5>
-                <p>Login using your device's biometric authenticator (FaceID, TouchID) or security key.</p>
+            <button type="submit" class="btn btn-primary" style="width:100%;" disabled="@isLoading">
+                @(isLoading ? "Signing in..." : "Sign In")
+            </button>
+        </form>
 
-                <form>
-                    <label for="passkey-email" class="form-label">Email</label>
-                    <input id="passkey-email" type="email" @bind="email" placeholder="Enter your email (optional)" autocomplete="webauthn" class="form-input mb-4" aria-label="Passkey Email Address" />
-                    @if (!string.IsNullOrWhiteSpace(passkeyEmailValidationError))
-                    {
-                        <div class="validation-message mb-4">@passkeyEmailValidationError</div>
-                    }
-
-                    <button type="button" class="btn btn-ghost btn-large" @onclick="LoginWithPasskey" disabled="@isLoading">
-                        Sign in with Passkey
-                    </button>
-                </form>
-            </div>
+        <div style="margin:var(--space-4) 0;">
+            <label for="passkey-email" class="form-label">Passkey email (optional)</label>
+            <input id="passkey-email" type="email" @bind="email" placeholder="you@example.com" autocomplete="webauthn" class="form-input mb-2" aria-label="Passkey Email Address" />
+            @if (!string.IsNullOrWhiteSpace(passkeyEmailValidationError))
+            {
+                <div class="validation-message mb-3">@passkeyEmailValidationError</div>
+            }
+            <button type="button" class="btn btn-ghost" style="width:100%;" @onclick="LoginWithPasskey" disabled="@isLoading">Sign in with Passkey</button>
         </div>
 
-        <p class="mt-6">
-            Don't have an account?
-            <a href="/register" class="ml-1">Register here</a>
-        </p>
-    </div>
-</div>
+        <p class="mt-2">Do not have an account? <a href="/register">Create one</a></p>
+        <p class="mt-1"><a href="/account/password">Manage password</a></p>
+    </article>
+</section>
 
 @code {
     private string email = string.Empty;

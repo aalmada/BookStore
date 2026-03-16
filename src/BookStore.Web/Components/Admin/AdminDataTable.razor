@@ -1,0 +1,51 @@
+@typeparam TItem
+
+<section class="admin-table-shell">
+    <div class="list-row">
+        <input class="form-input" value="@_search" @oninput="OnSearchInput" placeholder="@SearchPlaceholder" />
+        <button class="btn btn-ghost" @onclick="OnRefresh">Refresh</button>
+    </div>
+
+    @if (HeaderContent is not null)
+    {
+        @HeaderContent
+    }
+
+    @if (IsLoading)
+    {
+        <p>Loading...</p>
+    }
+    else if (Items?.Any() == true)
+    {
+        <table class="admin-table">
+            <tbody>
+                @foreach (var item in Items)
+                {
+                    @RowContent(item)
+                }
+            </tbody>
+        </table>
+    }
+    else
+    {
+        <EmptyState Title="No records" Message="No items matched your filters." />
+    }
+</section>
+
+@code {
+    [Parameter] public IEnumerable<TItem> Items { get; set; } = [];
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public string SearchPlaceholder { get; set; } = "Search";
+    [Parameter] public EventCallback<string> OnSearch { get; set; }
+    [Parameter, EditorRequired] public RenderFragment<TItem> RowContent { get; set; } = default!;
+    [Parameter] public RenderFragment? HeaderContent { get; set; }
+    [Parameter] public EventCallback OnRefresh { get; set; }
+
+    private string _search = string.Empty;
+
+    private Task OnSearchInput(ChangeEventArgs args)
+    {
+        _search = args.Value?.ToString() ?? string.Empty;
+        return OnSearch.InvokeAsync(_search);
+    }
+}

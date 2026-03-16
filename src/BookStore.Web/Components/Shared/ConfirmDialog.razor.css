@@ -1,0 +1,26 @@
+.confirm-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    -webkit-backdrop-filter: blur(2px);
+    backdrop-filter: blur(2px);
+    display: grid;
+    place-items: center;
+    z-index: var(--z-modal);
+}
+
+.confirm-dialog {
+    width: min(30rem, calc(100vw - 2rem));
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: var(--surface-1);
+    color: var(--text-primary);
+    padding: var(--space-5);
+}
+
+.confirm-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    margin-top: var(--space-4);
+}

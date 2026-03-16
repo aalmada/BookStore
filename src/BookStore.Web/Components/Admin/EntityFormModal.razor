@@ -1,0 +1,21 @@
+@if (IsVisible)
+{
+    <div class="confirm-overlay" @onclick="CloseAsync">
+        <dialog class="confirm-dialog" open @onclick:stopPropagation="true">
+            <div class="list-row">
+                <h3>@Title</h3>
+                <button class="btn btn-ghost" @onclick="CloseAsync">Close</button>
+            </div>
+            @ChildContent
+        </dialog>
+    </div>
+}
+
+@code {
+    [Parameter] public string Title { get; set; } = string.Empty;
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private Task CloseAsync() => OnClose.InvokeAsync();
+}

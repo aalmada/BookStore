@@ -1,5 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
+  <PropertyGroup>
+    <DefaultItemExcludes>$(DefaultItemExcludes);.tmp_replace/**</DefaultItemExcludes>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\BookStore.ServiceDefaults\BookStore.ServiceDefaults.csproj" />
     <ProjectReference Include="..\BookStore.Client\BookStore.Client.csproj" />
@@ -13,12 +17,7 @@
     <PackageReference Include="Blazored.LocalStorage" />
     <PackageReference Include="Microsoft.Extensions.Http.Polly" />
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
-    <PackageReference Include="MudBlazor" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <RazorComponent Remove="Components/Pages/Admin/**/*.razor" />
   </ItemGroup>
 
 </Project>

@@ -1,0 +1,14 @@
+<div class="entity-form">
+    <label class="form-label" for="publisher-name">Name</label>
+    <input id="publisher-name" class="form-input" value="@Model.Name" @oninput="OnNameChanged" />
+    <button class="btn btn-primary" @onclick="SubmitAsync">Save</button>
+</div>
+
+@code {
+    [Parameter] public CreatePublisherRequest Model { get; set; } = new();
+    [Parameter] public EventCallback<CreatePublisherRequest> OnSubmit { get; set; }
+
+    private void OnNameChanged(ChangeEventArgs args) => Model.Name = args.Value?.ToString() ?? string.Empty;
+
+    private Task SubmitAsync() => OnSubmit.InvokeAsync(Model);
+}

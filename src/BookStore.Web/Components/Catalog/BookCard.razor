@@ -1,0 +1,48 @@
+@using BookStore.Shared.Models
+@inject CurrencyService CurrencyService
+
+<article class="book-card @(Book.IsDeleted ? "deleted-book" : string.Empty)">
+    @if (FavoriteContent is not null)
+    {
+        @FavoriteContent
+    }
+
+    @if (!string.IsNullOrWhiteSpace(Book.CoverImageUrl))
+    {
+        <img src="@Book.CoverImageUrl" alt="@Book.Title" class="book-cover" />
+    }
+    else
+    {
+        <div class="book-cover-placeholder">No Image</div>
+    }
+
+    <h3>@Book.Title</h3>
+    <p>@string.Join(", ", Book.Authors.Select(a => a.Name))</p>
+
+    @if (Book.ActiveSale is not null && Book.Prices is not null && Book.Prices.TryGetValue(CurrencyService.CurrentCurrency, out var originalPrice))
+    {
+        var salePrice = Book.ActiveSale!.Value.CalculateDiscountedPrice(originalPrice);
+        <div class="catalog-book-price">
+            <span class="catalog-price-old">@CurrencyService.FormatPrice(originalPrice)</span>
+            <span class="catalog-price-new">@CurrencyService.FormatPrice(salePrice)</span>
+            <BookSaleBadge Sale="@Book.ActiveSale" />
+        </div>
+    }
+    else
+    {
+        <div class="catalog-book-price">
+            <span class="catalog-price-new">@CurrencyService.FormatPrice(Book.Prices)</span>
+        </div>
+    }
+
+    <div class="catalog-card-footer">
+        <button class="btn btn-primary" @onclick="OnViewDetails">View Details</button>
+        <span class="catalog-card-metric">@Book.AverageRating.ToString("F1") ★</span>
+    </div>
+</article>
+
+@code {
+    [Parameter, EditorRequired] public BookDto Book { get; set; } = default!;
+    [Parameter] public EventCallback OnViewDetails { get; set; }
+    [Parameter] public RenderFragment? FavoriteContent { get; set; }
+}

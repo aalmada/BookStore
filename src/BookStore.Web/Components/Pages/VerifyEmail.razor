@@ -7,7 +7,7 @@
     <article class="card auth-card centered-card">
         @if (_isLoading)
         {
-            <p>Verifying your email...</p>
+            <LoadingSpinner IsVisible="true" Message="Verifying your email" />
         }
         else if (_isSuccess)
         {
@@ -19,7 +19,7 @@
         {
             <h1>Verification Failed</h1>
             <p>Invalid verification link or the link has expired.</p>
-            <button class="btn" @onclick='() => Navigation.NavigateTo("/")'>Go Home</button>
+            <button class="btn btn-ghost" @onclick='() => Navigation.NavigateTo("/")'>Go Home</button>
         }
     </article>
 </section>

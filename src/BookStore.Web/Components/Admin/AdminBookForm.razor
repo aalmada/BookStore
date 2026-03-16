@@ -1,0 +1,22 @@
+<div class="entity-form">
+    <label class="form-label" for="book-title">Title</label>
+    <input id="book-title" class="form-input" value="@Model.Title" @oninput="OnTitleChanged" />
+
+    <label class="form-label" for="book-isbn">ISBN</label>
+    <input id="book-isbn" class="form-input" value="@Model.Isbn" @oninput="OnIsbnChanged" />
+
+    <label class="form-label" for="book-language">Language</label>
+    <input id="book-language" class="form-input" value="@Model.Language" @oninput="OnLanguageChanged" />
+
+    <button class="btn btn-primary" @onclick="SubmitAsync">Save</button>
+</div>
+
+@code {
+    [Parameter] public CreateBookRequest Model { get; set; } = new();
+    [Parameter] public EventCallback<CreateBookRequest> OnSubmit { get; set; }
+
+    private void OnTitleChanged(ChangeEventArgs args) => Model.Title = args.Value?.ToString() ?? string.Empty;
+    private void OnIsbnChanged(ChangeEventArgs args) => Model.Isbn = args.Value?.ToString();
+    private void OnLanguageChanged(ChangeEventArgs args) => Model.Language = args.Value?.ToString() ?? "en";
+    private Task SubmitAsync() => OnSubmit.InvokeAsync(Model);
+}

@@ -1,0 +1,48 @@
+@inject IBooksClient BooksClient
+@inject INotificationService NotificationService
+
+<AuthorizeView>
+    <Authorized>
+        <button class="favorite-btn" @onclick="ToggleAsync" aria-label="Toggle favorite">
+            @(CurrentFavorite ? "♥" : "♡")
+        </button>
+    </Authorized>
+</AuthorizeView>
+
+@code {
+    [Parameter] public Guid BookId { get; set; }
+    [Parameter] public bool IsFavorite { get; set; }
+    [Parameter] public string? ETag { get; set; }
+    [Parameter] public EventCallback<bool> OnToggled { get; set; }
+
+    private bool CurrentFavorite => _currentFavorite ?? IsFavorite;
+    private bool? _currentFavorite;
+
+    private async Task ToggleAsync()
+    {
+        var nextState = !CurrentFavorite;
+        _currentFavorite = nextState;
+
+        try
+        {
+            if (nextState)
+            {
+                await BooksClient.AddBookToFavoritesAsync(BookId, ETag);
+                NotificationService.Add("Added to favorites", NotificationSeverity.Success);
+            }
+            else
+            {
+                await BooksClient.RemoveBookFromFavoritesAsync(BookId, ETag);
+                NotificationService.Add("Removed from favorites", NotificationSeverity.Success);
+            }
+
+            await OnToggled.InvokeAsync(nextState);
+        }
+        catch (Exception ex)
+        {
+            _currentFavorite = !nextState;
+            NotificationService.Add($"Failed to update favorite: {ex.Message}", NotificationSeverity.Error);
+            await OnToggled.InvokeAsync(CurrentFavorite);
+        }
+    }
+}

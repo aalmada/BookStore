@@ -1,0 +1,16 @@
+.star-rating {
+    display: inline-flex;
+    gap: var(--space-1);
+}
+
+.star-button {
+    border: 0;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    cursor: pointer;
+}
+
+.star-button.is-active {
+    color: var(--brand-accent-500);
+}

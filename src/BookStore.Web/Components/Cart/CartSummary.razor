@@ -1,0 +1,36 @@
+@using BookStore.Client
+@inject CurrencyService CurrencyService
+
+<section class="list-shell">
+    <h3>Order Summary</h3>
+    <p>Total items: @Cart.TotalItems</p>
+    <p>Total: @TotalFormatted</p>
+    <div class="list-row">
+        <button class="btn btn-ghost" @onclick="OnContinueShopping">Continue Shopping</button>
+        <button class="btn btn-primary" @onclick="OnClearCart">Clear Cart</button>
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public ShoppingCartResponse Cart { get; set; } = default!;
+    [Parameter] public EventCallback OnClearCart { get; set; }
+    [Parameter] public EventCallback OnContinueShopping { get; set; }
+
+    private string TotalFormatted
+    {
+        get
+        {
+            var total = Cart.Items.Sum(item =>
+            {
+                if (item.Prices.TryGetValue(CurrencyService.CurrentCurrency, out var price))
+                {
+                    return price * item.Quantity;
+                }
+
+                return 0m;
+            });
+
+            return CurrencyService.FormatPrice(total);
+        }
+    }
+}

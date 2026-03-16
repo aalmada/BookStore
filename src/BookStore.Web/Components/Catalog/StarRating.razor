@@ -1,0 +1,17 @@
+<div class="star-rating" role="group" aria-label="Book rating">
+    @for (var i = 1; i <= 5; i++)
+    {
+        var score = i;
+        <button type="button"
+                class="star-button @(score <= Value ? "is-active" : "")"
+                disabled="@(!Editable)"
+                aria-label="Rate @score stars"
+                @onclick="() => OnRatingChanged.InvokeAsync(score)">★</button>
+    }
+</div>
+
+@code {
+    [Parameter] public int Value { get; set; }
+    [Parameter] public bool Editable { get; set; }
+    [Parameter] public EventCallback<int> OnRatingChanged { get; set; }
+}

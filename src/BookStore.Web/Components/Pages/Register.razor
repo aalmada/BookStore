@@ -1,267 +1,98 @@
+
 @page "/register"
+@using BookStore.Web.Components.Auth
 @using BookStore.Web.Services
-@using MudBlazor
 @inject AuthenticationService AuthService
 @inject PasskeyService PasskeyService
 @inject JwtAuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Navigation
-@inject BookStoreEventsService EventsService
-@implements IDisposable
 @inject IJSRuntime JS
-@using Microsoft.JSInterop
-@using BookStore.Shared.Validation
-@inject BookStore.Web.Services.ErrorLocalizationService ErrorLocalizer
-
+@inject ErrorLocalizationService ErrorLocalizer
 
 <PageTitle>Register - BookStore</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Small" Class="mt-8">
-    <MudPaper Elevation="4" Class="pa-8" Style="border-radius: 12px;">
-        <MudText Typo="Typo.h4" Align="Align.Center" Class="mb-6">
-            <MudIcon Icon="@Icons.Material.Filled.PersonAdd" Size="Size.Large" Class="mr-2"/>
-            Create Account
-        </MudText>
+<section class="auth-shell">
+    <article class="auth-card">
+        <h1>Create Account</h1>
 
         @if (!string.IsNullOrEmpty(errorMessage))
         {
-            <MudAlert Severity="Severity.Error" Class="mb-4">@errorMessage</MudAlert>
+            <AlertBanner Message="@errorMessage" Severity="AlertBanner.AlertSeverity.Error" />
         }
 
-        @if (registrationSuccess)
+        @if (registrationSuccess && requiresVerification)
         {
-            <MudAlert Severity="Severity.Success" Class="mb-4">
-                Registration successful!
-                @if (requiresVerification)
-                {
-                    <text> Please check your email to verify your account.</text>
-                }
-                else
-                {
-                    <text> You are now logged in. Redirecting...</text>
-                }
-            </MudAlert>
+            <AlertBanner Message="Registration successful. Check your email to verify your account." Severity="AlertBanner.AlertSeverity.Success" />
         }
 
-        <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true">
-            <MudTabPanel Text="Standard" Icon="@Icons.Material.Filled.Email">
-                <MudForm @ref="form">
-                    <MudTextField @bind-Value="email"
-                                  Label="Email"
-                                  Variant="Variant.Outlined"
-                                  Required="true"
-                                  RequiredError="Email is required"
-                                  Validation="@(new Func<string, string?>(ValidateEmail))"
-                                  Class="mb-4"/>
+        @if (registrationSuccess && !requiresVerification)
+        {
+            <AlertBanner Message="Registration successful. Redirecting..." Severity="AlertBanner.AlertSeverity.Success" />
+        }
 
-                    <MudTextField @bind-Value="password"
-                                  Label="Password"
-                                  Variant="Variant.Outlined"
-                                  InputType="@PasswordInput"
-                                  Adornment="Adornment.End"
-                                  AdornmentIcon="@PasswordInputIcon"
-                                  OnAdornmentClick="ButtonTestclick"
-                                  AdornmentAriaLabel="Show Password"
-                                  Required="true"
-                                  RequiredError="Password is required"
-                                  OnBlur="ValidatePasswordStrength"
-                                  Class="mb-4"/>
+        <div class="tabs">
+            <section class="tab-panel">
+                <h3>Standard</h3>
+                <label class="form-label" for="register-email">Email</label>
+                <input id="register-email" class="form-input" type="email" @bind="email" />
 
-                    @if (passwordErrors.Any())
-                    {
-                        <MudAlert Severity="Severity.Warning" Class="mb-4">
-                            <MudText Typo="Typo.body2" Class="mb-2">
-                                <strong>Password must meet the following requirements:</strong>
-                            </MudText>
-                            <ul style="margin: 0; padding-left: 20px;">
-                                @foreach (var error in passwordErrors)
-                                {
-                                    <li>@error</li>
-                                }
-                            </ul>
-                        </MudAlert>
-                    }
+                <PasswordField Id="register-password" Label="Password" Value="@password" ValueChanged="@(value => password = value)" />
+                <PasswordStrengthHints Password="@password" />
+                <PasswordField Id="register-confirm" Label="Confirm Password" Value="@confirmPassword" ValueChanged="@(value => confirmPassword = value)" />
 
-                    <MudTextField @bind-Value="confirmPassword"
-                                  Label="Confirm Password"
-                                  Variant="Variant.Outlined"
-                                  InputType="@ConfirmPasswordInput"
-                                  Adornment="Adornment.End"
-                                  AdornmentIcon="@ConfirmPasswordInputIcon"
-                                  OnAdornmentClick="ButtonConfirmTestclick"
-                                  AdornmentAriaLabel="Show Confirm Password"
-                                  Required="true"
-                                  RequiredError="Please confirm your password"
-                                  Validation="@(new Func<string, string?>(ValidateConfirmPassword))"
-                                  Class="mb-4"/>
+                <button class="btn btn-primary" @onclick="HandleRegister" disabled="@isLoading">
+                    @(isLoading ? "Creating account..." : "Register")
+                </button>
+            </section>
 
-                    <MudButton Variant="Variant.Filled"
-                               Color="Color.Primary"
-                               FullWidth="true"
-                               Size="Size.Large"
-                               OnClick="HandleRegister"
-                               Disabled="isLoading || passwordErrors.Any()"
-                               Class="mb-4">
-                        @if (isLoading)
-                        {
-                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2"/>
-                            <span>Creating account...</span>
-                        }
-                        else
-                        {
-                            <span>Register</span>
-                        }
-                    </MudButton>
-                </MudForm>
-            </MudTabPanel>
-            <MudTabPanel Text="Passkey" Icon="@Icons.Material.Filled.Fingerprint">
-                <MudText Typo="Typo.body1" Class="mb-4">
-                    Register securely without a password using your device's biometric authenticator (FaceID, TouchID) or security key.
-                </MudText>
+            <section class="tab-panel">
+                <h3>Passkey</h3>
+                <p class="text-muted">Create an account with Face ID, Touch ID, or a security key.</p>
+                <button class="btn btn-ghost" @onclick="RegisterWithPasskey" disabled="@isLoading">Register with Passkey</button>
+            </section>
+        </div>
 
-                <MudForm>
-                    <MudTextField @bind-Value="email"
-                                  Label="Email"
-                                  Variant="Variant.Outlined"
-                                  Required="true"
-                                  RequiredError="Email is required"
-                                  Validation="@(new Func<string, string?>(ValidateEmail))"
-                                  Immediate="true"
-                                  Class="mb-4"/>
-
-                    <MudButton Variant="Variant.Outlined"
-                               StartIcon="@Icons.Material.Filled.Fingerprint"
-                               Color="Color.Secondary"
-                               FullWidth="true"
-                               Size="Size.Large"
-                               OnClick="RegisterWithPasskey"
-                               Disabled="isLoading || string.IsNullOrEmpty(email)"
-                               Class="mb-4">
-                        @if (isLoading)
-                        {
-                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2"/>
-                            <span>Creating account...</span>
-                        }
-                        else
-                        {
-                            <span>Register with Passkey</span>
-                        }
-                    </MudButton>
-                </MudForm>
-            </MudTabPanel>
-        </MudTabs>
-
-        <MudDivider Class="my-4"/>
-
-        <MudText Align="Align.Center">
-            Already have an account?
-            <MudLink Href="/login" Color="Color.Primary">Login here</MudLink>
-        </MudText>
-    </MudPaper>
-</MudContainer>
+        <p>Already have an account? <a href="/login">Sign in</a></p>
+    </article>
+</section>
 
 @code {
-    MudForm? form;
-    string email = string.Empty;
-    string password = string.Empty;
-    string confirmPassword = string.Empty;
-    string? errorMessage;
-    bool isShow;
-    InputType PasswordInput = InputType.Password;
-    string PasswordInputIcon = Icons.Material.Filled.VisibilityOff;
+    private string email = string.Empty;
+    private string password = string.Empty;
+    private string confirmPassword = string.Empty;
+    private string? errorMessage;
+    private bool isLoading;
+    private bool registrationSuccess;
+    private bool requiresVerification;
 
-    bool isConfirmShow;
-    InputType ConfirmPasswordInput = InputType.Password;
-    string ConfirmPasswordInputIcon = Icons.Material.Filled.VisibilityOff;
-
-    bool isLoading;
-
-    void ButtonTestclick()
+    private async Task HandleRegister()
     {
-        if (isShow)
+        errorMessage = null;
+        if (password != confirmPassword)
         {
-            isShow = false;
-            PasswordInputIcon = Icons.Material.Filled.VisibilityOff;
-            PasswordInput = InputType.Password;
-        }
-        else
-        {
-            isShow = true;
-            PasswordInputIcon = Icons.Material.Filled.Visibility;
-            PasswordInput = InputType.Text;
-        }
-    }
-
-    void ButtonConfirmTestclick()
-    {
-        if (isConfirmShow)
-        {
-            isConfirmShow = false;
-            ConfirmPasswordInputIcon = Icons.Material.Filled.VisibilityOff;
-            ConfirmPasswordInput = InputType.Password;
-        }
-        else
-        {
-            isConfirmShow = true;
-            ConfirmPasswordInputIcon = Icons.Material.Filled.Visibility;
-            ConfirmPasswordInput = InputType.Text;
-        }
-    }
-
-    bool registrationSuccess;
-    bool requiresVerification;
-    List<string> passwordErrors = new();
-
-    async Task HandleRegister()
-    {
-        if (form == null)
-        {
-            return;
-        }
-
-        await form.ValidateAsync();
-        if (!form.IsValid)
-        {
-            return;
-        }
-
-        ValidatePasswordStrength();
-        if (passwordErrors.Any())
-        {
+            errorMessage = "Passwords do not match.";
             return;
         }
 
         isLoading = true;
-        errorMessage = null;
 
         try
         {
             var result = await AuthService.RegisterAsync(email, password);
-
             if (result.IsSuccess)
             {
                 registrationSuccess = true;
 
                 if (result.Value is { AccessToken: not null } loginResponse)
                 {
-                    // Email verification is not required — auto-login the user immediately.
                     requiresVerification = false;
                     await AuthStateProvider.NotifyUserAuthentication(loginResponse.AccessToken, loginResponse.RefreshToken);
-
-                    try
-                    {
-                        await JS.InvokeVoidAsync("authBroadcast.notifyLogin");
-                    }
-                    catch
-                    {
-                        // BroadcastChannel might not be available, continue anyway
-                    }
-
-                    await Task.Delay(1500);
+                    await JS.InvokeVoidAsync("authBroadcast.notifyLogin");
+                    await Task.Delay(1000);
                     Navigation.NavigateTo("/");
                 }
                 else
                 {
-                    // Email verification is required — user must confirm email first.
                     requiresVerification = true;
                 }
             }
@@ -276,20 +107,18 @@
         }
     }
 
-    async Task RegisterWithPasskey()
+    private async Task RegisterWithPasskey()
     {
         errorMessage = null;
-        var emailError = ValidateEmail(email);
-        if (emailError != null)
+        if (string.IsNullOrWhiteSpace(email))
         {
-            errorMessage = emailError;
+            errorMessage = "Email is required.";
             return;
         }
 
         isLoading = true;
         try
         {
-            // 1. Get Options
             var optionsResult = await PasskeyService.GetCreationOptionsAsync(email);
             if (optionsResult.IsFailure)
             {
@@ -298,19 +127,11 @@
             }
 
             var options = optionsResult.Value;
-            var userId = options.UserId;
-            var optionsJson = options.OptionsJson;
-
-            // 2. JS WebAuthn Create
-            var credentialJson = await JS.InvokeAsync<string>("passkey.register", optionsJson);
-
-            // 3. Submit to Server with userId
-            var result = await PasskeyService.RegisterPasskeyAsync(credentialJson, email, userId);
+            var credentialJson = await JS.InvokeAsync<string>("passkey.register", options.OptionsJson);
+            var result = await PasskeyService.RegisterPasskeyAsync(credentialJson, email, options.UserId);
 
             if (result.IsSuccess)
             {
-                // RegisterPasskeyAsync currently returns Result, so we don't have tokens here.
-                // The user will need to login normally or via passkey.
                 registrationSuccess = true;
                 requiresVerification = true;
             }
@@ -321,71 +142,11 @@
         }
         catch (Exception ex)
         {
-            var message = ex.Message;
-            if (message.Contains("Error:"))
-            {
-                var parts = message.Split("Error:", 2);
-                message = parts[^1].Trim();
-            }
-
-            errorMessage = ErrorLocalizer.GetLocalizedMessage(message);
+            errorMessage = ErrorLocalizer.GetLocalizedMessage(ex.Message);
         }
         finally
         {
             isLoading = false;
         }
     }
-
-    protected override void OnInitialized()
-    {
-        EventsService.OnNotificationReceived += HandleNotification;
-        EventsService.StartListening();
-    }
-
-    void HandleNotification(BookStore.Shared.Notifications.IDomainEventNotification notification)
-    {
-        if (notification is BookStore.Shared.Notifications.UserVerifiedNotification userVerified)
-        {
-            if (userVerified.Email.Equals(email, StringComparison.OrdinalIgnoreCase))
-            {
-                InvokeAsync(async () =>
-                {
-                    registrationSuccess = true;
-                    requiresVerification = false;
-                    StateHasChanged();
-                    await Task.Delay(2000);
-                    Navigation.NavigateTo("/login");
-                });
-            }
-        }
-    }
-
-    public void Dispose()
-    {
-        EventsService.OnNotificationReceived -= HandleNotification;
-    }
-
-    void ValidatePasswordStrength()
-    {
-        var (_, errors) = PasswordValidator.Validate(password);
-        passwordErrors = errors.ToList();
-    }
-
-    static string? ValidateEmail(string email) => EmailValidator.GetError(email);
-
-    string? ValidateConfirmPassword(string confirmPwd)
-    {
-        if (string.IsNullOrWhiteSpace(confirmPwd))
-        {
-            return "Please confirm your password";
-        }
-
-        if (confirmPwd != password)
-        {
-            return "Passwords do not match";
-        }
-
-        return null;
-    }
-
 }

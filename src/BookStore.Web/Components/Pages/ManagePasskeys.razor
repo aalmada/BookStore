@@ -11,7 +11,7 @@
 <PageTitle>Manage Passkeys</PageTitle>
 
 <section class="auth-shell">
-    <article class="card auth-card">
+    <article class="card auth-card centered-card" style="max-width:760px;">
         <h1>Manage Passkeys</h1>
         <p class="muted">Register a passkey to sign in without a password. <a href="/account/password">Manage your password here.</a></p>
 
@@ -21,7 +21,7 @@
         }
         else if (_isSupported == false)
         {
-            <div class="alert-warning">Your device does not support passkeys.</div>
+            <AlertBanner Message="Your device does not support passkeys." Severity="AlertBanner.AlertSeverity.Warning" />
         }
         else
         {
@@ -33,14 +33,17 @@
             }
         }
 
-        <h2>Your Passkeys</h2>
+        <h2 style="margin-top:var(--space-6);">Your Passkeys</h2>
         @if (_passkeys == null)
         {
-            <p>Loading passkeys...</p>
+            <LoadingSpinner IsVisible="true" Message="Loading passkeys" />
         }
         else if (_passkeys.Count == 0)
         {
-            <p class="muted">No passkeys registered yet.</p>
+            <EmptyState Title="No passkeys registered"
+                        Message="Register a passkey to speed up sign in and improve account security."
+                        ActionLabel="Register passkey"
+                        OnAction="RegisterPasskey" />
         }
         else
         {

@@ -1,0 +1,26 @@
+@if (IsVisible)
+{
+    <div class="confirm-overlay" @onclick="Cancel">
+        <dialog class="confirm-dialog" open @onclick:stopPropagation="true">
+            <h3>@Title</h3>
+            <p>@Message</p>
+            <div class="confirm-actions">
+                <button class="btn btn-ghost" @onclick="Cancel">@CancelLabel</button>
+                <button class="btn btn-primary" @onclick="Confirm">@ConfirmLabel</button>
+            </div>
+        </dialog>
+    </div>
+}
+
+@code {
+    [Parameter] public string Title { get; set; } = "Confirm";
+    [Parameter] public string Message { get; set; } = string.Empty;
+    [Parameter] public string ConfirmLabel { get; set; } = "Confirm";
+    [Parameter] public string CancelLabel { get; set; } = "Cancel";
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public EventCallback OnConfirm { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private Task Confirm() => OnConfirm.InvokeAsync();
+    private Task Cancel() => OnCancel.InvokeAsync();
+}

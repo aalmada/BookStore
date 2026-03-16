@@ -1,0 +1,23 @@
+<div class="entity-form">
+    <label class="form-label" for="category-name">Name</label>
+    <input id="category-name" class="form-input" value="@Name" @oninput="OnNameChanged" />
+    <button class="btn btn-primary" @onclick="SubmitAsync">Save</button>
+</div>
+
+@code {
+    [Parameter] public CreateCategoryRequest Model { get; set; } = new();
+    [Parameter] public EventCallback<CreateCategoryRequest> OnSubmit { get; set; }
+
+    private string Name => Model.Translations != null && Model.Translations.TryGetValue("en", out var translation)
+        ? translation.Name
+        : string.Empty;
+
+    private void OnNameChanged(ChangeEventArgs args)
+    {
+        var name = args.Value?.ToString() ?? string.Empty;
+        Model.Translations ??= new Dictionary<string, CategoryTranslationDto>();
+        Model.Translations["en"] = new CategoryTranslationDto(name);
+    }
+
+    private Task SubmitAsync() => OnSubmit.InvokeAsync(Model);
+}

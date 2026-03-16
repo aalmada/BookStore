@@ -1,0 +1,34 @@
+@using BookStore.Web.Infrastructure
+
+<input class="input-field"
+       type="search"
+       @bind="SearchQuery"
+       @bind:event="oninput"
+       @bind:after="NotifySearchAsync"
+       placeholder="@Placeholder"
+       aria-label="Search catalog" />
+
+@code {
+    [Parameter] public string SearchQuery { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> SearchQueryChanged { get; set; }
+    [Parameter] public EventCallback<string> OnSearch { get; set; }
+    [Parameter] public string Placeholder { get; set; } = "Search";
+
+    private CancellationTokenSource? _debounceCts;
+
+    private async Task NotifySearchAsync()
+    {
+        _debounceCts?.Cancel();
+        _debounceCts = new CancellationTokenSource();
+
+        try
+        {
+            await Task.Delay(UIConstants.DebounceDelay, _debounceCts.Token);
+            await SearchQueryChanged.InvokeAsync(SearchQuery);
+            await OnSearch.InvokeAsync(SearchQuery);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+}

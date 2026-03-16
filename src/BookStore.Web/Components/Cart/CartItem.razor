@@ -1,0 +1,39 @@
+@using BookStore.Client
+@inject CurrencyService CurrencyService
+
+<article class="cart-item">
+    <div>
+        <h3>@Item.Title</h3>
+        @if (!string.IsNullOrWhiteSpace(Item.Isbn))
+        {
+            <p>ISBN: @Item.Isbn</p>
+        }
+        <strong>@CurrencyService.FormatPrice(Item.Prices)</strong>
+    </div>
+
+    <div class="cart-item-actions">
+        <button class="btn btn-ghost" @onclick="() => ChangeQuantity(Math.Max(1, Item.Quantity - 1))">-</button>
+        <input class="form-input" type="number" min="1" max="99" value="@Item.Quantity" @onchange="OnQuantityInput" />
+        <button class="btn btn-ghost" @onclick="() => ChangeQuantity(Item.Quantity + 1)">+</button>
+        <button class="btn btn-ghost" @onclick="() => OnRemoved.InvokeAsync(Item.BookId)">Remove</button>
+    </div>
+</article>
+
+@code {
+    [Parameter, EditorRequired] public ShoppingCartItemResponse Item { get; set; } = default!;
+    [Parameter] public EventCallback<(Guid, int)> OnQuantityChanged { get; set; }
+    [Parameter] public EventCallback<Guid> OnRemoved { get; set; }
+
+    private Task ChangeQuantity(int quantity) => OnQuantityChanged.InvokeAsync((Item.BookId, quantity));
+
+    private Task OnQuantityInput(ChangeEventArgs args)
+    {
+        var value = args.Value?.ToString();
+        if (int.TryParse(value, out var quantity))
+        {
+            return OnQuantityChanged.InvokeAsync((Item.BookId, Math.Max(1, quantity)));
+        }
+
+        return Task.CompletedTask;
+    }
+}

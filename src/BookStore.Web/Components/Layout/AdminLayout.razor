@@ -1,0 +1,28 @@
+@inherits LayoutComponentBase
+@inject TenantService TenantService
+
+<div class="admin-shell">
+    <aside class="admin-sidebar">
+        <div class="admin-sidebar-brand">
+            <strong>@TenantService.CurrentTenantName</strong>
+            <span>Admin Console</span>
+        </div>
+
+        <nav aria-label="Admin navigation">
+            <a href="/admin/books">Books</a>
+            <a href="/admin/authors">Authors</a>
+            <a href="/admin/categories">Categories</a>
+            <a href="/admin/publishers">Publishers</a>
+            <a href="/admin/users">Users</a>
+            <a href="/admin/sales">Sales</a>
+            <a href="/admin/tenants">Tenants</a>
+            <a href="/admin/projections">System</a>
+        </nav>
+
+        <a class="btn btn-ghost" href="/">Back to Store</a>
+    </aside>
+
+    <main class="admin-content">
+        @Body
+    </main>
+</div>

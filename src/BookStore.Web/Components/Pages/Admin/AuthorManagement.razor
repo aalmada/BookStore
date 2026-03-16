@@ -1,183 +1,123 @@
 @page "/admin/authors"
+@layout AdminLayout
 @using Microsoft.AspNetCore.Authorization
 @using BookStore.Shared.Notifications
-@using MudBlazor
-@implements IDisposable
 @attribute [Authorize(Roles = "Admin")]
 @inject IAuthorsClient AuthorsClient
 @inject BookStoreEventsService EventsService
 @inject QueryInvalidationService InvalidationService
-@inject ISnackbar Snackbar
-@inject IDialogService DialogService
-@inject IJSRuntime Js
+@inject INotificationService NotificationService
 @inject ILogger<AuthorManagement> Logger
+@implements IDisposable
 
-<PageTitle>Author Management - BookStore</PageTitle>
+<PageTitle>Author Management</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="mt-8 mb-12">
-    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-6">
-        <MudText Typo="Typo.h4" Class="fw-bold">Author Management</MudText>
-        <MudSpacer/>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenAddDialog">
-            Add Author
-        </MudButton>
-    </MudStack>
+<section class="container mt-8">
+    <header class="list-row mb-4">
+        <h1>Author Management</h1>
+        <button class="btn btn-primary" @onclick="OpenCreate">Add Author</button>
+    </header>
 
-    <MudTable T="AdminAuthorDto" @ref="_table" ServerData="ReloadData" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="0"
-              Class="glass-table rounded-xl overflow-hidden">
-        <ToolBarContent>
-            <MudSpacer/>
-            <MudTextField @bind-Value="_searchString" Placeholder="Search authors..." Adornment="Adornment.Start"
-                          AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="search-field"
-                          Clearable="true" Immediate="true" Variant="Variant.Outlined" Margin="Margin.Dense"/>
-        </ToolBarContent>
-        <HeaderContent>
-            <MudTh>
-                <MudTableSortLabel SortLabel="name" T="AdminAuthorDto">Name</MudTableSortLabel>
-            </MudTh>
-            <MudTh>Actions</MudTh>
-        </HeaderContent>
-        <RowTemplate Context="context">
-            <MudTd DataLabel="Name">
-                <MudText Typo="Typo.body2" Class="fw-semibold">@context.Name</MudText>
-            </MudTd>
-            <MudTd DataLabel="Actions">
-                <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" OnClick="@(() => EditAuthor(context))" Size="Size.Small"/>
-                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => DeleteAuthor(context))" Size="Size.Small"/>
-            </MudTd>
-        </RowTemplate>
-        <PagerContent>
-            <MudTablePager/>
-        </PagerContent>
-    </MudTable>
-</MudContainer>
+    <AdminDataTable TItem="AdminAuthorDto" Items="@Filtered" IsLoading="@_isLoading" SearchPlaceholder="Search authors" OnSearch="OnSearchChanged" OnRefresh="LoadAsync">
+        <RowContent Context="row">
+            <tr>
+                <td>@row.Name</td>
+                <td class="list-row">
+                    <button class="btn btn-ghost" @onclick="(() => OpenEdit(row))">Edit</button>
+                    <button class="btn btn-ghost" @onclick="(() => DeleteAsync(row))">Delete</button>
+                </td>
+            </tr>
+        </RowContent>
+    </AdminDataTable>
+
+    <EntityFormModal Title="@(_isEdit ? "Edit Author" : "Create Author")" IsVisible="@_showModal" OnClose="CloseAsync">
+        <AdminAuthorForm Model="@_model" OnSubmit="SubmitAsync" />
+    </EntityFormModal>
+</section>
 
 @code {
-    private MudTable<AdminAuthorDto> _table = null!;
+    private List<AdminAuthorDto> _rows = [];
+    private bool _isLoading = true;
+    private string _search = string.Empty;
+    private bool _showModal;
+    private bool _isEdit;
+    private Guid _id;
+    private string? _etag;
+    private CreateAuthorRequest _model = new() { Translations = new Dictionary<string, AuthorTranslationDto>() };
 
-    private string? _searchString
-    {
-        get => _searchStringFieldValue;
-        set
-        {
-            if (_searchStringFieldValue == value) return;
-            _searchStringFieldValue = value;
-            _table.ReloadServerData();
-        }
-    }
+    private IEnumerable<AdminAuthorDto> Filtered => string.IsNullOrWhiteSpace(_search) ? _rows : _rows.Where(x => x.Name.Contains(_search, StringComparison.OrdinalIgnoreCase));
 
-    private string? _searchStringFieldValue;
-
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         EventsService.StartListening();
         EventsService.OnNotificationReceived += HandleNotification;
+        await LoadAsync();
     }
 
-    public void Dispose()
+    private async Task LoadAsync()
     {
-        EventsService.OnNotificationReceived -= HandleNotification;
+        _isLoading = true;
+        _rows = (await AuthorsClient.GetAllAuthorsAsync(new AuthorSearchRequest { Page = 1, PageSize = 250 })).Items.ToList();
+        _isLoading = false;
     }
 
-    private async void HandleNotification(IDomainEventNotification notification)
+    private Task OnSearchChanged(string value) { _search = value; return Task.CompletedTask; }
+
+    private void OpenCreate()
+    {
+        _isEdit = false;
+        _id = Guid.Empty;
+        _etag = null;
+        _model = new CreateAuthorRequest { Translations = new Dictionary<string, AuthorTranslationDto>() };
+        _showModal = true;
+    }
+
+    private void OpenEdit(AdminAuthorDto row)
+    {
+        _isEdit = true;
+        _id = row.Id;
+        _etag = row.ETag;
+        _model = new CreateAuthorRequest { Id = row.Id, Name = row.Name, Translations = row.Translations?.ToDictionary(x => x.Key, x => x.Value) ?? new Dictionary<string, AuthorTranslationDto>() };
+        _showModal = true;
+    }
+
+    private async Task SubmitAsync(CreateAuthorRequest model)
+    {
+        if (_isEdit)
+        {
+            await AuthorsClient.UpdateAuthorAsync(_id, new UpdateAuthorRequest { Name = model.Name, Translations = model.Translations }, _etag);
+            NotificationService.Add("Author updated", NotificationSeverity.Success);
+        }
+        else
+        {
+            await AuthorsClient.CreateAuthorAsync(model);
+            NotificationService.Add("Author created", NotificationSeverity.Success);
+        }
+
+        _showModal = false;
+        await LoadAsync();
+    }
+
+    private async Task DeleteAsync(AdminAuthorDto row)
+    {
+        await AuthorsClient.SoftDeleteAuthorAsync(row.Id, row.ETag);
+        NotificationService.Add("Author deleted", NotificationSeverity.Success);
+        await LoadAsync();
+    }
+
+    private Task CloseAsync() { _showModal = false; return Task.CompletedTask; }
+
+    private async void HandleNotification(IDomainEventNotification n)
     {
         try
         {
-            if (notification is PingNotification)
-            {
-                Logger.LogTrace("SSE Heartbeat (Ping) received.");
-                return;
-            }
-
-            Logger.LogDebug("Received notification: {EventType} for {EntityId}", notification.EventType, notification.EntityId);
-
-            if (InvalidationService.ShouldInvalidate(notification, ["Authors"]))
-            {
-                Logger.LogInformation("Real-time update match for Authors. Refreshing...");
-
-                await InvokeAsync(async () =>
-                {
-                    Snackbar.Add("Real-time update received. Refreshing list...", Severity.Info);
-                    await Task.Delay(1500); // Wait for projections to settle
-                    await _table.ReloadServerData();
-                    StateHasChanged();
-                });
-            }
-            else
-            {
-                Logger.LogDebug("Notification {EventType} does not match invalidation keys for Authors.", notification.EventType);
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            Logger.LogDebug("AuthorManagement notification update was canceled (likely navigation).");
+            if (n is not PingNotification && InvalidationService.ShouldInvalidate(n, ["Authors"])) await InvokeAsync(LoadAsync);
         }
         catch (Exception ex)
         {
-            Logger.LogWarning(ex, "Error processing real-time update for Authors.");
+            Logger.LogWarning(ex, "Author notifications failed");
         }
     }
 
-    private void OnSearchCleared()
-    {
-        _searchString = null;
-    }
-
-    private async Task<TableData<AdminAuthorDto>> ReloadData(TableState state, CancellationToken cancellationToken)
-    {
-        var request = new AuthorSearchRequest
-        {
-            Page = state.Page + 1,
-            PageSize = state.PageSize,
-            SortBy = state.SortLabel,
-            SortOrder = state.SortDirection == SortDirection.Descending ? "desc" : "asc",
-            Search = _searchString
-        };
-
-        var paged = await AuthorsClient.GetAllAuthorsAsync(
-            request,
-            cancellationToken);
-
-        return new TableData<AdminAuthorDto> { Items = paged.Items, TotalItems = (int)paged.TotalItemCount };
-    }
-
-    private async Task EditAuthor(AdminAuthorDto author)
-    {
-        var parameters = new DialogParameters<UpdateAuthorDialog> { { x => x.Author, author } };
-        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
-        var dialog = await DialogService.ShowAsync<UpdateAuthorDialog>("Edit Author", parameters, options);
-        var result = await dialog.Result;
-        if (result is { Canceled: false }) await _table.ReloadServerData();
-    }
-
-    private async Task DeleteAuthor(AdminAuthorDto author)
-    {
-        var result = await Js.InvokeAsync<bool>("confirm", $"Are you sure you want to delete author {author.Name}?");
-
-        if (result == true)
-        {
-            try
-            {
-                await AuthorsClient.SoftDeleteAuthorAsync(author.Id, author.ETag);
-                Snackbar.Add($"Author {author.Name} deleted successfully.", Severity.Success);
-                await _table.ReloadServerData();
-            }
-            catch (Exception ex)
-            {
-                Snackbar.Add($"Error: {ex.Message}", Severity.Error);
-            }
-        }
-    }
-
-    private async Task OpenAddDialog()
-    {
-        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
-        var dialog = await DialogService.ShowAsync<CreateAuthorDialog>("Add Author", options);
-        var result = await dialog.Result;
-        if (result != null && !result.Canceled)
-        {
-            await _table.ReloadServerData();
-        }
-    }
-
+    public void Dispose() => EventsService.OnNotificationReceived -= HandleNotification;
 }

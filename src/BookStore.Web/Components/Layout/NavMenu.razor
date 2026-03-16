@@ -1,10 +1,31 @@
-﻿<nav class="bookstore-nav" aria-label="Primary Navigation">
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@inject IShoppingCartClient CartClient
+@inject BookStoreEventsService EventsService
+@inject QueryInvalidationService InvalidationService
+@inject ILogger<NavMenu> Logger
+@implements IDisposable
+
+<nav class="bookstore-nav" aria-label="Primary Navigation">
+    <p class="bookstore-nav-section">Store</p>
     <ul class="bookstore-nav-list">
-        <li><NavLink href="/" Match="NavLinkMatch.All" class="bookstore-nav-link">Books</NavLink></li>
+        <li>
+            <NavLink href="/" Match="NavLinkMatch.All" class="bookstore-nav-link">Books</NavLink>
+        </li>
 
         <AuthorizeView>
             <Authorized>
-                <li><NavLink href="/cart" class="bookstore-nav-link">Cart</NavLink></li>
+                <li>
+                    <NavLink href="/favorites" class="bookstore-nav-link">Favorites</NavLink>
+                </li>
+                <li>
+                    <NavLink href="/cart" class="bookstore-nav-link">
+                        Cart
+                        @if (CartCount > 0)
+                        {
+                            <sup class="cart-badge">@CartCount</sup>
+                        }
+                    </NavLink>
+                </li>
             </Authorized>
         </AuthorizeView>
     </ul>
@@ -15,20 +36,38 @@
             <ul class="bookstore-nav-list">
                 <li><NavLink href="/admin/books" class="bookstore-nav-link">Books</NavLink></li>
                 <li><NavLink href="/admin/authors" class="bookstore-nav-link">Authors</NavLink></li>
-                <li><NavLink href="/admin/publishers" class="bookstore-nav-link">Publishers</NavLink></li>
                 <li><NavLink href="/admin/categories" class="bookstore-nav-link">Categories</NavLink></li>
+                <li><NavLink href="/admin/publishers" class="bookstore-nav-link">Publishers</NavLink></li>
                 <li><NavLink href="/admin/users" class="bookstore-nav-link">Users</NavLink></li>
                 <li><NavLink href="/admin/sales" class="bookstore-nav-link">Sales</NavLink></li>
-            </ul>
-        </Authorized>
-    </AuthorizeView>
-
-    <AuthorizeView Policy="SystemAdmin">
-        <Authorized>
-            <p class="bookstore-nav-section">System</p>
-            <ul class="bookstore-nav-list">
                 <li><NavLink href="/admin/tenants" class="bookstore-nav-link">Tenants</NavLink></li>
+                <li><NavLink href="/admin/projections" class="bookstore-nav-link">System</NavLink></li>
             </ul>
         </Authorized>
     </AuthorizeView>
 </nav>
+
+@code {
+    private ReactiveQuery<ShoppingCartResponse?>? _cartQuery;
+    private int CartCount => _cartQuery?.Data?.TotalItems ?? 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        EventsService.StartListening();
+
+        _cartQuery = new ReactiveQuery<ShoppingCartResponse?>(
+            queryFn: async ct => await CartClient.GetShoppingCartAsync(ct),
+            eventsService: EventsService,
+            invalidationService: InvalidationService,
+            queryKeys: ["User"],
+            onStateChanged: () => InvokeAsync(StateHasChanged),
+            logger: Logger);
+
+        await _cartQuery.LoadAsync(silent: true);
+    }
+
+    public void Dispose()
+    {
+        _cartQuery?.Dispose();
+    }
+}

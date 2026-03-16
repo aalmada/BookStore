@@ -1,0 +1,79 @@
+<aside class="catalog-filters" aria-label="Filters">
+    <h2>Filters</h2>
+
+    <label class="field-label">Sort By</label>
+    <select class="input-field" @bind="SortBy" @bind:after="OnSortChanged">
+        <option value="title">Title</option>
+        <option value="date">Date Added</option>
+        <option value="publisher">Publisher</option>
+    </select>
+
+    <label class="field-label">Order</label>
+    <select class="input-field" @bind="SortOrder" @bind:after="OnSortChanged">
+        <option value="asc">Ascending</option>
+        <option value="desc">Descending</option>
+    </select>
+
+    <label class="field-label">Author</label>
+    <input class="input-field" @bind="Author" @bind:event="oninput" @bind:after="OnFilterChanged" />
+
+    <label class="field-label">Category</label>
+    <input class="input-field" @bind="Category" @bind:event="oninput" @bind:after="OnFilterChanged" />
+
+    <label class="field-label">Publisher</label>
+    <input class="input-field" @bind="Publisher" @bind:event="oninput" @bind:after="OnFilterChanged" />
+
+    <label class="field-label">Price Range</label>
+    <div class="catalog-price-grid">
+        <input class="input-field" type="number" @bind="MinPrice" @bind:after="OnFilterChanged" placeholder="Min" />
+        <input class="input-field" type="number" @bind="MaxPrice" @bind:after="OnFilterChanged" placeholder="Max" />
+    </div>
+
+    <label class="catalog-check-row">
+        <input type="checkbox" @bind="OnSale" @bind:after="OnFilterChanged" />
+        <span>On Sale</span>
+    </label>
+
+    <button class="btn btn-ghost" @onclick="OnResetClicked">Reset Filters</button>
+</aside>
+
+@code {
+    [Parameter] public string SortBy { get; set; } = "title";
+    [Parameter] public EventCallback<string> SortByChanged { get; set; }
+    [Parameter] public string SortOrder { get; set; } = "asc";
+    [Parameter] public EventCallback<string> SortOrderChanged { get; set; }
+    [Parameter] public string Author { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> AuthorChanged { get; set; }
+    [Parameter] public string Category { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> CategoryChanged { get; set; }
+    [Parameter] public string Publisher { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> PublisherChanged { get; set; }
+    [Parameter] public decimal? MinPrice { get; set; }
+    [Parameter] public EventCallback<decimal?> MinPriceChanged { get; set; }
+    [Parameter] public decimal? MaxPrice { get; set; }
+    [Parameter] public EventCallback<decimal?> MaxPriceChanged { get; set; }
+    [Parameter] public bool OnSale { get; set; }
+    [Parameter] public EventCallback<bool> OnSaleChanged { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+    [Parameter] public EventCallback OnReset { get; set; }
+
+    private async Task OnSortChanged()
+    {
+        await SortByChanged.InvokeAsync(SortBy);
+        await SortOrderChanged.InvokeAsync(SortOrder);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnFilterChanged()
+    {
+        await AuthorChanged.InvokeAsync(Author);
+        await CategoryChanged.InvokeAsync(Category);
+        await PublisherChanged.InvokeAsync(Publisher);
+        await MinPriceChanged.InvokeAsync(MinPrice);
+        await MaxPriceChanged.InvokeAsync(MaxPrice);
+        await OnSaleChanged.InvokeAsync(OnSale);
+        await OnChanged.InvokeAsync();
+    }
+
+    private Task OnResetClicked() => OnReset.InvokeAsync();
+}

@@ -5,13 +5,17 @@
     <BookStore.Web.Components.Shared.NotificationToasts/>
 
     <header class="layout-header">
-        <div class="layout-header-brand">
-            <button class="btn btn-ghost layout-drawer-toggle" @onclick="ToggleDrawer" aria-label="Toggle Navigation">Menu</button>
-            <div>
-                <h1>BookStore</h1>
-                <p>@TenantService.CurrentTenantName</p>
-            </div>
+        <div class="layout-brand-row">
+            <button class="btn btn-ghost layout-drawer-toggle" @onclick="ToggleDrawer" aria-label="Toggle navigation">Menu</button>
+            <a class="layout-brand" href="/">
+                <strong>BookStore</strong>
+                <span>@TenantService.CurrentTenantName</span>
+            </a>
         </div>
+
+        <form class="layout-search" @onsubmit="HandleSearchAsync">
+            <input class="form-input" type="search" @bind="_globalSearch" placeholder="Search books" aria-label="Search books" />
+        </form>
 
         <div class="layout-header-tools">
             <div class="menu-shell">
@@ -33,9 +37,14 @@
     </header>
 
     <div class="layout-content">
-        <aside class="layout-sidebar @(_drawerOpen ? "is-open" : "is-closed")">
+        <aside class="layout-sidebar @(_drawerOpen ? "is-open" : "")">
             <NavMenu/>
         </aside>
+
+        @if (_drawerOpen)
+        {
+            <button class="layout-backdrop" @onclick="ToggleDrawer" aria-label="Close navigation"></button>
+        }
 
         <main class="layout-main">
             @Body
@@ -53,6 +62,7 @@
 @code {
     bool _drawerOpen = true;
     bool _isTenantMenuOpen;
+    string _globalSearch = string.Empty;
 
     void ToggleDrawer() => _drawerOpen = !_drawerOpen;
 
@@ -69,6 +79,7 @@
         await CurrencyService.InitializeAsync();
         await ThemeService.InitializeAsync();
         await ApplyThemeAsync();
+        await ApplyTenantColorAsync();
     }
 
     private void HandleThemeChanged()
@@ -88,9 +99,21 @@
         await Js.InvokeVoidAsync("document.documentElement.setAttribute", "data-theme", theme);
     }
 
+    private async Task ApplyTenantColorAsync()
+    {
+        await Js.InvokeVoidAsync("document.documentElement.style.setProperty", "--tenant-primary", TenantService.CurrentTenantPrimaryColor);
+    }
+
     private void HandleTenantMenuToggle()
     {
         _isTenantMenuOpen = !_isTenantMenuOpen;
+    }
+
+    private Task HandleSearchAsync()
+    {
+        var query = string.IsNullOrWhiteSpace(_globalSearch) ? string.Empty : $"?q={Uri.EscapeDataString(_globalSearch.Trim())}";
+        Navigation.NavigateTo($"/{query}");
+        return Task.CompletedTask;
     }
 
     public void Dispose()

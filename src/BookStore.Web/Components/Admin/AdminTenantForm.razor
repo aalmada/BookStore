@@ -1,0 +1,45 @@
+<div class="entity-form">
+    <label class="form-label" for="tenant-id">ID</label>
+    <input id="tenant-id" class="form-input" value="@Model.Id" @oninput="OnIdChanged" disabled="@IsEdit" />
+
+    <label class="form-label" for="tenant-name">Name</label>
+    <input id="tenant-name" class="form-input" value="@Model.Name" @oninput="OnNameChanged" />
+
+    <label class="form-label" for="tenant-tagline">Tagline</label>
+    <input id="tenant-tagline" class="form-input" value="@Model.Tagline" @oninput="OnTaglineChanged" />
+
+    <label class="form-label" for="tenant-color">Primary color</label>
+    <input id="tenant-color" type="color" class="form-input" value="@Model.ThemePrimaryColor" @oninput="OnColorChanged" />
+
+    <label class="catalog-check-row">
+        <input type="checkbox" checked="@Model.IsEnabled" @onchange="OnEnabledChanged" />
+        <span>Enabled</span>
+    </label>
+
+    <button class="btn btn-primary" @onclick="SubmitAsync">Save</button>
+</div>
+
+@code {
+    [Parameter] public TenantModel Model { get; set; } = new();
+    [Parameter] public bool IsEdit { get; set; }
+    [Parameter] public EventCallback<TenantModel> OnSubmit { get; set; }
+
+    private void OnIdChanged(ChangeEventArgs args) => Model.Id = args.Value?.ToString() ?? string.Empty;
+    private void OnNameChanged(ChangeEventArgs args) => Model.Name = args.Value?.ToString() ?? string.Empty;
+    private void OnTaglineChanged(ChangeEventArgs args) => Model.Tagline = args.Value?.ToString();
+    private void OnColorChanged(ChangeEventArgs args) => Model.ThemePrimaryColor = args.Value?.ToString();
+    private void OnEnabledChanged(ChangeEventArgs args) => Model.IsEnabled = args.Value as bool? ?? false;
+    private Task SubmitAsync() => OnSubmit.InvokeAsync(Model);
+
+    public class TenantModel
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public string? Tagline { get; set; }
+        public string? ThemePrimaryColor { get; set; }
+        public bool IsEnabled { get; set; }
+        public string? AdminEmail { get; set; }
+        public string? AdminPassword { get; set; }
+        public string? ETag { get; set; }
+    }
+}

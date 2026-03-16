@@ -14,13 +14,14 @@
 @inject BookStoreEventsService EventsService
 @inject NavigationManager Navigation
 @inject ILogger<BookDetails> Logger
+@inject INotificationService NotificationService
 @implements IDisposable
 @rendermode InteractiveServer
 
 <PageTitle>@(book?.Title ?? "Book Details") - BookStore</PageTitle>
 
-<section class="catalog-page">
-    <div class="catalog-breadcrumbs">
+<section class="container mt-8">
+    <div class="catalog-breadcrumbs mb-4">
         <button class="btn btn-ghost" @onclick="NavigateHome">Back to Catalog</button>
     </div>
 
@@ -42,8 +43,8 @@
     }
     else if (book is not null)
     {
-        <article class="book-detail-shell">
-            <div class="book-detail-cover">
+        <article class="book-detail-shell" style="display:grid;grid-template-columns:minmax(260px,360px) 1fr;gap:var(--space-8);align-items:start;">
+            <div class="book-detail-cover" style="position:sticky;top:var(--space-6);">
                 @if (!string.IsNullOrWhiteSpace(book.CoverImageUrl))
                 {
                     <img src="@book.CoverImageUrl" alt="@book.Title" />
@@ -56,16 +57,46 @@
 
             <div class="book-detail-content">
                 <h1>@book.Title</h1>
-                <p class="book-detail-authors">@string.Join(", ", book.Authors.Select(a => a.Name))</p>
+                <p class="book-detail-authors">
+                    @for (var i = 0; i < book.Authors.Count; i++)
+                    {
+                        var author = book.Authors[i];
+                        <a href="@($"/?authorId={author.Id}")">@author.Name</a>
+                        if (i < book.Authors.Count - 1)
+                        {
+                            <span>, </span>
+                        }
+                    }
+                </p>
 
                 @if (book.Publisher is not null)
                 {
-                    <p class="book-detail-meta">Publisher: @book.Publisher.Name</p>
+                    <p class="book-detail-meta">Publisher: <a href="@($"/?publisherId={book.Publisher.Id}")">@book.Publisher.Name</a></p>
+                }
+
+                @if (book.Categories.Count > 0)
+                {
+                    <div class="list-row" style="flex-wrap:wrap;gap:var(--space-2);margin:var(--space-3) 0;">
+                        @foreach (var category in book.Categories)
+                        {
+                            <a class="badge" href="@($"/?categoryId={category.Id}")">@category.Name</a>
+                        }
+                    </div>
                 }
 
                 @if (book.PublicationDate.HasValue)
                 {
                     <p class="book-detail-meta">Published: @book.PublicationDate.Value:yyyy-MM-dd</p>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(book.Isbn))
+                {
+                    <p class="book-detail-meta">ISBN: @book.Isbn</p>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(book.LanguageName))
+                {
+                    <p class="book-detail-meta">Language: @book.LanguageName</p>
                 }
 
                 <div class="book-detail-price">
@@ -88,17 +119,9 @@
                             <label class="field-label" for="qty">Quantity</label>
                             <input id="qty" class="input-field" type="number" min="1" max="99" @bind="quantity" />
                             <button class="btn btn-primary" @onclick="AddToCartAsync">Add To Cart</button>
-                            <button class="btn btn-ghost" @onclick="() => ToggleFavoriteAsync(book)">
-                                @(book.IsFavorite ? "Unfavorite" : "Favorite")
-                            </button>
+                            <FavoriteButton BookId="@book.Id" IsFavorite="@book.IsFavorite" ETag="@book.ETag" OnToggled="OnFavoriteToggled" />
                             <div class="book-detail-rating">
-                                @for (var star = 1; star <= 5; star++)
-                                {
-                                    var currentStar = star;
-                                    <button class="btn btn-ghost @(book.UserRating >= currentStar ? "active" : string.Empty)"
-                                            @onclick="() => RateBookAsync(currentStar)"
-                                            aria-label="Rate @currentStar stars">★</button>
-                                }
+                                <StarRating Value="@book.UserRating" Editable="true" OnRatingChanged="RateBookAsync" />
 
                                 @if (book.UserRating > 0)
                                 {
@@ -107,6 +130,10 @@
                             </div>
                         </Authorized>
                     </AuthorizeView>
+
+                    <div class="book-detail-rating" style="margin-top:var(--space-3);">
+                        <span>Average rating: @book.AverageRating.ToString("F1") (@book.RatingCount)</span>
+                    </div>
 
                     <AuthorizeView Roles="Admin">
                         <Authorized>
@@ -126,6 +153,19 @@
                 {
                     <p class="book-detail-description">@book.Description</p>
                 }
+
+                @if (_relatedBooks?.Any() == true)
+                {
+                    <section style="margin-top:var(--space-8);">
+                        <h2>Related Books</h2>
+                        <BookGrid>
+                            @foreach (var related in _relatedBooks)
+                            {
+                                <BookCard Book="related" OnViewDetails="@(() => NavigateToBook(related.Id))" />
+                            }
+                        </BookGrid>
+                    </section>
+                }
             </div>
         </article>
     }
@@ -135,6 +175,7 @@
     [Parameter] public Guid Id { get; set; }
 
     private ReactiveQuery<BookDto?>? bookQuery;
+    private List<BookDto>? _relatedBooks;
     private BookDto? book => bookQuery?.Data;
     private string? errorMessage => bookQuery?.Error;
     private bool isLoading => bookQuery?.IsLoading ?? true;
@@ -154,7 +195,27 @@
             logger: Logger);
 
         await bookQuery.LoadAsync(cancellationToken: _cts.Token);
+        await LoadRelatedBooksAsync(_cts.Token);
         CurrencyService.OnCurrencyChanged += StateHasChanged;
+    }
+
+    private async Task LoadRelatedBooksAsync(CancellationToken cancellationToken)
+    {
+        if (book is null || book.Categories.Count == 0)
+        {
+            _relatedBooks = [];
+            return;
+        }
+
+        var categoryId = book.Categories[0].Id;
+        var relatedResponse = await BooksClient.GetBooksAsync(new BookSearchRequest
+        {
+            CategoryId = categoryId,
+            Page = 1,
+            PageSize = 6
+        }, cancellationToken);
+
+        _relatedBooks = relatedResponse.Items.Where(x => x.Id != Id).Take(4).ToList();
     }
 
     private async Task AddToCartAsync()
@@ -164,11 +225,31 @@
         try
         {
             await CartClient.AddToCartAsync(new AddToCartClientRequest(book.Id, quantity), _cts.Token);
+            NotificationService.Add("Book added to cart", NotificationSeverity.Success);
         }
         catch (Exception ex)
         {
             Log.BookDetailsAddToCartFailed(Logger, book.Id, ex);
+            NotificationService.Add("Unable to add book to cart", NotificationSeverity.Error);
         }
+    }
+
+    private Task OnFavoriteToggled(bool isFavorite)
+    {
+        if (book is null)
+        {
+            return Task.CompletedTask;
+        }
+
+        bookQuery?.MutateData(b => b is null
+            ? null
+            : b with
+            {
+                IsFavorite = isFavorite,
+                LikeCount = isFavorite ? b.LikeCount + 1 : Math.Max(0, b.LikeCount - 1)
+            });
+
+        return Task.CompletedTask;
     }
 
     private async Task RateBookAsync(int stars)
@@ -243,7 +324,10 @@
     {
         if (bookQuery is null) return;
         await bookQuery.LoadAsync(cancellationToken: _cts.Token);
+        await LoadRelatedBooksAsync(_cts.Token);
     }
+
+    private void NavigateToBook(Guid bookId) => Navigation.NavigateTo($"/book/{bookId}");
 
     private void NavigateHome() => Navigation.NavigateTo("/");
 

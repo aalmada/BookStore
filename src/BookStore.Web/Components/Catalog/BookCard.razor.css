@@ -1,0 +1,3 @@
+.book-card {
+    animation: fade-in-up var(--duration-normal) var(--ease-standard);
+}

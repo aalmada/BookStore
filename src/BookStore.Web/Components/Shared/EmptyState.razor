@@ -1,0 +1,15 @@
+<section class="catalog-empty">
+    <h2>@Title</h2>
+    <p>@Message</p>
+    @if (!string.IsNullOrWhiteSpace(ActionLabel))
+    {
+        <button class="btn btn-primary" @onclick="OnAction">@ActionLabel</button>
+    }
+</section>
+
+@code {
+    [Parameter] public string Title { get; set; } = "Nothing here yet";
+    [Parameter] public string Message { get; set; } = string.Empty;
+    [Parameter] public string? ActionLabel { get; set; }
+    [Parameter] public EventCallback OnAction { get; set; }
+}

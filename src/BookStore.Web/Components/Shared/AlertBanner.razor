@@ -1,0 +1,38 @@
+@if (!string.IsNullOrWhiteSpace(Message))
+{
+    <div class="@CssClass" role="alert">
+        <span>@Message</span>
+        @if (Dismissible)
+        {
+            <button class="btn btn-ghost" @onclick="Dismiss">Close</button>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public string? Message { get; set; }
+    [Parameter] public AlertSeverity Severity { get; set; } = AlertSeverity.Error;
+    [Parameter] public bool Dismissible { get; set; }
+    [Parameter] public EventCallback OnDismiss { get; set; }
+
+    private string CssClass => Severity switch
+    {
+        AlertSeverity.Success => "alert-success",
+        AlertSeverity.Warning => "alert-warning",
+        AlertSeverity.Info => "alert-info",
+        _ => "alert-error"
+    };
+
+    private async Task Dismiss()
+    {
+        await OnDismiss.InvokeAsync();
+    }
+
+    public enum AlertSeverity
+    {
+        Success,
+        Warning,
+        Info,
+        Error
+    }
+}

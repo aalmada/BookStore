@@ -1,0 +1,103 @@
+@page "/favorites"
+@using BookStore.Client
+@using BookStore.Web.Components.Catalog
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject IBooksClient BooksClient
+@inject BookStoreEventsService EventsService
+@inject QueryInvalidationService InvalidationService
+@inject ILogger<Favorites> Logger
+@rendermode InteractiveServer
+@implements IDisposable
+
+<PageTitle>Favorites - BookStore</PageTitle>
+
+<section class="container mt-8">
+    <header class="list-row mb-6">
+        <h1>Your Favorites</h1>
+    </header>
+
+    @{ 
+        var errorMsg = _query?.Error ?? "Unable to load favorites.";
+    }
+
+    @if (_query?.IsLoading ?? true)
+    {
+        <LoadingSpinner IsVisible="true" Message="Loading favorites" />
+    }
+    else if (!string.IsNullOrWhiteSpace(_query?.Error))
+    {
+        <AlertBanner Message="@errorMsg" Severity="AlertBanner.AlertSeverity.Error" />
+    }
+    else if (_query?.Data?.Items?.Any() == true)
+    {
+        <BookGrid>
+            @foreach (var book in _query.Data.Items)
+            {
+                <BookCard Book="book" OnViewDetails="(() => NavigateToBook(book.Id))">
+                    <FavoriteContent>
+                        <FavoriteButton BookId="@book.Id" IsFavorite="@book.IsFavorite" ETag="@book.ETag" OnToggled="(_ => ReloadAsync())" />
+                    </FavoriteContent>
+                </BookCard>
+            }
+        </BookGrid>
+    }
+    else
+    {
+        <EmptyState Title="No favorites yet"
+                    Message="Tap the heart icon on any book to save it for later."
+                    ActionLabel="Browse books"
+                    OnAction="NavigateHome" />
+    }
+</section>
+
+@code {
+    private readonly CancellationTokenSource _cts = new();
+    private ReactiveQuery<PagedListDto<BookDto>>? _query;
+
+    protected override async Task OnInitializedAsync()
+    {
+        EventsService.StartListening();
+
+        _query = new ReactiveQuery<PagedListDto<BookDto>>(
+            queryFn: ct => BooksClient.GetFavoriteBooksAsync(new OrderedPagedRequest
+            {
+                Page = 1,
+                PageSize = 24,
+                SortBy = "title",
+                SortOrder = "asc"
+            }, ct),
+            eventsService: EventsService,
+            invalidationService: InvalidationService,
+            queryKeys: ["Books"],
+            onStateChanged: () => InvokeAsync(StateHasChanged),
+            logger: Logger);
+
+        await _query.LoadAsync(cancellationToken: _cts.Token);
+    }
+
+    private void NavigateToBook(Guid id) => Navigation.NavigateTo($"/book/{id}");
+
+    private Task NavigateHome()
+    {
+        Navigation.NavigateTo("/");
+        return Task.CompletedTask;
+    }
+
+    private async Task ReloadAsync()
+    {
+        if (_query is not null)
+        {
+            await _query.LoadAsync(cancellationToken: _cts.Token);
+        }
+    }
+
+    [Inject] private NavigationManager Navigation { get; set; } = default!;
+
+    public void Dispose()
+    {
+        _cts.Cancel();
+        _cts.Dispose();
+        _query?.Dispose();
+    }
+}
