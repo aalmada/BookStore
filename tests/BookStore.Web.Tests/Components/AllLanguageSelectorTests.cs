@@ -57,7 +57,7 @@ public class AllLanguageSelectorTests : BunitTestContext
         _ = await Assert.That(selectedValue).IsEqualTo("pt-PT");
     }
 
-    // For Search tests in bUnit with MudAutocomplete, it's often better to test 
-    // the underlying service or a simplified version, but we've verified 
+    // For Search tests in bUnit with MudAutocomplete, it's often better to test
+    // the underlying service or a simplified version, but we've verified
     // the service in LanguageServiceTests.cs.
 }
