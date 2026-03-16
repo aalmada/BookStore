@@ -1,6 +1,7 @@
 @page "/admin/publishers"
 @using Microsoft.AspNetCore.Authorization
 @using BookStore.Shared.Notifications
+@using MudBlazor
 @implements IDisposable
 @attribute [Authorize(Roles = "Admin")]
 @inject IPublishersClient PublishersClient
@@ -8,6 +9,7 @@
 @inject QueryInvalidationService InvalidationService
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
+@inject IJSRuntime Js
 @inject ILogger<PublisherManagement> Logger
 
 <PageTitle>Publisher Management - BookStore</PageTitle>
@@ -149,10 +151,7 @@
 
     private async Task DeletePublisher(PublisherDto publisher)
     {
-        var result = await DialogService.ShowMessageBox(
-            "Delete Publisher",
-            $"Are you sure you want to delete publisher {publisher.Name}?",
-            yesText: "Delete", cancelText: "Cancel");
+        var result = await Js.InvokeAsync<bool>("confirm", $"Are you sure you want to delete publisher {publisher.Name}?");
 
         if (result == true)
         {

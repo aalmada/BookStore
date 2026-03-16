@@ -1,31 +1,24 @@
 @inject CurrencyService CurrencyService
 @implements IDisposable
 
-<MudMenu @bind-Open="_isOpen" Dense="true" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" LockScroll="true">
-    <ActivatorContent>
-        <MudTooltip Text="Change Currency" Arrow="true" Placement="Placement.Bottom" Disabled="@_isOpen">
-            <MudButton Variant="Variant.Text" Color="Color.Inherit" Class="typography-button" EndIcon="@Icons.Material.Filled.KeyboardArrowDown" aria-label="Change Currency">
-                <span class="mr-2" style="font-size: 1.2em;">@GetCurrencyFlag(CurrencyService.CurrentCurrency)</span>
-                @CurrencyService.CurrentCurrency
-            </MudButton>
-        </MudTooltip>
-    </ActivatorContent>
-    <ChildContent>
-        @foreach (var currency in _currencies)
-        {
-            <MudMenuItem OnClick="@(() => SetCurrencyAsync(currency))">
-                <div class="d-flex align-center gap-2">
-                    <span style="font-size: 1.5em;">@GetCurrencyFlag(currency)</span>
-                    <MudText Typo="Typo.body2">@currency</MudText>
-                </div>
-            </MudMenuItem>
-        }
-    </ChildContent>
-</MudMenu>
+<div class="menu-shell">
+    <button class="btn btn-ghost" @onclick="ToggleMenu" aria-haspopup="menu" aria-expanded="@_menuOpen">@CurrencyService.CurrentCurrency</button>
+    @if (_menuOpen)
+    {
+        <div class="menu-panel" role="menu">
+            @foreach (var currency in _currencies)
+            {
+                <button class="menu-item" role="menuitem" @onclick="() => SetCurrencyAsync(currency)">@GetCurrencyFlag(currency) @currency</button>
+            }
+        </div>
+    }
+</div>
 
 @code {
-    private bool _isOpen;
     private readonly string[] _currencies = { "USD", "EUR", "GBP" };
+    private bool _menuOpen;
+
+    private void ToggleMenu() => _menuOpen = !_menuOpen;
 
     protected override async Task OnInitializedAsync()
     {
@@ -35,6 +28,7 @@
 
     private async Task SetCurrencyAsync(string currency)
     {
+        _menuOpen = false;
         await CurrencyService.SetCurrencyAsync(currency);
     }
 

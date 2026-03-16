@@ -4,10 +4,7 @@ using BookStore.Web.Services;
 using BookStore.Web.Tests.Infrastructure;
 using Bunit;
 using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
-using MudBlazor;
-using MudBlazor.Services;
 using NSubstitute;
 using TUnit.Core;
 
@@ -25,7 +22,6 @@ public class AllLanguageSelectorTests : BunitTestContext
         _languageService = new LanguageService(_configurationClient);
 
         _ = Context.Services.AddSingleton(_languageService);
-        _ = Context.Services.AddMudServices();
     }
 
     [Test]
@@ -38,10 +34,9 @@ public class AllLanguageSelectorTests : BunitTestContext
         );
 
         // Assert
-        _ = await Assert.That(cut.Find(".mud-input-label").TextContent).IsEqualTo("Primary Language");
+        _ = await Assert.That(cut.Find("label").TextContent).IsEqualTo("Primary Language");
         var input = cut.Find("input");
-        // pt-PT display name in English (usually test environment) is "Portuguese (Portugal)"
-        _ = await Assert.That(input.GetAttribute("value")).IsEqualTo("Portuguese (Portugal)");
+        _ = await Assert.That(input.GetAttribute("value")).IsEqualTo("pt-PT");
     }
 
     [Test]
@@ -55,9 +50,8 @@ public class AllLanguageSelectorTests : BunitTestContext
                 EventCallback.Factory.Create<string>(this, v => selectedValue = v))
         );
 
-        // Act - Invoke the value change directly since UI interaction is flaky in bUnit for MudAutocomplete
-        var autocomplete = cut.FindComponent<MudAutocomplete<string>>();
-        await cut.InvokeAsync(() => autocomplete.Instance.ValueChanged.InvokeAsync("pt-PT"));
+        // Act
+        cut.Find("input").Change("pt-PT");
 
         // Assert
         _ = await Assert.That(selectedValue).IsEqualTo("pt-PT");

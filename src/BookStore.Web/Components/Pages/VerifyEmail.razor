@@ -3,31 +3,26 @@
 @inject AuthenticationService AuthService
 @inject NavigationManager Navigation
 
-<MudContainer MaxWidth="MaxWidth.Small" Class="mt-8">
-    <MudPaper Class="pa-8">
-        <MudStack AlignItems="AlignItems.Center" Spacing="4">
-            @if (_isLoading)
-            {
-                <MudProgressCircular Color="Color.Primary" Indeterminate="true"/>
-                <MudText>Verifying your email...</MudText>
-            }
-            else if (_isSuccess)
-            {
-                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Large"/>
-                <MudText Typo="Typo.h5" Color="Color.Success">Email Verified!</MudText>
-                <MudText>Your email has been successfully verified.</MudText>
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/login"))">Go to Login</MudButton>
-            }
-            else
-            {
-                <MudIcon Icon="@Icons.Material.Filled.Error" Color="Color.Error" Size="Size.Large"/>
-                <MudText Typo="Typo.h5" Color="Color.Error">Verification Failed</MudText>
-                <MudText>Invalid verification link or the link has expired.</MudText>
-                <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="@(() => Navigation.NavigateTo("/"))">Go Home</MudButton>
-            }
-        </MudStack>
-    </MudPaper>
-</MudContainer>
+<section class="auth-shell">
+    <article class="card auth-card centered-card">
+        @if (_isLoading)
+        {
+            <p>Verifying your email...</p>
+        }
+        else if (_isSuccess)
+        {
+            <h1>Email Verified</h1>
+            <p>Your email has been successfully verified.</p>
+            <button class="btn btn-primary" @onclick='() => Navigation.NavigateTo("/login")'>Go to Login</button>
+        }
+        else
+        {
+            <h1>Verification Failed</h1>
+            <p>Invalid verification link or the link has expired.</p>
+            <button class="btn" @onclick='() => Navigation.NavigateTo("/")'>Go Home</button>
+        }
+    </article>
+</section>
 
 @code {
     [SupplyParameterFromQuery] public string? UserId { get; set; }
@@ -45,9 +40,6 @@
             _isSuccess = false;
             return;
         }
-
-        // Delay slightly for UX/visual feedback
-        await Task.Delay(500);
 
         var result = await AuthService.ConfirmEmailAsync(UserId, Code);
         _isSuccess = result.IsSuccess;

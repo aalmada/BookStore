@@ -89,4 +89,20 @@ public static partial class Log
         Level = LogLevel.Error,
         Message = "Failed to remove rating for book {BookId}")]
     public static partial void RatingRemovalFailed(ILogger logger, Guid bookId, Exception ex);
+
+    // BookDetails
+    [LoggerMessage(
+        Level = LogLevel.Error,
+        Message = "Failed to add book {BookId} to cart")]
+    public static partial void BookDetailsAddToCartFailed(ILogger logger, Guid bookId, Exception ex);
+
+    [LoggerMessage(
+        Level = LogLevel.Error,
+        Message = "Failed to soft delete book {BookId}")]
+    public static partial void BookDetailsSoftDeleteFailed(ILogger logger, Guid bookId, Exception ex);
+
+    [LoggerMessage(
+        Level = LogLevel.Error,
+        Message = "Failed to restore book {BookId}")]
+    public static partial void BookDetailsRestoreFailed(ILogger logger, Guid bookId, Exception ex);
 }

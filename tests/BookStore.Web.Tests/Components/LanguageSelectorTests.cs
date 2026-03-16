@@ -5,10 +5,7 @@ using BookStore.Web.Services;
 using BookStore.Web.Tests.Infrastructure;
 using Bunit;
 using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
-using MudBlazor;
-using MudBlazor.Services;
 using NSubstitute;
 using TUnit.Core;
 
@@ -26,7 +23,6 @@ public class LanguageSelectorTests : BunitTestContext
         _languageService = new LanguageService(_configurationClient);
 
         _ = Context.Services.AddSingleton(_languageService);
-        _ = Context.Services.AddMudServices();
 
         // Mocking the backend response for supported languages
         _ = _configurationClient.GetLocalizationConfigAsync()
@@ -43,11 +39,9 @@ public class LanguageSelectorTests : BunitTestContext
         );
 
         // Assert
-        _ = await Assert.That(cut.Find(".mud-input-label").TextContent).IsEqualTo("Test Label");
-        // MudSelect might need more complex interaction to verify items, 
-        // but it should at least render the label and the current value.
-        var input = cut.Find("input");
-        _ = await Assert.That(input.GetAttribute("value")).IsEqualTo("English (United States) (Default)");
+        _ = await Assert.That(cut.Find("label").TextContent).IsEqualTo("Test Label");
+        var select = cut.Find("select");
+        _ = await Assert.That(select.GetAttribute("value")).IsEqualTo("en-US");
     }
 
     [Test]
@@ -61,9 +55,8 @@ public class LanguageSelectorTests : BunitTestContext
                 EventCallback.Factory.Create<string>(this, v => selectedValue = v))
         );
 
-        // Act - Invoke the value change directly since UI interaction is flaky in bUnit for MudSelect
-        var select = cut.FindComponent<MudSelect<string>>();
-        await cut.InvokeAsync(() => select.Instance.ValueChanged.InvokeAsync("pt-PT"));
+        // Act
+        cut.Find("select").Change("pt-PT");
 
         // Assert
         _ = await Assert.That(selectedValue).IsEqualTo("pt-PT");

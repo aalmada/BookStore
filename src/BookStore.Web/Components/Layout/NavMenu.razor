@@ -1,19 +1,34 @@
-﻿<MudNavMenu>
-    <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Books</MudNavLink>
+﻿<nav class="bookstore-nav" aria-label="Primary Navigation">
+    <ul class="bookstore-nav-list">
+        <li><NavLink href="/" Match="NavLinkMatch.All" class="bookstore-nav-link">Books</NavLink></li>
+
+        <AuthorizeView>
+            <Authorized>
+                <li><NavLink href="/cart" class="bookstore-nav-link">Cart</NavLink></li>
+            </Authorized>
+        </AuthorizeView>
+    </ul>
+
     <AuthorizeView Roles="Admin">
-        <MudNavLink Href="admin/authors" Icon="@Icons.Material.Filled.Person">Authors</MudNavLink>
-        <MudNavLink Href="admin/publishers" Icon="@Icons.Material.Filled.Business">Publishers</MudNavLink>
-        <MudNavLink Href="admin/categories" Icon="@Icons.Material.Filled.Category">Categories</MudNavLink>
-        <MudNavLink Href="admin/sales" Icon="@Icons.Material.Filled.AttachMoney">Sales</MudNavLink>
+        <Authorized>
+            <p class="bookstore-nav-section">Admin</p>
+            <ul class="bookstore-nav-list">
+                <li><NavLink href="/admin/books" class="bookstore-nav-link">Books</NavLink></li>
+                <li><NavLink href="/admin/authors" class="bookstore-nav-link">Authors</NavLink></li>
+                <li><NavLink href="/admin/publishers" class="bookstore-nav-link">Publishers</NavLink></li>
+                <li><NavLink href="/admin/categories" class="bookstore-nav-link">Categories</NavLink></li>
+                <li><NavLink href="/admin/users" class="bookstore-nav-link">Users</NavLink></li>
+                <li><NavLink href="/admin/sales" class="bookstore-nav-link">Sales</NavLink></li>
+            </ul>
+        </Authorized>
     </AuthorizeView>
-    <AuthorizeView>
-        <MudNavLink Href="cart" Icon="@Icons.Material.Filled.ShoppingCart">Cart</MudNavLink>
-    </AuthorizeView>
-    <AuthorizeView Roles="Admin">
-        <MudNavLink Href="admin/books" Icon="@Icons.Material.Filled.Book">Books</MudNavLink>
-        <MudNavLink Href="admin/users" Icon="@Icons.Material.Filled.Group">Users</MudNavLink>
-    </AuthorizeView>
+
     <AuthorizeView Policy="SystemAdmin">
-        <MudNavLink Href="admin/tenants" Icon="@Icons.Material.Filled.Settings">Tenants</MudNavLink>
+        <Authorized>
+            <p class="bookstore-nav-section">System</p>
+            <ul class="bookstore-nav-list">
+                <li><NavLink href="/admin/tenants" class="bookstore-nav-link">Tenants</NavLink></li>
+            </ul>
+        </Authorized>
     </AuthorizeView>
-</MudNavMenu>
+</nav>

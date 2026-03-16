@@ -1,6 +1,5 @@
 ﻿@page "/"
 @using BookStore.Client
-@using ClientModels = BookStore.Client
 @using BookStore.Shared.Models
 @using BookStore.Web.Services
 @using Microsoft.AspNetCore.Components.Authorization
@@ -9,7 +8,6 @@
 @inject BookStoreEventsService EventsService
 @inject OptimisticUpdateService OptimisticService
 @inject AuthenticationStateProvider AuthStateProvider
-@inject ISnackbar Snackbar
 @inject CatalogService CatalogService
 @implements IDisposable
 @rendermode InteractiveServer
@@ -20,358 +18,197 @@
 
 @inject TenantService TenantService
 @inject CurrencyService CurrencyService
+@inject NavigationManager NavigationManager
 @using BookStore.Web.Infrastructure
 
 <PageTitle>@TenantService.CurrentTenantName - Discover Your Next Great Read</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.ExtraExtraLarge" Class="mt-6">
-@* Hero Section *@
-<MudPaper Elevation="0" Class="pa-6 mb-6" Style="background: var(--mud-palette-primary); color: var(--mud-palette-primary-text); border-radius: 16px;">
-    <MudText Typo="Typo.h3" Color="Color.Inherit" Class="mb-2">
-        <MudIcon Icon="@Icons.Material.Filled.MenuBook" Size="Size.Large"/> @TenantService.CurrentTenantName
-    </MudText>
-    <MudText Typo="Typo.h6" Color="Color.Inherit" Style="opacity: 0.9;">
-        @TenantService.CurrentTenantTagline
-    </MudText>
-</MudPaper>
+<section class="catalog-page">
+    <header class="catalog-page-header">
+        <div>
+            <h1>Discover Your Next Great Read</h1>
+            <p>Curated titles, live updates, and shelf-ready filters.</p>
+        </div>
+        <div class="catalog-search-shell">
+            <input class="input-field"
+                   type="search"
+                   @bind="searchQuery"
+                   @onkeyup="OnSearchKeyUp"
+                   placeholder="Search by title, ISBN, author, or publisher" />
+        </div>
+    </header>
 
-<MudGrid Spacing="6">
-@* Filters Sidebar *@
-<MudItem xs="12" md="3">
-    <MudPaper Class="pa-4 mb-6" Elevation="2" Style="border-radius: 12px; position: sticky; top: 20px;">
-        <MudText Typo="Typo.h6" Class="mb-4">
-            <MudIcon Icon="@Icons.Material.Filled.FilterList" Class="mr-2"/> Filters
-        </MudText>
+    <div class="catalog-layout">
+        <aside class="catalog-filters" aria-label="Filters">
+            <h2>Filters</h2>
 
-        <MudStack Spacing="3">
-            @* Sort *@
-            <MudSelect T="string" Label="Sort By" Value="@sortBy" AnchorOrigin="Origin.BottomCenter" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" ValueChanged="@(async (string v) =>
-                                                                                                                                                                                 {
-                                                                                                                                                                                     sortBy = v;
-                                                                                                                                                                                     await SearchBooks();
-                                                                                                                                                                                 })">
-                <MudSelectItem Value="@("title")">Title</MudSelectItem>
-                <MudSelectItem Value="@("date")">Date Added</MudSelectItem>
-                <MudSelectItem Value="@("publisher")">Publisher</MudSelectItem>
-            </MudSelect>
+            <label class="field-label">Sort By</label>
+            <select class="input-field" @bind="sortBy" @bind:after="SortChanged">
+                <option value="title">Title</option>
+                <option value="date">Date Added</option>
+                <option value="publisher">Publisher</option>
+            </select>
 
-            <MudSelect T="string" Label="Order" Value="@sortOrder" AnchorOrigin="Origin.BottomCenter" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" ValueChanged="@(async (string v) =>
-                                                                                                                                                                                  {
-                                                                                                                                                                                      sortOrder = v;
-                                                                                                                                                                                      await SearchBooks();
-                                                                                                                                                                                  })">
-                <MudSelectItem Value="@("asc")">Ascending</MudSelectItem>
-                <MudSelectItem Value="@("desc")">Descending</MudSelectItem>
-            </MudSelect>
+            <label class="field-label">Order</label>
+            <select class="input-field" @bind="sortOrder" @bind:after="SortChanged">
+                <option value="asc">Ascending</option>
+                <option value="desc">Descending</option>
+            </select>
 
-            <MudDivider/>
+            <div class="catalog-filter-separator"></div>
 
-            @* Author *@
-            <MudAutocomplete T="AuthorDto" Label="Author" Value="@selectedAuthor" ValueChanged="@OnAuthorChanged"
-                             SearchFunc="@SearchAuthors" ToStringFunc="@(e => e == null ? null : $"{e.Name}")"
-                             Clearable="true" ResetValueOnEmptyText="true" CoerceText="true" CoerceValue="true"
-                             AnchorOrigin="Origin.BottomCenter" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true"
-                             AdornmentIcon="@Icons.Material.Filled.Search" AdornmentColor="Color.Primary"/>
+            <label class="field-label">Author</label>
+            <input class="input-field" type="text" @bind="authorFilter" @bind:event="oninput" @bind:after="FilterChanged" placeholder="Search authors" />
 
-            @* Category *@
-            <MudAutocomplete T="CategoryDto" Label="Category" Value="@selectedCategory" ValueChanged="@OnCategoryChanged"
-                             SearchFunc="@SearchCategories" ToStringFunc="@(e => e == null ? null : $"{e.Name}")"
-                             Clearable="true" ResetValueOnEmptyText="true" CoerceText="true" CoerceValue="true"
-                             AnchorOrigin="Origin.BottomCenter" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true"
-                             AdornmentIcon="@Icons.Material.Filled.Search" AdornmentColor="Color.Primary"/>
+            <label class="field-label">Category</label>
+            <input class="input-field" type="text" @bind="categoryFilter" @bind:event="oninput" @bind:after="FilterChanged" placeholder="Search categories" />
 
-            @* Publisher *@
-            <MudAutocomplete T="PublisherDto" Label="Publisher" Value="@selectedPublisher" ValueChanged="@OnPublisherChanged"
-                             SearchFunc="@SearchPublishers" ToStringFunc="@(e => e == null ? null : $"{e.Name}")"
-                             Clearable="true" ResetValueOnEmptyText="true" CoerceText="true" CoerceValue="true"
-                             AnchorOrigin="Origin.BottomCenter" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true"
-                             AdornmentIcon="@Icons.Material.Filled.Search" AdornmentColor="Color.Primary"/>
+            <label class="field-label">Publisher</label>
+            <input class="input-field" type="text" @bind="publisherFilter" @bind:event="oninput" @bind:after="FilterChanged" placeholder="Search publishers" />
 
-            <MudDivider/>
+            <div class="catalog-filter-separator"></div>
 
-            @* Price *@
-            <MudText Typo="Typo.subtitle2">Price Range</MudText>
-            <MudStack Row="true">
-                <MudNumericField T="decimal?" Value="@minPrice" Label="Min" Variant="Variant.Outlined" Margin="Margin.Dense" HideSpinButtons="true" ValueChanged="@(async (decimal? v) =>
-                                                                                                                                                                  {
-                                                                                                                                                                      minPrice = v;
-                                                                                                                                                                      await SearchBooks();
-                                                                                                                                                                  })"/>
-                <MudNumericField T="decimal?" Value="@maxPrice" Label="Max" Variant="Variant.Outlined" Margin="Margin.Dense" HideSpinButtons="true" ValueChanged="@(async (decimal? v) =>
-                                                                                                                                                                  {
-                                                                                                                                                                      maxPrice = v;
-                                                                                                                                                                      await SearchBooks();
-                                                                                                                                                                  })"/>
-            </MudStack>
+            <label class="field-label">Price Range</label>
+            <div class="catalog-price-grid">
+                <input class="input-field" type="number" @bind="minPrice" @bind:after="FilterChanged" placeholder="Min" />
+                <input class="input-field" type="number" @bind="maxPrice" @bind:after="FilterChanged" placeholder="Max" />
+            </div>
 
-            @* On Sale *@
-            <MudCheckBox T="bool" Value="@onSale" Label="On Sale Only" Color="Color.Error" Dense="true" ValueChanged="@(async (bool v) =>
-                                                                                                                      {
-                                                                                                                          onSale = v;
-                                                                                                                          await SearchBooks();
-                                                                                                                      })"/>
+            <label class="catalog-check-row">
+                <input type="checkbox" @bind="onSale" @bind:after="FilterChanged" />
+                <span>On Sale Only</span>
+            </label>
 
-            <MudButton OnClick="ClearFilters" Variant="Variant.Text" Color="Color.Secondary" FullWidth="true" Class="mt-2" StartIcon="@Icons.Material.Filled.ClearAll">
-                Reset Filters
-            </MudButton>
-        </MudStack>
-    </MudPaper>
-</MudItem>
+            <button class="btn btn-ghost" @onclick="ClearFilters">Reset Filters</button>
+        </aside>
 
-@* Main Content *@
-<MudItem xs="12" md="9">
-    @* Search Bar *@
-    <MudPaper Elevation="2" Class="pa-4 mb-6" Style="border-radius: 12px;">
-        <MudTextField @bind-Value="searchQuery"
-                      Label="Search books"
-                      Placeholder="Search by title, author, ISBN, or publisher..."
-                      Variant="Variant.Outlined"
-                      Adornment="Adornment.End"
-                      AdornmentIcon="@Icons.Material.Filled.Search"
-                      AdornmentColor="Color.Primary"
-                      OnAdornmentClick="SearchBooks"
-                      OnKeyUp="OnSearchKeyUp"
-                      Clearable="true"
-                      OnClearButtonClick="ClearSearch"
-                      Immediate="true"
-                      FullWidth="true"
-                      UserAttributes="@(new Dictionary<string, object> { { "aria-label", "Search books" } })"
-                      Class="mud-text-field-large"/>
-    </MudPaper>
-
-    @if (isLoading && pagedBooks == null)
-    {
-        <MudGrid>
-            @for (int i = 0; i < 8; i++)
+        <section class="catalog-results">
+            @if (isLoading && pagedBooks == null)
             {
-                <MudItem xs="12" sm="6" md="4" lg="4">
-                    <MudCard Elevation="2">
-                        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="200px"/>
-                        <MudCardContent>
-                            <MudSkeleton Width="80%"/>
-                            <MudSkeleton Width="60%" Class="mt-2"/>
-                            <MudSkeleton Width="40%" Class="mt-2"/>
-                        </MudCardContent>
-                    </MudCard>
-                </MudItem>
+                <div class="book-grid">
+                    @for (int i = 0; i < 8; i++)
+                    {
+                        <article class="book-card catalog-book-skeleton">
+                            <div class="catalog-book-cover shimmer"></div>
+                            <div class="catalog-book-line shimmer"></div>
+                            <div class="catalog-book-line short shimmer"></div>
+                        </article>
+                    }
+                </div>
             }
-        </MudGrid>
-    }
-    else if (errorMessage != null)
-    {
-        <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
-            <MudText>@errorMessage</MudText>
-            <MudButton OnClick="RetryLoad" Color="Color.Surface" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Refresh" Class="mt-2">
-                Retry
-            </MudButton>
-        </MudAlert>
-    }
-    else if (pagedBooks != null)
-    {
-        @* Results Info *@
-        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
-            <MudText Typo="Typo.body2" Color="Color.Secondary">
-                Showing @pagedBooks.Items.Count of @pagedBooks.TotalItemCount books
-                @if (!string.IsNullOrWhiteSpace(searchQuery))
-                {
-                    <MudChip T="string" Size="Size.Small" Color="Color.Primary" Class="ml-2">@searchQuery</MudChip>
-                }
-            </MudText>
-            <MudSpacer/>
-            @if (isFetching)
+            else if (errorMessage != null)
             {
-                <MudProgressCircular Color="Color.Primary" Size="Size.Small" Indeterminate="true"/>
+                <div class="alert-error">
+                    <p>@errorMessage</p>
+                </div>
+                <button class="btn btn-primary" @onclick="RetryLoad">Retry</button>
             }
-        </MudStack>
-
-        @if (isFetching)
-        {
-            <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-4"/>
-        }
-        else
-        {
-            <div style="height: 4px;" class="mb-4"></div>
-        }
-
-        @* Book Grid *@
-        <MudGrid Spacing="4" Class="mb-6">
-            @* Optimistic books (being saved) *@
-            @foreach (var optimisticBook in OptimisticService.GetOptimisticBooks())
+            else if (pagedBooks != null)
             {
-                <MudItem xs="12" sm="6" md="4" lg="4">
-                    <MudCard Elevation="4" Class="optimistic-card" Style="height: 100%; border-radius: 12px;">
-                        <MudPaper Elevation="0" Height="200px" Style="background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); display: flex; align-items: center; justify-content: center;">
-                            <MudIcon Icon="@Icons.Material.Filled.MenuBook" Size="Size.Large" Color="Color.Secondary" Style="font-size: 4rem;"/>
-                        </MudPaper>
-                        <MudCardContent>
-                            <MudText Typo="Typo.h6" Class="mb-2">@optimisticBook.Title</MudText>
-                            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-1">
-                                <MudIcon Icon="@UIConstants.Icons.Author" Size="Size.Small" Class="mr-1"/> @optimisticBook.AuthorNames
-                            </MudText>
-                            @if (!string.IsNullOrWhiteSpace(optimisticBook.PublisherName))
-                            {
-                                <MudText Typo="Typo.body2" Color="Color.Secondary">
-                                    <MudIcon Icon="@UIConstants.Icons.Publisher" Size="Size.Small" Class="mr-1"/> @optimisticBook.PublisherName
-                                </MudText>
-                            }
-                        </MudCardContent>
-                        <MudCardActions>
-                            <MudChip T="string" Size="Size.Small" Color="Color.Info" Icon="@Icons.Material.Filled.CloudUpload">Saving...</MudChip>
-                        </MudCardActions>
-                    </MudCard>
-                </MudItem>
-            }
-
-            @* Actual books from server *@
-            @foreach (var book in pagedBooks.Items)
-            {
-                <MudItem xs="12" sm="6" md="4" lg="4">
-                    <MudCard Elevation="2" Class="@($"book-card {(book.IsDeleted ? "deleted-book" : "")}")" Style="height: 100%; border-radius: 12px; transition: all 0.3s ease; position: relative; overflow: hidden;">
-                        @* Heart Overlay *@
-                        <AuthorizeView>
-                            <Authorized>
-                                <MudIconButton Icon="@(book.IsFavorite ? UIConstants.Icons.Favorite : UIConstants.Icons.FavoriteBorder)"
-                                               Color="@(book.IsFavorite ? Color.Error : Color.Default)"
-                                               OnClick="@(() => ToggleFavorite(book))"
-                                               Class="favorite-overlay"
-                                               aria-label="@(book.IsFavorite ? "Remove from favorites" : "Add to favorites")"
-                                               Style="position: absolute; top: 12px; right: 12px; z-index: 10; background-color: rgba(255,255,255,0.8); backdrop-filter: blur(4px);"
-                                               Size="Size.Medium"/>
-                            </Authorized>
-                        </AuthorizeView>
-
-                        @* Deleted Overlay/Badge *@
-                        @if (book.IsDeleted)
+                <div class="catalog-results-bar">
+                    <p>Showing @pagedBooks.Items.Count of @pagedBooks.TotalItemCount books</p>
+                    <div class="catalog-pagination-controls">
+                        @if (isFetching)
                         {
-                            <MudChip T="string" Color="Color.Error" Size="Size.Small" Class="deleted-badge"
-                                     Style="position: absolute; top: 12px; left: 12px; z-index: 10;">
-                                DELETED
-                            </MudChip>
+                            <span class="catalog-fetching">Refreshing</span>
                         }
+                        <button class="btn btn-ghost" @onclick="() => LoadPage(currentPage - 1)" disabled="@(!CanGoToPreviousPage)">Previous</button>
+                        <button class="btn btn-ghost" @onclick="() => LoadPage(currentPage + 1)" disabled="@(!CanGoToNextPage)">Next</button>
+                    </div>
+                </div>
 
-                        @if (!string.IsNullOrEmpty(book.CoverImageUrl))
-                        {
-                            <MudImage Src="@book.CoverImageUrl" Alt="@book.Title" ObjectFit="@ObjectFit.Cover" Height="200" Fluid="true" Class="rounded-lg"/>
-                        }
-                        else
-                        {
-                            <MudPaper Elevation="0" Height="200px" Style="background: var(--mud-palette-primary); color: var(--mud-palette-primary-text); display: flex; align-items: center; justify-content: center;">
-                                <MudIcon Icon="@UIConstants.Icons.Book" Size="Size.Large" Color="Color.Inherit" Style="font-size: 4rem;"/>
-                            </MudPaper>
-                        }
-                        <MudCardContent>
-                            <MudText Typo="Typo.h6" Class="mb-2" Style="min-height: 3rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
-                                @book.Title
-                            </MudText>
-                            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-1">
-                                <MudIcon Icon="@UIConstants.Icons.Author" Size="Size.Small" Class="mr-1"/> @string.Join(", ", book.Authors.Select(a => a.Name))
-                            </MudText>
-                            @if (book.Categories?.Count > 0)
+                <div class="book-grid">
+                    @foreach (var optimisticBook in OptimisticService.GetOptimisticBooks())
+                    {
+                        <article class="book-card optimistic-card">
+                            <div class="book-cover-placeholder">Saving...</div>
+                            <h3>@optimisticBook.Title</h3>
+                            <p>@optimisticBook.AuthorNames</p>
+                            <span class="badge">New</span>
+                        </article>
+                    }
+
+                    @foreach (var book in pagedBooks.Items)
+                    {
+                        <article class="book-card @(book.IsDeleted ? "deleted-book" : string.Empty)">
+                            <AuthorizeView>
+                                <Authorized>
+                                    <button class="favorite-btn" @onclick="@(() => ToggleFavorite(book))" aria-label="Toggle Favorite">
+                                        @(book.IsFavorite ? "Unlike" : "Like")
+                                    </button>
+                                </Authorized>
+                            </AuthorizeView>
+
+                            @if (book.IsDeleted)
                             {
-                                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-1">
-                                    <MudIcon Icon="@UIConstants.Icons.Category" Size="Size.Small" Class="mr-1"/>
-                                    @foreach (var category in book.Categories)
-                                    {
-                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" Class="mr-1">@category.Name</MudChip>
-                                    }
-                                </MudText>
+                                <span class="badge deleted-badge">Deleted</span>
                             }
-                            @if (book.Publisher != null)
+
+                            @if (!string.IsNullOrEmpty(book.CoverImageUrl))
                             {
-                                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-1">
-                                    <MudIcon Icon="@UIConstants.Icons.Publisher" Size="Size.Small" Class="mr-1"/> @book.Publisher.Name
-                                </MudText>
-                            }
-                            @if (book.PublicationDate.HasValue)
-                            {
-                                <MudText Typo="Typo.body2" Color="Color.Secondary">
-                                    <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small"/> @book.PublicationDate.Value.Year
-                                </MudText>
-                            }
-                            @if (book.ActiveSale != null && book.Prices != null && book.Prices.TryGetValue(CurrencyService.CurrentCurrency, out var originalPrice))
-                            {
-                                var discountedPrice = book.ActiveSale.Value.CalculateDiscountedPrice(originalPrice);
-                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mt-2">
-                                    <MudText Typo="Typo.body2" Style="text-decoration: line-through; color: var(--mud-palette-text-secondary); opacity: 0.7;">
-                                        @CurrencyService.FormatPrice(originalPrice)
-                                    </MudText>
-                                    <MudText Typo="Typo.h6" Color="Color.Error" Class="font-weight-bold">
-                                        @CurrencyService.FormatPrice(discountedPrice)
-                                    </MudText>
-                                    <BookSaleBadge Sale="@book.ActiveSale"/>
-                                </MudStack>
+                                <img src="@book.CoverImageUrl" alt="@book.Title" class="book-cover" />
                             }
                             else
                             {
-                                <MudText Typo="Typo.h6" Color="Color.Primary" Class="mt-2 font-weight-bold">
-                                    @CurrencyService.FormatPrice(book.Prices)
-                                </MudText>
+                                <div class="book-cover-placeholder">No Image</div>
                             }
-                        </MudCardContent>
-                        <MudCardActions>
-                            <MudButton Href="@($"/book/{book.Id}")" Variant="Variant.Text" Color="Color.Primary" FullWidth="true" StartIcon="@Icons.Material.Filled.Visibility">
-                                View Details
-                            </MudButton>
-                            <MudSpacer/>
-                            @if (book.RatingCount > 0)
+
+                            <h3>@book.Title</h3>
+                            <p>@string.Join(", ", book.Authors.Select(a => a.Name))</p>
+
+                            @if (book.Categories?.Count > 0)
                             {
-                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                                    <MudIcon Icon="@UIConstants.Icons.Star" Color="Color.Warning" Size="Size.Small"/>
-                                    <MudText Typo="Typo.caption">@book.AverageRating.ToString("F1")</MudText>
-                                </MudStack>
+                                <div class="catalog-tags">
+                                    @foreach (var category in book.Categories)
+                                    {
+                                        <span class="badge">@category.Name</span>
+                                    }
+                                </div>
                             }
-                            <MudChip T="string" Size="Size.Small" Icon="@UIConstants.Icons.Favorite" Color="Color.Error" Variant="Variant.Text">
-                                @book.LikeCount
-                            </MudChip>
-                        </MudCardActions>
-                    </MudCard>
-                </MudItem>
+
+                            @if (book.ActiveSale != null && book.Prices != null && book.Prices.TryGetValue(CurrencyService.CurrentCurrency, out var originalPrice))
+                            {
+                                var discountedPrice = book.ActiveSale.Value.CalculateDiscountedPrice(originalPrice);
+                                <div class="catalog-book-price">
+                                    <span class="catalog-price-old">@CurrencyService.FormatPrice(originalPrice)</span>
+                                    <span class="catalog-price-new">@CurrencyService.FormatPrice(discountedPrice)</span>
+                                    <BookSaleBadge Sale="@book.ActiveSale" />
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="catalog-book-price">
+                                    <span class="catalog-price-new">@CurrencyService.FormatPrice(book.Prices)</span>
+                                </div>
+                            }
+
+                            <div class="catalog-card-footer">
+                                <button class="btn btn-primary" @onclick="() => ViewDetails(book)">View Details</button>
+                                <span class="catalog-card-metric">Rating: @(book.RatingCount > 0 ? book.AverageRating.ToString("F1") : "N/A")</span>
+                            </div>
+                        </article>
+                    }
+                </div>
+
+                @if (pagedBooks.Items.Count == 0)
+                {
+                    <div class="catalog-empty">
+                        <h2>No books found</h2>
+                        <p>Try adjusting your filters or search query.</p>
+                        <button class="btn btn-primary" @onclick="ClearFilters">Clear All Filters</button>
+                    </div>
+                }
             }
-        </MudGrid>
-
-        <MudScrollToTop>
-            <MudFab Color="Color.Primary" StartIcon="@Icons.Material.Filled.ArrowUpward" aria-label="Back to top"/>
-        </MudScrollToTop>
-
-        @* Pagination *@
-        @if (pagedBooks.PageCount > 1)
-        {
-            <MudPaper Elevation="0" Class="d-flex justify-center pa-4">
-                <MudPagination Count="@((int)pagedBooks.PageCount)"
-                               Selected="@currentPage"
-                               SelectedChanged="LoadPage"
-                               Color="Color.Primary"
-                               Variant="Variant.Filled"
-                               ShowFirstButton="true"
-                               ShowLastButton="true"/>
-            </MudPaper>
-        }
-
-        @* Empty State *@
-        @if (pagedBooks.Items.Count == 0)
-        {
-            <MudPaper Elevation="0" Class="pa-8 text-center">
-                <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="Size.Large" Color="Color.Secondary" Style="font-size: 6rem;"/>
-                <MudText Typo="Typo.h5" Class="mt-4 mb-2">No books found</MudText>
-                <MudText Typo="Typo.body1" Color="Color.Secondary">
-                    Try adjusting your search terms or filters
-                </MudText>
-                <MudButton OnClick="ClearFilters" Variant="Variant.Text" Color="Color.Primary" Class="mt-2">
-                    Clear All Filters
-                </MudButton>
-            </MudPaper>
-        }
-    }
-</MudItem>
-</MudGrid>
-</MudContainer>
+        </section>
+    </div>
+</section>
 
 @code {
     private ReactiveQuery<PagedListDto<BookDto>>? bookQuery;
     private PagedListDto<BookDto>? pagedBooks => bookQuery?.Data;
     private bool isLoading => bookQuery?.IsLoading ?? true;
     private bool isFetching => bookQuery?.IsFetching ?? false;
-    private string? errorMessage => bookQuery?.Error;
+    private string? errorMessage => localErrorMessage ?? bookQuery?.Error;
 
     private string searchQuery = string.Empty;
     private int currentPage = 1;
@@ -402,6 +239,14 @@
     private System.Security.Claims.ClaimsPrincipal? user;
     private readonly CancellationTokenSource _cts = new();
     private bool _disposed;
+
+    private string authorFilter = string.Empty;
+    private string categoryFilter = string.Empty;
+    private string publisherFilter = string.Empty;
+    private string? localErrorMessage;
+
+    private bool CanGoToPreviousPage => currentPage > 1;
+    private bool CanGoToNextPage => pagedBooks?.HasNextPage ?? false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -444,6 +289,7 @@
     {
         if (_disposed) return;
         // Reload books when currency changes
+        localErrorMessage = null;
         _ = bookQuery?.LoadAsync(cancellationToken: _cts.Token);
         StateHasChanged();
     }
@@ -477,6 +323,7 @@
     {
         if (_disposed) return;
         // Reload books when tenant changes
+        localErrorMessage = null;
         _ = bookQuery?.LoadAsync(cancellationToken: _cts.Token);
         StateHasChanged();
     }
@@ -497,43 +344,19 @@
         }
     }
 
-    private async Task<IEnumerable<AuthorDto>> SearchAuthors(string value, CancellationToken token)
+    private void SyncFilterSelections()
     {
-        if (string.IsNullOrEmpty(value))
-            return authors;
-        return authors.Where(x => x.Name?.Contains(value, StringComparison.InvariantCultureIgnoreCase) ?? false);
-    }
+        selectedAuthor = string.IsNullOrWhiteSpace(authorFilter)
+            ? null
+            : authors.FirstOrDefault(a => a.Name?.Contains(authorFilter, StringComparison.OrdinalIgnoreCase) == true);
 
-    private async Task<IEnumerable<CategoryDto>> SearchCategories(string value, CancellationToken token)
-    {
-        if (string.IsNullOrEmpty(value))
-            return categories;
-        return categories.Where(x => x.Name?.Contains(value, StringComparison.InvariantCultureIgnoreCase) ?? false);
-    }
+        selectedCategory = string.IsNullOrWhiteSpace(categoryFilter)
+            ? null
+            : categories.FirstOrDefault(c => c.Name?.Contains(categoryFilter, StringComparison.OrdinalIgnoreCase) == true);
 
-    private async Task<IEnumerable<PublisherDto>> SearchPublishers(string value, CancellationToken token)
-    {
-        if (string.IsNullOrEmpty(value))
-            return publishers;
-        return publishers.Where(x => x.Name?.Contains(value, StringComparison.InvariantCultureIgnoreCase) ?? false);
-    }
-
-    private async Task OnAuthorChanged(AuthorDto? author)
-    {
-        selectedAuthor = author;
-        await SearchBooks();
-    }
-
-    private async Task OnCategoryChanged(CategoryDto? category)
-    {
-        selectedCategory = category;
-        await SearchBooks();
-    }
-
-    private async Task OnPublisherChanged(PublisherDto? publisher)
-    {
-        selectedPublisher = publisher;
-        await SearchBooks();
+        selectedPublisher = string.IsNullOrWhiteSpace(publisherFilter)
+            ? null
+            : publishers.FirstOrDefault(p => p.Name?.Contains(publisherFilter, StringComparison.OrdinalIgnoreCase) == true);
     }
 
     private async Task<PagedListDto<BookDto>> FetchBooksAsync(CancellationToken cancellationToken)
@@ -594,48 +417,100 @@
     private async Task SearchBooks()
     {
         if (_disposed) return;
+        if (bookQuery is null) return;
+
         currentPage = 1;
-        if (bookQuery != null)
+        if (string.IsNullOrWhiteSpace(searchQuery))
         {
-            await bookQuery.LoadAsync(silent: true);
+            // If search query is empty, reset the filters
+            ClearFilters();
+            return;
+        }
+
+        try
+        {
+            localErrorMessage = null;
+            await bookQuery.LoadAsync(cancellationToken: _cts.Token);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error searching books");
+            localErrorMessage = "Error searching books. Please try again.";
         }
     }
 
-    private void ClearSearch()
+    private void SortChanged()
     {
-        searchQuery = string.Empty;
-        _ = SearchBooks();
+        if (_disposed) return;
+        currentPage = 1;
+        localErrorMessage = null;
+        _ = bookQuery?.LoadAsync(cancellationToken: _cts.Token);
+    }
+
+    private void FilterChanged()
+    {
+        if (_disposed) return;
+        currentPage = 1;
+        SyncFilterSelections();
+        localErrorMessage = null;
+        _ = bookQuery?.LoadAsync(cancellationToken: _cts.Token);
     }
 
     private void ClearFilters()
     {
+        if (_disposed) return;
+        authorFilter = string.Empty;
+        categoryFilter = string.Empty;
+        publisherFilter = string.Empty;
         selectedAuthor = null;
         selectedCategory = null;
         selectedPublisher = null;
         minPrice = null;
         maxPrice = null;
         onSale = false;
-        searchQuery = string.Empty;
         sortBy = "title";
         sortOrder = "asc";
-
-        _ = SearchBooks();
+        currentPage = 1;
+        localErrorMessage = null;
+        _ = bookQuery?.LoadAsync(cancellationToken: _cts.Token);
     }
 
     private async Task LoadPage(int page)
     {
         if (_disposed) return;
+        if (bookQuery is null) return;
+
         currentPage = page;
-        if (bookQuery != null)
+        localErrorMessage = null;
+        await bookQuery.LoadAsync(cancellationToken: _cts.Token);
+    }
+
+    private void StartCleanupTimer()
+    {
+        cleanupTimer?.Dispose();
+        cleanupTimer = new System.Threading.Timer(async _ =>
         {
-            await bookQuery.LoadAsync(silent: true);
-        }
+            try
+            {
+                OptimisticService.CleanupStaleBooks();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error cleaning up stale optimistic books");
+            }
+        }, null, TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(5));
+    }
+
+    private void RetryLoad()
+    {
+        localErrorMessage = null;
+        _ = bookQuery?.InvalidateAsync();
     }
 
     private async Task ToggleFavorite(BookDto book)
     {
         await CatalogService.ToggleFavoriteAsync(book,
-            setOptimistic: (newState) => bookQuery?.MutateData(currentList =>
+            setOptimistic: newState => bookQuery?.MutateData(currentList =>
             {
                 var items = currentList.Items.ToList();
                 var index = items.FindIndex(b => b.Id == book.Id);
@@ -655,7 +530,7 @@
                     currentList.TotalItemCount
                 );
             }),
-            setRollback: (oldState) => bookQuery?.MutateData(currentList =>
+            setRollback: oldState => bookQuery?.MutateData(currentList =>
             {
                 var items = currentList.Items.ToList();
                 var index = items.FindIndex(b => b.Id == book.Id);
@@ -678,42 +553,34 @@
             cancellationToken: _cts.Token);
     }
 
-    private async Task RetryLoad()
+    private void ViewDetails(BookDto book)
     {
-        if (_disposed) return;
-        if (bookQuery != null)
-        {
-            await bookQuery.LoadAsync(cancellationToken: _cts.Token);
-        }
-    }
-
-    public void Dispose()
-    {
-        if (_disposed) return;
-        _disposed = true;
-
-        OptimisticService.OnBooksChanged -= HandleOptimisticBooksChanged;
-        EventsService.OnNotificationReceived -= HandleNotification;
-        CurrencyService.OnCurrencyChanged -= HandleCurrencyChanged;
-        TenantService.OnChange -= HandleTenantChanged;
-
-        _cts.Cancel();
-        _cts.Dispose();
-        bookQuery?.Dispose();
-        debounceTimer?.Dispose();
+        // Navigate to the book details page
+        NavigationManager.NavigateTo($"/book/{book.Id}");
     }
 
     private void HandleOptimisticBooksChanged()
     {
-        // Refresh UI when optimistic books change
-        InvokeAsync(StateHasChanged);
+        // Handle optimistic updates to books
+        StateHasChanged();
     }
 
-    private void StartCleanupTimer()
+    private void Refetch()
     {
-        // Clean up stale optimistic books every 5 seconds
-        cleanupTimer = new System.Threading.Timer(_ => { OptimisticService.CleanupStaleBooks(); }, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+        // Refetch the book query
+        localErrorMessage = null;
+        _ = bookQuery?.InvalidateAsync();
     }
 
-
+    public void Dispose()
+    {
+        _disposed = true;
+        _cts.Cancel();
+        OptimisticService.OnBooksChanged -= HandleOptimisticBooksChanged;
+        EventsService.OnNotificationReceived -= HandleNotification;
+        CurrencyService.OnCurrencyChanged -= HandleCurrencyChanged;
+        TenantService.OnChange -= HandleTenantChanged;
+        debounceTimer?.Dispose();
+        cleanupTimer?.Dispose();
+    }
 }

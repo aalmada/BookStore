@@ -1,42 +1,26 @@
 @inject ThemeService ThemeInfo
+@implements IDisposable
 
-<MudTooltip Text="Switch Theme" Arrow="true" Placement="Placement.Bottom">
-    <MudMenu Icon="@GetThemeIcon()" Color="Color.Inherit" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" Dense="true" aria-label="Switch Theme">
-        <MudMenuItem OnClick="@(() => SetTheme(ThemeMode.Light))">
-            <div class="d-flex align-center gap-2">
-                <MudIcon Icon="@Icons.Material.Filled.LightMode" Size="Size.Small"/>
-                <MudText>Light</MudText>
-            </div>
-        </MudMenuItem>
-        <MudMenuItem OnClick="@(() => SetTheme(ThemeMode.Dark))">
-            <div class="d-flex align-center gap-2">
-                <MudIcon Icon="@Icons.Material.Filled.DarkMode" Size="Size.Small"/>
-                <MudText>Dark</MudText>
-            </div>
-        </MudMenuItem>
-        <MudMenuItem OnClick="@(() => SetTheme(ThemeMode.System))">
-            <div class="d-flex align-center gap-2">
-                <MudIcon Icon="@Icons.Material.Filled.SettingsBrightness" Size="Size.Small"/>
-                <MudText>System</MudText>
-            </div>
-        </MudMenuItem>
-    </MudMenu>
-</MudTooltip>
+<div class="menu-shell">
+    <button class="btn btn-ghost" @onclick="ToggleMenu" aria-haspopup="menu" aria-expanded="@_menuOpen">Theme</button>
+    @if (_menuOpen)
+    {
+        <div class="menu-panel" role="menu">
+            <button class="menu-item" role="menuitem" @onclick="() => SetTheme(ThemeMode.Light)">Light</button>
+            <button class="menu-item" role="menuitem" @onclick="() => SetTheme(ThemeMode.Dark)">Dark</button>
+            <button class="menu-item" role="menuitem" @onclick="() => SetTheme(ThemeMode.System)">System</button>
+        </div>
+    }
+</div>
 
 @code {
+    private bool _menuOpen;
 
-    private string GetThemeIcon()
-    {
-        return ThemeInfo.CurrentTheme switch
-        {
-            ThemeMode.Light => Icons.Material.Filled.LightMode,
-            ThemeMode.Dark => Icons.Material.Filled.DarkMode,
-            _ => Icons.Material.Filled.SettingsBrightness
-        };
-    }
+    private void ToggleMenu() => _menuOpen = !_menuOpen;
 
     private async Task SetTheme(ThemeMode mode)
     {
+        _menuOpen = false;
         await ThemeInfo.SetThemeModeAsync(mode);
     }
 

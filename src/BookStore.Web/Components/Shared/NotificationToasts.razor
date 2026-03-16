@@ -1,0 +1,61 @@
+@implements IDisposable
+@inject INotificationService NotificationService
+@using BookStore.Web.Infrastructure
+
+<div class="toast-host" aria-live="polite" aria-atomic="true">
+    @foreach (var toast in _toasts)
+    {
+        <div class="toast toast-@GetSeverityClass(toast.Severity)" role="status">
+            <span class="toast-title">@GetSeverityLabel(toast.Severity)</span>
+            <p class="toast-message">@toast.Message</p>
+        </div>
+    }
+</div>
+
+@code {
+    private readonly List<NotificationMessage> _toasts = [];
+
+    protected override void OnInitialized()
+    {
+        NotificationService.OnNotification += HandleNotification;
+    }
+
+    private void HandleNotification(NotificationMessage notification)
+    {
+        _ = InvokeAsync(async () =>
+        {
+            _toasts.Add(notification);
+            StateHasChanged();
+
+            await Task.Delay(UIConstants.SnackbarDuration);
+
+            _toasts.Remove(notification);
+            StateHasChanged();
+        });
+    }
+
+    private static string GetSeverityClass(NotificationSeverity severity)
+        => severity switch
+        {
+            NotificationSeverity.Success => "success",
+            NotificationSeverity.Info => "info",
+            NotificationSeverity.Warning => "warning",
+            NotificationSeverity.Error => "error",
+            _ => "info"
+        };
+
+    private static string GetSeverityLabel(NotificationSeverity severity)
+        => severity switch
+        {
+            NotificationSeverity.Success => "Success",
+            NotificationSeverity.Info => "Info",
+            NotificationSeverity.Warning => "Warning",
+            NotificationSeverity.Error => "Error",
+            _ => "Info"
+        };
+
+    public void Dispose()
+    {
+        NotificationService.OnNotification -= HandleNotification;
+    }
+}

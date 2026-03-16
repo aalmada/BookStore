@@ -2,7 +2,6 @@ using BookStore.Client;
 using BookStore.Shared.Models;
 using BookStore.Web.Services;
 using Microsoft.Extensions.Logging;
-using MudBlazor;
 using NSubstitute;
 using TUnit.Core;
 
@@ -11,7 +10,7 @@ namespace BookStore.Web.Tests.Services;
 public class CatalogServiceTests
 {
     IBooksClient _booksClient = null!;
-    ISnackbar _snackbar = null!;
+    INotificationService _notificationService = null!;
     ILogger<CatalogService> _logger = null!;
     CatalogService _sut = null!;
 
@@ -35,9 +34,9 @@ public class CatalogServiceTests
     public void Setup()
     {
         _booksClient = Substitute.For<IBooksClient>();
-        _snackbar = Substitute.For<ISnackbar>();
+        _notificationService = Substitute.For<INotificationService>();
         _logger = Substitute.For<ILogger<CatalogService>>();
-        _sut = new CatalogService(_booksClient, _snackbar, _logger);
+        _sut = new CatalogService(_booksClient, _notificationService, _logger);
     }
 
     [Test]
@@ -56,7 +55,7 @@ public class CatalogServiceTests
         // Assert
         _ = await Assert.That(optimisticResult).IsTrue();
         await _booksClient.Received(1).AddBookToFavoritesAsync(book.Id);
-        _ = _snackbar.Received(1).Add(Arg.Is<string>(s => s.Contains("Added")), Severity.Success);
+        _notificationService.Received(1).Add(Arg.Is<string>(s => s.Contains("Added")), NotificationSeverity.Success);
     }
 
     [Test]
@@ -74,7 +73,7 @@ public class CatalogServiceTests
         // Assert
         _ = await Assert.That(optimisticResult).IsFalse();
         await _booksClient.Received(1).RemoveBookFromFavoritesAsync(book.Id);
-        _ = _snackbar.Received(1).Add(Arg.Is<string>(s => s.Contains("Removed")), Severity.Success);
+        _notificationService.Received(1).Add(Arg.Is<string>(s => s.Contains("Removed")), NotificationSeverity.Success);
     }
 
     [Test]
@@ -90,7 +89,7 @@ public class CatalogServiceTests
 
         // Assert
         _ = await Assert.That(rollbackResult).IsFalse(); // Original state
-        _ = _snackbar.Received(1).Add(Arg.Is<string>(s => s.Contains("Failed")), Severity.Error);
+        _notificationService.Received(1).Add(Arg.Is<string>(s => s.Contains("Failed")), NotificationSeverity.Error);
     }
 
     [Test]
@@ -106,7 +105,7 @@ public class CatalogServiceTests
         // Assert
         _ = await Assert.That(optimisticRating).IsEqualTo(5);
         await _booksClient.Received(1).RateBookAsync(book.Id, Arg.Is<RateBookRequest>(r => r.Rating == 5));
-        _ = _snackbar.Received(1).Add(Arg.Is<string>(s => s.Contains("Rated 5 stars")), Severity.Success);
+        _notificationService.Received(1).Add(Arg.Is<string>(s => s.Contains("Rated 5 stars")), NotificationSeverity.Success);
     }
 
     [Test]
@@ -123,7 +122,7 @@ public class CatalogServiceTests
 
         // Assert
         _ = await Assert.That(rollbackRating).IsEqualTo(2);
-        _ = _snackbar.Received(1).Add(Arg.Is<string>(s => s.Contains("Failed")), Severity.Error);
+        _notificationService.Received(1).Add(Arg.Is<string>(s => s.Contains("Failed")), NotificationSeverity.Error);
     }
 
     [Test]
@@ -139,7 +138,7 @@ public class CatalogServiceTests
         // Assert
         _ = await Assert.That(optimisticCalled).IsTrue();
         await _booksClient.Received(1).RemoveBookRatingAsync(book.Id);
-        _ = _snackbar.Received(1).Add(Arg.Is<string>(s => s.Contains("removed")), Severity.Success);
+        _notificationService.Received(1).Add(Arg.Is<string>(s => s.Contains("removed")), NotificationSeverity.Success);
     }
 
     [Test]

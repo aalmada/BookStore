@@ -49,7 +49,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 
 builder.Services.AddCascadingAuthenticationState();
 
-// Add MudBlazor services
+// Keep MudBlazor infrastructure available until all remaining Mud-based routes are migrated.
 builder.Services.AddMudServices();
 
 // Get API base URL from service discovery (Aspire)
@@ -227,6 +227,7 @@ builder.Services.AddScoped<ErrorLocalizationService>();
 
 // Register Catalog Service
 builder.Services.AddScoped<CatalogService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 
 builder.Services.AddOutputCache();
 

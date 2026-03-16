@@ -8,6 +8,7 @@
 @inject QueryInvalidationService InvalidationService
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
+@inject IJSRuntime Js
 @inject ILogger<CategoryManagement> Logger
 
 <PageTitle>Category Management - BookStore</PageTitle>
@@ -149,10 +150,7 @@
 
     private async Task DeleteCategory(AdminCategoryDto category)
     {
-        var result = await DialogService.ShowMessageBox(
-            "Delete Category",
-            $"Are you sure you want to delete category {category.Name}?",
-            yesText: "Delete", cancelText: "Cancel");
+        var result = await Js.InvokeAsync<bool>("confirm", $"Are you sure you want to delete category {category.Name}?");
 
         if (result == true)
         {

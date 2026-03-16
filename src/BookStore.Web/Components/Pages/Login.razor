@@ -16,162 +16,177 @@
 
 <PageTitle>Login - BookStore</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Small" Class="mt-8">
-    <MudPaper Elevation="4" Class="pa-8" Style="border-radius: 12px;">
-        <MudText Typo="Typo.h4" Align="Align.Center" Class="mb-6">
-            <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Large" Class="mr-2"/>
+<div class="container mt-8">
+    <div class="card" style="padding: var(--space-8); border-radius: var(--radius-lg);">
+        <h4 class="text-center mb-6">
             Login
-        </MudText>
+        </h4>
 
-        <MudText Typo="Typo.h6" Align="Align.Center" Color="Color.Primary" Class="mb-6">
+        <h6 class="text-center text-primary mb-6">
             @TenantService.CurrentTenantName
-        </MudText>
+        </h6>
 
         @if (!string.IsNullOrEmpty(errorMessage))
         {
-            <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+            <div class="alert alert-error mb-4">
                 @errorMessage
                 @if (showResendVerification)
                 {
                     <br/>
-                    <MudLink OnClick="HandleResendVerification" Color="Color.Inherit" Underline="Underline.Always" Class="mt-2" style="cursor: pointer; font-weight: bold;">Resend verification email</MudLink>
+                    <a href="#" @onclick="HandleResendVerification" @onclick:preventDefault="true" class="mt-2" style="cursor: pointer; font-weight: bold;">Resend verification email</a>
                 }
-            </MudAlert>
+            </div>
         }
 
         @if (!string.IsNullOrEmpty(resendMessage))
         {
-            <MudAlert Severity="Severity.Success" Class="mb-4" ContentAlignment="HorizontalAlignment.Center">@resendMessage</MudAlert>
+            <div class="alert alert-success mb-4 text-center">@resendMessage</div>
         }
 
-        <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="px-4 py-6">
-            <MudTabPanel Text="Standard" Icon="@Icons.Material.Filled.Email">
-                <MudForm @ref="form">
-                    <MudTextField @bind-Value="email"
-                                  Label="Email"
-                                  Variant="Variant.Outlined"
-                                  Required="true"
-                                  RequiredError="Email is required"
-                                  Validation="@(new Func<string, string?>(ValidateEmail))"
-                                  Class="mb-4"/>
+        <div class="tabs">
+            <div class="tab-panel">
+                <h5>Standard Login</h5>
+                <form @onsubmit="HandleLogin">
+                    <label for="email" class="form-label">Email</label>
+                    <input id="email" type="email" @bind="email" required placeholder="Enter your email" class="form-input mb-4" aria-label="Email Address" />
+                    @if (!string.IsNullOrWhiteSpace(emailValidationError))
+                    {
+                        <div class="validation-message mb-4">@emailValidationError</div>
+                    }
 
-                    <MudTextField @bind-Value="password"
-                                  Label="Password"
-                                  Variant="Variant.Outlined"
-                                  InputType="@PasswordInput"
-                                  Adornment="Adornment.End"
-                                  AdornmentIcon="@PasswordInputIcon"
-                                  OnAdornmentClick="TogglePasswordVisibility"
-                                  AdornmentAriaLabel="@PasswordAriaLabel"
-                                  Required="true"
-                                  RequiredError="Password is required"
-                                  Class="mb-4"/>
+                    <label for="password" class="form-label">Password</label>
+                    <input id="password" type="password" @bind="password" required placeholder="Enter your password" class="form-input mb-4" aria-label="Password" />
+                    @if (!string.IsNullOrWhiteSpace(passwordValidationError))
+                    {
+                        <div class="validation-message mb-4">@passwordValidationError</div>
+                    }
 
-                    <MudButton Variant="Variant.Filled"
-                               Color="Color.Primary"
-                               FullWidth="true"
-                               Size="Size.Large"
-                               OnClick="HandleLogin"
-                               Disabled="isLoading"
-                               Class="mb-4">
+                    <button type="submit" class="btn btn-primary btn-large" disabled="@isLoading">
                         @if (isLoading)
                         {
-                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2"/>
                             <span>Logging in...</span>
                         }
                         else
                         {
                             <span>Login</span>
                         }
-                    </MudButton>
-                </MudForm>
-            </MudTabPanel>
-            <MudTabPanel Text="Passkey" Icon="@Icons.Material.Filled.Fingerprint">
-                <MudText Typo="Typo.body1" Class="mb-4">
-                    Login using your device's biometric authenticator (FaceID, TouchID) or security key.
-                </MudText>
+                    </button>
+                </form>
+            </div>
+            <div class="tab-panel">
+                <h5>Passkey Login</h5>
+                <p>Login using your device's biometric authenticator (FaceID, TouchID) or security key.</p>
 
-                <MudForm>
-                    <MudTextField @bind-Value="email"
-                                  Label="Email"
-                                  Variant="Variant.Outlined"
-                                  Validation="@(new Func<string, string?>(ValidateOptionalEmail))"
-                                  Immediate="true"
-                                  UserAttributes="@(new Dictionary<string, object> { { "autocomplete", "webauthn" } })"
-                                  Class="mb-4"/>
+                <form>
+                    <label for="passkey-email" class="form-label">Email</label>
+                    <input id="passkey-email" type="email" @bind="email" placeholder="Enter your email (optional)" autocomplete="webauthn" class="form-input mb-4" aria-label="Passkey Email Address" />
+                    @if (!string.IsNullOrWhiteSpace(passkeyEmailValidationError))
+                    {
+                        <div class="validation-message mb-4">@passkeyEmailValidationError</div>
+                    }
 
-                    <MudButton Variant="Variant.Outlined"
-                               StartIcon="@Icons.Material.Filled.Fingerprint"
-                               Color="Color.Secondary"
-                               FullWidth="true"
-                               Size="Size.Large"
-                               ButtonType="ButtonType.Button"
-                               OnClick="LoginWithPasskey"
-                               Disabled="isLoading"
-                               Class="mb-4">
+                    <button type="button" class="btn btn-ghost btn-large" @onclick="LoginWithPasskey" disabled="@isLoading">
                         Sign in with Passkey
-                    </MudButton>
-                </MudForm>
-            </MudTabPanel>
-        </MudTabs>
+                    </button>
+                </form>
+            </div>
+        </div>
 
-        <MudDivider Class="my-4"/>
-
-        <MudText Align="Align.Center">
+        <p class="mt-6">
             Don't have an account?
-            <MudLink Href="/register" Color="Color.Primary">Register here</MudLink>
-        </MudText>
-    </MudPaper>
-</MudContainer>
+            <a href="/register" class="ml-1">Register here</a>
+        </p>
+    </div>
+</div>
 
 @code {
-    MudForm? form;
-    string email = string.Empty;
-    string password = string.Empty;
-    string? errorMessage;
-    BookStore.Shared.Models.Error? lastError;
-    string? resendMessage;
-    bool isPasswordVisible;
-    InputType PasswordInput = InputType.Password;
-    string PasswordInputIcon = Icons.Material.Filled.VisibilityOff;
-    bool isLoading;
-    bool showResendVerification;
-
-    string PasswordAriaLabel => isPasswordVisible ? "Hide Password" : "Show Password";
-
-    void TogglePasswordVisibility()
-    {
-        isPasswordVisible = !isPasswordVisible;
-        if (isPasswordVisible)
-        {
-            PasswordInputIcon = Icons.Material.Filled.Visibility;
-            PasswordInput = InputType.Text;
-        }
-        else
-        {
-            PasswordInputIcon = Icons.Material.Filled.VisibilityOff;
-            PasswordInput = InputType.Password;
-        }
-    }
+    private string email = string.Empty;
+    private string password = string.Empty;
+    private string? errorMessage;
+    private BookStore.Shared.Models.Error? lastError;
+    private string? resendMessage;
+    private bool isLoading;
+    private bool showResendVerification;
+    private string? emailValidationError;
+    private string? passwordValidationError;
+    private string? passkeyEmailValidationError;
 
     [SupplyParameterFromQuery] public string? ReturnUrl { get; set; }
 
-    async Task LoginWithPasskey()
+    private async Task HandleLogin()
     {
-        isLoading = true;
+        resendMessage = null;
         errorMessage = null;
+        showResendVerification = false;
+        emailValidationError = ValidateEmail(email);
+        passwordValidationError = string.IsNullOrWhiteSpace(password) ? "Password is required." : null;
+
+        if (!string.IsNullOrWhiteSpace(emailValidationError) || !string.IsNullOrWhiteSpace(passwordValidationError))
+        {
+            return;
+        }
+
+        isLoading = true;
+        lastError = null;
+
+        try
+        {
+            Logger.LogInformation("Attempting login for {Email}", email);
+            var result = await AuthService.LoginAsync(email, password);
+
+            if (result.IsSuccess)
+            {
+                await AuthStateProvider.NotifyUserAuthentication(result.Value.AccessToken!, result.Value.RefreshToken);
+
+                try
+                {
+                    await Js.InvokeVoidAsync("authBroadcast.notifyLogin");
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogWarning(ex, "BroadcastChannel login notification failed");
+                }
+
+                Navigation.NavigateTo(ReturnUrl ?? "/");
+            }
+            else
+            {
+                HandleLoginError(result.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Login exception");
+            errorMessage = ErrorLocalizer.GetLocalizedMessage(ex.Message);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task LoginWithPasskey()
+    {
+        resendMessage = null;
+        errorMessage = null;
+        showResendVerification = false;
+        passkeyEmailValidationError = ValidateOptionalEmail(email);
+        if (!string.IsNullOrWhiteSpace(passkeyEmailValidationError))
+        {
+            return;
+        }
+
+        isLoading = true;
         lastError = null;
 
         try
         {
             Logger.LogInformation("Attempting passkey login");
 
-            // 1. Get Options
             var optionsResult = await PasskeyService.GetLoginOptionsAsync(string.IsNullOrWhiteSpace(email) ? null : email);
             if (optionsResult.IsFailure)
             {
-                lastError = optionsResult.Error;
-                errorMessage = ErrorLocalizer.GetLocalizedMessage(optionsResult.Error);
+                HandleLoginError(optionsResult.Error);
                 return;
             }
 
@@ -192,25 +207,20 @@
                 return;
             }
 
-            // 2. JS WebAuthn Get
             var credentialJson = await Js.InvokeAsync<string>("passkey.login", optionsJson);
-
-            // 3. Login on Server
             var result = await PasskeyService.LoginWithPasskeyAsync(credentialJson);
 
             if (result.IsSuccess)
             {
-                Logger.LogInformation("Passkey login successful");
                 await AuthStateProvider.NotifyUserAuthentication(result.Value.AccessToken!, result.Value.RefreshToken);
 
-                // Notify other tabs via BroadcastChannel
                 try
                 {
                     await Js.InvokeVoidAsync("authBroadcast.notifyLogin");
                 }
                 catch (Exception ex)
                 {
-                    Logger.LogWarning("BroadcastChannel error: {Error}", ex.Message);
+                    Logger.LogWarning(ex, "BroadcastChannel login notification failed");
                 }
 
                 Navigation.NavigateTo(ReturnUrl ?? "/");
@@ -222,13 +232,19 @@
         }
         catch (TaskCanceledException)
         {
-            Logger.LogInformation("Passkey login was cancelled or timed out.");
             errorMessage = "Login was cancelled or timed out.";
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Passkey login error");
-            errorMessage = ErrorLocalizer.GetLocalizedMessage(ex.Message);
+            Logger.LogError(ex, "Passkey login exception");
+            var message = ex.Message;
+            if (message.Contains("Error:", StringComparison.Ordinal))
+            {
+                var parts = message.Split("Error:", 2, StringSplitOptions.TrimEntries);
+                message = parts[^1];
+            }
+
+            errorMessage = ErrorLocalizer.GetLocalizedMessage(message);
         }
         finally
         {
@@ -236,73 +252,18 @@
         }
     }
 
-    async Task HandleLogin()
+    private async Task HandleResendVerification()
     {
-        if (form == null)
-        {
-            return;
-        }
-
-        await form.Validate();
-        if (!form.IsValid)
-        {
-            return;
-        }
-
-        isLoading = true;
-        errorMessage = null;
-        lastError = null;
-
-        try
-        {
-            Logger.LogInformation("Attempting login for {Email}", email);
-            var result = await AuthService.LoginAsync(email, password);
-
-            if (result.IsSuccess)
-            {
-                Logger.LogInformation("Login successful, notifying auth state provider");
-
-                // Notify the authentication state provider with the new token
-                // This triggers UI updates for AuthorizeView and other auth-dependent components
-                await AuthStateProvider.NotifyUserAuthentication(result.Value.AccessToken!, result.Value.RefreshToken);
-
-                // Notify other tabs via BroadcastChannel
-                try
-                {
-                    await Js.InvokeVoidAsync("authBroadcast.notifyLogin");
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogWarning("BroadcastChannel error: {Error}", ex.Message);
-                }
-
-                Logger.LogInformation("Navigating to {ReturnUrl}", ReturnUrl ?? "/");
-
-                // Navigate without forceLoad - state is already updated
-                Navigation.NavigateTo(ReturnUrl ?? "/");
-            }
-            else
-            {
-                Logger.LogWarning("Login failed: {Error}", result.Error.Message);
-                HandleLoginError(result.Error);
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Login exception: {Message}", ex.Message);
-            errorMessage = ErrorLocalizer.GetLocalizedMessage(ex.Message);
-        }
-        finally
-        {
-            isLoading = false;
-        }
-    }
-
-    async Task HandleResendVerification()
-    {
-        if (string.IsNullOrEmpty(email))
+        emailValidationError = null;
+        if (string.IsNullOrWhiteSpace(email))
         {
             errorMessage = "Please enter your email address first.";
+            return;
+        }
+
+        emailValidationError = ValidateEmail(email);
+        if (!string.IsNullOrWhiteSpace(emailValidationError))
+        {
             return;
         }
 
@@ -327,7 +288,7 @@
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Resend verification error");
+            Logger.LogError(ex, "Resend verification exception");
             errorMessage = "An error occurred while resending the verification email.";
         }
         finally
@@ -336,17 +297,17 @@
         }
     }
 
-    void HandleLoginError(BookStore.Shared.Models.Error error)
+    private void HandleLoginError(BookStore.Shared.Models.Error error)
     {
         lastError = error;
         errorMessage = ErrorLocalizer.GetLocalizedMessage(error);
-        showResendVerification = error.Code == BookStore.Shared.Models.ErrorCodes.Auth.EmailUnconfirmed ||
-                                 error.Message?.Contains("Requires verification") == true;
+        showResendVerification =
+            error.Code == ErrorCodes.Auth.EmailUnconfirmed ||
+            error.Message?.Contains("Requires verification", StringComparison.OrdinalIgnoreCase) == true;
     }
 
-    static string? ValidateEmail(string email) => EmailValidator.GetError(email);
+    private static string? ValidateEmail(string value) => EmailValidator.GetError(value);
 
-    static string? ValidateOptionalEmail(string email)
-        => string.IsNullOrWhiteSpace(email) ? null : EmailValidator.GetError(email);
-
+    private static string? ValidateOptionalEmail(string value)
+        => string.IsNullOrWhiteSpace(value) ? null : EmailValidator.GetError(value);
 }

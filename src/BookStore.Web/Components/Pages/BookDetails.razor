@@ -1,297 +1,135 @@
 @page "/book/{id:guid}"
-@using BookStore.Web.Services
-@using BookStore.Client
-@using ClientModels = BookStore.Client
 @using BookStore.Shared.Models
-@using Microsoft.AspNetCore.Components.Authorization
+@using BookStore.Client
 @using BookStore.Web.Components.Catalog
+@using BookStore.Web.Logging
+@using BookStore.Web.Services
+@using Microsoft.AspNetCore.Components.Authorization
 @inject IBooksClient BooksClient
 @inject IShoppingCartClient CartClient
-@inject NavigationManager Navigation
-@inject AuthenticationStateProvider AuthStateProvider
-@inject ISnackbar Snackbar
-@implements IDisposable
-@rendermode InteractiveServer
 @inject CatalogService CatalogService
 @inject CurrencyService CurrencyService
-@inject IDialogService DialogService
-@using BookStore.Web.Infrastructure
+@inject AuthenticationStateProvider AuthStateProvider
+@inject QueryInvalidationService InvalidationService
+@inject BookStoreEventsService EventsService
+@inject NavigationManager Navigation
+@inject ILogger<BookDetails> Logger
+@implements IDisposable
+@rendermode InteractiveServer
 
 <PageTitle>@(book?.Title ?? "Book Details") - BookStore</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="mt-6">
+<section class="catalog-page">
+    <div class="catalog-breadcrumbs">
+        <button class="btn btn-ghost" @onclick="NavigateHome">Back to Catalog</button>
+    </div>
+
     @if (isLoading)
     {
-        <MudPaper Elevation="2" Class="pa-6" Style="border-radius: 12px;">
-            <MudGrid>
-                <MudItem xs="12" md="4">
-                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="400px"/>
-                </MudItem>
-                <MudItem xs="12" md="8">
-                    <MudSkeleton Width="60%" Height="60px" Class="mb-4"/>
-                    <MudSkeleton Width="40%" Class="mb-6"/>
-                    <MudSkeleton Width="100%" Height="200px"/>
-                </MudItem>
-            </MudGrid>
-        </MudPaper>
+        <div class="catalog-skeleton-grid">
+            <div class="catalog-skeleton-cover"></div>
+            <div class="catalog-skeleton-body">
+                <div class="catalog-skeleton-line lg"></div>
+                <div class="catalog-skeleton-line"></div>
+                <div class="catalog-skeleton-line"></div>
+            </div>
+        </div>
     }
-    else if (errorMessage != null)
+    else if (!string.IsNullOrWhiteSpace(errorMessage))
     {
-        <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
-            <MudText Typo="Typo.h6" Class="mb-2">@errorMessage</MudText>
-            <MudButton OnClick="RetryLoad" Color="Color.Surface" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Refresh">
-                Retry
-            </MudButton>
-        </MudAlert>
-        <MudButton Href="/" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.ArrowBack">
-            Back to Catalog
-        </MudButton>
+        <div class="alert-error">@errorMessage</div>
+        <button class="btn btn-primary" @onclick="RetryLoad">Retry</button>
     }
-    else if (book != null)
+    else if (book is not null)
     {
-        @* Breadcrumbs *@
-        <MudBreadcrumbs Items="_breadcrumbItems" Class="mb-4"/>
+        <article class="book-detail-shell">
+            <div class="book-detail-cover">
+                @if (!string.IsNullOrWhiteSpace(book.CoverImageUrl))
+                {
+                    <img src="@book.CoverImageUrl" alt="@book.Title" />
+                }
+                else
+                {
+                    <div class="book-detail-cover-placeholder">No cover</div>
+                }
+            </div>
 
-        <MudPaper Elevation="2" Class="pa-6" Style="border-radius: 12px;">
-            <MudGrid>
-                @* Book Cover *@
-                <MudItem xs="12" md="4">
-                    @if (!string.IsNullOrEmpty(book.CoverImageUrl))
+            <div class="book-detail-content">
+                <h1>@book.Title</h1>
+                <p class="book-detail-authors">@string.Join(", ", book.Authors.Select(a => a.Name))</p>
+
+                @if (book.Publisher is not null)
+                {
+                    <p class="book-detail-meta">Publisher: @book.Publisher.Name</p>
+                }
+
+                @if (book.PublicationDate.HasValue)
+                {
+                    <p class="book-detail-meta">Published: @book.PublicationDate.Value:yyyy-MM-dd</p>
+                }
+
+                <div class="book-detail-price">
+                    @if (book.ActiveSale is not null && book.Prices is not null && book.Prices.TryGetValue(CurrencyService.CurrentCurrency, out var originalPrice))
                     {
-                        <MudImage Src="@book.CoverImageUrl" Alt="@book.Title" ObjectFit="ObjectFit.Cover" Elevation="4" Class="rounded-lg" Style="height: 500px; width: 100%;"/>
+                        var salePrice = book.ActiveSale.Value.CalculateDiscountedPrice(originalPrice);
+                        <span class="old">@CurrencyService.FormatPrice(originalPrice)</span>
+                        <span class="new">@CurrencyService.FormatPrice(salePrice)</span>
+                        <BookSaleBadge Sale="@book.ActiveSale" />
                     }
                     else
                     {
-                        <MudPaper Elevation="4" Style="border-radius: 12px; overflow: hidden; background: var(--mud-palette-primary); color: var(--mud-palette-primary-text); height: 500px; display: flex; align-items: center; justify-content: center;">
-                            <MudIcon Icon="@UIConstants.Icons.Book" Size="Size.Large" Color="Color.Inherit" Style="font-size: 10rem;"/>
-                        </MudPaper>
+                        <span class="new">@CurrencyService.FormatPrice(book.Prices)</span>
                     }
-                </MudItem>
+                </div>
 
-                @* Book Information *@
-                <MudItem xs="12" md="8">
-                    <MudText Typo="Typo.h3" Class="mb-3">@book.Title</MudText>
-
-                    @if (book.Authors.Count > 0)
-                    {
-                        <MudText Typo="Typo.h6" Color="Color.Secondary" Class="mb-4">
-                            <MudIcon Icon="@UIConstants.Icons.Author" Size="Size.Small" Class="mr-1"/> by @string.Join(", ", book.Authors.Select(a => a.Name))
-                        </MudText>
-                    }
-
-                    @if (book.Categories?.Count > 0)
-                    {
-                        <MudStack Row="true" Class="mb-4">
-                            @foreach (var category in book.Categories)
-                            {
-                                <MudChip T="string" Color="Color.Primary" Variant="Variant.Outlined">@category.Name</MudChip>
-                            }
-                        </MudStack>
-                    }
-
-                    @* Favorite Button *@
+                <div class="book-detail-actions">
                     <AuthorizeView>
                         <Authorized>
-                            <MudButton Variant="Variant.Outlined"
-                                       Color="@(book.IsFavorite ? Color.Error : Color.Default)"
-                                       StartIcon="@(book.IsFavorite ? UIConstants.Icons.Favorite : UIConstants.Icons.FavoriteBorder)"
-                                       OnClick="@(() => ToggleFavorite(book))"
-                                       aria-label="@(book.IsFavorite ? "Remove from favorites" : "Add to favorites")"
-                                       Class="mb-4">
-                                @(book.IsFavorite ? "Remove from Favorites" : "Add to Favorites") (@book.LikeCount)
-                            </MudButton>
-                        </Authorized>
-                    </AuthorizeView>
-
-                    @* Rating *@
-                    <AuthorizeView>
-                        <Authorized>
-                            <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
-                                <MudText Typo="Typo.body1" Class="mr-2">Your Rating:</MudText>
-                                @for (int i = 1; i <= 5; i++)
+                            <label class="field-label" for="qty">Quantity</label>
+                            <input id="qty" class="input-field" type="number" min="1" max="99" @bind="quantity" />
+                            <button class="btn btn-primary" @onclick="AddToCartAsync">Add To Cart</button>
+                            <button class="btn btn-ghost" @onclick="() => ToggleFavoriteAsync(book)">
+                                @(book.IsFavorite ? "Unfavorite" : "Favorite")
+                            </button>
+                            <div class="book-detail-rating">
+                                @for (var star = 1; star <= 5; star++)
                                 {
-                                    var starIndex = i;
-                                    var isFilled = book.UserRating >= starIndex;
-                                    <MudIconButton Icon="@(isFilled ? UIConstants.Icons.Star : UIConstants.Icons.StarBorder)"
-                                                   Color="@(isFilled ? Color.Warning : Color.Default)"
-                                                   Size="Size.Large"
-                                                   aria-label="@($"Rate {starIndex} stars")"
-                                                   OnClick="@(() => RateBookAsync(starIndex))"/>
+                                    var currentStar = star;
+                                    <button class="btn btn-ghost @(book.UserRating >= currentStar ? "active" : string.Empty)"
+                                            @onclick="() => RateBookAsync(currentStar)"
+                                            aria-label="Rate @currentStar stars">★</button>
                                 }
+
                                 @if (book.UserRating > 0)
                                 {
-                                    <MudTooltip Text="Clear rating">
-                                        <MudIconButton Icon="@Icons.Material.Filled.Clear"
-                                                       Color="Color.Default"
-                                                       Size="Size.Small"
-                                                       aria-label="Clear your rating"
-                                                       OnClick="@RemoveRatingAsync"/>
-                                    </MudTooltip>
+                                    <button class="btn btn-ghost" @onclick="ClearRatingAsync">Clear Rating</button>
                                 }
-                            </MudStack>
-
-                            @* Show average rating below user's rating *@
-                            @if (book.RatingCount > 0)
-                            {
-                                <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
-                                    <MudText Typo="Typo.body2" Color="Color.Secondary">Average: </MudText>
-                                    @for (int i = 1; i <= 5; i++)
-                                    {
-                                        var starIndex = i;
-                                        var isFilled = book.AverageRating >= starIndex;
-                                        var isHalfFilled = !isFilled && book.AverageRating >= starIndex - 0.5f;
-                                        <MudIcon Icon="@(isFilled ? UIConstants.Icons.Star : (isHalfFilled ? UIConstants.Icons.StarHalf : UIConstants.Icons.StarBorder))"
-                                                 Color="@(isFilled || isHalfFilled ? Color.Warning : Color.Default)"
-                                                 Size="Size.Small"/>
-                                    }
-                                    <MudText Typo="Typo.body2" Color="Color.Secondary">@book.AverageRating.ToString("F1") (@book.RatingCount @(book.RatingCount == 1 ? "rating" : "ratings"))</MudText>
-                                </MudStack>
-                            }
+                            </div>
                         </Authorized>
-                        <NotAuthorized>
-                            @if (book.RatingCount > 0)
-                            {
-                                <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
-                                    <MudText Typo="Typo.body1" Class="mr-2">Average Rating:</MudText>
-                                    @for (int i = 1; i <= 5; i++)
-                                    {
-                                        var starIndex = i;
-                                        var isFilled = book.AverageRating >= starIndex;
-                                        var isHalfFilled = !isFilled && book.AverageRating >= starIndex - 0.5f;
-                                        <MudIcon Icon="@(isFilled ? Icons.Material.Filled.Star : (isHalfFilled ? Icons.Material.Filled.StarHalf : Icons.Material.Outlined.StarBorder))"
-                                                 Color="@(isFilled || isHalfFilled ? Color.Warning : Color.Default)"
-                                                 Size="Size.Large"/>
-                                    }
-                                    <MudText Typo="Typo.body2" Class="ml-2">@book.AverageRating.ToString("F1") (@book.RatingCount @(book.RatingCount == 1 ? "rating" : "ratings"))</MudText>
-                                </MudStack>
-                            }
-                        </NotAuthorized>
                     </AuthorizeView>
 
-                    @if (book.ActiveSale != null && book.Prices != null && book.Prices.TryGetValue(CurrencyService.CurrentCurrency, out var originalPrice))
-                    {
-                        var discountedPrice = book.ActiveSale.Value.CalculateDiscountedPrice(originalPrice);
-                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-6">
-                            <MudText Typo="Typo.h5" Style="text-decoration: line-through; color: var(--mud-palette-text-secondary); opacity: 0.7;">
-                                @CurrencyService.FormatPrice(originalPrice)
-                            </MudText>
-                            <MudText Typo="Typo.h4" Color="Color.Error" Class="font-weight-bold">
-                                @CurrencyService.FormatPrice(discountedPrice)
-                            </MudText>
-                            <BookSaleBadge Sale="@book.ActiveSale"/>
-                        </MudStack>
-                    }
-                    else
-                    {
-                        <MudText Typo="Typo.h4" Color="Color.Primary" Class="mb-6 font-weight-bold">
-                            @CurrencyService.FormatPrice(book.Prices)
-                        </MudText>
-                    }
-
-                    @* Add to Cart *@
-                    <AuthorizeView>
+                    <AuthorizeView Roles="Admin">
                         <Authorized>
-                            <MudPaper Elevation="0" Class="pa-4 mb-4" Style="background-color: rgba(0,0,0,0.02); border-radius: 8px;">
-                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="4">
-                                    <MudNumericField @bind-Value="quantity" Label="Quantity" Variant="Variant.Outlined" Min="1" Max="99" Class="mb-0" Style="max-width: 100px;"/>
-                                    <MudButton Variant="Variant.Filled"
-                                               Color="Color.Primary"
-                                               StartIcon="@Icons.Material.Filled.ShoppingCart"
-                                               OnClick="AddToCartAsync"
-                                               Size="Size.Large">
-                                        Add to Cart
-                                    </MudButton>
-                                </MudStack>
-                            </MudPaper>
+                            @if (!book.IsDeleted)
+                            {
+                                <button class="btn btn-ghost" @onclick="SoftDeleteAsync">Delete Book</button>
+                            }
+                            else
+                            {
+                                <button class="btn btn-primary" @onclick="RestoreAsync">Restore Book</button>
+                            }
                         </Authorized>
                     </AuthorizeView>
+                </div>
 
-                    @* Book Details Card *@
-                    <MudCard Elevation="0" Class="mb-4" Style="background-color: rgba(0,0,0,0.02);">
-                        <MudCardContent>
-                            <MudText Typo="Typo.h6" Class="mb-3">Book Information</MudText>
-                            <MudStack Spacing="2">
-                                @if (!string.IsNullOrWhiteSpace(book.Isbn))
-                                {
-                                    <MudStack Row="true" AlignItems="AlignItems.Center">
-                                        <MudIcon Icon="@Icons.Material.Filled.QrCode" Size="Size.Small" Color="Color.Secondary"/>
-                                        <MudText Typo="Typo.body2">
-                                            <strong>ISBN:</strong> @book.Isbn
-                                        </MudText>
-                                    </MudStack>
-                                }
-
-                                @if (book.Publisher != null)
-                                {
-                                    <MudStack Row="true" AlignItems="AlignItems.Center">
-                                        <MudIcon Icon="@UIConstants.Icons.Publisher" Size="Size.Small" Color="Color.Secondary"/>
-                                        <MudText Typo="Typo.body2">
-                                            <strong>Publisher:</strong> @book.Publisher.Name
-                                        </MudText>
-                                    </MudStack>
-                                }
-
-                                @if (!string.IsNullOrWhiteSpace(book.LanguageName))
-                                {
-                                    <MudStack Row="true" AlignItems="AlignItems.Center">
-                                        <MudIcon Icon="@Icons.Material.Filled.Language" Size="Size.Small" Color="Color.Secondary"/>
-                                        <MudText Typo="Typo.body2">
-                                            <strong>Language:</strong> @book.LanguageName
-                                        </MudText>
-                                    </MudStack>
-                                }
-
-                                @if (book.PublicationDate.HasValue)
-                                {
-                                    <MudStack Row="true" AlignItems="AlignItems.Center">
-                                        <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" Color="Color.Secondary"/>
-                                        <MudText Typo="Typo.body2">
-                                            <strong>Published:</strong> @book.PublicationDate.Value.ToDisplayString()
-                                        </MudText>
-                                    </MudStack>
-                                }
-                            </MudStack>
-                        </MudCardContent>
-                    </MudCard>
-
-                    @* Description *@
-                    @if (!string.IsNullOrWhiteSpace(book.Description))
-                    {
-                        <MudCard Elevation="0" Style="background-color: rgba(0,0,0,0.02);">
-                            <MudCardContent>
-                                <MudText Typo="Typo.h6" Class="mb-3">Description</MudText>
-                                <MudText Typo="Typo.body1">@book.Description</MudText>
-                            </MudCardContent>
-                        </MudCard>
-                    }
-                </MudItem>
-            </MudGrid>
-        </MudPaper>
-
-        @* Actions *@
-        <MudStack Row="true" Class="mt-6" Spacing="2">
-            <MudButton Href="/" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.ArrowBack">
-                Back to Catalog
-            </MudButton>
-            <AuthorizeView Roles="Admin, ADMIN">
-                <Authorized>
-                    @if (book.IsDeleted)
-                    {
-                        <MudButton Variant="Variant.Filled" Color="Color.Success" StartIcon="@Icons.Material.Filled.Restore" OnClick="RestoreBookAsync" Class="ml-2">
-                            Restore Book
-                        </MudButton>
-                    }
-                    else
-                    {
-                        <MudButton Variant="Variant.Filled" Color="Color.Error" StartIcon="@Icons.Material.Filled.Delete" OnClick="DeleteBookAsync" Class="ml-2">
-                            Delete Book
-                        </MudButton>
-                    }
-                </Authorized>
-            </AuthorizeView>
-        </MudStack>
+                @if (!string.IsNullOrWhiteSpace(book.Description))
+                {
+                    <p class="book-detail-description">@book.Description</p>
+                }
+            </div>
+        </article>
     }
-</MudContainer>
+</section>
 
 @code {
     [Parameter] public Guid Id { get; set; }
@@ -300,254 +138,120 @@
     private BookDto? book => bookQuery?.Data;
     private string? errorMessage => bookQuery?.Error;
     private bool isLoading => bookQuery?.IsLoading ?? true;
-    private List<BreadcrumbItem> _breadcrumbItems = new();
-
-    [Inject] private ILogger<BookDetails> Logger { get; set; } = default!;
-    [Inject] private QueryInvalidationService InvalidationService { get; set; } = default!;
-
-    [CascadingParameter] private Task<AuthenticationState> AuthStateTask { get; set; } = default!;
-    private System.Security.Claims.ClaimsPrincipal? user;
     private readonly CancellationTokenSource _cts = new();
-    private bool _disposed;
     private int quantity = 1;
-
-    private async Task AddToCartAsync()
-    {
-        if (book == null) return;
-
-        try
-        {
-            await CartClient.AddToCartAsync(new BookStore.Client.AddToCartClientRequest(book.Id, quantity), _cts.Token);
-            Snackbar.Add($"Added {quantity} copy(ies) to cart", Severity.Success);
-            quantity = 1; // Reset quantity
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Failed to add book {BookId} to cart", book.Id);
-            Snackbar.Add($"Failed to add to cart: {ex.Message}", Severity.Error);
-        }
-    }
 
     protected override async Task OnInitializedAsync()
     {
-        // Start SSE listening (ensure it's started if specific page loaded directly)
         EventsService.StartListening();
 
-        // Initialize ReactiveQuery
-        await InitializeQueryAsync();
+        bookQuery = new ReactiveQuery<BookDto?>(
+            queryFn: async ct => await BooksClient.GetBookAsync(Id, cancellationToken: ct),
+            eventsService: EventsService,
+            invalidationService: InvalidationService,
+            queryKeys: new[] { $"Book:{Id}", "Books" },
+            onStateChanged: () => InvokeAsync(StateHasChanged),
+            logger: Logger);
 
-        // Subscribe to currency changes
+        await bookQuery.LoadAsync(cancellationToken: _cts.Token);
         CurrencyService.OnCurrencyChanged += StateHasChanged;
     }
 
-    protected override async Task OnParametersSetAsync()
+    private async Task AddToCartAsync()
     {
-        if (_disposed) return;
-        // Reload when ID parameter changes
-        // Note: queryFn captures 'Id', so we need to reload if Id changes.
-        // But ReactiveQuery caches the function. We strictly should allow updating the function or creating new query.
-        // Easiest is to recreate the query if ID changes.
-        if (bookQuery != null) // If checking existing query
-        {
-            // We can just rely on the fact that if OnParametersSetAsync runs, Id might have changed.
-            // But we need to check if it actually changed to avoid loop?
-            // Actually OnParametersSetAsync runs on standard parameter set.
-            // We'll manage checking inside InitializeQueryAsync logic or just re-init.
-            await InitializeQueryAsync(_cts.Token);
-        }
+        if (book is null) return;
 
-        var authState = await AuthStateTask;
-        var newUser = authState.User;
-
-        if (user == null || newUser.Identity?.Name != user.Identity?.Name || newUser.Identity?.IsAuthenticated != user.Identity?.IsAuthenticated)
-        {
-            user = newUser;
-            if (user.Identity?.IsAuthenticated == true && bookQuery != null)
-            {
-                await bookQuery.LoadAsync(silent: true, cancellationToken: _cts.Token);
-            }
-        }
-    }
-
-    private async Task InitializeQueryAsync(CancellationToken cancellationToken = default)
-    {
-        // Dispose previous if exists
-        bookQuery?.Dispose();
-
-        bookQuery = new ReactiveQuery<BookDto?>(
-            queryFn: async ct =>
-            {
-                try
-                {
-                    return await BooksClient.GetBookAsync(
-                        id: Id, cancellationToken: ct);
-                }
-                catch (Refit.ApiException apiEx) when (apiEx.StatusCode == System.Net.HttpStatusCode.NotFound)
-                {
-                    throw new Exception("Book not found. It may have been removed or the ID is incorrect.");
-                }
-            },
-            eventsService: EventsService,
-            invalidationService: InvalidationService,
-            queryKeys: new[] { $"Book:{Id}", "User" },
-            onStateChanged: () => InvokeAsync(StateHasChanged),
-            logger: Logger
-        );
-
-        await bookQuery.LoadAsync(cancellationToken: cancellationToken);
-        UpdateBreadcrumbs();
-    }
-
-    private async Task<BookDto?> FetchBookAsync(CancellationToken cancellationToken)
-    {
         try
         {
-            return await BooksClient.GetBookAsync(
-                id: Id, cancellationToken: cancellationToken);
+            await CartClient.AddToCartAsync(new AddToCartClientRequest(book.Id, quantity), _cts.Token);
         }
-        catch (Refit.ApiException apiEx) when (apiEx.StatusCode == System.Net.HttpStatusCode.NotFound)
+        catch (Exception ex)
         {
-            throw new Exception("Book not found. It may have been removed or the ID is incorrect.");
+            Log.BookDetailsAddToCartFailed(Logger, book.Id, ex);
         }
     }
 
-    private void UpdateBreadcrumbs()
+    private async Task RateBookAsync(int stars)
     {
-        if (book != null)
-        {
-            _breadcrumbItems = new List<BreadcrumbItem>
+        if (book is null) return;
+
+        await CatalogService.RateBookAsync(
+            book,
+            stars,
+            setOptimistic: rating => bookQuery?.MutateData(b => b is null ? null : b with { UserRating = rating }),
+            setRollback: rating => bookQuery?.MutateData(b => b is null ? null : b with { UserRating = rating }),
+            cancellationToken: _cts.Token);
+    }
+
+    private async Task ClearRatingAsync()
+    {
+        if (book is null) return;
+
+        await CatalogService.RemoveRatingAsync(
+            book,
+            setOptimistic: () => bookQuery?.MutateData(b => b is null ? null : b with { UserRating = 0 }),
+            setRollback: rating => bookQuery?.MutateData(b => b is null ? null : b with { UserRating = rating }),
+            cancellationToken: _cts.Token);
+    }
+
+    private async Task ToggleFavoriteAsync(BookDto bookToToggle)
+    {
+        await CatalogService.ToggleFavoriteAsync(
+            bookToToggle,
+            setOptimistic: newState => bookQuery?.MutateData(b => b is null ? null : b with
             {
-                new BreadcrumbItem("Home", href: "/", icon: Icons.Material.Filled.Home),
-                new BreadcrumbItem(book.Title ?? "Book", href: null, disabled: true)
-            };
+                IsFavorite = newState,
+                LikeCount = newState ? b.LikeCount + 1 : b.LikeCount - 1
+            }),
+            setRollback: oldState => bookQuery?.MutateData(b => b is null ? null : b with
+            {
+                IsFavorite = oldState,
+                LikeCount = oldState ? b.LikeCount + 1 : b.LikeCount - 1
+            }),
+            cancellationToken: _cts.Token);
+    }
+
+    private async Task SoftDeleteAsync()
+    {
+        if (book is null) return;
+
+        try
+        {
+            await BooksClient.SoftDeleteBookAsync(book.Id, cancellationToken: _cts.Token);
+        }
+        catch (Exception ex)
+        {
+            Log.BookDetailsSoftDeleteFailed(Logger, book.Id, ex);
+        }
+    }
+
+    private async Task RestoreAsync()
+    {
+        if (book is null) return;
+
+        try
+        {
+            await BooksClient.RestoreBookAsync(book.Id, cancellationToken: _cts.Token);
+        }
+        catch (Exception ex)
+        {
+            Log.BookDetailsRestoreFailed(Logger, book.Id, ex);
         }
     }
 
     private async Task RetryLoad()
     {
-        if (_disposed) return;
-        if (bookQuery != null)
-        {
-            await bookQuery.LoadAsync(cancellationToken: _cts.Token);
-            UpdateBreadcrumbs();
-        }
+        if (bookQuery is null) return;
+        await bookQuery.LoadAsync(cancellationToken: _cts.Token);
     }
 
-    private async Task ToggleFavorite(BookDto bookToToggle)
-    {
-        await CatalogService.ToggleFavoriteAsync(bookToToggle,
-            setOptimistic: (newState) => bookQuery?.MutateData(current => current == null
-                ? null
-                : current with
-                {
-                    IsFavorite = newState,
-                    LikeCount = newState ? current.LikeCount + 1 : current.LikeCount - 1
-                }),
-            setRollback: (oldState) => bookQuery?.MutateData(current => current == null
-                ? null
-                : current with
-                {
-                    IsFavorite = oldState,
-                    LikeCount = oldState ? current.LikeCount + 1 : current.LikeCount - 1
-                }),
-            cancellationToken: _cts.Token);
-    }
-
-    private async Task RateBookAsync(int rating)
-    {
-        if (book == null) return;
-
-        await CatalogService.RateBookAsync(book, rating,
-            setOptimistic: (newRating) => bookQuery?.MutateData(current => current == null
-                ? null
-                : current with
-                {
-                    UserRating = newRating
-                }),
-            setRollback: (oldRating) => bookQuery?.MutateData(current => current == null
-                ? null
-                : current with
-                {
-                    UserRating = oldRating
-                }),
-            cancellationToken: _cts.Token);
-    }
-
-    private async Task RemoveRatingAsync()
-    {
-        if (book == null) return;
-
-        await CatalogService.RemoveRatingAsync(book,
-            setOptimistic: () => bookQuery?.MutateData(current => current == null
-                ? null
-                : current with
-                {
-                    UserRating = 0
-                }),
-            setRollback: (oldRating) => bookQuery?.MutateData(current => current == null
-                ? null
-                : current with
-                {
-                    UserRating = oldRating
-                }),
-            cancellationToken: _cts.Token);
-    }
-
-    private async Task DeleteBookAsync()
-    {
-        var currentBook = book;
-        if (currentBook == null) return;
-
-        bool? result = await DialogService.ShowMessageBox(
-            "Delete Book",
-            "Are you sure you want to delete this book?",
-            yesText: "Delete", cancelText: "Cancel");
-
-        if (result != true) return;
-
-        try
-        {
-            await BooksClient.SoftDeleteBookAsync(currentBook.Id, cancellationToken: _cts.Token);
-            Snackbar.Add("Book deleted", Severity.Success);
-            if (bookQuery != null) await bookQuery.LoadAsync(cancellationToken: _cts.Token);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Failed to delete book {BookId}", currentBook.Id);
-            Snackbar.Add($"Failed to delete book: {ex.Message}", Severity.Error);
-        }
-    }
-
-    private async Task RestoreBookAsync()
-    {
-        var currentBook = book;
-        if (currentBook == null) return;
-
-        try
-        {
-            await BooksClient.RestoreBookAsync(currentBook.Id, cancellationToken: _cts.Token);
-            Snackbar.Add("Book restored", Severity.Success);
-            if (bookQuery != null) await bookQuery.LoadAsync(cancellationToken: _cts.Token);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Failed to restore book {BookId}", currentBook.Id);
-            Snackbar.Add($"Failed to restore book: {ex.Message}", Severity.Error);
-        }
-    }
-
-    // Inject EventsService which wasn't injected before
-    [Inject] private BookStoreEventsService EventsService { get; set; } = default!;
+    private void NavigateHome() => Navigation.NavigateTo("/");
 
     public void Dispose()
     {
-        if (_disposed) return;
-        _disposed = true;
-
         _cts.Cancel();
         _cts.Dispose();
         bookQuery?.Dispose();
         CurrencyService.OnCurrencyChanged -= StateHasChanged;
     }
-
 }

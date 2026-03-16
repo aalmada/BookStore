@@ -1,5 +1,6 @@
 @page "/register"
 @using BookStore.Web.Services
+@using MudBlazor
 @inject AuthenticationService AuthService
 @inject PasskeyService PasskeyService
 @inject JwtAuthenticationStateProvider AuthStateProvider
@@ -41,7 +42,7 @@
             </MudAlert>
         }
 
-        <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="px-4 py-6">
+        <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true">
             <MudTabPanel Text="Standard" Icon="@Icons.Material.Filled.Email">
                 <MudForm @ref="form">
                     <MudTextField @bind-Value="email"
@@ -217,7 +218,7 @@
             return;
         }
 
-        await form.Validate();
+        await form.ValidateAsync();
         if (!form.IsValid)
         {
             return;

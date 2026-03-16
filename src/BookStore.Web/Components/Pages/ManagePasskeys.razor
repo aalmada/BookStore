@@ -4,85 +4,64 @@
 @using BookStore.Client
 @inject PasskeyService PasskeyService
 @inject IJSRuntime JS
-@inject ISnackbar Snackbar
-@inject NavigationManager Navigation
+@inject INotificationService NotificationService
 @inject BookStore.Web.Services.ErrorLocalizationService ErrorLocalizer
 @attribute [Authorize]
 
 <PageTitle>Manage Passkeys</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Small" Class="mt-8">
-    <MudText Typo="Typo.h4" GutterBottom="true">Manage Passkeys</MudText>
-    <MudText Typo="Typo.body1" Class="mb-4">
-        Register a passkey to sign in without a password.
-        <MudLink Href="/account/password" Color="Color.Primary">Manage your password here.</MudLink>
-    </MudText>
+<section class="auth-shell">
+    <article class="card auth-card">
+        <h1>Manage Passkeys</h1>
+        <p class="muted">Register a passkey to sign in without a password. <a href="/account/password">Manage your password here.</a></p>
 
-    <MudPaper Class="pa-4">
         @if (_isSupported == null)
         {
-            <MudProgressCircular Indeterminate="true"/>
+            <p>Checking passkey support...</p>
         }
         else if (_isSupported == false)
         {
-            <MudAlert Severity="Severity.Warning">Your device does not support passkeys.</MudAlert>
+            <div class="alert-warning">Your device does not support passkeys.</div>
         }
         else
         {
-            <MudButton Variant="Variant.Filled"
-                       Color="Color.Primary"
-                       OnClick="RegisterPasskey"
-                       Disabled="@_isLoading">
-                @(_isLoading ? "Registering..." : "Register New Passkey")
-            </MudButton>
+            <button class="btn btn-primary" @onclick="RegisterPasskey" disabled="@_isLoading">@(_isLoading ? "Registering..." : "Register New Passkey")</button>
 
             @if (!string.IsNullOrEmpty(_statusMessage))
             {
-                <MudText Color="@(_isError ? Color.Error : Color.Success)" Class="mt-2">@_statusMessage</MudText>
+                <p class="@(_isError ? "status-error" : "status-success")">@_statusMessage</p>
             }
         }
-    </MudPaper>
 
-    <MudText Typo="Typo.h6" Class="mt-6 mb-2">Your Passkeys</MudText>
-    <MudPaper Class="pa-4">
+        <h2>Your Passkeys</h2>
         @if (_passkeys == null)
         {
-            <MudProgressCircular Indeterminate="true" Size="Size.Small"/>
+            <p>Loading passkeys...</p>
         }
         else if (_passkeys.Count == 0)
         {
-            <MudText Typo="Typo.body2" Color="Color.Secondary">No passkeys registered yet.</MudText>
+            <p class="muted">No passkeys registered yet.</p>
         }
         else
         {
-            <MudList T="PasskeyInfo">
+            <ul class="list-shell">
                 @foreach (var passkey in _passkeys)
                 {
-                    <MudListItem T="PasskeyInfo">
-                        <div class="d-flex justify-space-between align-center" style="width: 100%;">
-                            <div>
-                                <MudText Typo="Typo.body1">
-                                    <MudIcon Icon="@Icons.Material.Filled.Key" Size="Size.Small" Class="mr-2"/>@passkey.Name
-                                </MudText>
-                                @if (passkey.CreatedAt.HasValue)
-                                {
-                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                        Added @passkey.CreatedAt.Value.LocalDateTime.ToString("MMM dd, yyyy")
-                                    </MudText>
-                                }
-                            </div>
-                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                           Color="Color.Error"
-                                           Size="Size.Small"
-                                           OnClick="@(() => DeletePasskey(passkey.Id))"
-                                           Disabled="@_isDeleting"/>
+                    <li class="list-row">
+                        <div>
+                            <strong>@passkey.Name</strong>
+                            @if (passkey.CreatedAt.HasValue)
+                            {
+                                <p class="muted">Added @passkey.CreatedAt.Value.LocalDateTime.ToString("MMM dd, yyyy")</p>
+                            }
                         </div>
-                    </MudListItem>
+                        <button class="btn" @onclick="() => DeletePasskey(passkey.Id)" disabled="@_isDeleting">Delete</button>
+                    </li>
                 }
-            </MudList>
+            </ul>
         }
-    </MudPaper>
-</MudContainer>
+    </article>
+</section>
 
 @code {
     private bool? _isSupported;
@@ -137,7 +116,7 @@
             if (result.IsSuccess)
             {
                 _statusMessage = "Passkey registered successfully!";
-                Snackbar.Add("Passkey registered!", Severity.Success);
+                NotificationService.Add("Passkey registered!", NotificationSeverity.Success);
                 // Refresh the list
                 _passkeys = await PasskeyService.ListPasskeysAsync();
             }
@@ -172,12 +151,12 @@
             var result = await PasskeyService.DeletePasskeyAsync(id);
             if (result.IsSuccess)
             {
-                Snackbar.Add("Passkey deleted.", Severity.Success);
+                NotificationService.Add("Passkey deleted.", NotificationSeverity.Success);
                 _passkeys = await PasskeyService.ListPasskeysAsync();
             }
             else
             {
-                Snackbar.Add(ErrorLocalizer.GetLocalizedMessage(result.Error) ?? "Failed to delete passkey.", Severity.Error);
+                NotificationService.Add(ErrorLocalizer.GetLocalizedMessage(result.Error) ?? "Failed to delete passkey.", NotificationSeverity.Error);
             }
         }
         finally
@@ -190,7 +169,7 @@
     {
         _statusMessage = message;
         _isError = true;
-        Snackbar.Add(message, Severity.Error);
+        NotificationService.Add(message, NotificationSeverity.Error);
     }
 
 }

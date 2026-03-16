@@ -2,18 +2,8 @@
 
 @if (_languages != null && _languages.Any())
 {
-    <MudSelect T="string"
-               Label="@Label"
-               Value="@_selectedValue"
-               ValueChanged="@OnValueChangedInternal"
-               ToStringFunc="@GetDisplayTextForValue"
-               Variant="@Variant"
-               Dense="@Dense"
-               Margin="@Margin"
-               Style="@Style"
-               Required="@Required"
-               UserAttributes="@(new Dictionary<string, object> { { "aria-label", Label } })"
-               Disabled="@Disabled">
+    <label class="field-label">@Label</label>
+    <select class="input-field" value="@_selectedValue" @onchange="OnSelectChanged" disabled="@Disabled" required="@Required">
         @foreach (var lang in _languages.OrderBy(l => l.Value))
         {
             var displayText = lang.Value;
@@ -22,30 +12,20 @@
                 displayText += " (Default)";
             }
 
-            <MudSelectItem Value="@lang.Key">@displayText</MudSelectItem>
+            <option value="@lang.Key">@displayText</option>
         }
-    </MudSelect>
+    </select>
 }
 else
 {
-    <MudSelect T="string"
-               Label="@Label"
-               Variant="@Variant"
-               Dense="@Dense"
-               Margin="@Margin"
-               Style="@Style"
-               Disabled="true">
-    </MudSelect>
+    <label class="field-label">@Label</label>
+    <select class="input-field" disabled="true"></select>
 }
 
 @code {
     [Parameter] public string? Value { get; set; }
     [Parameter] public EventCallback<string> ValueChanged { get; set; }
     [Parameter] public string Label { get; set; } = "Language";
-    [Parameter] public Variant Variant { get; set; } = Variant.Outlined;
-    [Parameter] public bool Dense { get; set; } = true;
-    [Parameter] public Margin Margin { get; set; } = Margin.None;
-    [Parameter] public string? Style { get; set; }
     [Parameter] public bool Required { get; set; }
     [Parameter] public bool Disabled { get; set; }
 
@@ -66,8 +46,9 @@ else
         _selectedValue = Value;
     }
 
-    private async Task OnValueChangedInternal(string value)
+    private async Task OnSelectChanged(ChangeEventArgs args)
     {
+        var value = args.Value?.ToString() ?? string.Empty;
         _selectedValue = value;
         await ValueChanged.InvokeAsync(value);
     }

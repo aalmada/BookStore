@@ -13,7 +13,6 @@
     <PackageReference Include="bunit.web" />
     <PackageReference Include="Microsoft.JSInterop" />
     <PackageReference Include="Microsoft.AspNetCore.Components.Web" />
-    <PackageReference Include="MudBlazor" />
     <PackageReference Include="NSubstitute" />
     <PackageReference Include="TUnit" />
   </ItemGroup>

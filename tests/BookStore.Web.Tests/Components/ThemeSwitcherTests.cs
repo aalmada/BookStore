@@ -4,7 +4,6 @@ using BookStore.Web.Services;
 using BookStore.Web.Tests.Infrastructure;
 using Bunit;
 using Microsoft.Extensions.DependencyInjection;
-using MudBlazor;
 using NSubstitute;
 using TUnit.Core;
 
@@ -31,8 +30,8 @@ public class ThemeSwitcherTests : BunitTestContext
         var cut = RenderComponent<ThemeSwitcher>();
 
         // Assert
-        var menu = cut.FindComponent<MudMenu>();
-        _ = await Assert.That(menu).IsNotNull();
+        var button = cut.Find("button");
+        _ = await Assert.That(button.TextContent).Contains("Theme");
     }
 
     [Test]

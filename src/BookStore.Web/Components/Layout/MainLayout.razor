@@ -1,46 +1,53 @@
 ﻿@inherits LayoutComponentBase
 
-<MudLayout>
+<div class="layout-root">
     <BookStore.Web.Components.Shared.LogEnricher/>
-    <MudAppBar Elevation="1">
-        <MudTooltip Text="Toggle Navigation" Arrow="true" Placement="Placement.Bottom">
-            <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer" aria-label="Toggle Navigation"/>
-        </MudTooltip>
-        <MudText Typo="Typo.h5" Class="ml-3">
-            @if (TenantService.IsLoading)
-            {
-                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2"/>
-            }
-            @TenantService.CurrentTenantName
-        </MudText>
-        <MudSpacer/>
-        <MudTooltip Text="Switch Tenant" Arrow="true" Placement="Placement.Bottom" Disabled="@_isTenantMenuOpen">
-            <MudMenu @bind-Open="@_isTenantMenuOpen" Icon="@Icons.Material.Filled.Business" Color="Color.Inherit" Class="mr-2" aria-label="Switch Tenant">
-                @foreach (var tenant in TenantService.AvailableTenants)
+    <BookStore.Web.Components.Shared.NotificationToasts/>
+
+    <header class="layout-header">
+        <div class="layout-header-brand">
+            <button class="btn btn-ghost layout-drawer-toggle" @onclick="ToggleDrawer" aria-label="Toggle Navigation">Menu</button>
+            <div>
+                <h1>BookStore</h1>
+                <p>@TenantService.CurrentTenantName</p>
+            </div>
+        </div>
+
+        <div class="layout-header-tools">
+            <div class="menu-shell">
+                <button class="btn btn-ghost" @onclick="HandleTenantMenuToggle" aria-haspopup="menu" aria-expanded="@_isTenantMenuOpen">Tenant</button>
+                @if (_isTenantMenuOpen)
                 {
-                    <MudMenuItem OnClick="@(() => SwitchTenant(tenant.Id))">@tenant.Name</MudMenuItem>
+                    <div class="menu-panel" role="menu">
+                    @foreach (var tenant in TenantService.AvailableTenants)
+                    {
+                        <button class="menu-item" role="menuitem" @onclick="() => SwitchTenant(tenant.Id)">@tenant.Name</button>
+                    }
+                    </div>
                 }
-            </MudMenu>
-        </MudTooltip>
-        <BookStore.Web.Components.Shared.CurrencySelector/>
-        <BookStore.Web.Components.Shared.ThemeSwitcher/>
-        <LoginDisplay/>
-    </MudAppBar>
+            </div>
+            <BookStore.Web.Components.Shared.CurrencySelector/>
+            <BookStore.Web.Components.Shared.ThemeSwitcher/>
+            <LoginDisplay/>
+        </div>
+    </header>
 
-    <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2">
-        <NavMenu/>
-    </MudDrawer>
+    <div class="layout-content">
+        <aside class="layout-sidebar @(_drawerOpen ? "is-open" : "is-closed")">
+            <NavMenu/>
+        </aside>
 
-    <MudMainContent>
-        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+        <main class="layout-main">
             @Body
-        </MudContainer>
-    </MudMainContent>
-</MudLayout>
+        </main>
+    </div>
+</div>
 
 @inject CurrencyService CurrencyService
 @inject TenantService TenantService
 @inject NavigationManager Navigation
+@inject ThemeService ThemeService
+@inject IJSRuntime Js
 @implements IDisposable
 
 @code {
@@ -57,13 +64,39 @@
     protected override async Task OnInitializedAsync()
     {
         TenantService.OnChange += StateHasChanged;
+        ThemeService.OnChange += HandleThemeChanged;
         await TenantService.InitializeAsync();
         await CurrencyService.InitializeAsync();
+        await ThemeService.InitializeAsync();
+        await ApplyThemeAsync();
+    }
+
+    private void HandleThemeChanged()
+    {
+        _ = ApplyThemeAsync();
+    }
+
+    private async Task ApplyThemeAsync()
+    {
+        var theme = ThemeService.CurrentTheme switch
+        {
+            ThemeMode.Light => "light",
+            ThemeMode.Dark => "dark",
+            _ => "auto"
+        };
+
+        await Js.InvokeVoidAsync("document.documentElement.setAttribute", "data-theme", theme);
+    }
+
+    private void HandleTenantMenuToggle()
+    {
+        _isTenantMenuOpen = !_isTenantMenuOpen;
     }
 
     public void Dispose()
     {
         TenantService.OnChange -= StateHasChanged;
+        ThemeService.OnChange -= HandleThemeChanged;
     }
 
 }

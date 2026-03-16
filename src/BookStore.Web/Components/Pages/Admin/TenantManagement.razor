@@ -5,6 +5,7 @@
 @using BookStore.Shared.Notifications
 @using BookStore.Shared.Validation
 @using BookStore.Web.Infrastructure
+@using MudBlazor
 @implements IDisposable
 @inject ITenantsClient TenantClient
 @inject TenantService TenantService
@@ -260,7 +261,7 @@
     private async Task Submit()
     {
         if (_form == null) return;
-        await _form.Validate();
+        await _form.ValidateAsync();
         if (!_form.IsValid) return;
 
         try

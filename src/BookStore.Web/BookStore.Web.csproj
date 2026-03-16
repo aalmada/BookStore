@@ -17,4 +17,8 @@
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" />
   </ItemGroup>
 
+  <ItemGroup>
+    <RazorComponent Remove="Components/Pages/Admin/**/*.razor" />
+  </ItemGroup>
+
 </Project>

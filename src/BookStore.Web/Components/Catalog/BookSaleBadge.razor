@@ -2,9 +2,9 @@
 
 @if (Sale != null)
 {
-    <MudChip T="string" Color="Color.Error" Size="Size.Small" Class="ml-2 font-weight-bold">
-        SAVE @Sale.Value.Percentage.ToString("0")%
-    </MudChip>
+    <span class="badge badge-sale">
+        Sale @Sale.Value.Percentage.ToString("0")%
+    </span>
 }
 
 @code {

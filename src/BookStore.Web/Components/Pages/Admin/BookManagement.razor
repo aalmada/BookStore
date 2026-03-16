@@ -1,117 +1,82 @@
 @page "/admin/books"
 @using Microsoft.AspNetCore.Authorization
 @using BookStore.Shared.Notifications
-@implements IDisposable
+@using BookStore.Client
 @attribute [Authorize(Roles = "Admin")]
 @inject IBooksClient BooksClient
-@inject IDialogService DialogService
-@inject ISnackbar Snackbar
 @inject BookStoreEventsService EventsService
 @inject QueryInvalidationService InvalidationService
 @inject ILogger<BookManagement> Logger
+@implements IDisposable
 
-<PageTitle>Book Management - BookStore</PageTitle>
+<section class="admin-page">
+    <header class="admin-page-header">
+        <h1>Book Management</h1>
+        <input class="input-field" @bind="search" @bind:event="oninput" placeholder="Search title..." />
+    </header>
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="mt-8 mb-12">
-    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-6">
-        <MudText Typo="Typo.h4" Class="fw-bold">Book Management</MudText>
-        <MudSpacer/>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenAddDialog">
-            Add Book
-        </MudButton>
-    </MudStack>
-
-    <MudTable T="AdminBookDto" @ref="_table" ServerData="ReloadData" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="0"
-              Class="glass-table rounded-xl overflow-hidden">
-        <ToolBarContent>
-            <MudSpacer/>
-            <MudTextField @bind-Value="_searchString" Placeholder="Search books..." Adornment="Adornment.Start"
-                          AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="search-field"
-                          Clearable="true" Immediate="true" Variant="Variant.Outlined" Margin="Margin.Dense"/>
-        </ToolBarContent>
-        <HeaderContent>
-            <MudTh>Title</MudTh>
-            <MudTh>ISBN</MudTh>
-            <MudTh>Language</MudTh>
-            <MudTh>Publication</MudTh>
-            <MudTh>Status</MudTh>
-            <MudTh Class="text-end">Actions</MudTh>
-        </HeaderContent>
-        <RowTemplate>
-            <MudTd DataLabel="Title">
-                <MudText Typo="Typo.body2" Class="fw-semibold">@context.Title</MudText>
-            </MudTd>
-            <MudTd DataLabel="ISBN">@context.Isbn</MudTd>
-            <MudTd DataLabel="Language">@context.Language</MudTd>
-            <MudTd DataLabel="Publication">@context.PublicationDate?.ToString()</MudTd>
-            <MudTd DataLabel="Status">
-                @if (context.IsDeleted)
-                {
-                    <MudChip T="string" Size="Size.Small" Color="Color.Error" Variant="Variant.Text">Deleted</MudChip>
-                }
-                else
-                {
-                    <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Text">Active</MudChip>
-                }
-            </MudTd>
-            <MudTd DataLabel="Actions" Class="text-end">
-                <MudMenu Icon="@Icons.Material.Filled.MoreVert" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" Dense="true">
-                    @if (context.IsDeleted)
-                    {
-                        <MudMenuItem Icon="@Icons.Material.Filled.Restore" OnClick="@(() => RestoreBook(context.Id, context.ETag))">Restore</MudMenuItem>
-                    }
-                    else
-                    {
-                        <MudMenuItem Icon="@Icons.Material.Filled.Edit" OnClick="@(() => EditBook(context))">Edit</MudMenuItem>
-                        <MudMenuItem Icon="@Icons.Material.Filled.Delete" OnClick="@(() => DeleteBook(context.Id, context.ETag))">Delete</MudMenuItem>
-                    }
-                </MudMenu>
-            </MudTd>
-        </RowTemplate>
-        <NoRecordsContent>
-            <MudText>No books found.</MudText>
-        </NoRecordsContent>
-        <LoadingContent>
-            <MudText>Loading books...</MudText>
-        </LoadingContent>
-        <PagerContent>
-            <MudTablePager/>
-        </PagerContent>
-    </MudTable>
-</MudContainer>
-
-<style>
-    .glass-table {
-        background: rgba(255, 255, 255, 0.7) !important;
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07) !important;
+    @if (isLoading)
+    {
+        <p>Loading books...</p>
     }
-    .search-field { max-width: 300px; }
-    .fw-bold { font-weight: 700 !important; }
-    .fw-semibold { font-weight: 600 !important; }
-</style>
+    else if (books.Count == 0)
+    {
+        <p>No books found.</p>
+    }
+    else
+    {
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>ISBN</th>
+                    <th>Language</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var book in filteredBooks)
+                {
+                    <tr>
+                        <td>@book.Title</td>
+                        <td>@book.Isbn</td>
+                        <td>@book.Language</td>
+                        <td>@(book.IsDeleted ? "Deleted" : "Active")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    
+    <div class="admin-page-footer">
+        <button class="btn" @onclick="ReloadAsync">Refresh</button>
+    </div>
+</section>
 
 @code {
-    private MudTable<AdminBookDto> _table = null!;
-    private string _searchString = "";
-    private readonly CancellationTokenSource _cts = new();
-    private bool _disposed;
+    private List<AdminBookDto> books = [];
+    private bool isLoading = true;
+    private string search = string.Empty;
 
-    protected override void OnInitialized()
+    private IEnumerable<AdminBookDto> filteredBooks => string.IsNullOrWhiteSpace(search)
+        ? books
+        : books.Where(b => b.Title.Contains(search, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync()
     {
         EventsService.StartListening();
         EventsService.OnNotificationReceived += HandleNotification;
+        await ReloadAsync();
     }
 
-    public void Dispose()
+    private async Task ReloadAsync()
     {
-        if (_disposed) return;
-        _disposed = true;
+        isLoading = true;
+        StateHasChanged();
 
-        _cts.Cancel();
-        _cts.Dispose();
-        EventsService.OnNotificationReceived -= HandleNotification;
+        books = (await BooksClient.GetAllBooksAdminAsync(cancellationToken: CancellationToken.None)).ToList();
+        isLoading = false;
+        StateHasChanged();
     }
 
     private async void HandleNotification(IDomainEventNotification notification)
@@ -120,145 +85,22 @@
         {
             if (notification is PingNotification)
             {
-                Logger.LogTrace("SSE Heartbeat (Ping) received.");
                 return;
             }
 
-            Logger.LogDebug("Received notification: {EventType} for {EntityId}", notification.EventType, notification.EntityId);
-
             if (InvalidationService.ShouldInvalidate(notification, ["Books"]))
             {
-                Logger.LogInformation("Real-time update match for Books. Refreshing...");
-                await InvokeAsync(async () =>
-                {
-                    Snackbar.Add("Real-time update received. Refreshing list...", Severity.Info);
-                    await Task.Delay(1500);
-                    await _table.ReloadServerData();
-                    StateHasChanged();
-                });
-            }
-            else
-            {
-                Logger.LogDebug("Notification {EventType} does not match invalidation keys for Books.", notification.EventType);
+                await InvokeAsync(ReloadAsync);
             }
         }
-        catch (OperationCanceledException)
-        {
-            Logger.LogDebug("BookManagement notification update was canceled (likely navigation).");
-        }
         catch (Exception ex)
         {
-            Logger.LogWarning(ex, "Error processing real-time update for Books.");
+            Logger.LogWarning(ex, "Failed to process BookManagement notification");
         }
     }
 
-    private async Task<TableData
-        <AdminBookDto>> ReloadData(TableState state, CancellationToken ct)
+    public void Dispose()
     {
-        try
-        {
-            var books = await BooksClient.GetAllBooksAdminAsync(cancellationToken: ct);
-
-            var filtered = books
-                .Where(b => string.IsNullOrEmpty(_searchString) ||
-                            b.Title.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
-                .ToList();
-
-            return new TableData
-                <AdminBookDto>
-                {
-                    TotalItems = filtered.Count,
-                    Items = filtered.Skip(state.Page * state.PageSize).Take(state.PageSize)
-                };
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Failed to load books: {ex.Message}", Severity.Error);
-            return new TableData
-                <AdminBookDto>
-                {
-                    TotalItems = 0, Items = Array.Empty
-                        <AdminBookDto>()
-                };
-        }
+        EventsService.OnNotificationReceived -= HandleNotification;
     }
-
-    private async Task OpenAddDialog()
-    {
-        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
-        var dialog = await DialogService.ShowAsync
-            <AddBookDialog>("Add New Book", options);
-        var result = await dialog.Result;
-        if (result != null && !result.Canceled)
-        {
-            await _table.ReloadServerData();
-        }
-    }
-
-    private async Task EditBook(AdminBookDto book)
-    {
-        var parameters = new DialogParameters
-            <AddBookDialog>
-            {
-                {
-                    x => x.Model, new CreateBookRequest
-                    {
-                        Title = book.Title,
-                        Isbn = book.Isbn,
-                        Language = book.Language,
-                        Translations = book.Translations?.ToDictionary(
-                            kvp => kvp.Key,
-                            kvp => new BookTranslationDto(kvp.Value.Description)),
-                        PublicationDate = book.PublicationDate ?? new BookStore.Shared.Models.PartialDate(DateTime.Now.Year),
-                        PublisherId = book.Publisher?.Id,
-                        AuthorIds = book.Authors.Select(a => a.Id).ToList(),
-                        CategoryIds = book.Categories.Select(c => c.Id).ToList()
-                    }
-                },
-                { x => x.IsEdit, true },
-                { x => x.BookId, book.Id },
-                { x => x.ETag, book.ETag },
-                { x => x.InitialAuthors, book.Authors.ToList() },
-                { x => x.InitialCategories, book.Categories.ToList() },
-                { x => x.InitialPublisher, book.Publisher }
-            };
-
-        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
-        var dialog = await DialogService.ShowAsync
-            <AddBookDialog>("Edit Book", parameters, options);
-        var result = await dialog.Result;
-        if (result != null && !result.Canceled)
-        {
-            await _table.ReloadServerData();
-        }
-    }
-
-    private async Task DeleteBook(Guid id, string? etag)
-    {
-        try
-        {
-            await BooksClient.SoftDeleteBookAsync(id, etag, _cts.Token);
-            Snackbar.Add("Book deleted.", Severity.Success);
-            await _table.ReloadServerData();
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Failed to delete book: {ex.Message}", Severity.Error);
-        }
-    }
-
-    private async Task RestoreBook(Guid id, string? etag)
-    {
-        try
-        {
-            await BooksClient.RestoreBookAsync(id, etag: etag, cancellationToken: _cts.Token);
-            Snackbar.Add("Book restored.", Severity.Success);
-            await _table.ReloadServerData();
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Failed to restore book: {ex.Message}", Severity.Error);
-        }
-    }
-
 }
