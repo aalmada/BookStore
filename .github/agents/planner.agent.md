@@ -3,18 +3,10 @@ name: Planner
 description: Researches the BookStore codebase and produces a detailed, step-by-step implementation plan covering aggregates, endpoints, projections, frontend components, tests, cache tags, and SSE events. Writes the plan to memory for all other agents to consume.
 argument-hint: Describe the feature or task to plan, or point to /memories/session/task-brief.md
 target: vscode
+user-invocable: false
 model: Claude Sonnet 4.6 (copilot)
 tools: ['search', 'read', 'web', 'vscode/memory', 'vscode/askQuestions', 'agent']
 agents: ['Explore']
-handoffs:
-  - label: "Implement backend"
-    agent: BackendDeveloper
-    prompt: 'Read /memories/session/plan.md and implement all required backend changes.'
-    send: true
-  - label: "Implement frontend"
-    agent: FrontendDeveloper
-    prompt: 'Read /memories/session/plan.md and implement all required frontend changes.'
-    send: true
 ---
 
 You are the **Planner** for the BookStore project. You research the codebase and produce a complete, actionable implementation plan. You do **not** write any code.
