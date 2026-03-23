@@ -4,6 +4,12 @@
 
 Use this file for agent-only context: build and test commands, conventions, and project patterns. For human-facing details, see README and docs.
 
+## Guidance Maintenance
+
+- When a new non-obvious pattern is introduced, update this file and any related scoped `AGENTS.md` or relevant `.github/skills/**/SKILL.md` guidance in the same change.
+- When you find that an `AGENTS.md` or `SKILL.md` file is outdated, refresh the relevant guidance so future agents get the corrected pattern.
+- Ask the user for permission before editing any `AGENTS.md`, `SKILL.md`, or other agent-guidance file.
+
 ## Quick Reference
 
 - **Stack**: .NET 10, C# 14, Marten, Wolverine, HybridCache, Aspire, Playwright

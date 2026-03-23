@@ -39,6 +39,9 @@ dilutes real signal with noise it already has.
 
 Covers the whole project: stack, layout, cross-cutting rules, major patterns, and a doc index.
 Aim for ≤ 150 lines. Link to existing guides rather than duplicating them.
+Include a short maintenance note telling agents to update related `AGENTS.md` files and
+relevant `SKILL.md` files when a new non-obvious pattern is introduced or existing guidance is
+stale, but to ask the user for permission before editing those guidance files.
 
 ### Component-level `AGENTS.md` (subdirectory)
 
@@ -169,7 +172,9 @@ and one gets updated, they immediately diverge.
 
 Update AGENTS.md in the **same PR** as the change it documents. If tests now require a
 specific flag, a linter is added, or a pattern changes — the AGENTS.md update belongs in
-that diff. Reviewers should check AGENTS.md freshness as part of code review.
+that diff. If the change also makes a scoped `AGENTS.md` or a related `SKILL.md` stale,
+update those guidance files too. Ask the user for permission before editing any guidance file.
+Reviewers should check AGENTS.md freshness as part of code review.
 
 ---
 
@@ -181,4 +186,6 @@ that diff. Reviewers should check AGENTS.md freshness as part of code review.
 - [ ] Root AGENTS.md ≤ 150 lines; component AGENTS.md ≤ 100 lines
 - [ ] No generic advice ("write clean code", "handle errors")
 - [ ] Each "Common Mistake" names a specific anti-pattern, not a vague category
+- [ ] Root AGENTS.md tells agents to refresh related AGENTS/skills when guidance goes stale
+- [ ] Root AGENTS.md tells agents to ask the user before editing AGENTS.md or SKILL.md files
 - [ ] Every section passes the Content Priority Filter
