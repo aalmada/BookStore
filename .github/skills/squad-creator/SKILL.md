@@ -235,6 +235,12 @@ Each specialist should:
 5. **Run verification** where applicable (build, tests, lint) and report results.
 6. **Include an authentication-failure protocol** if the agent calls external services:
    stop and report to the Orchestrator rather than retrying silently.
+7. **Decompose multi-step protocols into sub-agents.** If the specialist has 3 or more
+   distinct protocol steps (e.g., explore, implement, verify), write the body so that
+   each step is delegated to a separate sub-agent invocation rather than executed in a
+   single context. Add `agent` to the specialist's `tools` and use `agents: ['*']` for
+   ad-hoc sub-agents. Independent steps should be invoked in the same turn (parallel).
+   See **Multi-Step Protocols and Sub-Agents** in `agent-customization/SKILL.md`.
 
 ---
 
@@ -261,4 +267,5 @@ Before handing back to the user, confirm:
 - [ ] Memory paths are consistent across the squad
 - [ ] Parallel sections clearly annotated in Orchestrator workflow
 - [ ] `vscode/askQuestions` included in tools for agents that may need user input
+- [ ] Specialists with 3+ protocol steps use sub-agents per step (`agent` in tools, steps invoke sub-agents)
 - [ ] User was shown the final squad design and confirmed it

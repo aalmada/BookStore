@@ -68,7 +68,7 @@ VS Code also detects plain `.md` files in `.github/agents/`.
 The body is prepended to every user prompt when the agent is active. Keep it focused and
 purposeful — include only what genuinely changes the agent's behavior.
 
-For the full list of frontmatter properties, read `references/frontmatter.md`.  
+For the full list of frontmatter properties, read `references/frontmatter.md`.
 For all available tool names, read `references/tools.md`.
 
 ---
@@ -170,6 +170,73 @@ The `agents` list acts as an allowlist. Use `agents: ['*']` to allow all, or
 `agents: []` to block subagent invocation entirely.
 
 See `references/patterns.md` for an orchestrator pattern.
+
+---
+
+## Multi-Step Protocols and Sub-Agents
+
+When an agent body has a numbered protocol with **distinct, independent steps**, each
+step should be delegated to a separate sub-agent invocation rather than executed in a
+single context. This prevents context window bloat, reduces interference between steps,
+and allows independent steps to run in parallel.
+
+### When to apply this pattern
+
+Use sub-agents for individual protocol steps when **all** of these are true:
+- The agent has 3 or more protocol steps
+- Each step has a clearly different focus (e.g., explore, implement, verify)
+- Steps do not need to carry the full accumulated context of earlier steps
+
+### How to write the protocol
+
+Instead of describing steps as inline instructions, tell the agent to invoke a
+sub-agent for each step:
+
+````markdown
+## Protocol
+
+This agent executes each step in a separate sub-agent to keep contexts lean.
+
+### Step 1 — <name>
+Invoke a sub-agent with: "<instruction for step 1 only>"
+Output: write result to `/memories/session/<step1>.md`
+
+### Step 2 — <name>
+Read `/memories/session/<step1>.md`, then invoke a sub-agent with: "<instruction>"
+Output: write result to `/memories/session/<step2>.md`
+
+### Step 3 — <name> (parallel with Step 2 if independent)
+Invoke a sub-agent in the **same turn** as Step 2 with: "<instruction>"
+Output: write result to `/memories/session/<step3>.md`
+````
+
+### Parallel steps
+
+When two steps don't depend on each other's output, invoke their sub-agents **in the
+same turn**. Annotate this clearly in the protocol:
+
+```
+② Step A  ┐  invoke in the same turn
+② Step B  ┘
+③ Step C     (depends on A and B — invoke after both finish)
+```
+
+### Frontmatter requirements
+
+An agent that delegates steps to sub-agents must have `agent` in its `tools` list.
+Use `agents: ['*']` if the sub-agents are ad-hoc (no named `.agent.md` files). Use a
+named list when the sub-agents are fixed specialist agents.
+
+```yaml
+tools: ['search', 'read', 'vscode/memory', 'agent']
+agents: ['*']
+```
+
+### Memory handoff between steps
+
+Sub-agents communicate exclusively through `vscode/memory`. The parent agent writes
+a brief for each step before invoking it, and the sub-agent writes its output to a
+dedicated memory file when done. The parent reads that file before invoking the next step.
 
 ---
 
