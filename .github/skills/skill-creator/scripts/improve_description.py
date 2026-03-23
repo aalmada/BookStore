@@ -32,7 +32,7 @@ async def _call_copilot(prompt: str, model: str | None) -> str:
     client = CopilotClient()
     await client.start()
     try:
-        async with await client.create_session(**config) as session:
+        async with await client.create_session(config) as session:
             result_text: list[str] = []
             done = asyncio.Event()
 
@@ -44,7 +44,7 @@ async def _call_copilot(prompt: str, model: str | None) -> str:
                     done.set()
 
             session.on(on_event)
-            await session.send(prompt)
+            await session.send({"prompt": prompt})
             await done.wait()
 
         return result_text[0] if result_text else ""

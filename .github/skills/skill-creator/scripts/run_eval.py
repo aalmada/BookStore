@@ -44,80 +44,64 @@ async def run_single_query_async(
 ) -> bool:
     """Run a single query and return whether the skill was triggered.
 
-    Creates a temporary SKILL.md file under .github/skills/ and injects the
-    skill into the session via system_message (mirroring how the VS Code
-    extension surfaces skills to the AI client).  Uses the on_pre_tool_use
-    hook to detect early — before the file is actually read — whether the AI
-    decided to invoke the skill.
+    Injects the skill into the session via system_message and uses
+    on_pre_tool_use to detect — and immediately deny — any read_file call
+    targeting the skill.  No files are written to the workspace, avoiding
+    VS Code file-watcher churn when many queries run in parallel.
+    The ``project_root`` parameter is retained for API compatibility but
+    is no longer used.
     """
     unique_id = uuid.uuid4().hex[:8]
     clean_name = f"{skill_name}-skill-{unique_id}"
-    skills_dir = Path(project_root) / ".github" / "skills" / clean_name
-    skill_file = skills_dir / "SKILL.md"
-
-    try:
-        skills_dir.mkdir(parents=True, exist_ok=True)
-        indented_desc = "\n  ".join(skill_description.split("\n"))
-        skill_file.write_text(
-            f"---\n"
-            f"description: |\n"
-            f"  {indented_desc}\n"
-            f"---\n\n"
-            f"# {skill_name}\n\n"
-            f"This skill handles: {skill_description}\n"
+    # Point to /tmp so no workspace files are touched (VS Code watches .github/).
+    # The file does not need to exist: detection fires in on_pre_tool_use before
+    # the read executes, and we deny the call immediately after.
+    skill_file_ref = f"/tmp/copilot-skill-evals/{clean_name}/SKILL.md"
+    system_message = {
+        "content": (
+            "You have access to the following skills. When a user's request matches "
+            "a skill's description, invoke the skill by reading its file with the "
+            "read_file tool.\n\n"
+            f"Skill name: {clean_name}\n"
+            f"Description: {skill_description}\n"
+            f"File: {skill_file_ref}"
         )
+    }
 
-        skill_file_rel = f".github/skills/{clean_name}/SKILL.md"
-        system_message = {
-            "content": (
-                "You have access to the following skills. When a user's request matches "
-                "a skill's description, invoke the skill by reading its file with the "
-                "read_file tool.\n\n"
-                f"Skill name: {clean_name}\n"
-                f"Description: {skill_description}\n"
-                f"File: {skill_file_rel}"
-            )
-        }
+    triggered_flag = [False]
+    done = asyncio.Event()
 
-        triggered_flag = [False]
-        done = asyncio.Event()
+    async def on_pre_tool_use(input_data, invocation):
+        tool_args = input_data.get("toolArgs", {})
+        if clean_name in str(tool_args):
+            triggered_flag[0] = True
+            done.set()
+            # Deny the read so the CLI does not try to open a non-existent file.
+            return {"permissionDecision": "deny", "modifiedArgs": tool_args}
+        return {"permissionDecision": "allow", "modifiedArgs": tool_args}
 
-        async def on_pre_tool_use(input_data, invocation):
-            tool_args = input_data.get("toolArgs", {})
-            if clean_name in str(tool_args):
-                triggered_flag[0] = True
-                done.set()  # signal early exit
-            return {"permissionDecision": "allow", "modifiedArgs": tool_args}
+    session_config: dict = {
+        "on_permission_request": PermissionHandler.approve_all,
+        "system_message": system_message,
+        "hooks": {"on_pre_tool_use": on_pre_tool_use},
+        "infinite_sessions": {"enabled": False},
+    }
+    if model:
+        session_config["model"] = model
 
-        session_config: dict = {
-            "on_permission_request": PermissionHandler.approve_all,
-            "system_message": system_message,
-            "hooks": {"on_pre_tool_use": on_pre_tool_use},
-            "infinite_sessions": {"enabled": False},
-        }
-        if model:
-            session_config["model"] = model
+    async with await client.create_session(session_config) as session:
+        def on_event(event):
+            if event.type.value == "session.idle":
+                done.set()
 
-        async with await client.create_session(**session_config) as session:
-            def on_event(event):
-                if event.type.value == "session.idle":
-                    done.set()
-
-            session.on(on_event)
-            await session.send(query)
-            try:
-                await asyncio.wait_for(done.wait(), timeout=timeout)
-            except asyncio.TimeoutError:
-                pass
-
-        return triggered_flag[0]
-    finally:
-        if skill_file.exists():
-            skill_file.unlink()
+        session.on(on_event)
+        await session.send({"prompt": query})
         try:
-            skills_dir.rmdir()
-        except OSError:
+            await asyncio.wait_for(done.wait(), timeout=timeout)
+        except asyncio.TimeoutError:
             pass
+
+    return triggered_flag[0]
 
 
 def run_single_query(
@@ -159,7 +143,10 @@ async def _run_eval_async(
     await client.start()
     sem = asyncio.Semaphore(num_workers)
 
-    async def bounded_query(item: dict) -> tuple[dict, bool]:
+    async def bounded_query(item: dict, index: int) -> tuple[dict, bool]:
+        # Stagger the first wave so sessions don't all open at once.
+        if index < num_workers:
+            await asyncio.sleep(index * 0.3)
         async with sem:
             result = await run_single_query_async(
                 client, item["query"], skill_name, description,
@@ -167,11 +154,8 @@ async def _run_eval_async(
             )
             return item, result
 
-    tasks = [
-        bounded_query(item)
-        for item in eval_set
-        for _ in range(runs_per_query)
-    ]
+    all_items = [item for item in eval_set for _ in range(runs_per_query)]
+    tasks = [bounded_query(item, idx) for idx, item in enumerate(all_items)]
 
     query_triggers: dict[str, list[bool]] = {}
     query_items: dict[str, dict] = {}
@@ -250,7 +234,7 @@ def main():
     parser.add_argument("--eval-set", required=True, help="Path to eval set JSON file")
     parser.add_argument("--skill-path", required=True, help="Path to skill directory")
     parser.add_argument("--description", default=None, help="Override description to test")
-    parser.add_argument("--num-workers", type=int, default=10, help="Number of parallel workers")
+    parser.add_argument("--num-workers", type=int, default=4, help="Number of parallel workers")
     parser.add_argument("--timeout", type=int, default=30, help="Timeout per query in seconds")
     parser.add_argument("--runs-per-query", type=int, default=3, help="Number of runs per query")
     parser.add_argument("--trigger-threshold", type=float, default=0.5, help="Trigger rate threshold")

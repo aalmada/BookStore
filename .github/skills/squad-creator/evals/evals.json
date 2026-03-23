@@ -1,0 +1,60 @@
+{
+  "skill_name": "squad-creator",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I want to set up a team of AI agents for my .NET bookstore project. It has an ASP.NET API backend, a Blazor frontend, and integration tests using Aspire. The agents should be able to handle full feature requests end to end — like adding a new domain entity with CRUD — and they should coordinate automatically. I don't want to have to talk to each agent separately.",
+      "expected_output": "Creates .agent.md files for: Orchestrator (user-facing, no edit tools), Planner (codebase research, no code), BackendDeveloper, FrontendDeveloper, TestEngineer, CodeReviewer. Orchestrator workflow shows Backend+Frontend in parallel, TestEngineer after, CodeReviewer last. All agents have vscode/memory in tools and the status-append protocol in their body. Specialists have user-invocable: false. BackendDeveloper and FrontendDeveloper use a Codex model. TestEngineer and CodeReviewer use GPT-5.4. UiUxDesigner (if created) uses Gemini 3.1 Pro (Preview). No agent uses o3, o4-mini, or the 30x model.",
+      "files": [],
+      "assertions": [
+        { "id": "has-orchestrator", "text": "An Orchestrator agent file is created with user-invocable: true and no edit/execute tools" },
+        { "id": "has-planner", "text": "A Planner agent file is created with user-invocable: false and no edit tool" },
+        { "id": "has-backend-specialist", "text": "A specialist agent for backend development is created" },
+        { "id": "has-frontend-specialist", "text": "A specialist agent for frontend development is created" },
+        { "id": "has-test-specialist", "text": "A specialist agent for testing is created" },
+        { "id": "memory-in-all-agents", "text": "vscode/memory appears in the tools list of every generated agent" },
+        { "id": "status-protocol-in-all-agents", "text": "The status-append protocol (appending to /memories/session/status.md) is present in every agent body" },
+        { "id": "parallel-backend-frontend", "text": "Orchestrator workflow shows backend and frontend specialists running in parallel" },
+        { "id": "specialists-not-user-invocable", "text": "All specialist agents have user-invocable: false" },
+        { "id": "backend-uses-codex", "text": "BackendDeveloper and FrontendDeveloper use a Codex model (GPT-5.x-Codex)" },
+        { "id": "reviewer-uses-gpt54", "text": "TestEngineer and CodeReviewer use GPT-5.4 (copilot) for analytical reasoning" },
+        { "id": "no-prohibited-models", "text": "No agent uses o3, o4-mini, or Claude Opus 4.6 (fast mode) (Preview) (the 30x model)" }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I have a Python data pipeline project. The pipeline reads CSV files, transforms them with pandas, and writes results to a PostgreSQL database. I want agents that can help me add new transformations and make sure no data quality regressions happen. I already have a tests/ directory with pytest. Just give me the minimum number of agents needed — I don't want a huge squad.",
+      "expected_output": "Creates 4-5 agents: Orchestrator, Planner, DataEngineer (or PipelineDeveloper), QualityEngineer (or TestEngineer), and optionally CodeReviewer. Smaller squad appropriate for the scope. All agents have vscode/memory. Status protocol present. Planner does not have edit tool. DataEngineer uses a Codex model. TestEngineer/QualityEngineer uses GPT-5.4.",
+      "files": [],
+      "assertions": [
+        { "id": "has-orchestrator", "text": "An Orchestrator agent file is created" },
+        { "id": "has-planner", "text": "A Planner agent is created with no edit tool" },
+        { "id": "has-data-specialist", "text": "A specialist for data engineering or pipeline work is created" },
+        { "id": "has-test-specialist", "text": "A specialist for testing or data quality is created" },
+        { "id": "memory-in-all-agents", "text": "vscode/memory appears in the tools list of every generated agent" },
+        { "id": "status-protocol-present", "text": "The status-append protocol is present in every agent body" },
+        { "id": "minimal-squad-size", "text": "Total agent count is 6 or fewer (minimal squad requested)" },
+        { "id": "data-specialist-uses-codex", "text": "The data/pipeline specialist uses a Codex model (GPT-5.x-Codex) rather than a general-purpose model" },
+        { "id": "test-specialist-uses-gpt54", "text": "The testing/quality specialist uses GPT-5.4 (copilot) for analytical strength" },
+        { "id": "no-prohibited-models", "text": "No agent uses o3, o4-mini, or the 30x Claude Opus fast mode model" }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "We already have an Orchestrator, Planner, and BackendDeveloper in our repo under .github/agents/. Now we want to add a SecurityReviewer agent that only checks for OWASP Top 10 issues and hardcoded secrets. It should run automatically after the BackendDeveloper finishes. Update the Orchestrator to include it in the workflow.",
+      "expected_output": "Reads existing agent files first. Creates SecurityReviewer.agent.md with user-invocable: false, tools restricted to search+read+vscode/memory (no edit), body focused on OWASP Top 10 checks. Updates Orchestrator to add SecurityReviewer to agents list and to the workflow after BackendDeveloper. Status protocol in new agent. SecurityReviewer uses GPT-5.4 for OWASP analysis.",
+      "files": [],
+      "assertions": [
+        { "id": "creates-security-reviewer", "text": "A SecurityReviewer agent file is created" },
+        { "id": "no-edit-tool", "text": "SecurityReviewer does not have an edit tool — read-only" },
+        { "id": "owasp-in-body", "text": "SecurityReviewer body references OWASP Top 10" },
+        { "id": "not-user-invocable", "text": "SecurityReviewer has user-invocable: false" },
+        { "id": "memory-in-agent", "text": "vscode/memory is in SecurityReviewer tools" },
+        { "id": "status-protocol-present", "text": "Status-append protocol is present in SecurityReviewer body" },
+        { "id": "orchestrator-updated", "text": "Orchestrator agent file is updated to reference SecurityReviewer after BackendDeveloper" },
+        { "id": "security-reviewer-uses-gpt54", "text": "SecurityReviewer uses GPT-5.4 (copilot) — the analytical model appropriate for OWASP review" },
+        { "id": "no-prohibited-models", "text": "No agent uses o3, o4-mini, or the 30x Claude Opus fast mode model" }
+      ]
+    }
+  ]
+}

@@ -79,8 +79,8 @@ def _make_mock_client(triggered: bool):
 
 class TestRunSingleQueryAsync:
     @pytest.mark.asyncio
-    async def test_creates_and_removes_skill_file(self, tmp_path):
-        (tmp_path / ".github" / "skills").mkdir(parents=True)
+    async def test_no_workspace_files_created(self, tmp_path):
+        """run_single_query_async must not write any files inside the workspace."""
         client, _ = _make_mock_client(triggered=False)
 
         await run_single_query_async(
@@ -92,43 +92,54 @@ class TestRunSingleQueryAsync:
             project_root=str(tmp_path),
         )
 
-        # No leftover skill directories under .github/skills
-        skills_dir = tmp_path / ".github" / "skills"
-        remaining = list(skills_dir.iterdir())
-        assert remaining == [], f"Leftover files: {remaining}"
+        all_files = list(tmp_path.rglob("*"))
+        assert all_files == [], f"Unexpected workspace files created: {all_files}"
 
     @pytest.mark.asyncio
-    async def test_skill_file_content_is_valid_yaml_frontmatter(self, tmp_path):
-        (tmp_path / ".github" / "skills").mkdir(parents=True)
-        created_contents = {}
+    async def test_system_message_injects_skill(self, tmp_path):
+        """create_session receives a system_message containing the skill name and description."""
+        session = MagicMock()
+        session.__aenter__ = AsyncMock(return_value=session)
+        session.__aexit__ = AsyncMock(return_value=None)
+        captured_configs: list[dict] = []
 
-        original_write_text = Path.write_text
+        async def capture_create(config):
+            captured_configs.append(config)
+            event = MagicMock()
+            event.type.value = "session.idle"
 
-        def capturing_write_text(self, content, *args, **kwargs):
-            created_contents[str(self)] = content
-            return original_write_text(self, content, *args, **kwargs)
+            def fake_on(h):
+                session._h = h
 
-        client, _ = _make_mock_client(triggered=False)
+            async def fake_send(q):
+                if hasattr(session, "_h"):
+                    session._h(event)
 
-        with patch.object(Path, "write_text", capturing_write_text):
-            await run_single_query_async(
-                client=client,
-                query="hello",
-                skill_name="test-skill",
-                skill_description="A useful skill.",
-                timeout=5,
-                project_root=str(tmp_path),
-            )
+            session.on.side_effect = fake_on
+            session.send = AsyncMock(side_effect=fake_send)
+            return session
 
-        assert created_contents, "No SKILL.md was written"
-        content = next(iter(created_contents.values()))
-        assert content.startswith("---\n")
-        assert "description: |" in content
-        assert "test-skill" in content
+        client = MagicMock()
+        client.start = AsyncMock()
+        client.stop = AsyncMock()
+        client.create_session = AsyncMock(side_effect=capture_create)
+
+        await run_single_query_async(
+            client=client,
+            query="hello",
+            skill_name="test-skill",
+            skill_description="A useful skill.",
+            timeout=5,
+            project_root=str(tmp_path),
+        )
+
+        assert captured_configs, "create_session was not called"
+        sm_content = captured_configs[0].get("system_message", {}).get("content", "")
+        assert "test-skill" in sm_content
+        assert "A useful skill." in sm_content
 
     @pytest.mark.asyncio
     async def test_returns_false_when_not_triggered(self, tmp_path):
-        (tmp_path / ".github" / "skills").mkdir(parents=True)
         client, _ = _make_mock_client(triggered=False)
 
         result = await run_single_query_async(
@@ -145,7 +156,6 @@ class TestRunSingleQueryAsync:
     @pytest.mark.asyncio
     async def test_triggered_flag_set_by_on_pre_tool_use(self, tmp_path):
         """When on_pre_tool_use fires with matching skill name, returns True."""
-        (tmp_path / ".github" / "skills").mkdir(parents=True)
 
         session = MagicMock()
         session.__aenter__ = AsyncMock(return_value=session)
@@ -173,7 +183,7 @@ class TestRunSingleQueryAsync:
                         if line.startswith("Skill name: "):
                             skill_file_name = line[len("Skill name: "):]
                             await hook_ref["on_pre_tool_use"](
-                                {"toolArgs": {"path": f".github/skills/{skill_file_name}/SKILL.md"}},
+                                {"toolArgs": {"path": f"/tmp/copilot-skill-evals/{skill_file_name}/SKILL.md"}},
                                 {},
                             )
                             break
