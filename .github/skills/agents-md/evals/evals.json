@@ -1,0 +1,46 @@
+{
+  "skill_name": "agents-md",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I just added a new src/BookStore.Notifications/ module to our project. It uses Wolverine message handlers to send emails via SendGrid. There's one strict project rule that's not enforced by any analyzer: every handler MUST check a Marten document called ProcessedMessages to ensure idempotency before doing any work — if the message ID is already there, the handler must no-op and return. We call this the 'idempotency gate'. Can you create an AGENTS.md for this component?",
+      "expected_output": "A component-level AGENTS.md for src/BookStore.Notifications/ that includes: the idempotency gate rule in ✅/❌ format, scope/stack quick reference, the ProcessedMessages pattern explained as a common mistake to avoid, and nothing that an agent could infer from reading the source files directly (e.g., no generic 'use async/await' advice).",
+      "files": [],
+      "expectations": [
+        "Contains a ✅/❌ rule block covering the idempotency gate pattern",
+        "Does not include generic advice that applies to any codebase (e.g., 'use async/await', 'handle exceptions')",
+        "Mentions ProcessedMessages by name with a concrete explanation of the pattern",
+        "Follows component-level structure: Quick Reference with Scope, Key Rules, Common Mistakes",
+        "Is 100 lines or fewer"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I'm starting a new Python FastAPI backend. It uses SQLAlchemy (async, with mapped_column), Alembic for migrations, Pytest with httpx for testing, and Pydantic v2 models. We have two firm project rules: (1) all endpoints must return a typed Pydantic response_model — returning a plain dict is forbidden even though FastAPI allows it; (2) all datetime handling must use the pendulum library, never datetime.now() or datetime.utcnow() from the stdlib. Can you write a root AGENTS.md for this project?",
+      "expected_output": "A root-level AGENTS.md with the two rules prominently in a ✅/❌ block (Pydantic response_model vs dict, pendulum vs datetime.now), correct quick reference with exact commands (e.g., pytest, alembic upgrade head), and a Common Mistakes section. Should not include anything derivable from reading the codebase (no 'use Pydantic BaseModel' — agents know that from seeing the models).",
+      "files": [],
+      "expectations": [
+        "Contains a ✅/❌ rule block with both the Pydantic return type rule and the pendulum datetime rule",
+        "Includes copy-paste ready commands (pytest, alembic, uvicorn) in backticks",
+        "Does not duplicate things visible from pyproject.toml or imports (e.g., no 'we use SQLAlchemy' without adding non-obvious context)",
+        "Follows root-level structure: Quick Reference, Code Rules, Common Mistakes",
+        "Is 150 lines or fewer"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Our team just made two changes that need to be reflected in our tests/AGENTS.md. First, we switched from xUnit to TUnit for ALL tests — so [Fact] is gone, it's [Test] with TUnit's await Assert.That() syntax now. Second, we added a Roslyn analyzer (error BS2001) that flags any direct use of IDocumentSession outside of Wolverine handlers. Can you update tests/AGENTS.md to cover both of these changes?",
+      "expected_output": "An updated tests/AGENTS.md with TUnit attributes and Assert.That syntax in the ✅/❌ rules block (replacing xUnit), and a new rule for IDocumentSession usage with the analyzer code mentioned. The update should be minimal — only adding what's necessary, not rewriting the whole file.",
+      "files": [
+        "tests/AGENTS.md"
+      ],
+      "expectations": [
+        "Replaces or updates xUnit [Fact] entries with TUnit [Test] in the ✅/❌ block",
+        "Adds the IDocumentSession rule (outside handlers = error) to Key Rules",
+        "Does not add unrelated content or rewrite sections that don't need changing",
+        "Preserves the existing file structure and formatting style",
+        "References the analyzer error code BS2001 or notes the analyzer enforces the rule"
+      ]
+    }
+  ]
+}
