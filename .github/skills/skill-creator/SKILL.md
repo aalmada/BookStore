@@ -244,7 +244,7 @@ Put each with_skill version before its baseline counterpart.
    ```
    For iteration 2+, also pass `--previous-workspace <workspace>/iteration-<N-1>`.
 
-   **Cowork / headless environments:** If `webbrowser.open()` is not available or the environment has no display, use `--static <output_path>` to write a standalone HTML file instead of starting a server. Feedback will be downloaded as a `feedback.json` file when the user clicks "Submit All Reviews". After download, copy `feedback.json` into the workspace directory for the next iteration to pick up.
+  **Headless environments:** If `webbrowser.open()` is not available or the environment has no display, use `--static <output_path>` to write a standalone HTML file instead of starting a server. Feedback will be downloaded as a `feedback.json` file when the user clicks "Submit All Reviews". After download, copy `feedback.json` into the workspace directory for the next iteration to pick up.
 
 Note: please use generate_review.py to create the viewer; there's no need to write custom HTML.
 
@@ -442,20 +442,6 @@ When using an AI client without subagent support, the core workflow is the same 
 
 ---
 
-## Cowork-Specific Instructions
-
-If you're in Cowork, the main things to know are:
-
-- You have subagents, so the main workflow (spawn test cases in parallel, run baselines, grade, etc.) all works. (However, if you run into severe problems with timeouts, it's OK to run the test prompts in series rather than parallel.)
-- You don't have a browser or display, so when generating the eval viewer, use `--static <output_path>` to write a standalone HTML file instead of starting a server. Then proffer a link that the user can click to open the HTML in their browser.
-- For whatever reason, the Cowork setup seems to disincline the AI from generating the eval viewer after running the tests, so just to reiterate: whether you're in Cowork or in a CLI-based client, after running tests, you should always generate the eval viewer for the human to look at examples before revising the skill yourself and trying to make corrections, using `generate_review.py` (not writing your own boutique html code). Sorry in advance but I'm gonna go all caps here: GENERATE THE EVAL VIEWER *BEFORE* evaluating inputs yourself. You want to get them in front of the human ASAP!
-- Feedback works differently: since there's no running server, the viewer's "Submit All Reviews" button will download `feedback.json` as a file. You can then read it from there (you may have to request access first).
-- Packaging works — `package_skill.py` just needs Python and a filesystem.
-- Description optimization (`run_loop.py` / `run_eval.py`) should work in Cowork just fine since it uses `claude -p` via subprocess, not a browser, but please save it until you've fully finished making the skill and the user agrees it's in good shape.
-- **Updating an existing skill**: The user might be asking you to update an existing skill, not create a new one. Follow the update guidance in the client-specific section above.
-
----
-
 ## Reference files
 
 The agents/ directory contains instructions for specialized subagents. Read them when you need to spawn the relevant subagent.
@@ -480,6 +466,6 @@ Repeating one more time the core loop here for emphasis:
 - Repeat until you and the user are satisfied
 - Package the final skill and return it to the user.
 
-Please add steps to your TodoList, if you have such a thing, to make sure you don't forget. If you're in Cowork, please specifically put "Create evals JSON and run `eval-viewer/generate_review.py` so human can review test cases" in your TodoList to make sure it happens.
+Please add steps to your TodoList, if you have such a thing, to make sure you don't forget. Please specifically put "Create evals JSON and run `eval-viewer/generate_review.py` so human can review test cases" in your TodoList to make sure it happens.
 
 Good luck!
