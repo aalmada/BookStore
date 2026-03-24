@@ -1,4 +1,14 @@
-﻿<MudNavMenu>
+﻿@using BookStore.Client
+@using BookStore.Shared.Notifications
+@using BookStore.Web.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IShoppingCartClient CartClient
+@inject AnonymousCartService AnonymousCartService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject BookStoreEventsService EventsService
+@implements IDisposable
+
+<MudNavMenu>
     <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Books</MudNavLink>
     <AuthorizeView Roles="Admin">
         <MudNavLink Href="admin/authors" Icon="@Icons.Material.Filled.Person">Authors</MudNavLink>
@@ -7,7 +17,20 @@
         <MudNavLink Href="admin/sales" Icon="@Icons.Material.Filled.AttachMoney">Sales</MudNavLink>
     </AuthorizeView>
     <AuthorizeView>
-        <MudNavLink Href="cart" Icon="@Icons.Material.Filled.ShoppingCart">Cart</MudNavLink>
+        <Authorized>
+            <MudNavLink Href="cart"
+                        Icon="@Icons.Material.Filled.ShoppingCart"
+                        aria-label="@GetCartAriaLabel(serverCartCount)">
+                Cart@(serverCartCount > 0 ? $" ({serverCartCount})" : string.Empty)
+            </MudNavLink>
+        </Authorized>
+        <NotAuthorized>
+            <MudNavLink Href="cart"
+                        Icon="@Icons.Material.Outlined.ShoppingCart"
+                        aria-label="@GetCartAriaLabel(anonymousCartCount)">
+                Cart@(anonymousCartCount > 0 ? $" ({anonymousCartCount})" : string.Empty)
+            </MudNavLink>
+        </NotAuthorized>
     </AuthorizeView>
     <AuthorizeView Roles="Admin">
         <MudNavLink Href="admin/books" Icon="@Icons.Material.Filled.Book">Books</MudNavLink>
@@ -17,3 +40,88 @@
         <MudNavLink Href="admin/tenants" Icon="@Icons.Material.Filled.Settings">Tenants</MudNavLink>
     </AuthorizeView>
 </MudNavMenu>
+
+@code {
+    int serverCartCount;
+    int anonymousCartCount;
+    bool _disposed;
+
+    protected override async Task OnInitializedAsync()
+    {
+        EventsService.OnNotificationReceived += HandleNotification;
+        AuthStateProvider.AuthenticationStateChanged += HandleAuthenticationChanged;
+        AnonymousCartService.CartChanged += HandleAnonymousCartChanged;
+
+        EventsService.StartListening();
+        await RefreshCountAsync();
+    }
+
+    async Task RefreshCountAsync(CancellationToken cancellationToken = default)
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var isAuthenticated = authState.User.Identity?.IsAuthenticated == true;
+
+        if (isAuthenticated)
+        {
+            anonymousCartCount = 0;
+            await RefreshServerCountAsync(cancellationToken);
+            return;
+        }
+
+        serverCartCount = 0;
+        anonymousCartCount = await AnonymousCartService.GetCountAsync(cancellationToken);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    async Task RefreshServerCountAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var cart = await CartClient.GetShoppingCartAsync(cancellationToken);
+            serverCartCount = cart.TotalItems;
+        }
+        catch
+        {
+            serverCartCount = 0;
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    void HandleNotification(IDomainEventNotification notification)
+    {
+        if (notification is not UserUpdatedNotification)
+        {
+            return;
+        }
+
+        _ = InvokeAsync(async () => await RefreshCountAsync());
+    }
+
+    void HandleAuthenticationChanged(Task<AuthenticationState> authenticationStateTask)
+    {
+        _ = InvokeAsync(async () =>
+        {
+            await authenticationStateTask;
+            await RefreshCountAsync();
+        });
+    }
+
+    void HandleAnonymousCartChanged() => _ = InvokeAsync(async () => await RefreshCountAsync());
+
+    static string GetCartAriaLabel(int count)
+        => count == 1 ? "Shopping Cart, 1 item" : $"Shopping Cart, {count} items";
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        EventsService.OnNotificationReceived -= HandleNotification;
+        AuthStateProvider.AuthenticationStateChanged -= HandleAuthenticationChanged;
+        AnonymousCartService.CartChanged -= HandleAnonymousCartChanged;
+    }
+}

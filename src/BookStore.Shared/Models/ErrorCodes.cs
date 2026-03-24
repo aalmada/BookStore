@@ -104,6 +104,8 @@ public static class ErrorCodes
         public const string QuantityExceeded = "ERR_CART_QUANTITY_EXCEEDED";
         public const string BookNotFound = "ERR_CART_BOOK_NOT_FOUND";
         public const string UserNotFound = "ERR_CART_USER_NOT_FOUND";
+        public const string EmptyMerge = "ERR_CART_MERGE_EMPTY";
+        public const string NothingToMerge = "ERR_CART_MERGE_NOTHING";
     }
 
     // Admin Codes

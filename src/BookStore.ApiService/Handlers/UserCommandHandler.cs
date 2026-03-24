@@ -1,16 +1,20 @@
 using BookStore.ApiService.Infrastructure; // Added this line
+using BookStore.ApiService.Infrastructure.Logging;
 using BookStore.ApiService.Messages.Commands;
 using BookStore.ApiService.Models;
 using BookStore.ApiService.Projections;
 using BookStore.Shared.Messages.Events;
 using Marten;
 using Microsoft.Extensions.Caching.Hybrid;
+using Microsoft.Extensions.Logging;
 using Wolverine;
 
 namespace BookStore.ApiService.Handlers;
 
 public static class UserCommandHandler
 {
+    const int MaxCartQuantity = 10;
+
     public static async Task Handle(AddBookToFavorites command, IDocumentSession session, HybridCache cache)
     {
         Instrumentation.FavoritesAdded.Add(1, new System.Diagnostics.TagList { { "tenant_id", session.TenantId } });
@@ -153,5 +157,53 @@ public static class UserCommandHandler
         {
             _ = session.Events.Append(command.UserId, new ShoppingCartCleared());
         }
+    }
+
+    public static async Task Handle(MergeAnonymousCart command, IDocumentSession session, ILogger logger)
+    {
+        if (command.Items.Count == 0)
+        {
+            Log.Users.AnonymousCartMergeSkipped(logger, command.UserId);
+            return;
+        }
+
+        var profile = await session.Events.AggregateStreamAsync<UserProfile>(command.UserId);
+        if (profile == null)
+        {
+            _ = session.Events.StartStream<UserProfile>(
+                command.UserId,
+                new UserProfileCreated(command.UserId)
+            );
+
+            profile = new UserProfile { Id = command.UserId };
+        }
+
+        var mergedItems = command.Items
+            .Where(item => item.Quantity > 0)
+            .GroupBy(item => item.BookId)
+            .Select(group =>
+            {
+                var currentQuantity = profile.ShoppingCartItems.GetValueOrDefault(group.Key);
+                var requestedQuantity = int.Min(group.Sum(item => item.Quantity), MaxCartQuantity);
+                var availableQuantity = MaxCartQuantity - currentQuantity;
+                var quantityToMerge = int.Min(requestedQuantity, availableQuantity);
+
+                return new AnonymousCartMergedItem(group.Key, int.Max(0, quantityToMerge));
+            })
+            .Where(item => item.Quantity > 0)
+            .ToList();
+
+        if (mergedItems.Count == 0)
+        {
+            Log.Users.AnonymousCartMergeSkipped(logger, command.UserId);
+            return;
+        }
+
+        var totalMergedQuantity = mergedItems.Sum(item => item.Quantity);
+        Instrumentation.CartAdded.Add(totalMergedQuantity, new System.Diagnostics.TagList { { "tenant_id", session.TenantId } });
+
+        _ = session.Events.Append(command.UserId, new AnonymousCartMerged(mergedItems));
+
+        Log.Users.AnonymousCartMerged(logger, command.UserId, mergedItems.Count, totalMergedQuantity);
     }
 }

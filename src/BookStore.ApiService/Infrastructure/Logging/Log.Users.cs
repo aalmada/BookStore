@@ -192,5 +192,15 @@ public static partial class Log
             Message = "Passkey user ID conflict detected for ID {UserId} in tenant {TenantId}")]
         public static partial void PasskeyUserIdConflictDetected(ILogger logger, Guid userId, string tenantId);
 
+        [LoggerMessage(
+            Level = LogLevel.Warning,
+            Message = "Anonymous cart merge skipped for user {UserId}: no valid items to merge")]
+        public static partial void AnonymousCartMergeSkipped(ILogger logger, Guid userId);
+
+        [LoggerMessage(
+            Level = LogLevel.Information,
+            Message = "Anonymous cart merged for user {UserId}: mergedItems={MergedItems}, mergedQuantity={MergedQuantity}")]
+        public static partial void AnonymousCartMerged(ILogger logger, Guid userId, int mergedItems, int mergedQuantity);
+
     }
 }

@@ -1,9 +1,11 @@
 @page "/cart"
 @using BookStore.Web.Services
 @using BookStore.Client
-@using Microsoft.AspNetCore.Authorization
-@attribute [Authorize]
+@using Microsoft.AspNetCore.Components.Authorization
 @inject IShoppingCartClient CartClient
+@inject IBooksClient BooksClient
+@inject AnonymousCartService AnonymousCartService
+@inject AuthenticationStateProvider AuthStateProvider
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
 @implements IDisposable
@@ -15,14 +17,22 @@
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-6">
     <MudText Typo="Typo.h3" Class="mb-6">Shopping Cart</MudText>
 
+    @if (!_isAuthenticated)
+    {
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-4" role="status">
+            You are shopping as a guest. Login to save your cart and checkout.
+            <MudLink Href="/login?returnUrl=/cart" Class="ml-1">Login</MudLink>
+        </MudAlert>
+    }
+
     @if (isLoading)
     {
         <MudProgressLinear Indeterminate="true"/>
     }
-    else if (cart?.Items.Count > 0)
+    else if (displayCart?.Items.Count > 0)
     {
         <MudPaper Elevation="2" Class="pa-4">
-            @foreach (var item in cart.Items)
+            @foreach (var item in displayCart.Items)
             {
                 <MudGrid Class="mb-4 align-center">
                     <MudItem xs="12" md="6">
@@ -38,7 +48,7 @@
                     <MudItem xs="6" md="3">
                         <MudNumericField Value="@item.Quantity"
                                          Min="1"
-                                         Max="99"
+                                         Max="@(_isAuthenticated ? 99 : 10)"
                                          Label="Quantity"
                                          Variant="Variant.Outlined"
                                          ValueChanged="@((int newQty) => UpdateQuantityAsync(item.BookId, newQty))"/>
@@ -57,7 +67,7 @@
 
             <MudStack Row="true" Justify="Justify.SpaceBetween" Class="mt-4">
                 <MudStack>
-                    <MudText Typo="Typo.h6">Total Items: @cart.TotalItems</MudText>
+                    <MudText Typo="Typo.h6">Total Items: @displayCart.TotalItems</MudText>
                     <MudText Typo="Typo.h5" Color="Color.Primary" Class="font-weight-bold">
                         Total: @FormatTotal()
                     </MudText>
@@ -77,7 +87,17 @@
     }
     else
     {
-        <MudAlert Severity="Severity.Info">Your cart is empty</MudAlert>
+        @if (_isAuthenticated)
+        {
+            <MudAlert Severity="Severity.Info">Your cart is empty. Browse Books.</MudAlert>
+        }
+        else
+        {
+            <MudAlert Severity="Severity.Info">
+                Your cart is empty. Start shopping, or login to view your saved cart.
+                <MudLink Href="/login?returnUrl=/cart" Class="ml-1">Login</MudLink>
+            </MudAlert>
+        }
         <MudButton Href="/" Variant="Variant.Filled" Color="Color.Primary" Class="mt-4">
             Browse Books
         </MudButton>
@@ -85,10 +105,16 @@
 </MudContainer>
 
 @code {
+    private const int MaxAnonymousQuantity = 10;
+
     private ReactiveQuery<ShoppingCartResponse?>? cartQuery;
-    private ShoppingCartResponse? cart => cartQuery?.Data;
-    private bool isLoading => cartQuery?.IsLoading ?? true;
+    private ShoppingCartResponse? anonymousCart;
+    private ShoppingCartResponse? displayCart => _isAuthenticated ? cartQuery?.Data : anonymousCart;
+    private bool isLoading => _isAuthenticated ? cartQuery?.IsLoading ?? true : isAnonymousLoading;
     private readonly CancellationTokenSource _cts = new();
+    private bool _isAuthenticated;
+    private bool isAnonymousLoading;
+    private bool hasShownUnavailableWarning;
     private bool _disposed;
 
     [Inject] private ILogger<ShoppingCart> Logger { get; set; } = default!;
@@ -97,10 +123,19 @@
 
     protected override async Task OnInitializedAsync()
     {
-        // Start SSE listening
-        EventsService.StartListening();
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        _isAuthenticated = authState.User.Identity?.IsAuthenticated == true;
 
-        await InitializeQueryAsync(_cts.Token);
+        if (_isAuthenticated)
+        {
+            // Start SSE listening for authenticated cart updates
+            EventsService.StartListening();
+            await InitializeQueryAsync(_cts.Token);
+        }
+        else
+        {
+            await LoadAnonymousCartAsync(_cts.Token);
+        }
 
         // Subscribe to currency changes
         CurrencyService.OnCurrencyChanged += StateHasChanged;
@@ -135,7 +170,28 @@
 
     private async Task UpdateQuantityAsync(Guid bookId, int newQuantity)
     {
-        if (newQuantity <= 0 || cart == null) return;
+        if (_isAuthenticated)
+        {
+            await UpdateAuthenticatedQuantityAsync(bookId, newQuantity);
+            return;
+        }
+
+        if (newQuantity <= 0)
+        {
+            return;
+        }
+
+        await AnonymousCartService.UpdateItemAsync(bookId, Math.Clamp(newQuantity, 1, MaxAnonymousQuantity), _cts.Token);
+        await LoadAnonymousCartAsync(_cts.Token);
+    }
+
+    private async Task UpdateAuthenticatedQuantityAsync(Guid bookId, int newQuantity)
+    {
+        var cart = cartQuery?.Data;
+        if (newQuantity <= 0 || cart == null)
+        {
+            return;
+        }
 
         // Find current item
         var currentItem = cart.Items.FirstOrDefault(i => i.BookId == bookId);
@@ -177,7 +233,23 @@
 
     private async Task RemoveItemAsync(Guid bookId)
     {
-        if (cart == null) return;
+        if (_isAuthenticated)
+        {
+            await RemoveAuthenticatedItemAsync(bookId);
+            return;
+        }
+
+        await AnonymousCartService.RemoveItemAsync(bookId, _cts.Token);
+        await LoadAnonymousCartAsync(_cts.Token);
+    }
+
+    private async Task RemoveAuthenticatedItemAsync(Guid bookId)
+    {
+        var cart = cartQuery?.Data;
+        if (cart == null)
+        {
+            return;
+        }
 
         var itemToRemove = cart.Items.FirstOrDefault(i => i.BookId == bookId);
         if (itemToRemove == null) return;
@@ -212,7 +284,30 @@
 
     private async Task ClearCartAsync()
     {
-        if (cart == null || cart.Items.Count == 0) return;
+        if (_isAuthenticated)
+        {
+            await ClearAuthenticatedCartAsync();
+            return;
+        }
+
+        if (anonymousCart == null || anonymousCart.Items.Count == 0)
+        {
+            return;
+        }
+
+        await AnonymousCartService.ClearAsync(_cts.Token);
+        anonymousCart = new ShoppingCartResponse([], 0);
+        Snackbar.Add("Cart cleared", Severity.Success);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ClearAuthenticatedCartAsync()
+    {
+        var cart = cartQuery?.Data;
+        if (cart == null || cart.Items.Count == 0)
+        {
+            return;
+        }
 
         var previousCart = cart;
 
@@ -234,6 +329,67 @@
         }
     }
 
+    private async Task LoadAnonymousCartAsync(CancellationToken cancellationToken = default)
+    {
+        isAnonymousLoading = true;
+        await InvokeAsync(StateHasChanged);
+
+        try
+        {
+            var items = await AnonymousCartService.GetItemsAsync(cancellationToken);
+
+            if (items.Count == 0)
+            {
+                anonymousCart = new ShoppingCartResponse([], 0);
+                return;
+            }
+
+            var enrichedItems = new List<ShoppingCartItemResponse>();
+            var missingBookIds = new List<Guid>();
+
+            foreach (var item in items)
+            {
+                try
+                {
+                    var book = await BooksClient.GetBookAsync(item.BookId, cancellationToken);
+                    enrichedItems.Add(new ShoppingCartItemResponse(
+                        book.Id,
+                        book.Title,
+                        book.Isbn,
+                        Math.Clamp(item.Quantity, 1, MaxAnonymousQuantity),
+                        book.Prices ?? new Dictionary<string, decimal>()));
+                }
+                catch (Refit.ApiException apiException) when (apiException.StatusCode == System.Net.HttpStatusCode.NotFound)
+                {
+                    missingBookIds.Add(item.BookId);
+                }
+            }
+
+            if (missingBookIds.Count > 0)
+            {
+                foreach (var missingBookId in missingBookIds)
+                {
+                    await AnonymousCartService.RemoveItemAsync(missingBookId, cancellationToken);
+                }
+
+                if (!hasShownUnavailableWarning)
+                {
+                    Snackbar.Add("Some items in your cart are no longer available and were removed.", Severity.Warning);
+                    hasShownUnavailableWarning = true;
+                }
+            }
+
+            anonymousCart = new ShoppingCartResponse(
+                enrichedItems,
+                enrichedItems.Sum(item => item.Quantity));
+        }
+        finally
+        {
+            isAnonymousLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
     public void Dispose()
     {
         if (_disposed) return;
@@ -247,9 +403,12 @@
 
     private string FormatTotal()
     {
-        if (cart == null) return "N/A";
+        if (displayCart == null)
+        {
+            return "N/A";
+        }
 
-        var total = cart.Items.Sum(item =>
+        var total = displayCart.Items.Sum(item =>
         {
             if (item.Prices.TryGetValue(CurrencyService.CurrentCurrency, out var price))
             {

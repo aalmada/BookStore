@@ -204,6 +204,20 @@
                                 </MudStack>
                             </MudPaper>
                         </Authorized>
+                        <NotAuthorized>
+                            <MudPaper Elevation="0" Class="pa-4 mb-4" Style="background-color: rgba(0,0,0,0.02); border-radius: 8px;">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="4">
+                                    <MudNumericField @bind-Value="quantity" Label="Quantity" Variant="Variant.Outlined" Min="1" Max="10" Class="mb-0" Style="max-width: 100px;"/>
+                                    <MudButton Variant="Variant.Filled"
+                                               Color="Color.Primary"
+                                               StartIcon="@Icons.Material.Filled.ShoppingCart"
+                                               OnClick="AddToCartAnonymousAsync"
+                                               Size="Size.Large">
+                                        Add to Cart
+                                    </MudButton>
+                                </MudStack>
+                            </MudPaper>
+                        </NotAuthorized>
                     </AuthorizeView>
 
                     @* Book Details Card *@
@@ -304,6 +318,7 @@
 
     [Inject] private ILogger<BookDetails> Logger { get; set; } = default!;
     [Inject] private QueryInvalidationService InvalidationService { get; set; } = default!;
+    [Inject] private AnonymousCartService AnonymousCartService { get; set; } = default!;
 
     [CascadingParameter] private Task<AuthenticationState> AuthStateTask { get; set; } = default!;
     private System.Security.Claims.ClaimsPrincipal? user;
@@ -326,6 +341,18 @@
             Logger.LogError(ex, "Failed to add book {BookId} to cart", book.Id);
             Snackbar.Add($"Failed to add to cart: {ex.Message}", Severity.Error);
         }
+    }
+
+    private async Task AddToCartAnonymousAsync()
+    {
+        if (book == null)
+        {
+            return;
+        }
+
+        await AnonymousCartService.AddItemAsync(book.Id, Math.Clamp(quantity, 1, 10), _cts.Token);
+        Snackbar.Add("Added to cart! Login to checkout.", Severity.Success);
+        quantity = 1;
     }
 
     protected override async Task OnInitializedAsync()

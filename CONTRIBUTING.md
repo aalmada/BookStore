@@ -30,15 +30,19 @@ Feature requests are welcome! Please:
 3. **Provide examples** of how it would work
 4. **Consider the scope** - does it fit the project goals?
 
-### Pull Requests
+### Pull Request (PR) Process
 
-#### Before You Start
+1. **Fork the repository** and create your branch from `main`.
+2. **Write or update tests** for your changes (see below).
+3. **Run all tests locally** and ensure they pass.
+4. **Format your code**: Run `dotnet format` and resolve any issues.
+5. **Open a PR** against `main` with a clear title and description.
+6. **Link related issues** in your PR description, if applicable.
+7. **Wait for review**: At least one team member must approve before merging.
+8. **Address feedback** promptly and push updates to your branch.
+9. **Do not merge your own PR** unless you have explicit approval.
 
-1. **Fork the repository** and create a branch from `main`
-2. **Discuss major changes** in an issue first
-3. **Follow the coding standards** (see below)
-
-#### Development Setup
+#### Running the Application
 
 **Requirements**: .NET 10 SDK with C# 14, Docker Desktop
 
@@ -47,13 +51,10 @@ Feature requests are welcome! Please:
 git clone https://github.com/YOUR_USERNAME/BookStore.git
 cd BookStore
 
-# Install dependencies
 dotnet restore
 
-# Install Aspire CLI (if not already installed)
-# Follow instructions at https://aspire.dev/get-started/install-cli/
+# (Optional) Install Aspire CLI: https://aspire.dev/get-started/install-cli/
 
-# Run the application
 aspire run
 ```
 
@@ -70,7 +71,7 @@ aspire run
 
 3. **Write tests** for new functionality
 
-4. **Run tests** to ensure nothing breaks:
+4. **Run tests** to ensure nothing breaks (see below for details):
    ```bash
    dotnet test
    ```
@@ -101,6 +102,22 @@ fix: correct ETag validation in update handler
 docs: update getting-started guide
 refactor: simplify book search projection
 ```
+
+#### Review Guidelines
+
+- Follow the [BookStore conventions](docs/guides/analyzer-rules.md) and `.editorconfig`.
+- Use `[LoggerMessage(...)]` for all logging—never use `Console.WriteLine` or direct logger calls.
+- Use the Result pattern for error handling.
+- Business logic belongs in handlers/aggregates, not endpoints.
+- Add/verify tests for all new features and bug fixes.
+- Ensure cache invalidation and SSE notifications are handled where relevant.
+- Keep PRs focused and small; large or multi-purpose PRs may be asked to split.
+- Be respectful and constructive in review comments.
+- **Automated Checks**: PRs must pass CI (build, lint, and tests).
+- **Code Review**: At least one team member must review and approve before merging.
+- **Feedback**: Address all review comments. Push updates to the same branch.
+- **No Direct Merges**: Never merge your own PR without review.
+- **Commit Messages**: Use clear, descriptive commit messages. Squash if appropriate.
 
 #### Submitting Pull Request
 

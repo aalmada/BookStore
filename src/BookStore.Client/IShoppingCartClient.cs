@@ -1,3 +1,4 @@
+using BookStore.Shared.Models;
 using Refit;
 
 namespace BookStore.Client;
@@ -42,6 +43,13 @@ public interface IShoppingCartClient
 
     [Delete("/api/cart")]
     Task ClearCartAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Merges an anonymous cart into the authenticated user's shopping cart.
+    /// </summary>
+
+    [Post("/api/cart/merge")]
+    Task MergeCartAsync([Body] MergeCartRequest request, CancellationToken cancellationToken = default);
 }
 
 public record ShoppingCartResponse(

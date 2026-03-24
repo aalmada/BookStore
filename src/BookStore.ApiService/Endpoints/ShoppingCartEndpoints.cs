@@ -33,6 +33,9 @@ public static class ShoppingCartEndpoints
 
         _ = group.MapDelete("/", ClearCart)
             .WithName("ClearCart");
+
+        _ = group.MapPost("/merge", MergeCart)
+            .WithName("MergeAnonymousCart");
     }
 
     const int MaxQuantityPerItem = 10;
@@ -174,6 +177,58 @@ public static class ShoppingCartEndpoints
         }
 
         await bus.InvokeAsync(new ClearShoppingCart(userId), new DeliveryOptions { TenantId = tenantContext.TenantId }, cancellationToken);
+
+        return Results.NoContent();
+    }
+
+    static async Task<IResult> MergeCart(
+        [FromBody] MergeCartRequest request,
+        [FromServices] IMessageBus bus,
+        [FromServices] IQuerySession session,
+        [FromServices] ITenantContext tenantContext,
+        HttpContext context,
+        CancellationToken cancellationToken)
+    {
+        if (request.Items is null || request.Items.Count == 0)
+        {
+            return Result.Failure(Error.Validation(ErrorCodes.Cart.EmptyMerge, "No items to merge")).ToProblemDetails();
+        }
+
+        var userId = context.User.GetUserId();
+        if (userId == Guid.Empty)
+        {
+            return Result.Failure(Error.NotFound(ErrorCodes.Cart.UserNotFound, "User not found")).ToProblemDetails();
+        }
+
+        var bookIds = request.Items
+            .Select(item => item.BookId)
+            .Distinct()
+            .ToArray();
+
+        var books = await session.LoadManyAsync<BookSearchProjection>(cancellationToken, bookIds);
+        var validBookIds = books
+            .Where(book => !book.Deleted)
+            .Select(book => book.Id)
+            .ToHashSet();
+
+        var itemsToMerge = request.Items
+            .Where(item => item.Quantity > 0 && validBookIds.Contains(item.BookId))
+            .Select(item => new CartItemToMerge(item.BookId, int.Min(item.Quantity, MaxQuantityPerItem)))
+            .ToList();
+
+        if (itemsToMerge.Count == 0)
+        {
+            return Result.Failure(
+                Error.Validation(
+                    ErrorCodes.Cart.NothingToMerge,
+                    "No valid items to merge"))
+                .ToProblemDetails();
+        }
+
+        await bus.InvokeAsync(
+            new MergeAnonymousCart(userId, itemsToMerge),
+            new DeliveryOptions { TenantId = tenantContext.TenantId },
+            cancellationToken);
 
         return Results.NoContent();
     }

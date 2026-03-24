@@ -1,0 +1,3 @@
+# Ignore vendor and node_modules directories for Copilot indexing
+vendor/
+node_modules/

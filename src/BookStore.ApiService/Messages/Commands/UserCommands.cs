@@ -11,3 +11,5 @@ public record AddBookToCart(Guid UserId, Guid BookId, int Quantity);
 public record RemoveBookFromCart(Guid UserId, Guid BookId);
 public record UpdateCartItemQuantity(Guid UserId, Guid BookId, int Quantity);
 public record ClearShoppingCart(Guid UserId);
+public record CartItemToMerge(Guid BookId, int Quantity);
+public record MergeAnonymousCart(Guid UserId, IReadOnlyList<CartItemToMerge> Items);

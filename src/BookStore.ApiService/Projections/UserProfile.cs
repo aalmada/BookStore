@@ -8,6 +8,8 @@ namespace BookStore.ApiService.Projections;
 /// </summary>
 public sealed class UserProfile
 {
+    const int MaxCartQuantity = 10;
+
     /// <summary>
     /// User ID (matches ApplicationUser.Id)
     /// </summary>
@@ -80,5 +82,14 @@ public sealed class UserProfile
 
     public void Apply(ShoppingCartCleared @event)
         => ShoppingCartItems.Clear();
+
+    public void Apply(AnonymousCartMerged @event)
+    {
+        foreach (var item in @event.Items)
+        {
+            var currentQuantity = ShoppingCartItems.GetValueOrDefault(item.BookId);
+            ShoppingCartItems[item.BookId] = int.Min(MaxCartQuantity, currentQuantity + item.Quantity);
+        }
+    }
 #pragma warning restore IDE0060 // Remove unused parameter
 }

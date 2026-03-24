@@ -188,6 +188,7 @@ public static class MartenConfigurationExtensions
         _ = options.Events.AddEventType<BookStore.Shared.Messages.Events.BookRemovedFromCart>();
         _ = options.Events.AddEventType<BookStore.Shared.Messages.Events.CartItemQuantityUpdated>();
         _ = options.Events.AddEventType<BookStore.Shared.Messages.Events.ShoppingCartCleared>();
+        _ = options.Events.AddEventType<BookStore.Shared.Messages.Events.AnonymousCartMerged>();
     }
 
     static void RegisterProjections(StoreOptions options)

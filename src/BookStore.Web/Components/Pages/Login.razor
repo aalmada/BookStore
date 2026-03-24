@@ -1,9 +1,13 @@
 @page "/login"
 @using BookStore.Web.Services
+@using BookStore.Client
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.JSInterop
 @using BookStore.Shared.Validation
 @using BookStore.Shared.Models
+@using System.Net
+@using System.Text.Json
+@using Refit
 @inject AuthenticationService AuthService
 @inject TenantService TenantService
 @inject PasskeyService PasskeyService
@@ -12,6 +16,9 @@
 @inject IJSRuntime Js
 @inject ILogger<Login> Logger
 @inject ErrorLocalizationService ErrorLocalizer
+@inject IShoppingCartClient CartClient
+@inject AnonymousCartService AnonymousCartService
+@inject ISnackbar Snackbar
 
 
 <PageTitle>Login - BookStore</PageTitle>
@@ -213,6 +220,8 @@
                     Logger.LogWarning("BroadcastChannel error: {Error}", ex.Message);
                 }
 
+                await MergeAnonymousCartIfNeededAsync();
+
                 Navigation.NavigateTo(ReturnUrl ?? "/");
             }
             else
@@ -275,6 +284,8 @@
                 {
                     Logger.LogWarning("BroadcastChannel error: {Error}", ex.Message);
                 }
+
+                await MergeAnonymousCartIfNeededAsync();
 
                 Logger.LogInformation("Navigating to {ReturnUrl}", ReturnUrl ?? "/");
 
@@ -348,5 +359,67 @@
 
     static string? ValidateOptionalEmail(string email)
         => string.IsNullOrWhiteSpace(email) ? null : EmailValidator.GetError(email);
+
+    async Task MergeAnonymousCartIfNeededAsync()
+    {
+        try
+        {
+            var items = await AnonymousCartService.GetItemsAsync();
+            if (items.Count == 0)
+            {
+                return;
+            }
+
+            var request = new MergeCartRequest(items.Select(item =>
+                new CartItemToMergeRequest(item.BookId, item.Quantity)).ToList());
+
+            await CartClient.MergeCartAsync(request);
+            await AnonymousCartService.ClearAsync();
+            Snackbar.Add("Your cart has been saved to your account.", Severity.Success);
+        }
+        catch (ApiException ex)
+        {
+            // Any non-success merge response should not block login.
+            await AnonymousCartService.ClearAsync();
+
+            if (ex.StatusCode == HttpStatusCode.BadRequest && IsNothingToMerge(ex.Content))
+            {
+                return;
+            }
+
+            Logger.LogWarning("Anonymous cart merge returned status code {StatusCode}. Continuing login flow.", ex.StatusCode);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Anonymous cart merge failed unexpectedly. Continuing login flow.");
+        }
+    }
+
+    static bool IsNothingToMerge(string? responseContent)
+    {
+        if (string.IsNullOrWhiteSpace(responseContent))
+        {
+            return false;
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(responseContent);
+
+            if (doc.RootElement.TryGetProperty("extensions", out var extensions) &&
+                extensions.TryGetProperty("code", out var extensionCode) &&
+                string.Equals(extensionCode.GetString(), ErrorCodes.Cart.NothingToMerge, StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            return doc.RootElement.TryGetProperty("code", out var rootCode) &&
+                   string.Equals(rootCode.GetString(), ErrorCodes.Cart.NothingToMerge, StringComparison.Ordinal);
+        }
+        catch
+        {
+            return false;
+        }
+    }
 
 }

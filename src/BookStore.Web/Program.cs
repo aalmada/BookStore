@@ -218,6 +218,7 @@ builder.Services.AddSingleton<QueryInvalidationService>();
 // Register currency service
 builder.Services.AddScoped<CurrencyService>();
 builder.Services.AddScoped<ThemeService>();
+builder.Services.AddScoped<AnonymousCartService>();
 
 // Register SSE events service
 builder.Services.AddBookStoreEvents(new Uri(apiServiceUrl));
