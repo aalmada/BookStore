@@ -116,6 +116,24 @@ based on task context. The agent can still be manually selected. Defaults to `fa
 disable-model-invocation: true
 ```
 
+**Override rule:** Explicitly naming an agent in a coordinator's `agents` list overrides
+`disable-model-invocation: true`. This lets you protect a specialist from general use
+while still allowing one specific coordinator to invoke it.
+
+```yaml
+# Specialist — protected from general subagent use
+---
+name: DatabaseMigrator
+user-invocable: false
+disable-model-invocation: true
+---
+
+# Coordinator — explicit list overrides the protection above
+---
+agents: ['DatabaseMigrator', 'SchemaReviewer']
+---
+```
+
 ### `infer` *(deprecated)*
 
 Replaced by `user-invocable` and `disable-model-invocation`. If both old and new properties

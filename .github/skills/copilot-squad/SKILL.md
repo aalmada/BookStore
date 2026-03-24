@@ -28,6 +28,8 @@ Refer to supplementary references when needed:
 | `references/agent-templates.md` | Templates for each standard agent role |
 | `references/memory-conventions.md` | Memory file layout and status-log format |
 | `references/model-selection.md` | Role-to-model mapping for squad roles |
+| `copilot-custom-agent/references/frontmatter.md` | All frontmatter properties: `user-invocable`, `disable-model-invocation`, `agents`, model fallback chains |
+| `copilot-custom-agent/references/patterns.md` | Orchestrator, memory handoff, parallel review, subagent isolation patterns |
 | `copilot-custom-agent/references/model-selection.md` | Full model catalog: profiles, multipliers, fallback chains, cost tips |
 
 Also read the **copilot-custom-agent SKILL.md** (`.github/skills/copilot-custom-agent/SKILL.md`)
@@ -172,6 +174,8 @@ After creating all files, check each one:
 - [ ] Memory file paths are consistent across all agents (same path for the same file)
 - [ ] Status protocol is present in every agent body
 - [ ] No agent other than the Orchestrator has `user-invocable: true`
+- [ ] Specialists have `disable-model-invocation: true` to protect them from external invocation (Orchestrator's explicit `agents` list still reaches them)
+- [ ] `infer` property not used — deprecated in favour of `user-invocable` / `disable-model-invocation`
 
 ---
 
@@ -236,7 +240,12 @@ Each specialist should:
 5. **Run verification** where applicable (build, tests, lint) and report results.
 6. **Include an authentication-failure protocol** if the agent calls external services:
    stop and report to the Orchestrator rather than retrying silently.
-7. **Decompose multi-step protocols into sub-agents.** If the specialist has 3 or more
+7. **Protect from accidental external invocation.** Set `user-invocable: false` and
+   `disable-model-invocation: true` on every specialist. The Orchestrator's explicit
+   `agents` list is the only thing that grants access — it overrides the protection
+   intentionally. Without this, other agents in the workspace can invoke a specialist
+   out of context, wasting tokens and producing irrelevant output.
+8. **Decompose multi-step protocols into sub-agents.** If the specialist has 3 or more
    distinct protocol steps (e.g., explore, implement, verify), write the body so that
    each step is delegated to a separate sub-agent invocation rather than executed in a
    single context. Add `agent` to the specialist's `tools` and use `agents: ['*']` for
@@ -269,4 +278,5 @@ Before handing back to the user, confirm:
 - [ ] Parallel sections clearly annotated in Orchestrator workflow
 - [ ] `vscode/askQuestions` included in tools for agents that may need user input
 - [ ] Specialists with 3+ protocol steps use sub-agents per step (`agent` in tools, steps invoke sub-agents)
+- [ ] Specialists have `disable-model-invocation: true`; Orchestrator lists them explicitly in `agents:`
 - [ ] User was shown the final squad design and confirmed it

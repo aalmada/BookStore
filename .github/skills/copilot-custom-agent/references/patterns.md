@@ -213,7 +213,43 @@ instructions suggest it.
 
 ---
 
-## Pattern 7: Claude Format (`.claude/agents/`)
+## Pattern 7: Parallel Multi-Perspective Review
+
+Run each review lens as a **parallel** subagent so findings stay independent and unbiased.
+The coordinator shapes each subagent's focus through its prompt — no extra agent files
+needed for a lightweight version.
+
+```yaml
+---
+name: Thorough Reviewer
+description: Reviews code from multiple angles in parallel and synthesizes findings.
+tools: ['agent', 'read', 'search']
+---
+Review the changed files through multiple perspectives simultaneously.
+Run these subagents **in parallel** (invoke all in the same turn):
+- Correctness: logic errors, edge cases, type issues.
+- Code quality: readability, naming, duplication.
+- Security: OWASP Top 10 — injection risks, input validation, data exposure.
+- Architecture: codebase patterns, design consistency, structural alignment.
+
+After all subagents complete, synthesize findings into a prioritised summary.
+Mark issues Critical / Major / Minor. Acknowledge what the code does well.
+```
+
+**Why parallel works here:** Each subagent approaches the code fresh, without being
+anchored by what other perspectives found. Independence improves coverage.
+
+**Scaling up:** Give each perspective its own `.agent.md` file when it needs special
+tools — for example, a security reviewer with a security-focused MCP server, or a
+code-quality reviewer with linting CLI tools.
+
+**What the user sees:** Each subagent run appears as a collapsible tool call in chat —
+collapsed by default (shows agent name + current tool); expand to see the full transcript,
+prompt, and returned result.
+
+---
+
+## Pattern 8: Claude Format (`.claude/agents/`)
 
 If you want to share an agent with Claude Code users, place it in `.claude/agents/`
 as a `.md` file. The frontmatter uses Claude-specific keys:

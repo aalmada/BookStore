@@ -100,6 +100,7 @@ description: >
 argument-hint: Describe the feature to plan, or point to /memories/session/task-brief.md
 target: vscode
 user-invocable: false
+disable-model-invocation: true
 model: Claude Sonnet 4.6 (copilot)
 tools: ['search', 'read', 'web', 'vscode/memory', 'vscode/askQuestions']
 ---
@@ -160,6 +161,7 @@ description: >
 argument-hint: Describe the task, or say "Read the plan" to start from /memories/session/plan.md
 target: vscode
 user-invocable: false
+disable-model-invocation: true
 model: Claude Sonnet 4.6 (copilot)
 tools: ['search', 'read', 'edit', 'execute/runInTerminal', 'vscode/memory', 'vscode/askQuestions']
 ---
@@ -211,6 +213,7 @@ description: >
 argument-hint: Say "Review all changes" or name specific files to review
 target: vscode
 user-invocable: false
+disable-model-invocation: true
 model: Claude Sonnet 4.6 (copilot)
 tools: ['search', 'read', 'vscode/memory', 'vscode/askQuestions']
 ---
