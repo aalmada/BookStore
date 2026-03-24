@@ -29,6 +29,30 @@ Read the reference files as needed:
 
 ---
 
+## The Golden Rule: Only Include Non-Obvious Things
+
+Before adding any line to an agent body, ask:
+**"Could an agent figure this out by reading the code or config files?"**
+
+If yes — skip it. Agents can read directory structures, existing `.agent.md` files, `AGENTS.md`
+context files, and existing code. Agent bodies are for things that *aren't* visible there:
+
+- The agent's specific role and boundaries within the squad
+- Non-obvious protocol steps the agent must follow every time
+- Output contracts (what to write to memory, in what format)
+- Tool restrictions that differ from the default
+
+**Do not duplicate content already in `AGENTS.md`.** If a rule belongs in `AGENTS.md` (code
+rules, patterns, common mistakes), put it there — not in the agent body. Agent bodies that
+re-state `AGENTS.md` create stale divergence when rules change. Defer to `AGENTS.md` instead:
+
+> "Read `<scope>/AGENTS.md` for the project rules that apply to this scope."
+
+**Redundant content actively degrades quality** — it wastes the agent's context window and
+dilutes real signal with noise it already has.
+
+---
+
 ## When to Create a Custom Agent
 
 Custom agents are the right choice when you need a **persistent persona** with:
@@ -117,6 +141,9 @@ Structure the body to tell the agent:
 2. **Its protocol** — numbered steps it follows every time
 3. **What it must not do** — explicit constraints
 4. **Output format** — if it writes to files or memory
+
+Apply the Golden Rule to every line: if the agent can read it from `AGENTS.md` or existing
+code, skip it and link to `AGENTS.md` instead.
 
 Keep the body under 100 lines for agents that need to stay lean. Longer bodies are
 fine for complex orchestrators or specialists with rich domain knowledge.
