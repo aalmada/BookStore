@@ -22,9 +22,7 @@ from scripts.utils import parse_skill_md
 def find_project_root() -> Path:
     """Find the project root by walking up from cwd looking for .github/.
 
-    Ensures the temporary skill file created during eval lands under the
-    project's .github/skills/ directory, which is where the Copilot CLI
-    looks for skill definitions.
+    Used to construct the workspace path where eval artifacts are stored.
     """
     current = Path.cwd()
     for parent in [current, *current.parents]:
@@ -46,17 +44,17 @@ async def run_single_query_async(
 
     Injects the skill into the session via system_message and uses
     on_pre_tool_use to detect — and immediately deny — any read_file call
-    targeting the skill.  No files are written to the workspace, avoiding
-    VS Code file-watcher churn when many queries run in parallel.
-    The ``project_root`` parameter is retained for API compatibility but
-    is no longer used.
+    targeting the skill.  No files are written to disk — the path is a
+    fictional reference used purely as a marker string; detection fires in
+    on_pre_tool_use before the read executes and the call is denied immediately.
     """
     unique_id = uuid.uuid4().hex[:8]
     clean_name = f"{skill_name}-skill-{unique_id}"
-    # Point to /tmp so no workspace files are touched (VS Code watches .github/).
-    # The file does not need to exist: detection fires in on_pre_tool_use before
-    # the read executes, and we deny the call immediately after.
-    skill_file_ref = f"/tmp/copilot-skill-evals/{clean_name}/SKILL.md"
+    # Point to the skill's workspace folder so all eval artifacts stay in one
+    # place alongside other iteration outputs. The file does not need to exist:
+    # detection fires in on_pre_tool_use before the read executes, and we deny
+    # the call immediately after — nothing is ever written to disk.
+    skill_file_ref = f"{project_root}/.github/skills/{skill_name}-workspace/copilot-skill-evals/{clean_name}/SKILL.md"
     system_message = {
         "content": (
             "You have access to the following skills. When a user's request matches "
