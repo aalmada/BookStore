@@ -17,7 +17,7 @@
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-6">
     <MudText Typo="Typo.h3" Class="mb-6">Shopping Cart</MudText>
 
-    @if (!_isAuthenticated)
+    @if (!_isAuthenticated && displayCart?.Items.Count > 0)
     {
         <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-4" role="status">
             You are shopping as a guest. Login to save your cart and checkout.
