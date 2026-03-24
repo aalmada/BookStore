@@ -82,19 +82,6 @@ All tests passing: yes / no
 <anything explicitly not covered and why>
 ```
 
-## Mandatory Rules
-
-- **TUnit only** — `[Test] async Task`, never `[Fact]` or `[TestMethod]`
-- `await Assert.That(...)` — never FluentAssertions or `Assert.Equal`
-- **Bogus** for all test data — never hand-rolled random data
-- **NSubstitute** for all mocks — never Moq
-- **Per-test data creation** — never rely on seeded or shared global state
-- `WaitForConditionAsync` / SSE helpers — never `Task.Delay` / `Thread.Sleep`
-- Verify SSE events on every write operation with `ExecuteAndWaitForEventAsync`
-- Prefer data-driven `[Arguments]` tests over multiple near-identical single-case tests
-- File-scoped namespaces only
-- `Guid.CreateVersion7()` not `Guid.NewGuid()`; `DateTimeOffset.UtcNow` not `DateTime.Now`
-
 ## Status Protocol
 When you **start**, append to `/memories/session/status.md` via `vscode/memory`:
 `⏳ TestEngineer — started — writing tests for: <brief description>`

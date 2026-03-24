@@ -79,20 +79,6 @@ Write to `/memories/session/backend-developer-output.md` via `vscode/memory`:
 <any intentional deviations and why, or "none">
 ```
 
-## Mandatory Rules
-
-- `Guid.CreateVersion7()` — never `Guid.NewGuid()`
-- `DateTimeOffset.UtcNow` — never `DateTime.Now`
-- Events are past-tense `record`s (e.g., `BookAdded`) — commands are present-tense (e.g., `AddBook`)
-- File-scoped namespaces only (`namespace BookStore.X;`)
-- `[LoggerMessage(...)]` source generator for ALL logging — never `_logger.LogInformation(...)`
-- `Result<T>` + ProblemDetails for ALL errors — never throw for validation failures
-- Every mutation MUST emit SSE notification via `MartenCommitListener`
-- Every mutation MUST call `RemoveByTagAsync` for cache invalidation
-- ETags (`IHaveETag`, `ETagHelper`) for every resource read endpoint
-- No business logic in endpoints — only in aggregates/handlers
-- Tenant-scoped sessions — no cross-tenant queries
-
 ## Status Protocol
 When you **start**, append to `/memories/session/status.md` via `vscode/memory`:
 `⏳ BackendDeveloper — started — implementing: <brief description>`

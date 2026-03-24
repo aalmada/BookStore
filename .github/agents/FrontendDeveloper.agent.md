@@ -84,19 +84,6 @@ Write to `/memories/session/frontend-developer-output.md` via `vscode/memory`:
 <any intentional deviations and why, or "none">
 ```
 
-## Mandatory Rules
-
-- Always use `BookStore.Client` Refit interfaces — never call API endpoints directly
-- `ReactiveQuery<T>` for all reads — no manual data fetch without invalidation
-- `QueryInvalidationService` + SSE for reactive updates — no polling
-- `OptimisticUpdateService` for writes — UI must not wait for server roundtrip
-- `TenantService` for tenant context — never hardcode tenant or omit headers
-- `Guid.CreateVersion7()` not `Guid.NewGuid()`; `DateTimeOffset.UtcNow` not `DateTime.Now`
-- File-scoped namespaces only
-- `[LoggerMessage(...)]` for all logging — never `_logger.LogInformation(...)`
-- No business logic in `.razor` files — use Services/ or backing classes
-- `// safe: <reason>` comment required above any `MarkupString` use
-
 ## Status Protocol
 When you **start**, append to `/memories/session/status.md` via `vscode/memory`:
 `⏳ FrontendDeveloper — started — implementing: <brief description>`

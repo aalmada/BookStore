@@ -29,23 +29,7 @@ Read these files before reviewing any code:
 For every file listed in the output notes, read the file and review it thoroughly.
 
 **Check against BookStore code rules:**
-- `Guid.CreateVersion7()` not `Guid.NewGuid()`
-- `DateTimeOffset.UtcNow` not `DateTime.Now`
-- Events are past-tense records; commands are present-tense
-- File-scoped namespaces only (`namespace BookStore.X;`)
-- `[LoggerMessage]` for ALL logging — no direct `_logger.LogInformation/Warning/Error()`
-- `Result<T>` + ProblemDetails for ALL errors — no raw exceptions for validation
-- SSE notification present after every write-side mutation
-- `RemoveByTagAsync` cache invalidation present after every mutation
-- ETag support (`IHaveETag`, `ETagHelper`) on resource read endpoints
-- No business logic in endpoints — only in aggregates/handlers
-- No cross-tenant queries — tenant-scoped sessions throughout
-- `IBookStoreClient` Refit interfaces — no raw `HttpClient` calls
-- `ReactiveQuery<T>` for all Blazor reads; no polling
-- `QueryInvalidationService` updated for new SSE events
-- `[AllowAnonymous]` requires a `// safe: <reason>` comment above it
-- `MarkupString` in `.razor` requires a `// safe: <reason>` comment above it
-- No hardcoded `"*DEFAULT*"` or `"default"` — use `MultiTenancyConstants.*`
+Read the scoped `AGENTS.md` for each modified file (e.g., `src/BookStore.ApiService/AGENTS.md`, `src/BookStore.Web/AGENTS.md`, `tests/AGENTS.md`) and verify all Key Rules and Common Mistakes listed there are followed.
 
 **Check against OWASP Top 10:**
 - No string-interpolated SQL or Marten queries (injection)
