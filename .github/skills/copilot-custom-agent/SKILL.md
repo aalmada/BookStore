@@ -1,17 +1,15 @@
 ---
-name: agent-customization
+name: copilot-custom-agent
 description: >
-  **WORKFLOW SKILL** — Create, update, review, fix, or debug VS Code agent customization files
-  (.instructions.md, .prompt.md, .agent.md, SKILL.md, copilot-instructions.md, AGENTS.md).
-  USE FOR: saving coding preferences; troubleshooting why instructions/skills/agents are ignored
-  or not invoked; configuring applyTo patterns; defining tool restrictions; creating custom agent
-  modes or specialized workflows; packaging domain knowledge; fixing YAML frontmatter syntax.
-  DO NOT USE FOR: general coding questions (use default agent); runtime debugging or error
-  diagnosis; MCP server configuration (use MCP docs directly); VS Code extension development.
-  INVOKES: file system tools (read/write customization files), ask-questions tool (interview user
-  for requirements), subagents for codebase exploration. FOR SINGLE OPERATIONS: For quick YAML
-  frontmatter fixes or creating a single file from a known pattern, edit the file directly — no
-  skill needed.
+  Use this skill when working with GitHub Copilot custom agent files (.agent.md) in VS Code.
+  Use for: creating a new agent persona with a specific role; restricting an agent to only certain
+  tools (e.g., making an agent read-only or limiting what it can edit); pinning a model to an agent;
+  writing or refining agent body instructions; configuring handoffs or subagent orchestration;
+  adding tool sets or MCP tools to an agent's configuration; troubleshooting agents that aren't
+  showing up in the @agents picker or aren't being invoked.
+  NOT for: designing a full multi-agent squad (use copilot-squad); setting up or configuring an MCP
+  server itself; AGENTS.md or .instructions.md files (use agents-md); agents running in GitHub
+  Copilot coding agent workflows outside VS Code.
 ---
 
 # Agent Customization Skill
@@ -26,6 +24,7 @@ Read the reference files as needed:
 | `references/frontmatter.md` | All available YAML frontmatter properties |
 | `references/tools.md` | Built-in tool names organized by category |
 | `references/patterns.md` | Common patterns: orchestration, handoffs, memory, subagents |
+| `references/model-selection.md` | Available models, multipliers, profiles, fallback chains, cost tips |
 
 ---
 
@@ -128,7 +127,7 @@ description: One sentence describing what this agent does and when to use it.
 Add optional fields only when they add real value:
 - `name` — if the file name isn't the right display name
 - `tools` — to restrict from the default (all tools)
-- `model` — to pin a specific model
+- `model` — to pin a specific model (see `references/model-selection.md`; omitting inherits the user's current selection, which is often preferable)
 - `user-invocable: false` — for subagent-only agents
 - `argument-hint` — to guide users on what to type
 - `handoffs` — to suggest next steps

@@ -1,16 +1,16 @@
 ---
-name: squad-creator
+name: copilot-squad
 description: >
-  **WORKFLOW SKILL** — Use this skill whenever a user wants to create, design, or scaffold
-  a team of AI agents that work together. Triggers for: building multi-agent workflows,
-  creating specialist agents for a project (backend, frontend, reviewer, tester, etc.),
-  setting up agents that hand off work to each other, adding a new agent role to an
-  existing team, or any request like "I want agents for my X project" even when phrased
-  as wanting separate agents for separate concerns. The key signal is **multiple agents
-  cooperating** — not just one agent. Produces ready-to-use `.agent.md` files with an
-  Orchestrator, Planner, and project-tailored specialists. Does NOT trigger for:
-  configuring a single agent, fixing agent instructions, setting up MCP servers, or
-  questions about Copilot settings.
+  Use this skill when a user wants to create or expand a set of AI agents for their project
+  — any time the request involves two or more agents, a "team" or "squad" of agents, or
+  agents with distinct roles (like backend, frontend, reviewer, tester) that coordinate on
+  shared work. Triggers for: "I want agents for my project", "set up a squad of agents",
+  "create agents that work together", "add a new specialist agent to my team", or any
+  request where multiple agent roles are implied even if the word "team" isn't used. The key
+  signal is plurality — more than one agent, or adding to an existing multi-agent setup.
+  Produces ready-to-use `.agent.md` files. Does NOT trigger for: configuring or fixing a
+  single existing agent, editing AGENTS.md, setting up MCP servers, or Copilot settings
+  questions.
 ---
 
 # Squad Creator Skill
@@ -27,9 +27,10 @@ Refer to supplementary references when needed:
 |---|---|
 | `references/agent-templates.md` | Templates for each standard agent role |
 | `references/memory-conventions.md` | Memory file layout and status-log format |
-| `references/model-selection.md` | Which Copilot model to assign to each agent role |
+| `references/model-selection.md` | Role-to-model mapping for squad roles |
+| `copilot-custom-agent/references/model-selection.md` | Full model catalog: profiles, multipliers, fallback chains, cost tips |
 
-Also read the **agent-customization SKILL.md** (`.github/skills/agent-customization/SKILL.md`)
+Also read the **copilot-custom-agent SKILL.md** (`.github/skills/copilot-custom-agent/SKILL.md`)
 before writing any `.agent.md` files — it governs valid frontmatter, tool names, and file
 locations.
 
@@ -121,7 +122,7 @@ Get confirmation before proceeding to file creation.
 
 ### Step 4 — Create the Agent Files
 
-Use the **agent-customization skill** as your guide for valid frontmatter and tool names.
+Use the **copilot-custom-agent skill** as your guide for valid frontmatter and tool names.
 Read **`references/model-selection.md`** to choose the right `model:` value for each role.
 
 Create files in this order:
@@ -167,7 +168,7 @@ After creating all files, check each one:
 
 - [ ] Orchestrator workflow matches the agreed squad design
 - [ ] Every agent listed in Orchestrator's `agents:` has a corresponding `.agent.md` file
-- [ ] All `tools` values are real tool names (check `agent-customization/references/tools.md`)
+- [ ] All `tools` values are real tool names (check `copilot-custom-agent/references/tools.md`)
 - [ ] Memory file paths are consistent across all agents (same path for the same file)
 - [ ] Status protocol is present in every agent body
 - [ ] No agent other than the Orchestrator has `user-invocable: true`
@@ -240,7 +241,7 @@ Each specialist should:
    each step is delegated to a separate sub-agent invocation rather than executed in a
    single context. Add `agent` to the specialist's `tools` and use `agents: ['*']` for
    ad-hoc sub-agents. Independent steps should be invoked in the same turn (parallel).
-   See **Multi-Step Protocols and Sub-Agents** in `agent-customization/SKILL.md`.
+   See **Multi-Step Protocols and Sub-Agents** in `copilot-custom-agent/SKILL.md`.
 
 ---
 

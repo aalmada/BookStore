@@ -1,4 +1,4 @@
-"""Pytest configuration for skill-creator tests.
+"""Pytest configuration for copilot-skill-creator tests.
 
 The `copilot` SDK package is not required to be installed for the test suite
 to run. All tests mock CopilotClient and _call_copilot directly, so we only

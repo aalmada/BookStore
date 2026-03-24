@@ -14,7 +14,7 @@ Example:
 
 The script supports two directory layouts:
 
-    Workspace layout (from skill-creator iterations):
+    Workspace layout (from copilot-skill-creator iterations):
     <benchmark_dir>/
     └── eval-N/
         ├── with_skill/
