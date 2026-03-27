@@ -1,0 +1,206 @@
+{
+  "skill_name": "copilot-squad",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Add a book tagging feature to BookStore. A book can have multiple plain-string tags (e.g. 'bestseller', 'staff-pick'). Create `TagAddedToBook` and `TagRemovedFromBook` events in src/BookStore.ApiService/Events/BookEvents.cs, `AddTagToBook` and `RemoveTagFromBook` commands in src/BookStore.ApiService/Commands/Books/BookCommands.cs, Wolverine handlers in src/BookStore.ApiService/Handlers/Books/, and `POST /books/{id}/tags` and `DELETE /books/{id}/tags/{tag}` endpoints in src/BookStore.ApiService/Endpoints/BookEndpoints.cs. Update BookAggregate to track the tags list. Write unit tests in tests/BookStore.ApiService.UnitTests/ following the existing AuthorAggregateTests.cs pattern.",
+      "expected_output": "New past-tense event records TagAddedToBook and TagRemovedFromBook, command records AddTagToBook and RemoveTagFromBook, Wolverine handler methods, two new endpoints wired into BookEndpoints.cs, BookAggregate updated with a Tags property and Apply methods, and at least one TUnit test class using [Test] async Task with Bogus for data generation and Guid.CreateVersion7() throughout.",
+      "assertions": [
+        {
+          "id": "past-tense-events",
+          "text": "Event records are named in past tense: TagAddedToBook and TagRemovedFromBook appear in the output."
+        },
+        {
+          "id": "uses-create-version7",
+          "text": "Guid.CreateVersion7() is used wherever a new Guid is generated; Guid.NewGuid() does not appear in any output file."
+        },
+        {
+          "id": "uses-datetimeoffset",
+          "text": "DateTimeOffset.UtcNow is used for any timestamp; DateTime.Now and DateTime.UtcNow do not appear in output files."
+        },
+        {
+          "id": "file-scoped-namespaces",
+          "text": "All C# files use file-scoped namespace declarations (namespace Foo.Bar;) rather than braced namespace blocks."
+        },
+        {
+          "id": "test-file-created",
+          "text": "At least one test file is created or modified under tests/ containing a [Test] attribute."
+        },
+        {
+          "id": "tunit-not-xunit",
+          "text": "[Fact] and [TestMethod] attributes do not appear in any output file; [Test] is used instead."
+        },
+        {
+          "id": "bogus-test-data",
+          "text": "Test data uses Bogus (Faker<T> or new Faker()) rather than hand-rolled values."
+        },
+        {
+          "id": "loggermessage-attribute",
+          "text": "[LoggerMessage] attribute is used for logging; direct logger.LogInformation / LogWarning / LogError calls do not appear in output files."
+        },
+        {
+          "id": "aggregate-updated",
+          "text": "BookAggregate is modified to include a Tags property and Apply methods for TagAddedToBook and TagRemovedFromBook."
+        },
+        {
+          "id": "handler-created",
+          "text": "Wolverine handler methods for AddTagToBook and RemoveTagFromBook appear in at least one output file under src/BookStore.ApiService/Handlers/."
+        },
+        {
+          "id": "post-endpoint-registered",
+          "text": "A POST /books/{id}/tags or equivalent route registration appears in at least one output file."
+        },
+        {
+          "id": "delete-endpoint-registered",
+          "text": "A DELETE /books/{id}/tags/{tag} or equivalent route registration appears in at least one output file."
+        },
+        {
+          "id": "commands-created",
+          "text": "AddTagToBook and RemoveTagFromBook command records appear in at least one output file under src/BookStore.ApiService/Commands/."
+        },
+        {
+          "id": "no-datetime-now",
+          "text": "DateTime.Now does not appear in any output file."
+        },
+        {
+          "id": "no-guid-newguid",
+          "text": "Guid.NewGuid() does not appear in any output file."
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Add a 'view count' feature to BookStore. When a client calls a new `POST /books/{id}/view` endpoint, record a `BookViewed` event and increment a separate Marten read model `BookViewCount` (fields: BookId, Count) via a Marten projection in src/BookStore.ApiService/Projections/. Add the event to src/BookStore.ApiService/Events/BookEvents.cs, the command `RecordBookView` to src/BookStore.ApiService/Commands/Books/BookCommands.cs, a Wolverine handler in src/BookStore.ApiService/Handlers/Books/BookHandlers.cs, and the endpoint in src/BookStore.ApiService/Endpoints/BookEndpoints.cs. Expose the read model via GET /books/{id}/view-count. Write unit tests for the projection in tests/BookStore.ApiService.UnitTests/Projections/.",
+      "expected_output": "New BookViewed event record, RecordBookView command, Wolverine handler, two new endpoint registrations, a BookViewCount projection class implementing IProjection or SingleStreamProjection, and a projection unit test class following existing projection test patterns with [Test] async Task methods.",
+      "assertions": [
+        {
+          "id": "past-tense-event",
+          "text": "The event record is named BookViewed (past tense) and appears in at least one output file."
+        },
+        {
+          "id": "projection-class-created",
+          "text": "A class named BookViewCount or BookViewCountProjection is created in a file under src/ or appears in the output."
+        },
+        {
+          "id": "uses-create-version7",
+          "text": "Guid.CreateVersion7() is used wherever a new Guid is generated; Guid.NewGuid() does not appear in any output file."
+        },
+        {
+          "id": "file-scoped-namespaces",
+          "text": "All C# files use file-scoped namespace declarations (namespace Foo.Bar;) rather than braced blocks."
+        },
+        {
+          "id": "test-file-created",
+          "text": "At least one test file is created or modified under tests/ that exercises the projection or handler."
+        },
+        {
+          "id": "result-pattern-used",
+          "text": "The handler returns a Result type or wraps errors in ProblemDetails; naked throw statements for validation errors do not appear."
+        },
+        {
+          "id": "uses-datetimeoffset",
+          "text": "DateTimeOffset.UtcNow is used for any timestamp; DateTime.Now and DateTime.UtcNow do not appear in output files."
+        },
+        {
+          "id": "tunit-not-xunit",
+          "text": "[Fact] and [TestMethod] attributes do not appear in any output file; [Test] is used instead."
+        },
+        {
+          "id": "bogus-test-data",
+          "text": "Test data uses Bogus (Faker<T> or new Faker()) rather than hand-rolled values in the unit tests."
+        },
+        {
+          "id": "loggermessage-attribute",
+          "text": "[LoggerMessage] is used for logging; direct _logger.LogInformation / LogWarning / LogError calls do not appear."
+        },
+        {
+          "id": "handler-created",
+          "text": "A Wolverine handler method for RecordBookView appears in at least one output file under src/BookStore.ApiService/Handlers/."
+        },
+        {
+          "id": "post-endpoint-registered",
+          "text": "A POST /books/{id}/view or equivalent route registration appears in at least one output file."
+        },
+        {
+          "id": "get-viewcount-endpoint",
+          "text": "A GET /books/{id}/view-count or equivalent route is defined in at least one output file."
+        },
+        {
+          "id": "command-created",
+          "text": "A RecordBookView command record appears in at least one output file under src/BookStore.ApiService/Commands/."
+        },
+        {
+          "id": "no-guid-newguid",
+          "text": "Guid.NewGuid() does not appear in any output file."
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Add a featured-books section to the BookStore Blazor frontend. Create a new Blazor component at src/BookStore.Web/Components/Catalog/FeaturedBooks.razor that fetches books where IsFeatured is true via the existing IBookStoreClient and displays up to 6 featured books as cards with title and cover image. Integrate the component into the main catalog page (src/BookStore.Web/Components/Catalog/). Add a GET /books/featured endpoint in src/BookStore.ApiService/Endpoints/BookEndpoints.cs backed by a Marten query on the BookSearchProjection. Write a bUnit component test in tests/BookStore.Web.UnitTests/ verifying the component renders correctly when the client returns a non-empty list.",
+      "expected_output": "A new FeaturedBooks.razor component that injects IBookStoreClient and renders books, a new /books/featured API endpoint, and a bUnit test class using [Test] async Task with NSubstitute to mock IBookStoreClient.",
+      "assertions": [
+        {
+          "id": "razor-component-created",
+          "text": "A file named FeaturedBooks.razor is created and appears in the output."
+        },
+        {
+          "id": "uses-ibookstoreclient",
+          "text": "IBookStoreClient is used in the component or service layer; direct HttpClient usage does not appear."
+        },
+        {
+          "id": "featured-endpoint-created",
+          "text": "A /books/featured or equivalent route is defined in at least one output file."
+        },
+        {
+          "id": "test-file-created",
+          "text": "At least one test file is created under tests/ that references FeaturedBooks or the featured endpoint."
+        },
+        {
+          "id": "no-hardcoded-delays",
+          "text": "Task.Delay and Thread.Sleep do not appear in any output file."
+        },
+        {
+          "id": "uses-create-version7",
+          "text": "Guid.CreateVersion7() is used wherever a new Guid is generated; Guid.NewGuid() does not appear in any output file."
+        },
+        {
+          "id": "file-scoped-namespaces",
+          "text": "All C# files use file-scoped namespace declarations (namespace Foo.Bar;) rather than braced namespace blocks."
+        },
+        {
+          "id": "tunit-not-xunit",
+          "text": "[Fact] and [TestMethod] attributes do not appear in any output file; [Test] is used instead."
+        },
+        {
+          "id": "nsubstitute-mock",
+          "text": "NSubstitute is used to mock IBookStoreClient or equivalent in at least one test file."
+        },
+        {
+          "id": "loggermessage-attribute",
+          "text": "[LoggerMessage] is used for any backend logging; direct _logger.Log* calls do not appear in output files."
+        },
+        {
+          "id": "no-guid-newguid",
+          "text": "Guid.NewGuid() does not appear in any output file."
+        },
+        {
+          "id": "no-datetime-now",
+          "text": "DateTime.Now does not appear in any output file."
+        },
+        {
+          "id": "api-endpoint-in-bookendpoints",
+          "text": "The featured endpoint registration appears in at least one output file under src/BookStore.ApiService/Endpoints/."
+        },
+        {
+          "id": "component-integrated",
+          "text": "FeaturedBooks component is referenced in at least one page or parent Blazor component in the output."
+        },
+        {
+          "id": "ibooksclient-method-added",
+          "text": "A GetFeaturedBooksAsync or equivalent method is added to IBooksClient or the client interface in at least one output file."
+        }
+      ]
+    }
+  ]
+}

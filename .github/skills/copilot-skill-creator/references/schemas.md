@@ -4,9 +4,9 @@ This document defines the JSON schemas used by copilot-skill-creator.
 
 ---
 
-## evals.json
+## skill-evals.json
 
-Defines the evals for a skill. Located at `evals/evals.json` within the skill directory.
+Defines the evals for a skill. Located at `evals/skill-evals.json` within the skill directory.
 
 ```json
 {

@@ -1,0 +1,206 @@
+{
+  "skill_name": "copilot-squad",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Add a book stock management feature to BookStore. A book should track its available stock quantity. Create a `BookStockSet` event in src/BookStore.ApiService/Events/BookEvents.cs, a `SetBookStock` command in src/BookStore.ApiService/Commands/Books/BookCommands.cs with a Quantity property (must be >= 0), a Wolverine handler in src/BookStore.ApiService/Handlers/Books/BookHandlers.cs, and a `PUT /books/{id}/stock` endpoint in src/BookStore.ApiService/Endpoints/BookEndpoints.cs. Update BookAggregate (src/BookStore.ApiService/Aggregates/BookAggregate.cs) with a StockQuantity int property and an Apply method for BookStockSet. Additionally, create a second event `BookStockDepleted` that is emitted when StockQuantity reaches zero after a sale or another mutation (decide the appropriate trigger). Add logging via [LoggerMessage] in src/BookStore.ApiService/Infrastructure/Logging/Log.Books.cs. Write unit tests in tests/BookStore.ApiService.UnitTests/ following the existing aggregate test pattern with Bogus for test data.",
+      "expected_output": "New past-tense event records BookStockSet and BookStockDepleted in BookEvents.cs, SetBookStock command record, Wolverine handler method, PUT /books/{id}/stock endpoint in BookEndpoints.cs, BookAggregate updated with StockQuantity property and Apply methods, [LoggerMessage] entries for stock operations, and TUnit test class(es) using [Test] async Task with Bogus for data and Guid.CreateVersion7().",
+      "assertions": [
+        {
+          "id": "past-tense-events",
+          "text": "Event records are named in past tense: BookStockSet and BookStockDepleted appear in the output."
+        },
+        {
+          "id": "uses-create-version7",
+          "text": "Guid.CreateVersion7() is used wherever a new Guid is generated; Guid.NewGuid() does not appear in any output file."
+        },
+        {
+          "id": "uses-datetimeoffset",
+          "text": "DateTimeOffset.UtcNow is used for any timestamp; DateTime.Now and DateTime.UtcNow do not appear in output files."
+        },
+        {
+          "id": "file-scoped-namespaces",
+          "text": "All C# files use file-scoped namespace declarations (namespace Foo.Bar;) rather than braced namespace blocks."
+        },
+        {
+          "id": "loggermessage-attribute",
+          "text": "[LoggerMessage] attribute is used for logging; direct logger.LogInformation / LogWarning / LogError calls do not appear in output files."
+        },
+        {
+          "id": "test-file-created",
+          "text": "At least one test file is created or modified under tests/ containing a [Test] attribute covering stock scenarios."
+        },
+        {
+          "id": "tunit-not-xunit",
+          "text": "[Fact] and [TestMethod] attributes do not appear in any output file; [Test] is used instead."
+        },
+        {
+          "id": "bogus-test-data",
+          "text": "Test data uses Bogus (Faker<T> or new Faker()) rather than hand-rolled values."
+        },
+        {
+          "id": "aggregate-updated",
+          "text": "BookAggregate is modified to include a StockQuantity property and at least one Apply method for BookStockSet."
+        },
+        {
+          "id": "handler-created",
+          "text": "A Wolverine handler method for SetBookStock appears in at least one output file under src/BookStore.ApiService/Handlers/."
+        },
+        {
+          "id": "endpoint-registered",
+          "text": "A PUT /books/{id}/stock or equivalent route registration appears in at least one output file."
+        },
+        {
+          "id": "depletion-logic",
+          "text": "BookStockDepleted event emission logic is present — the event is raised when StockQuantity reaches zero."
+        },
+        {
+          "id": "command-created",
+          "text": "A SetBookStock command record with a Quantity property appears in at least one output file under src/BookStore.ApiService/Commands/."
+        },
+        {
+          "id": "no-datetime-now",
+          "text": "DateTime.Now does not appear in any output file."
+        },
+        {
+          "id": "no-guid-newguid",
+          "text": "Guid.NewGuid() does not appear in any output file."
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Add an author bio update feature to BookStore. Authors should be able to have a biography text field. Create an `AuthorBioUpdated` event in src/BookStore.ApiService/Events/AuthorEvents.cs (or create this file if it doesn't exist), an `UpdateAuthorBio` command in src/BookStore.ApiService/Commands/Authors/AuthorCommands.cs (or create this file), a Wolverine handler in src/BookStore.ApiService/Handlers/Authors/AuthorHandlers.cs (or create this file), and a `PUT /authors/{id}/bio` endpoint in src/BookStore.ApiService/Endpoints/AuthorEndpoints.cs (or create this file). Update the AuthorAggregate (find it in src/BookStore.ApiService/Aggregates/) with a Bio string property and Apply method. Add an error code for 'author not found' using the Result pattern consistent with existing error codes. Add [LoggerMessage] logging for the bio update operation. Write unit tests in tests/BookStore.ApiService.UnitTests/ following the AuthorAggregateTests.cs or similar existing pattern.",
+      "expected_output": "New AuthorBioUpdated past-tense event record, UpdateAuthorBio command record, Wolverine handler, PUT /authors/{id}/bio endpoint, AuthorAggregate updated with Bio property and Apply method, Result pattern used in handler, [LoggerMessage] for logging, and TUnit test class with [Test] async Task methods.",
+      "assertions": [
+        {
+          "id": "past-tense-event",
+          "text": "The event record is named AuthorBioUpdated (past tense) and appears in at least one output file."
+        },
+        {
+          "id": "result-pattern-used",
+          "text": "The handler uses the Result pattern (Result<T> or equivalent); naked throw statements for validation errors do not appear."
+        },
+        {
+          "id": "uses-create-version7",
+          "text": "Guid.CreateVersion7() is used wherever a new Guid is generated; Guid.NewGuid() does not appear in any output file."
+        },
+        {
+          "id": "file-scoped-namespaces",
+          "text": "All C# files use file-scoped namespace declarations (namespace Foo.Bar;) rather than braced blocks."
+        },
+        {
+          "id": "loggermessage-attribute",
+          "text": "[LoggerMessage] is used for logging; direct _logger.LogInformation / LogWarning / LogError calls do not appear."
+        },
+        {
+          "id": "test-file-created",
+          "text": "At least one test file is created or modified under tests/ covering the AuthorAggregate bio update."
+        },
+        {
+          "id": "tunit-not-xunit",
+          "text": "[Fact] and [TestMethod] do not appear in any output file; [Test] is used instead."
+        },
+        {
+          "id": "bogus-test-data",
+          "text": "Test data uses Bogus (Faker<T> or new Faker()) rather than hand-rolled values in the unit tests."
+        },
+        {
+          "id": "aggregate-bio-updated",
+          "text": "AuthorAggregate is modified to include a Bio string property and an Apply method for AuthorBioUpdated."
+        },
+        {
+          "id": "handler-created",
+          "text": "A Wolverine handler method for UpdateAuthorBio appears in at least one output file under src/BookStore.ApiService/Handlers/."
+        },
+        {
+          "id": "endpoint-registered",
+          "text": "A PUT /authors/{id}/bio or equivalent route registration appears in at least one output file."
+        },
+        {
+          "id": "error-code-defined",
+          "text": "An error code for author-not-found (e.g. AuthorNotFound, NotFound, or similar) is defined or referenced in at least one output file."
+        },
+        {
+          "id": "command-created",
+          "text": "An UpdateAuthorBio command record with a Bio property appears in at least one output file under src/BookStore.ApiService/Commands/."
+        },
+        {
+          "id": "no-datetime-now",
+          "text": "DateTime.Now does not appear in any output file."
+        },
+        {
+          "id": "no-guid-newguid",
+          "text": "Guid.NewGuid() does not appear in any output file."
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Add a book category feature to BookStore. A book can be assigned to a category (a plain string like 'Fiction', 'Science', 'History'). Create a `BookCategorySet` event in src/BookStore.ApiService/Events/BookEvents.cs, a `SetBookCategory` command in src/BookStore.ApiService/Commands/Books/BookCommands.cs, a Wolverine handler in src/BookStore.ApiService/Handlers/Books/BookHandlers.cs, and a `PUT /books/{id}/category` endpoint in src/BookStore.ApiService/Endpoints/BookEndpoints.cs. Update BookAggregate with a Category string property and Apply method. Update the BookSearchProjection (src/BookStore.ApiService/Projections/) to include a Category field so books can be filtered by category. Add a GET /books/categories endpoint that returns distinct category values. Add an optional ?category= query parameter to the existing search endpoint to filter by category. Write unit tests for the aggregate and projection in tests/BookStore.ApiService.UnitTests/.",
+      "expected_output": "New BookCategorySet past-tense event record, SetBookCategory command, Wolverine handler, PUT /books/{id}/category endpoint, GET /books/categories endpoint, optional ?category filter on search, BookAggregate updated with Category property and Apply method, BookSearchProjection updated with Category field, and TUnit test class(es) using [Test] async Task.",
+      "assertions": [
+        {
+          "id": "past-tense-event",
+          "text": "The event record is named BookCategorySet (past tense) and appears in at least one output file."
+        },
+        {
+          "id": "uses-create-version7",
+          "text": "Guid.CreateVersion7() is used wherever a new Guid is generated; Guid.NewGuid() does not appear in any output file."
+        },
+        {
+          "id": "uses-datetimeoffset",
+          "text": "DateTimeOffset.UtcNow is used for any timestamp; DateTime.Now and DateTime.UtcNow do not appear in output files."
+        },
+        {
+          "id": "file-scoped-namespaces",
+          "text": "All C# files use file-scoped namespace declarations (namespace Foo.Bar;) rather than braced blocks."
+        },
+        {
+          "id": "projection-updated",
+          "text": "A file containing BookSearchProjection or a new projection is created/modified and includes a Category field."
+        },
+        {
+          "id": "categories-endpoint-created",
+          "text": "A GET /books/categories or equivalent endpoint is defined in at least one output file."
+        },
+        {
+          "id": "test-file-created",
+          "text": "At least one test file is created under tests/ containing [Test] attribute."
+        },
+        {
+          "id": "tunit-not-xunit",
+          "text": "[Fact] and [TestMethod] do not appear in any output file; [Test] is used instead."
+        },
+        {
+          "id": "aggregate-category-updated",
+          "text": "BookAggregate is modified to include a Category string property and an Apply method for BookCategorySet."
+        },
+        {
+          "id": "handler-created",
+          "text": "A Wolverine handler method for SetBookCategory appears in at least one output file under src/BookStore.ApiService/Handlers/."
+        },
+        {
+          "id": "put-endpoint-registered",
+          "text": "A PUT /books/{id}/category or equivalent route registration appears in at least one output file."
+        },
+        {
+          "id": "search-filter-added",
+          "text": "An optional ?category= query parameter is added to the books search or list endpoint in at least one output file."
+        },
+        {
+          "id": "command-created",
+          "text": "A SetBookCategory command record with a Category property appears in at least one output file under src/BookStore.ApiService/Commands/."
+        },
+        {
+          "id": "no-datetime-now",
+          "text": "DateTime.Now does not appear in any output file."
+        },
+        {
+          "id": "no-guid-newguid",
+          "text": "Guid.NewGuid() does not appear in any output file."
+        }
+      ]
+    }
+  ]
+}

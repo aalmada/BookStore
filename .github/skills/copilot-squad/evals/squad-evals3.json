@@ -1,0 +1,206 @@
+{
+  "skill_name": "copilot-squad",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Add an author nationality feature to BookStore. Authors should be able to record the country they are from. Create an `AuthorNationalitySet` event in src/BookStore.ApiService/Events/AuthorEvents.cs, an `SetAuthorNationality` command in src/BookStore.ApiService/Commands/Authors/AuthorCommands.cs, a Wolverine handler in src/BookStore.ApiService/Handlers/Authors/AuthorHandlers.cs, and a `PUT /authors/{id}/nationality` endpoint in src/BookStore.ApiService/Endpoints/AuthorEndpoints.cs. Update AuthorAggregate (src/BookStore.ApiService/Aggregates/AuthorAggregate.cs) with a Nationality string property and an Apply method. Update the AuthorProjection (src/BookStore.ApiService/Projections/AuthorProjection.cs) to include a Nationality field. Add an optional ?nationality= query filter to the existing author search or listing endpoint. Add [LoggerMessage] logging entries to src/BookStore.ApiService/Infrastructure/Logging/Log.Authors.cs (create if missing). Use the Result pattern for error handling consistent with the existing pattern (author-not-found error code). Write unit tests for the aggregate in tests/BookStore.ApiService.UnitTests/ following the existing AuthorAggregateTests.cs pattern with Bogus for test data.",
+      "expected_output": "AuthorNationalitySet past-tense event record in AuthorEvents.cs, SetAuthorNationality command record with a CountryCode or Nationality string property, Wolverine handler method for SetAuthorNationality, PUT /authors/{id}/nationality endpoint, AuthorAggregate updated with Nationality property and Apply method, AuthorProjection updated with Nationality field, optional ?nationality= filter on author listing, [LoggerMessage] for the update operation, Result pattern used in handler, and a TUnit test class with [Test] async Task methods and Bogus for test data.",
+      "assertions": [
+        {
+          "id": "past-tense-event",
+          "text": "The event record is named AuthorNationalitySet (past tense) and appears in at least one output file."
+        },
+        {
+          "id": "uses-create-version7",
+          "text": "Guid.CreateVersion7() is used wherever a new Guid is generated; Guid.NewGuid() does not appear in any output file."
+        },
+        {
+          "id": "uses-datetimeoffset",
+          "text": "DateTimeOffset.UtcNow is used for any timestamp; DateTime.Now and DateTime.UtcNow do not appear in output files."
+        },
+        {
+          "id": "file-scoped-namespaces",
+          "text": "All C# files use file-scoped namespace declarations (namespace Foo.Bar;) rather than braced namespace blocks."
+        },
+        {
+          "id": "loggermessage-attribute",
+          "text": "[LoggerMessage] attribute is used for logging; direct logger.LogInformation / LogWarning / LogError calls do not appear in output files."
+        },
+        {
+          "id": "test-file-created",
+          "text": "At least one test file is created under tests/ containing [Test] attribute covering the nationality feature."
+        },
+        {
+          "id": "tunit-not-xunit",
+          "text": "[Fact] and [TestMethod] do not appear in any output file; [Test] is used instead."
+        },
+        {
+          "id": "bogus-test-data",
+          "text": "Test data uses Bogus (Faker<T> or new Faker()) rather than hand-rolled values."
+        },
+        {
+          "id": "aggregate-updated",
+          "text": "AuthorAggregate is modified to include a Nationality property and an Apply method for AuthorNationalitySet."
+        },
+        {
+          "id": "handler-created",
+          "text": "A Wolverine handler method for SetAuthorNationality appears in at least one output file under src/BookStore.ApiService/Handlers/Authors/."
+        },
+        {
+          "id": "put-endpoint-registered",
+          "text": "A PUT /authors/{id}/nationality or equivalent route registration appears in at least one output file."
+        },
+        {
+          "id": "projection-updated",
+          "text": "AuthorProjection is modified to include a Nationality field and applies the AuthorNationalitySet event."
+        },
+        {
+          "id": "command-created",
+          "text": "A SetAuthorNationality command record appears in at least one output file under src/BookStore.ApiService/Commands/Authors/."
+        },
+        {
+          "id": "no-datetime-now",
+          "text": "DateTime.Now does not appear in any output file."
+        },
+        {
+          "id": "no-guid-newguid",
+          "text": "Guid.NewGuid() does not appear in any output file."
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Add a book award nomination feature to BookStore. A book can be nominated for a named award in a given year (e.g. 'Booker Prize', 2024). Create a `BookNominatedForAward` event in src/BookStore.ApiService/Events/BookEvents.cs with AwardName (string) and Year (int) properties, a `NominateBookForAward` command in src/BookStore.ApiService/Commands/Books/BookCommands.cs, a Wolverine handler in src/BookStore.ApiService/Handlers/Books/BookHandlers.cs, and a `POST /books/{id}/nominations` endpoint in src/BookStore.ApiService/Endpoints/BookEndpoints.cs. Update BookAggregate (src/BookStore.ApiService/Aggregates/BookAggregate.cs) with a Nominations list property (each item has AwardName and Year) and an Apply method for the new event. Create a `BookNomination` value-object record to hold AwardName and Year. Add a `GET /books/award-nominees` endpoint that returns books that have at least one nomination (query from BookSearchProjection or a new lightweight projection — your choice). Update BookSearchProjection to include a HasNominations bool field. Add [LoggerMessage] for the nominaton operation. Write unit tests for the aggregate in tests/BookStore.ApiService.UnitTests/ following the existing pattern with Bogus for test data.",
+      "expected_output": "BookNominatedForAward past-tense event record with AwardName and Year, NominateBookForAward command, BookNomination value record, Wolverine handler, POST /books/{id}/nominations endpoint, GET /books/award-nominees endpoint, BookAggregate updated with Nominations list and Apply method, BookSearchProjection updated with HasNominations bool, [LoggerMessage] for nominations, and TUnit test class(es) with [Test] async Task and Bogus for data.",
+      "assertions": [
+        {
+          "id": "past-tense-event",
+          "text": "The event record is named BookNominatedForAward (past tense) and appears in at least one output file."
+        },
+        {
+          "id": "uses-create-version7",
+          "text": "Guid.CreateVersion7() is used wherever a new Guid is generated; Guid.NewGuid() does not appear in any output file."
+        },
+        {
+          "id": "uses-datetimeoffset",
+          "text": "DateTimeOffset.UtcNow is used for any timestamp; DateTime.Now and DateTime.UtcNow do not appear in output files."
+        },
+        {
+          "id": "file-scoped-namespaces",
+          "text": "All C# files use file-scoped namespace declarations (namespace Foo.Bar;) rather than braced namespace blocks."
+        },
+        {
+          "id": "loggermessage-attribute",
+          "text": "[LoggerMessage] attribute is used for logging; direct logger.LogInformation / LogWarning / LogError calls do not appear in output files."
+        },
+        {
+          "id": "test-file-created",
+          "text": "At least one test file is created under tests/ containing [Test] attribute covering the award nomination feature."
+        },
+        {
+          "id": "tunit-not-xunit",
+          "text": "[Fact] and [TestMethod] do not appear in any output file; [Test] is used instead."
+        },
+        {
+          "id": "bogus-test-data",
+          "text": "Test data uses Bogus (Faker<T> or new Faker()) rather than hand-rolled values."
+        },
+        {
+          "id": "aggregate-updated",
+          "text": "BookAggregate is modified to include a Nominations list property and an Apply method for BookNominatedForAward."
+        },
+        {
+          "id": "handler-created",
+          "text": "A Wolverine handler method for NominateBookForAward appears in at least one output file under src/BookStore.ApiService/Handlers/Books/."
+        },
+        {
+          "id": "post-endpoint-registered",
+          "text": "A POST /books/{id}/nominations or equivalent route registration appears in at least one output file."
+        },
+        {
+          "id": "award-nominees-endpoint",
+          "text": "A GET /books/award-nominees or equivalent listing endpoint is defined in at least one output file."
+        },
+        {
+          "id": "command-created",
+          "text": "A NominateBookForAward command record with AwardName and Year properties appears in at least one output file under src/BookStore.ApiService/Commands/Books/."
+        },
+        {
+          "id": "no-datetime-now",
+          "text": "DateTime.Now does not appear in any output file."
+        },
+        {
+          "id": "no-guid-newguid",
+          "text": "Guid.NewGuid() does not appear in any output file."
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Add a publisher description feature to BookStore. Publishers should be able to store an 'about us' biography text. Create a `PublisherDescriptionUpdated` event in src/BookStore.ApiService/Events/PublisherEvents.cs, an `UpdatePublisherDescription` command in src/BookStore.ApiService/Commands/Publishers/PublisherCommands.cs, a Wolverine handler in src/BookStore.ApiService/Handlers/Publishers/PublisherHandlers.cs, and a `PUT /publishers/{id}/description` endpoint in src/BookStore.ApiService/Endpoints/PublisherEndpoints.cs (or AdminPublisherEndpoints.cs — match the existing pattern). Update PublisherAggregate (src/BookStore.ApiService/Aggregates/PublisherAggregate.cs) with a Description string property and an Apply method for the new event. Update PublisherProjection (src/BookStore.ApiService/Projections/PublisherProjection.cs) to include the Description field. Add validation in the command or handler: Description must not exceed 2000 characters; return a typed error using the Result pattern and produce a ProblemDetails response for invalid input. Add [LoggerMessage] for the update operation in src/BookStore.ApiService/Infrastructure/Logging/Log.Publishers.cs (create if missing). Write unit tests in tests/BookStore.ApiService.UnitTests/ following the existing aggregate test pattern, including a test that verifies the validation rejects descriptions over 2000 characters. Use Bogus for test data.",
+      "expected_output": "PublisherDescriptionUpdated past-tense event record, UpdatePublisherDescription command record, Wolverine handler with 2000-character validation using Result pattern returning ProblemDetails, PUT /publishers/{id}/description endpoint, PublisherAggregate updated with Description property and Apply method, PublisherProjection updated with Description field, [LoggerMessage] for the update, and TUnit test class(es) with [Test] async Task including a test for the length validation, using Bogus for test data.",
+      "assertions": [
+        {
+          "id": "past-tense-event",
+          "text": "The event record is named PublisherDescriptionUpdated (past tense) and appears in at least one output file."
+        },
+        {
+          "id": "uses-create-version7",
+          "text": "Guid.CreateVersion7() is used wherever a new Guid is generated; Guid.NewGuid() does not appear in any output file."
+        },
+        {
+          "id": "uses-datetimeoffset",
+          "text": "DateTimeOffset.UtcNow is used for any timestamp; DateTime.Now and DateTime.UtcNow do not appear in output files."
+        },
+        {
+          "id": "file-scoped-namespaces",
+          "text": "All C# files use file-scoped namespace declarations (namespace Foo.Bar;) rather than braced namespace blocks."
+        },
+        {
+          "id": "loggermessage-attribute",
+          "text": "[LoggerMessage] attribute is used for logging; direct logger.LogInformation / LogWarning / LogError calls do not appear in output files."
+        },
+        {
+          "id": "test-file-created",
+          "text": "At least one test file is created under tests/ containing [Test] attribute covering the publisher description feature."
+        },
+        {
+          "id": "tunit-not-xunit",
+          "text": "[Fact] and [TestMethod] do not appear in any output file; [Test] is used instead."
+        },
+        {
+          "id": "bogus-test-data",
+          "text": "Test data uses Bogus (Faker<T> or new Faker()) rather than hand-rolled values."
+        },
+        {
+          "id": "aggregate-updated",
+          "text": "PublisherAggregate is modified to include a Description property and an Apply method for PublisherDescriptionUpdated."
+        },
+        {
+          "id": "handler-created",
+          "text": "A Wolverine handler method for UpdatePublisherDescription appears in at least one output file under src/BookStore.ApiService/Handlers/Publishers/."
+        },
+        {
+          "id": "put-endpoint-registered",
+          "text": "A PUT /publishers/{id}/description or equivalent route registration appears in at least one output file."
+        },
+        {
+          "id": "validation-result-pattern",
+          "text": "A 2000-character length validation is present in handler or command, using the Result pattern (not throw), producing a typed error or ProblemDetails response."
+        },
+        {
+          "id": "projection-updated",
+          "text": "PublisherProjection is modified to include a Description field and applies the PublisherDescriptionUpdated event."
+        },
+        {
+          "id": "no-datetime-now",
+          "text": "DateTime.Now does not appear in any output file."
+        },
+        {
+          "id": "no-guid-newguid",
+          "text": "Guid.NewGuid() does not appear in any output file."
+        }
+      ]
+    }
+  ]
+}

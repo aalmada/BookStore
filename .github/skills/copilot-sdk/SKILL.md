@@ -178,7 +178,9 @@ Events are dispatched via `session.on(callback)`. Key event types (access via `e
 |---|---|
 | `"assistant.message"` | Full response text is ready (`event.data.content`) |
 | `"assistant.message_delta"` | Streaming chunk (`event.data.delta_content`) |
+| `"assistant.usage"` | LLM API call completed — token counts and cost data (`event.data.input_tokens`, `event.data.output_tokens`, `event.data.cache_read_tokens`, `event.data.cache_write_tokens`, `event.data.cost`) |
 | `"session.idle"` | No active processing — safe to proceed |
+| `"session.shutdown"` | Session ended — `event.data.model_metrics` contains per-model aggregated usage (`Usage.input_tokens`, `Usage.output_tokens`, `Usage.cache_read_tokens`, `Usage.cache_write_tokens`) |
 | `"tool.execution_start"` | Tool invocation started |
 | `"tool.execution_complete"` | Tool execution finished |
 | `"session.error"` | Error occurred |
@@ -199,6 +201,45 @@ await session.send("Your prompt here")
 await done.wait()
 response_text = result[0] if result else ""
 ```
+
+## Token Usage Tracking
+
+Use the `assistant.usage` event to accumulate real LLM token counts across an entire
+session. It fires once per API call (including sub-agent calls) and carries
+per-request token data.
+
+```python
+input_tokens = 0
+output_tokens = 0
+
+def on_event(event):
+    if event.type.value == "assistant.message":
+        result.append(event.data.content)
+    elif event.type.value == "assistant.usage":
+        nonlocal input_tokens, output_tokens
+        input_tokens += int(event.data.input_tokens or 0)
+        output_tokens += int(event.data.output_tokens or 0)
+    elif event.type.value == "session.idle":
+        done.set()
+```
+
+**Fields on `event.data` for `assistant.usage`:**
+
+| Field | Type | Description |
+|---|---|---|
+| `input_tokens` | `float \| None` | Input tokens consumed by this API call |
+| `output_tokens` | `float \| None` | Output tokens produced by this API call |
+| `cache_read_tokens` | `float \| None` | Tokens read from prompt cache |
+| `cache_write_tokens` | `float \| None` | Tokens written to prompt cache |
+| `cost` | `float \| None` | Model multiplier cost for billing |
+| `model` | `str \| None` | Model used for this API call |
+| `parent_tool_call_id` | `str \| None` | Set when the call originated from a sub-agent |
+| `copilot_usage` | `CopilotUsage \| None` | Itemised billing data (`token_details`, `total_nano_aiu`) |
+
+**`session.shutdown` carries aggregated per-model totals** via `event.data.model_metrics`
+(a `dict[str, ModelMetric]` keyed by model identifier). Each `ModelMetric` has:
+- `usage.input_tokens` / `usage.output_tokens` / `usage.cache_read_tokens` / `usage.cache_write_tokens` — cumulative totals across all requests to that model
+- `requests.count` / `requests.cost` — request count and cumulative billing cost
 
 ## Streaming
 

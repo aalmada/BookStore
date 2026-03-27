@@ -280,3 +280,196 @@ Before handing back to the user, confirm:
 - [ ] Specialists with 3+ protocol steps use sub-agents per step (`agent` in tools, steps invoke sub-agents)
 - [ ] Specialists have `disable-model-invocation: true`; Orchestrator lists them explicitly in `agents:`
 - [ ] User was shown the final squad design and confirmed it
+
+---
+
+## Evaluating Squad Performance
+
+The skill ships a benchmark harness in `scripts/` that measures whether a squad improves
+output quality compared to running without any squad. Run it after creating or changing
+agents to validate the change objectively.
+
+### How It Works
+
+For every eval in `evals/squad-evals.json` the harness:
+1. Runs the task prompt with **no agent** (`without_squad`)
+2. Runs the same prompt through **each provided orchestrator** (`with_squad-<stem>`)
+3. Grades every run's output against the eval assertions using the Copilot SDK as grader
+4. Aggregates all results into `benchmark.json` with mean/stddev pass-rate per config
+
+The squad **must exist before calling the benchmark** — the harness does not create agents.
+
+**Mandatory isolation rule:** Every benchmark run must execute with git worktree isolation.
+Do not run or document any benchmark flow that bypasses worktrees.
+
+### Directory Layout Produced
+
+```
+<output-dir>/
+├── eval-1/
+│   ├── without_squad/
+│   │   └── run-1/
+│   │       ├── outputs/task/       # files written by the model
+│   │       ├── eval_metadata.json
+│   │       ├── timing.json
+│   │       └── grading.json
+│   ├── with_squad-Orchestrator/    # one directory per orchestrator
+│   │   └── run-1/ ...
+│   └── with_squad-OtherOrch/
+│       └── run-1/ ...
+├── eval-2/ ...
+├── benchmark.json                  # aggregated stats + printed summary table
+└── review.html                     # standalone viewer (headless environments only)
+```
+
+### Running the Benchmark
+
+Before running any benchmark command, verify the workspace is a git repository (required
+because the harness always creates a git worktree per eval run):
+
+```bash
+git -C <workspace-root> rev-parse --is-inside-work-tree
+```
+
+If this check fails, stop and initialize git first. Do not continue without worktrees.
+
+```bash
+cd .github/skills/copilot-squad
+
+# Single orchestrator — compare squad vs no squad
+python -m scripts.run_benchmark \
+  --eval-set evals/squad-evals.json \
+  --skill-path . \
+  --orchestrators .github/agents/Orchestrator.agent.md
+
+# Compare multiple orchestrators against each other and against no squad
+python -m scripts.run_benchmark \
+  --eval-set evals/squad-evals.json \
+  --skill-path . \
+  --orchestrators .github/agents/Orchestrator-v1.agent.md \
+                  .github/agents/Orchestrator-v2.agent.md
+
+# Useful flags
+  --output-dir benchmarks/my-run      # default: benchmarks/<ISO-timestamp>
+  --eval-ids 1,2                       # run only specific eval IDs
+  --runs-per-config 3                  # multiple runs for variance analysis
+  --model gpt-4.1                      # pin model for all runs
+  --grade-only                         # skip exec, re-grade existing runs
+  --previous-workspace benchmarks/old  # show previous iteration in viewer
+  --no-viewer                          # skip auto-launch (CI environments)
+  --verbose                            # print progress to stderr
+```
+
+### Viewing Results
+
+After the benchmark completes, the viewer opens automatically:
+
+- **Display available**: A local HTTP server starts and your browser opens at
+  `http://localhost:3117`. The page updates on refresh — you can re-run individual
+  evals and refresh without restarting the server.
+- **Headless / CI**: A standalone `review.html` is written to the output directory
+  instead. Open it in any browser to review results.
+
+To **re-open the viewer** after the fact (or to point `--previous-workspace` at an
+earlier run for comparison):
+
+```bash
+python eval-viewer/generate_review.py benchmarks/my-run \
+  --skill-name copilot-squad \
+  --benchmark benchmarks/my-run/benchmark.json \
+  [--previous-workspace benchmarks/older-run]
+```
+
+#### What the user sees
+
+The viewer has two tabs:
+
+**Outputs tab** — one card per test-case run:
+- **Prompt**: the task that was sent to the agent
+- **Config badge**: `with squad` (blue) or `without squad` (amber) — use this to compare
+  the two configs side by side while navigating
+- **Output**: files written during the run, rendered inline (text, code, images)
+- **Previous Output** (when `--previous-workspace` is supplied): collapsed section showing
+  the prior iteration's output for direct comparison
+- **Formal Grades**: collapsed pass/fail per assertion with supporting evidence
+- **Feedback**: text box that auto-saves as you type
+
+**Benchmark tab** — quantitative summary:
+- Pass rate, time, and token usage for each configuration (mean ± stddev)
+- Delta column shows the squad's improvement over baseline
+- Per-eval breakdown with per-assertion pass/fail across all runs
+
+When finished reviewing, the user clicks **Submit All Reviews**. This saves all feedback to
+`feedback.json` in the output directory.
+
+Tell the user something like: "I've opened the results in your browser. The **Outputs** tab
+lets you click through each test case and leave notes; the **Benchmark** tab shows the
+quantitative comparison. When you're done, come back and let me know."
+
+#### Reading feedback
+
+After the user returns, read `feedback.json`:
+
+```json
+{
+  "reviews": [
+    {"run_id": "eval-1-with_squad-Orchestrator-run-1", "feedback": "missing file header", "timestamp": "..."},
+    {"run_id": "eval-2-with_squad-Orchestrator-run-1", "feedback": "", "timestamp": "..."},
+  ],
+  "status": "complete"
+}
+```
+
+Empty feedback means the user was satisfied. Focus improvements on runs where the user
+left specific complaints.
+
+#### Iterative improvement loop
+
+```
+run_benchmark → review in viewer → improve agents → re-run with --previous-workspace
+```
+
+Repeat until:
+- All feedback is empty (everything looks good), or
+- The user says they're happy
+
+Keep going — one iteration of improvement rarely gets you to the finish line.
+
+### Eval File Format (`evals/squad-evals.json`)
+
+```jsonc
+{
+  "skill_name": "copilot-squad",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Task description sent verbatim to the agent",
+      "expected_output": "Human-readable description of ideal output (used as grader context)",
+      "assertions": [
+        { "id": "creates-entity", "text": "A JPA entity class is created" },
+        { "id": "uses-annotations", "text": "Spring annotations are used correctly" }
+      ]
+    }
+  ]
+}
+```
+
+Write `assertion.text` as **observable facts** that can be verified from the output files —
+e.g. "A file named X is created", "The endpoint returns Y". Avoid vague criteria like
+"the code is correct".
+
+### Scripts Reference
+
+| Script | Purpose |
+|---|---|
+| `scripts/run_benchmark.py` | Orchestrates the full benchmark loop (exec → grade → aggregate) |
+| `scripts/run_exec.py` | Runs a single eval prompt via the Copilot SDK; captures file writes to `outputs/task/` |
+| `scripts/grade.py` | Grades one run's `outputs/task/` against assertions; writes `grading.json` |
+| `scripts/aggregate_benchmark.py` | Reads all `grading.json` files; produces `benchmark.json` and prints summary table |
+
+### Running the Test Suite
+
+```bash
+cd .github/skills/copilot-squad
+python -m pytest tests/ -v   # 45 tests, no external dependencies required
+```
