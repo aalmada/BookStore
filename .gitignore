@@ -336,6 +336,7 @@ paket-files/
 __pycache__/
 .pytest_cache
 *.pyc
+.venv
 
 # Cake - Uncomment if you are using it
 # tools/**
@@ -493,3 +494,4 @@ api/
 
 # Agent hook audit logs (local only)
 .github/hooks/logs/
+.github/skills/copilot-squad/benchmarks/

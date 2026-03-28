@@ -54,6 +54,65 @@ All agents share context through `vscode/memory`. A shared status log lets the O
 
 ---
 
+## Memory Architecture
+
+Squads use the VS Code **memory tool** (`vscode/memory`) to persist and share context.
+The tool is enabled by default and can be toggled with the
+`github.copilot.chat.tools.memory.enabled` setting.
+
+### Memory Scopes
+
+Three scopes serve different lifetimes. Use the right scope for the right data:
+
+| Scope | Path prefix | Persists | Use for |
+|---|---|---|---|
+| **User** | `/memories/` | Across all workspaces and sessions | Coding preferences, general patterns |
+| **Repository** | `/memories/repo/` | Across sessions in this workspace | Codebase conventions, build commands, architecture decisions |
+| **Session** | `/memories/session/` | Current conversation only (cleared when chat ends) | Task handoff files, in-progress plans, status logs |
+
+> **First 200 lines of user memory are automatically loaded** into every agent's context
+> at session start. Keep user-scope files brief and well-structured.
+
+**Squad handoff files always live under `/memories/session/`** so they are scoped to the
+task at hand and do not pollute future sessions. See `references/memory-conventions.md`
+for the full file layout and naming conventions.
+
+**Repository-scoped facts** (e.g., "this project requires `Guid.CreateVersion7()`") belong
+under `/memories/repo/`. Only the `create` command is supported for that path.
+
+### Managing Memory Files
+
+VS Code provides two commands accessible via the Command Palette:
+
+- **Chat: Show Memory Files** — lists all memory files across scopes; select one to view
+  its contents. Memory file references in chat responses are also clickable.
+- **Chat: Clear All Memory Files** — removes all memory files across all scopes.
+  Deleting individual files is not yet supported; ask the agent to overwrite specific
+  files with updated content instead.
+
+### Local Memory Tool vs. Copilot Memory
+
+The local `vscode/memory` tool and **Copilot Memory** (GitHub-hosted) are complementary
+but distinct systems:
+
+| | Local memory tool (`vscode/memory`) | Copilot Memory (GitHub) |
+|---|---|---|
+| Storage | Local machine | GitHub-hosted (remote) |
+| Scopes | User, repository, session | Repository only |
+| Shared across Copilot surfaces | No (VS Code only) | Yes (coding agent, code review, CLI) |
+| Created by | Agent or user during chat | Copilot agents automatically |
+| Enabled by default | Yes | No (opt-in) |
+| Expiration | Manual management | Automatic (28 days) |
+
+Squad handoff files use the **local memory tool** — they are session-scoped and live only
+on the developer's machine. Copilot Memory is for durable repository insights that should
+be shared across all Copilot surfaces. Enable it via GitHub personal or organization
+settings and the `github.copilot.chat.copilotMemory.enabled` VS Code setting.
+
+Reference: [Memory in VS Code agents](https://code.visualstudio.com/docs/copilot/agents/memory)
+
+---
+
 ## Workflow
 
 ### Step 1 — Capture Intent

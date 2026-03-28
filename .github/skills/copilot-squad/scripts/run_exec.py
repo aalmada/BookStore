@@ -380,7 +380,7 @@ async def _run_session_async(
         },
     }
     if system_message_content:
-        session_config["system_message"] = {"content": system_message_content}
+        session_config["system_message"] = {"mode": "append", "content": system_message_content}
     if model:
         session_config["model"] = model
 
@@ -392,13 +392,13 @@ async def _run_session_async(
 
     watcher: asyncio.Task | None = None
     try:
-        async with await client.create_session(session_config) as session:
+        async with await client.create_session(**session_config) as session:
             print(f"{label} Session open. Sending prompt …", flush=True)
             session.on(_make_event_handler(
                 done, transcript_parts, errors_ref, last_activity,
                 input_tokens_ref, output_tokens_ref,
             ))
-            await session.send({"prompt": prompt})
+            await session.send(prompt)
             print(f"{label} Prompt sent. Waiting for session.idle (inactivity timeout={inactivity_timeout}s) …", flush=True)
             watcher = asyncio.create_task(
                 _inactivity_watcher(done, last_activity, inactivity_timeout, errors_ref)

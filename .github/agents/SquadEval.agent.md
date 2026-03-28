@@ -10,7 +10,7 @@ handoffs:
     agent: SquadEval
     prompt: Continue at Step 5. The benchmark command finished in terminal. Use this output directory: <output-dir>
     send: false
-tools: ['search', 'read', 'execute/runInTerminal', 'vscode/askQuestions']
+tools: ['search', 'read', 'execute/runInTerminal', 'vscode/askQuestions', 'todo']
 ---
 
 # Squad Eval Agent

@@ -191,9 +191,9 @@ async def _grade_async(
     await client.start()
     t0 = time.monotonic()
     try:
-        async with await client.create_session(session_config) as session:
+        async with await client.create_session(**session_config) as session:
             session.on(on_event)
-            await session.send({"prompt": grading_prompt})
+            await session.send(grading_prompt)
             await asyncio.wait_for(done.wait(), timeout=120)
     finally:
         await client.stop()
