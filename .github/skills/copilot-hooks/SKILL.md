@@ -1,3 +1,20 @@
+## Script Language Choice
+
+Hooks can execute scripts in many languages: shell, PowerShell, Python, C#, and more. However, not all script types are available on every platform, and some require extra dependencies:
+
+- **Shell scripts** (`bash`, `sh`) are not available on Windows by default.
+- **PowerShell** is Windows-native but available cross-platform if installed.
+- **Python** is widely used for hooks due to its cross-platform nature, but requires Python to be installed on the system.
+- **C#** scripts (with `dotnet-script` or file-based C#) are a good fit for .NET projects, but require the .NET SDK.
+- **Node.js**, **Go**, and others are possible if the runtime is present.
+
+**Best practice:** Always ask the user which language/tool to use for hook scripts, and confirm that the required runtime is available in the target environment. If unsure, suggest a default based on the project stack.
+
+**Example prompt:**
+> "What language/tool do you want to use for this hook script? (C#, Python, shell, etc.)"
+
+If you use Python, check that it is installed before relying on it. For C#, prefer file-based scripts for portability.
+
 ---
 name: copilot-hooks
 description: >
