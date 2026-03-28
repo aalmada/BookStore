@@ -1,4 +1,3 @@
-
 ---
 name: copilot-sdk
 description: >
