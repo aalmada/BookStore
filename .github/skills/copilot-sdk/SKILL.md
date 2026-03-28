@@ -1,3 +1,4 @@
+
 ---
 name: copilot-sdk
 description: >
@@ -11,6 +12,17 @@ description: >
   calling other LLM providers directly (OpenAI, Anthropic, Azure OpenAI, Ollama, LangChain),
   or querying the GitHub Copilot REST/metrics API.
 ---
+
+
+
+# Installation / Adding the Copilot SDK
+
+The Copilot SDK must be installed or added to your project before use in any language. See the install instructions for your language:
+
+- [Python: install & example](examples/python-basic.md)
+- [Go: install & example](examples/go-basic.md)
+- [Node.js: install & example](examples/nodejs-basic.md)
+- [.NET: install & example](examples/dotnet-basic.md)
 
 # GitHub Copilot SDK — Scripting Guide
 
@@ -41,110 +53,49 @@ that is a syntax error on Python 3.9 and earlier.
 
 Check your version:
 ```bash
-python3 --version
-```
-
-If you have Python 3.9 or earlier, install a newer version:
-```bash
-brew install python@3.12   # macOS
-```
-
-## Installation
-
-```bash
-pip install github-copilot-sdk
-```
-
-> **Homebrew Python (macOS):** Homebrew Python 3.10+ enforces PEP 668 and will reject
-> `pip install --user`. Use a virtual environment:
->
-> ```bash
-> python3.12 -m venv .venv
 > source .venv/bin/activate
 > pip install github-copilot-sdk
-> ```
-
-The importable package name is `copilot` (not `github-copilot-sdk`):
-```python
-from copilot import CopilotClient, PermissionHandler
-```
-
-## Prerequisites
-
-> **The SDK calls the Copilot CLI — the CLI must be present and authenticated.**
-> The SDK spawns `copilot` as a subprocess; if the CLI is missing or unauthenticated
-> the SDK will fail to start.
-
-```bash
-# Verify CLI is installed and authenticated
-gh copilot --version
-```
-
-Install the CLI: https://docs.github.com/en/copilot/how-tos/set-up/install-copilot-cli
-
-## Quick Start (Python)
-
-```python
 import asyncio
-from copilot import CopilotClient, PermissionHandler
 
-async def main():
-    client = CopilotClient()
-    await client.start()
-    try:
-        async with await client.create_session(
-            on_permission_request=PermissionHandler.approve_all,
-            infinite_sessions={"enabled": False},
-            model="gpt-4.1",
-        ) as session:
-            result_text: list[str] = []
-            done = asyncio.Event()
+# GitHub Copilot SDK — Scripting Guide
 
-            def on_event(event):
-                if event.type.value == "assistant.message":
-                    result_text.append(event.data.content)
-                    done.set()
-                elif event.type.value == "session.idle":
-                    done.set()
+## When to Use the SDK
 
-            session.on(on_event)
-            await session.send("What is 2 + 2?")
-            await done.wait()
+Use the Copilot SDK in any deterministic script that needs to delegate non-deterministic tasks (classification, extraction, summarization, evaluation, free-form generation) to an LLM. The SDK is available for Python, Go, .NET (C#), and Node.js (JavaScript/TypeScript).
 
-        print(result_text[0] if result_text else "")
-    finally:
-        await client.stop()
+> **CLI dependency:** The SDK does **not** make direct API calls. It spawns and drives the **GitHub Copilot CLI** as a subprocess. The CLI must be installed and authenticated before running any SDK script. See the [official installation guide](https://docs.github.com/en/copilot/how-tos/set-up/install-copilot-cli).
 
-asyncio.run(main())
-```
 
-## `create_session` API
+## Language Quick Start Examples
 
-**Important:** In SDK v0.2.0+, all `create_session` arguments are keyword-only.
-Do **not** pass a dict positionally — use `**config` or explicit kwargs.
+- [Python Example](examples/python-basic.md)
+- [Go Example](examples/go-basic.md)
+- [Node.js Example](examples/nodejs-basic.md)
+- [.NET (C#) Example](examples/dotnet-basic.md)
 
-```python
-# ✅ Correct — keyword arguments
-session = await client.create_session(
-    on_permission_request=PermissionHandler.approve_all,
-    model="gpt-4.1",
-    system_message={"content": "You are a helpful assistant."},
-    infinite_sessions={"enabled": False},
-)
+Each example demonstrates how to create a client, start a session, send a prompt, and handle the response. See the referenced files for details and advanced usage.
 
-# ✅ Correct — unpack a config dict
-config = {
-    "on_permission_request": PermissionHandler.approve_all,
-    "model": "gpt-4.1",
-    "infinite_sessions": {"enabled": False},
-}
-session = await client.create_session(**config)
+## Documentation and Advanced Usage
 
-# ❌ Wrong — positional dict (fails in v0.2.0+)
-session = await client.create_session(config)
-```
+- [Python SDK README](https://raw.githubusercontent.com/github/copilot-sdk/refs/heads/main/python/README.md)
+- [Go SDK README](https://raw.githubusercontent.com/github/copilot-sdk/refs/heads/main/go/README.md)
+- [Node.js SDK README](https://raw.githubusercontent.com/github/copilot-sdk/refs/heads/main/nodejs/README.md)
+- [.NET SDK README](https://raw.githubusercontent.com/github/copilot-sdk/refs/heads/main/dotnet/README.md)
 
-### All Session Parameters
+For .NET file-based scripting, see [Microsoft Learn: File-based programs in C#](https://learn.microsoft.com/en-us/dotnet/csharp/fundamentals/tutorials/file-based-programs).
+
+## Key Points
+
+- The SDK requires the Copilot CLI to be installed and authenticated.
+- Each language SDK provides async or event-driven APIs for session management and prompt handling.
+- Permission handlers are required for tool execution (see each language's example for details).
+- Advanced features (custom tools, streaming, system message customization, telemetry, etc.) are documented in the official SDK READMEs above.
+
+## Example Directory
+
+All code examples have been moved to the `examples/` subdirectory for clarity and multi-language support.
+
+---
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
