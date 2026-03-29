@@ -1,13 +1,6 @@
 ---
 name: etag
-description: |
-  Use this skill for any request involving HTTP ETags, conditional requests, or optimistic concurrency in REST APIs. Trigger for:
-  - Implementing or explaining ETag headers
-  - Preventing lost updates ("mid-air collisions")
-  - Designing cache validation or conditional GET/PUT/DELETE
-  - Explaining If-Match, If-None-Match, 304 Not Modified, or 412 Precondition Failed
-  - Any .NET, web, or REST API project where resource versioning or concurrency is needed
-  Always use this skill when the user mentions ETag, If-Match, If-None-Match, conditional requests, or optimistic concurrency—even if not named explicitly.
+description: Use this skill for any request involving HTTP ETags, conditional requests, or optimistic concurrency in REST APIs: implementing/explaining ETag headers, preventing lost updates, designing cache validation or conditional GET/PUT/DELETE, explaining If-Match, If-None-Match, 304 Not Modified, or 412 Precondition Failed, or any .NET/web/REST API project where resource versioning or concurrency is needed; always use when ETag, If-Match, If-None-Match, conditional requests, or optimistic concurrency are mentioned.
 ---
 
 # ETag Skill

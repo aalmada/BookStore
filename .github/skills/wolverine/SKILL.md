@@ -1,15 +1,7 @@
 ---
 name: wolverine
 description: |
-  Use this skill for any request involving Wolverine — the .NET command/handler and messaging framework. Trigger for:
-  - Implementing, updating, or testing command/handler patterns
-  - Message bus, async messaging, or background jobs
-  - Transaction management, optimistic concurrency (e.g., ETags), or handler conventions
-  - Migrating endpoints to Wolverine, troubleshooting handler discovery, or integrating with Marten
-  - Any .NET project using WolverineFx libraries (project-agnostic)
-  Always use this skill when the user mentions Wolverine, mediator, message bus, async jobs, or handler patterns — even if not named explicitly.
-
-Note: ETags and optimistic concurrency are recommended best practices for update/delete operations, but are not required by Wolverine itself.
+  Use for any request involving Wolverine (.NET command/handler, messaging, async jobs, handler patterns, Marten integration, or optimistic concurrency); always trigger for Wolverine, mediator, message bus, or handler patterns.
 ---
 
 # Wolverine Skill

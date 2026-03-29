@@ -1,14 +1,6 @@
 ---
 name: tunit
-description: >
-  Write, review, and fix TUnit tests in .NET projects. Use this skill whenever
-  you're writing a new test class, adding assertions, creating data-driven tests,
-  setting up test lifecycle hooks, or debugging why a test compiles but behaves
-  unexpectedly. Also triggers for: migrating from xUnit/NUnit to TUnit, choosing
-  the right assertion, using Bogus for test data, wiring up NSubstitute mocks,
-  writing integration tests, or any question about parallelism and test ordering.
-  Prefer this skill over guessing — TUnit's async-first API has several
-  non-obvious patterns that differ from xUnit/NUnit.
+description: Use this skill to write, review, and fix TUnit tests in .NET projects: for new test classes, assertions, data-driven tests, lifecycle hooks, debugging, migrating from xUnit/NUnit, choosing assertions, using Bogus, NSubstitute mocks, integration tests, or questions about parallelism and test ordering; prefer this skill over guessing, as TUnit's async-first API has non-obvious patterns differing from xUnit/NUnit.
 ---
 
 # TUnit Testing Skill
