@@ -1,0 +1,5 @@
+{
+  "appHost": {
+    "path": "src/BookStore.AppHost/BookStore.AppHost.csproj"
+  }
+}
