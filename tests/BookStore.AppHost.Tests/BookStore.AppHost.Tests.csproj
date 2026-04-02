@@ -5,6 +5,7 @@
     <IsTestProject>true</IsTestProject>
     <EnableMicrosoftTestingPlatform>true</EnableMicrosoftTestingPlatform>
     <CollectCoverage>true</CollectCoverage>
+    <NoWarn>$(NoWarn);NU1605</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

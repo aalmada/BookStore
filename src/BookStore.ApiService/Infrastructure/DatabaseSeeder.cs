@@ -594,8 +594,11 @@ public class DatabaseSeeder(
                 if (aggregate != null)
                 {
                     var saleEvent = aggregate.ScheduleSale(25m, now.AddDays(-1), now.AddDays(7));
-                    _ = session.Events.Append(books[0].Id, saleEvent.Value);
-                    Log.Seeding.ScheduledSale(logger, 25m, books[0].Id, books[0].Title);
+                    if (saleEvent.IsSuccess)
+                    {
+                        _ = session.Events.Append(books[0].Id, saleEvent.Value);
+                        Log.Seeding.ScheduledSale(logger, 25m, books[0].Id, books[0].Title);
+                    }
                 }
             }
 
@@ -606,8 +609,11 @@ public class DatabaseSeeder(
                 if (aggregate != null)
                 {
                     var saleEvent = aggregate.ScheduleSale(15m, now.AddHours(-12), now.AddDays(5));
-                    _ = session.Events.Append(books[1].Id, saleEvent.Value);
-                    Log.Seeding.ScheduledSale(logger, 15m, books[1].Id, books[1].Title);
+                    if (saleEvent.IsSuccess)
+                    {
+                        _ = session.Events.Append(books[1].Id, saleEvent.Value);
+                        Log.Seeding.ScheduledSale(logger, 15m, books[1].Id, books[1].Title);
+                    }
                 }
             }
 
@@ -618,8 +624,11 @@ public class DatabaseSeeder(
                 if (aggregate != null)
                 {
                     var saleEvent = aggregate.ScheduleSale(30m, now.AddHours(-1), now.AddDays(3));
-                    _ = session.Events.Append(books[2].Id, saleEvent.Value);
-                    Log.Seeding.ScheduledSale(logger, 30m, books[2].Id, books[2].Title);
+                    if (saleEvent.IsSuccess)
+                    {
+                        _ = session.Events.Append(books[2].Id, saleEvent.Value);
+                        Log.Seeding.ScheduledSale(logger, 30m, books[2].Id, books[2].Title);
+                    }
                 }
             }
 
@@ -630,8 +639,11 @@ public class DatabaseSeeder(
                 if (aggregate != null)
                 {
                     var saleEvent = aggregate.ScheduleSale(20m, now.AddHours(1), now.AddDays(2));
-                    _ = session.Events.Append(books[3].Id, saleEvent.Value);
-                    Log.Seeding.ScheduledSale(logger, 20m, books[3].Id, books[3].Title);
+                    if (saleEvent.IsSuccess)
+                    {
+                        _ = session.Events.Append(books[3].Id, saleEvent.Value);
+                        Log.Seeding.ScheduledSale(logger, 20m, books[3].Id, books[3].Title);
+                    }
                 }
             }
 
@@ -642,8 +654,11 @@ public class DatabaseSeeder(
                 if (aggregate != null)
                 {
                     var saleEvent = aggregate.ScheduleSale(10m, now.AddHours(6), now.AddDays(4));
-                    _ = session.Events.Append(books[4].Id, saleEvent.Value);
-                    Log.Seeding.ScheduledSale(logger, 10m, books[4].Id, books[4].Title);
+                    if (saleEvent.IsSuccess)
+                    {
+                        _ = session.Events.Append(books[4].Id, saleEvent.Value);
+                        Log.Seeding.ScheduledSale(logger, 10m, books[4].Id, books[4].Title);
+                    }
                 }
             }
 

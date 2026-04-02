@@ -147,13 +147,13 @@ public interface IBooksClient
     /// Cancels a scheduled sale for a book.
     /// </summary>
     [Delete("/api/books/{id}/sales")]
-    Task CancelBookSaleAsync(Guid id, [Query] DateTimeOffset saleStart, [Header("If-Match")] string? etag = null, CancellationToken cancellationToken = default);
+    Task CancelBookSaleAsync(Guid id, [Query(Format = "O")] DateTimeOffset saleStart, [Header("If-Match")] string? etag = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Cancels a scheduled sale for a book with full API response.
     /// </summary>
     [Delete("/api/books/{id}/sales")]
-    Task<IApiResponse> CancelBookSaleWithResponseAsync(Guid id, [Query] DateTimeOffset saleStart, [Header("If-Match")] string? etag = null, CancellationToken cancellationToken = default);
+    Task<IApiResponse> CancelBookSaleWithResponseAsync(Guid id, [Query(Format = "O")] DateTimeOffset saleStart, [Header("If-Match")] string? etag = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Restores a soft-deleted book (Admin only).

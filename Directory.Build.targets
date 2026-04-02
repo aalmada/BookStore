@@ -1,0 +1,20 @@
+<Project>
+  <!-- Delete stale Microsoft.Testing.Extensions.CodeCoverage mapping files before the coverage
+       target runs. These files get locked during concurrent builds, causing MSB3492 errors on
+       the next build because WriteLinesToFile with WriteOnlyWhenDifferent=true cannot read them. -->
+  <Target Name="DeleteStaleCodeCoverageMapping"
+    BeforeTargets="MsCoverageExtensionReferencedPathMaps"
+    Condition="'$(EnableMicrosoftTestingPlatform)' == 'true'">
+    <Delete Files="$(OutputPath).msCoverageExtensionSourceRootsMapping_$(AssemblyName)"
+      ContinueOnError="true" />
+  </Target>
+
+  <!-- Delete stale coverlet.collector mapping files before the ReferencedPathMaps target runs.
+       Same root cause: WriteLinesToFile WriteOnlyWhenDifferent=true reads the file first;
+       if it is locked by a concurrent build the read fails and MSB3492 fires as an error. -->
+  <Target Name="DeleteStaleCoverletMapping"
+    BeforeTargets="ReferencedPathMaps">
+    <Delete Files="$(OutputPath)CoverletSourceRootsMapping_$(AssemblyName)"
+      ContinueOnError="true" />
+  </Target>
+</Project>
