@@ -1,0 +1,29 @@
+{
+  "skill_name": "csharp-blazor-mudblazor",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Add a new admin page to manage discount codes. It needs a MudTable with server-side paging, a search box, and a toolbar button to open a 'Create Discount Code' dialog. The dialog has fields for Code (string), Discount Percentage (decimal 0–100), and an Expiry Date picker. Use the BookStore patterns.",
+      "expected_output": "A DiscountCodeManagement.razor page with MudTable + ServerData, search string as a property, SSE listener, and a CreateDiscountCodeDialog.razor with MudForm, MudTextField, MudNumericField, and MudDatePicker. MudDialog uses IMudDialogInstance cascading parameter. ISnackbar for feedback.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "I need to add a dark/light mode toggle button to the navbar. When clicked it should cycle through System → Light → Dark modes. I already have a ThemeService injected in MainLayout. Show me the component.",
+      "expected_output": "A small MudMenu or MudIconButton component that injects ThemeService, registers/unregisters OnChange event, and calls SetThemeModeAsync. Uses Icons.Material.Filled.LightMode / DarkMode / SettingsBrightness. Implements IDisposable.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Show me how to create the 'Edit Author' dialog. It receives an AdminAuthorDto and an ETag as parameters, pre-populates a MudTextField with the author's name, calls UpdateAuthorAsync on submit, and handles concurrency conflict errors by showing a warning snackbar.",
+      "expected_output": "UpdateAuthorDialog.razor without @rendermode, with [CascadingParameter] IMudDialogInstance, [Parameter] properties for AdminAuthorDto and ETag, OnParametersSet to populate the model, MudForm with MudTextField, Submit method calling WidgetsClient (or AuthorsClient), error handling for ConcurrencyConflict.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "I want to display a responsive book catalog grid — 4 columns on desktop, 2 on tablet, 1 on mobile. Each card shows the book title, author name, price, and an 'Add to Cart' button. Use MudGrid and MudCard.",
+      "expected_output": "MudGrid with MudItem xs=12 sm=6 md=3 breakpoints. Each MudItem contains a MudCard with MudCardContent (MudText for title, author, price) and MudCardActions with a MudButton. Follows layout-primitives patterns.",
+      "files": []
+    }
+  ]
+}
