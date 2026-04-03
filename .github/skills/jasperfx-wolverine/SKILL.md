@@ -1,5 +1,5 @@
 ---
-name: wolverine
+name: jasperfx-wolverine
 description: |
   Use for any request involving Wolverine (.NET command/handler, messaging, async jobs, handler patterns, Marten integration, or optimistic concurrency); always trigger for Wolverine, mediator, message bus, or handler patterns.
 ---
