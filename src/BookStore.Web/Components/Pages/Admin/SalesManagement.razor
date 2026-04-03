@@ -1,10 +1,13 @@
 @page "/admin/sales"
-@using BookStore.Client
-@using BookStore.Shared.Models
 @using Microsoft.AspNetCore.Authorization
-@using MudBlazor
+@using BookStore.Shared.Notifications
+@implements IDisposable
 @inject ISalesClient SalesClient
+@inject IBooksClient BooksClient
+@inject IDialogService DialogService
 @inject ISnackbar Snackbar
+@inject BookStoreEventsService EventsService
+@inject QueryInvalidationService InvalidationService
 @attribute [Authorize(Roles = "Admin")]
 
 <PageTitle>Sales Management - BookStore</PageTitle>
@@ -12,44 +15,165 @@
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-8 mb-12">
     <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-6">
         <MudText Typo="Typo.h4" Class="fw-bold">Sales Management</MudText>
+        <MudSpacer/>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenScheduleSaleDialog">
+            Schedule Sale
+        </MudButton>
     </MudStack>
 
     <MudTable T="SaleDto" @ref="_table" ServerData="ReloadData" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="0"
               Class="glass-table rounded-xl overflow-hidden">
-        <ToolBarContent>
-            <MudSpacer/>
-            <MudTextField @bind-Value="_searchString" Placeholder="Search sales..." Adornment="Adornment.Start"
-                          AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="search-field"
-                          Clearable="true" Immediate="true" Variant="Variant.Outlined" Margin="Margin.Dense"/>
-        </ToolBarContent>
         <HeaderContent>
             <MudTh>Book</MudTh>
-            <MudTh>Buyer</MudTh>
-            <MudTh>Date</MudTh>
-            <MudTh>Amount</MudTh>
+            <MudTh>Discount %</MudTh>
+            <MudTh>Start</MudTh>
+            <MudTh>End</MudTh>
             <MudTh>Status</MudTh>
-            <MudTh>Actions</MudTh>
+            <MudTh Class="text-end">Actions</MudTh>
         </HeaderContent>
-        <RowTemplate Context="context">
-            <MudTd DataLabel="Book">@context.BookTitle</MudTd>
-            <MudTd DataLabel="Buyer">@context.BuyerName</MudTd>
-            <MudTd DataLabel="Date">@context.Date.ToString("g")</MudTd>
-            <MudTd DataLabel="Amount">@context.Amount.ToString("C")</MudTd>
-            <MudTd DataLabel="Status">@context.Status</MudTd>
-            <MudTd DataLabel="Actions">
-                <!-- Actions like View/Refund can be added here -->
+        <RowTemplate>
+            <MudTd DataLabel="Book">
+                <MudText Typo="Typo.body2" Class="fw-semibold">@context.BookTitle</MudText>
+            </MudTd>
+            <MudTd DataLabel="Discount %">@context.Percentage.ToString("F0")%</MudTd>
+            <MudTd DataLabel="Start">@context.Start.ToString("g")</MudTd>
+            <MudTd DataLabel="End">@context.End.ToString("g")</MudTd>
+            <MudTd DataLabel="Status">
+                <MudChip T="string" Size="Size.Small" Color="@GetStatusColor(context.Status)" Variant="Variant.Text">
+                    @context.Status
+                </MudChip>
+            </MudTd>
+            <MudTd DataLabel="Actions" Class="text-end">
+                <MudMenu Icon="@Icons.Material.Filled.MoreVert" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" Dense="true">
+                    @if (context.Status != "Expired")
+                    {
+                        <MudMenuItem Icon="@Icons.Material.Filled.Cancel" OnClick="@(() => CancelSale(context))">Cancel Sale</MudMenuItem>
+                    }
+                </MudMenu>
             </MudTd>
         </RowTemplate>
+        <NoRecordsContent>
+            <MudText>No sales found.</MudText>
+        </NoRecordsContent>
+        <LoadingContent>
+            <MudText>Loading sales...</MudText>
+        </LoadingContent>
+        <PagerContent>
+            <MudTablePager/>
+        </PagerContent>
     </MudTable>
 </MudContainer>
 
+<style>
+    .glass-table {
+        background: rgba(255, 255, 255, 0.7) !important;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07) !important;
+    }
+    .fw-bold { font-weight: 700 !important; }
+    .fw-semibold { font-weight: 600 !important; }
+</style>
+
 @code {
     private MudTable<SaleDto> _table = null!;
-    private string? _searchString;
+    private readonly CancellationTokenSource _cts = new();
+    private bool _disposed;
 
-    private async Task<TableData<SaleDto>> ReloadData(TableState state, CancellationToken cancellationToken)
+    protected override void OnInitialized()
     {
-        // TODO: Implement server data loading
-        return new TableData<SaleDto> { Items = new List<SaleDto>(), TotalItems = 0 };
+        EventsService.StartListening();
+        EventsService.OnNotificationReceived += HandleNotification;
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+
+        _cts.Cancel();
+        _cts.Dispose();
+        EventsService.OnNotificationReceived -= HandleNotification;
+    }
+
+    private async void HandleNotification(IDomainEventNotification notification)
+    {
+        try
+        {
+            if (notification is PingNotification)
+            {
+                return;
+            }
+
+            if (InvalidationService.ShouldInvalidate(notification, ["Books"]))
+            {
+                await InvokeAsync(async () =>
+                {
+                    Snackbar.Add("Real-time update received. Refreshing list...", Severity.Info);
+                    await Task.Delay(1500);
+                    await _table.ReloadServerData();
+                    StateHasChanged();
+                });
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error processing real-time update: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private static Color GetStatusColor(string status) => status switch
+    {
+        "Active" => Color.Success,
+        "Scheduled" => Color.Info,
+        _ => Color.Default
+    };
+
+    private async Task<TableData<SaleDto>> ReloadData(TableState state, CancellationToken ct)
+    {
+        try
+        {
+            // MudTable uses zero-based pages and the API uses one-based pages.
+            var result = await SalesClient.GetSalesAsync(state.Page + 1, state.PageSize, ct);
+            return new TableData<SaleDto>
+            {
+                TotalItems = (int)result.TotalItemCount,
+                Items = result.Items
+            };
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load sales: {ex.Message}", Severity.Error);
+            return new TableData<SaleDto> { TotalItems = 0, Items = [] };
+        }
+    }
+
+    private async Task OpenScheduleSaleDialog()
+    {
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<ScheduleSaleDialog>("Schedule Sale", options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            await _table.ReloadServerData();
+        }
+    }
+
+    private async Task CancelSale(SaleDto sale)
+    {
+        try
+        {
+            await BooksClient.CancelBookSaleAsync(sale.BookId, sale.Start, sale.BookETag);
+            Snackbar.Add("Sale cancelled successfully.", Severity.Success);
+            await _table.ReloadServerData();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to cancel sale: {ex.Message}", Severity.Error);
+        }
     }
 }

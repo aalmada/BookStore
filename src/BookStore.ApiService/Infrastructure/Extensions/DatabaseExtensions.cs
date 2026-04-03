@@ -4,6 +4,7 @@ using BookStore.ApiService.Infrastructure.Tenant;
 using BookStore.ApiService.Projections;
 using Marten;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -75,6 +76,13 @@ public static class DatabaseExtensions
 
                             // Wait AGAIN for projections
                             await WaitForProjectionsAsync(store, logger, tenantId, expectSales: true);
+
+                            // Invalidate stale cache entries now that the projection has sales
+                            var cache = scope.ServiceProvider.GetService<HybridCache>();
+                            if (cache != null)
+                            {
+                                await cache.RemoveByTagAsync([CacheTags.BookList]);
+                            }
                         }
                     }
 

@@ -1,0 +1,142 @@
+@inject IBooksClient BooksClient
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.LocalOffer" Class="mr-3 mb-n1"/>
+            Schedule Sale
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="_isValid">
+            <MudGrid>
+                <MudItem xs="12">
+                    <MudAutocomplete T="BookDto"
+                                     Label="Book"
+                                     @bind-Value="_selectedBook"
+                                     SearchFunc="SearchBooksAsync"
+                                     ToStringFunc="@(b => b?.Title ?? string.Empty)"
+                                     Required="true"
+                                     RequiredError="Book is required"
+                                     Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudNumericField T="decimal"
+                                     Label="Discount Percentage"
+                                     @bind-Value="_percentage"
+                                     Min="0.01m"
+                                     Max="99.99m"
+                                     Required="true"
+                                     Adornment="Adornment.End"
+                                     AdornmentText="%"
+                                     Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudDatePicker Label="Start Date"
+                                   @bind-Date="_startDate"
+                                   Required="true"
+                                   Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTimePicker Label="Start Time"
+                                   @bind-Time="_startTime"
+                                   Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudDatePicker Label="End Date"
+                                   @bind-Date="_endDate"
+                                   Required="true"
+                                   Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTimePicker Label="End Time"
+                                   @bind-Time="_endTime"
+                                   Variant="Variant.Outlined" />
+                </MudItem>
+            </MudGrid>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   OnClick="Submit"
+                   Disabled="@(!_isValid || _selectedBook is null)">
+            Schedule
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private MudForm _form = null!;
+    private bool _isValid;
+    private BookDto? _selectedBook;
+    private decimal _percentage = 10m;
+    private DateTime? _startDate = DateTime.UtcNow.Date;
+    private TimeSpan? _startTime = TimeSpan.Zero;
+    private DateTime? _endDate = DateTime.UtcNow.Date.AddDays(7);
+    private TimeSpan? _endTime = TimeSpan.Zero;
+
+    private async Task<IEnumerable<BookDto>> SearchBooksAsync(string value, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return [];
+        }
+
+        var result = await BooksClient.GetBooksAsync(new BookSearchRequest { Search = value, PageSize = 10 }, ct);
+        return result.Items;
+    }
+
+    private static DateTimeOffset BuildDateTimeOffset(DateTime? date, TimeSpan? time)
+    {
+        var selectedDate = date?.Date ?? DateTime.UtcNow.Date;
+        var selectedTime = time ?? TimeSpan.Zero;
+        var utcDateTime = DateTime.SpecifyKind(selectedDate.Add(selectedTime), DateTimeKind.Utc);
+        return new DateTimeOffset(utcDateTime);
+    }
+
+    private async Task Submit()
+    {
+        await _form.Validate();
+
+        if (!_isValid || _selectedBook is null)
+        {
+            return;
+        }
+
+        var start = BuildDateTimeOffset(_startDate, _startTime);
+        var end = BuildDateTimeOffset(_endDate, _endTime);
+
+        if (end <= start)
+        {
+            Snackbar.Add("End must be after Start.", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            var response = await BooksClient.ScheduleBookSaleWithResponseAsync(
+                _selectedBook.Id,
+                new ScheduleSaleRequest(_percentage, start, end),
+                _selectedBook.ETag);
+
+            if (response.IsSuccessStatusCode)
+            {
+                MudDialog.Close(DialogResult.Ok(true));
+                return;
+            }
+
+            Snackbar.Add($"Failed to schedule sale: {response.Error?.Message}", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error scheduling sale: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

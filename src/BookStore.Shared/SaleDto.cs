@@ -2,10 +2,11 @@ namespace BookStore.Shared.Models;
 
 public record SaleDto
 {
-    public Guid Id { get; init; }
+    public Guid BookId { get; init; }
     public string BookTitle { get; init; } = string.Empty;
-    public string BuyerName { get; init; } = string.Empty;
-    public DateTimeOffset Date { get; init; }
-    public decimal Amount { get; init; }
+    public decimal Percentage { get; init; }
+    public DateTimeOffset Start { get; init; }
+    public DateTimeOffset End { get; init; }
     public string Status { get; init; } = string.Empty;
+    public string? BookETag { get; init; }
 }

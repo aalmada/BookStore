@@ -61,6 +61,10 @@ public static class EndpointMappingExtensions
             .MapPublisherEndpoints()
             .WithTags("Publishers");
 
+        _ = publicApi.MapGroup("/sales")
+            .MapSalesEndpoints()
+            .WithTags("Sales");
+
         _ = publicApi.MapGroup("/notifications")
             .MapNotificationEndpoints()
             .WithTags("Notifications");

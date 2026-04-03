@@ -24,9 +24,11 @@ public static class SseEventHelpers
         Func<Task> action,
         TimeSpan timeout,
         long minVersion = 0,
-        DateTimeOffset? minTimestamp = null)
+        DateTimeOffset? minTimestamp = null,
+        string tenantId = StorageConstants.DefaultTenantId,
+        string? accessToken = null)
         => (await ExecuteAndWaitForEventWithVersionAsync(entityId, eventType, action, timeout, minVersion,
-                minTimestamp))
+            minTimestamp, tenantId, accessToken))
             .Success;
 
     public static async Task<EventResult> ExecuteAndWaitForEventWithVersionAsync(
@@ -35,9 +37,11 @@ public static class SseEventHelpers
         Func<Task> action,
         TimeSpan timeout,
         long minVersion = 0,
-        DateTimeOffset? minTimestamp = null)
+        DateTimeOffset? minTimestamp = null,
+        string tenantId = StorageConstants.DefaultTenantId,
+        string? accessToken = null)
         => await ExecuteAndWaitForEventWithVersionAsync(entityId, [eventType], action, timeout, minVersion,
-            minTimestamp);
+            minTimestamp, tenantId, accessToken);
 
     public record EventResult(bool Success, long Version);
 
@@ -47,9 +51,11 @@ public static class SseEventHelpers
         Func<Task> action,
         TimeSpan timeout,
         long minVersion = 0,
-        DateTimeOffset? minTimestamp = null)
+        DateTimeOffset? minTimestamp = null,
+        string tenantId = StorageConstants.DefaultTenantId,
+        string? accessToken = null)
         => (await ExecuteAndWaitForEventWithVersionAsync(entityId, eventTypes, action, timeout, minVersion,
-                minTimestamp))
+            minTimestamp, tenantId, accessToken))
             .Success;
 
     public static async Task<EventResult> ExecuteAndWaitForEventWithVersionAsync(
@@ -58,17 +64,21 @@ public static class SseEventHelpers
         Func<Task> action,
         TimeSpan timeout,
         long minVersion = 0,
-        DateTimeOffset? minTimestamp = null)
+        DateTimeOffset? minTimestamp = null,
+        string tenantId = StorageConstants.DefaultTenantId,
+        string? accessToken = null)
     {
         var matchAnyId = entityId == Guid.Empty;
         var receivedEvents = new List<string>();
+        var bearerToken = accessToken ?? GlobalHooks.AdminAccessToken
+            ?? throw new InvalidOperationException("Admin access token is not initialized.");
 
         var app = GlobalHooks.App!;
         using var client = app.CreateHttpClient("apiservice");
         client.Timeout = TestConstants.DefaultStreamTimeout; // Prevent Aspire default timeout from killing the stream
         client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", GlobalHooks.AdminAccessToken);
-        client.DefaultRequestHeaders.Add("X-Tenant-ID", StorageConstants.DefaultTenantId);
+            new AuthenticationHeaderValue("Bearer", bearerToken);
+        client.DefaultRequestHeaders.Add("X-Tenant-ID", tenantId);
 
         using var cts = new CancellationTokenSource(timeout);
         var tcs = new TaskCompletionSource<EventResult>();
