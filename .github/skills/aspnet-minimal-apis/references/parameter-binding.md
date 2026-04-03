@@ -122,7 +122,7 @@ public readonly record struct ProductCode
 {
     public string Value { get; }
     private ProductCode(string v) => Value = v;
-    
+
     public static bool TryParse(string s, out ProductCode result)
     {
         result = new ProductCode(s);

@@ -33,9 +33,9 @@ Load the reference file(s) relevant to the user's task before writing code. For 
 
 The practical decision rule:
 
-- **Synchronous and doesn't cross `async` boundaries?** → `Span<T>` / `ReadOnlySpan<T>`  
-- **Used in `async` methods, stored as a field, or passed to a constructor?** → `Memory<T>` / `ReadOnlyMemory<T>`  
-- **Callers have `Memory<T>` but you want `Span<T>`?** → call `.Span` to convert at the consumption site  
+- **Synchronous and doesn't cross `async` boundaries?** → `Span<T>` / `ReadOnlySpan<T>`
+- **Used in `async` methods, stored as a field, or passed to a constructor?** → `Memory<T>` / `ReadOnlyMemory<T>`
+- **Callers have `Memory<T>` but you want `Span<T>`?** → call `.Span` to convert at the consumption site
 - **Wrapping a P/Invoke?** → sync = `Span<T>`, async = `Memory<T>`
 
 ## Common entry points

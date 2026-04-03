@@ -4,8 +4,8 @@ When you need SIMD-accelerated span operations but don't want to write the vecto
 
 ## System.Numerics.Tensors — `TensorPrimitives`
 
-NuGet: `System.Numerics.Tensors`  
-Namespace: `System.Numerics.Tensors`  
+NuGet: `System.Numerics.Tensors`
+Namespace: `System.Numerics.Tensors`
 Docs: https://learn.microsoft.com/dotnet/standard/simd
 
 The `TensorPrimitives` static class provides ready-made, SIMD-optimized operations on `ReadOnlySpan<T>` / `Span<T>`. It is maintained by the .NET team and ships with .NET 9+ in the BCL (also available as a NuGet for earlier versions).
@@ -50,8 +50,8 @@ TensorPrimitives.Sqrt(data, data);
 
 ## NetFabric.Numerics.Tensors
 
-NuGet: `NetFabric.Numerics.Tensors`  
-Docs: https://netfabric.github.io/NetFabric.Numerics.Tensors/  
+NuGet: `NetFabric.Numerics.Tensors`
+Docs: https://netfabric.github.io/NetFabric.Numerics.Tensors/
 Source: https://github.com/NetFabric/NetFabric.Numerics.Tensors
 
 A community library that extends the `TensorPrimitives` model with:
