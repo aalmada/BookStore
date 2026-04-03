@@ -1,7 +1,7 @@
 ---
 name: jasperfx-wolverine
 description: |
-  Use for any request involving Wolverine (.NET command/handler, messaging, async jobs, handler patterns, Marten integration, or optimistic concurrency); always trigger for Wolverine, mediator, message bus, or handler patterns.
+  Use for any request involving Wolverine (.NET command/handler, messaging, async jobs, sagas, stateful workflows, handler patterns, Marten integration, or optimistic concurrency); always trigger for Wolverine, mediator, message bus, saga, process manager, or handler patterns.
 ---
 
 # Wolverine Skill
@@ -12,6 +12,7 @@ This skill enables robust command/handler and messaging patterns in .NET using W
 
 - [wolverine-basics.md](references/wolverine-basics.md): Core concepts, command/handler pattern, handler discovery
 - [wolverine-advanced.md](references/wolverine-advanced.md): Async messaging, cascading messages, background jobs, advanced configuration
+- [wolverine-sagas.md](references/wolverine-sagas.md): Stateful long-running workflows, timeouts, saga identity, Marten-backed sagas
 - [wolverine-marten.md](references/wolverine-marten.md): Marten integration, event sourcing, projections
 - [wolverine-etag.md](references/wolverine-etag.md): ETag/optimistic concurrency, update/delete patterns
 - [wolverine-testing.md](references/wolverine-testing.md): Handler testing, troubleshooting, best practices
@@ -20,6 +21,7 @@ This skill enables robust command/handler and messaging patterns in .NET using W
 
 - For basic command/handler usage, see [wolverine-basics.md](references/wolverine-basics.md)
 - For async messaging, background jobs, or advanced scenarios, see [wolverine-advanced.md](references/wolverine-advanced.md)
+- For sagas, stateful workflows, timeouts, and process managers, see [wolverine-sagas.md](references/wolverine-sagas.md)
 - For Marten integration and event sourcing, see [wolverine-marten.md](references/wolverine-marten.md)
   - For optimistic concurrency (e.g., ETags), see [wolverine-etag.md](references/wolverine-etag.md)
 - For testing and troubleshooting, see [wolverine-testing.md](references/wolverine-testing.md)
