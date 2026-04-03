@@ -20,7 +20,7 @@
 ✅ Cache tags for invalidation     ❌ Stale cache after mutations
 ```
 
-**Logging**: Use `/csharp_logger_message` skill for all logging. Logs organized by domain in `Infrastructure/Logging/Log.<Domain>.cs`.
+**Logging**: Use `/csharp-logger-message` skill for all logging. Logs organized by domain in `Infrastructure/Logging/Log.<Domain>.cs`.
 
 **Error Handling**: Use `/lang__problem_details` skill for all errors. Return `Result.Failure(Error.<Type>(code, message)).ToProblemDetails()`.
 

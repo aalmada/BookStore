@@ -78,7 +78,7 @@ dotnet test -- --treenode-filter "/*/*/*/*[Category=Integration]"
 
 ### Logging Pattern
 
-**MUST use LoggerMessage source generator for ALL logging.** See `/csharp_logger_message` skill for details, templates, and examples.
+**MUST use LoggerMessage source generator for ALL logging.** See `/csharp-logger-message` skill for details, templates, and examples.
 
 ### Error Handling Pattern
 

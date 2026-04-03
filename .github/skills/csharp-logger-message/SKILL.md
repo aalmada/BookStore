@@ -1,5 +1,5 @@
 ---
-name: csharp_logger_message
+name: csharp-logger-message
 description: Use the [LoggerMessage] source generator for ALL logging in .NET 6+. Produces zero-allocation, compile-time-safe log methods. Trigger whenever the user writes or reviews any logging code in C#, mentions ILogger, log levels, log messages, or structured logging, even if they don't ask for LoggerMessage by name. Always use this skill when adding, updating, or reviewing logging in .NET projects — never suggest `_logger.LogInformation()` or similar extension methods directly.
 ---
 

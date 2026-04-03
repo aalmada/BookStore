@@ -1,5 +1,5 @@
 ---
-name: csharp_regex
+name: csharp-regex
 description: Use the [GeneratedRegex] source generator for ALL regex in .NET 7+ C#. Produces AOT-safe, trimming-friendly, compile-time regex with zero startup cost and better throughput than RegexOptions.Compiled. Trigger whenever the user writes, reviews, or asks about regex in C# — including new Regex(...), Regex.IsMatch, pattern matching, string validation, or text parsing — even if they don't mention source generation. Never suggest new Regex(...) with RegexOptions.Compiled when [GeneratedRegex] is available.
 ---
 

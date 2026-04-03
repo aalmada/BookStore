@@ -336,7 +336,7 @@ paket-files/
 __pycache__/
 .pytest_cache
 *.pyc
-.venv
+.venv*
 
 # Cake - Uncomment if you are using it
 # tools/**

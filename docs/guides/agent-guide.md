@@ -157,7 +157,7 @@ The agent then follows the skill's instructions step-by-step.
 #### Documentation & Language Patterns (4)
 - **`/meta__cheat_sheet`** - Quick reference to stack rules + commands.
 - **`/lang__docfx_guide`** - Produce DocFX-friendly guides.
-- **`/csharp_logger_message`** - Add high-performance logging with LoggerMessage source generator.
+- **`/csharp-logger-message`** - Add high-performance logging with LoggerMessage source generator.
 - **`/lang__problem_details`** - Add RFC 7807 ProblemDetails error responses.
 
 ### Skill Cross-Referencing System
