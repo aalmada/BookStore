@@ -28,12 +28,13 @@
 
 ## Common Mistakes
 - ❌ Business logic in endpoints → Put logic in aggregates/handlers
-- ❌ Missing SSE notification → Add to `MartenCommitListener`
+- ❌ Missing SSE notification → Add handler in `ProjectionCommitListener`
 - ❌ Missing cache invalidation → Call `RemoveByTagAsync` after mutations
 - ❌ Manually running Marten async daemon → Async projections are updated by Wolverine
 - ❌ Skipping tenant context → Use tenant-scoped sessions and cache keys
 - ❌ Ignoring ETag checks → Use `IHaveETag` and `ETagHelper`
 - ❌ Returning plain JSON errors → ALL failures must return ProblemDetails with error codes (endpoints, handlers, middleware)
+- ❌ `DateTimeOffset` precision in aggregates → URL params lose sub-second precision; compare stored values with `TruncateToSeconds` in `Apply()` methods, and store the canonical `sale.Start` from aggregate state (not the incoming URL parameter) in events
 
 ## Project Layout
 | Path | Purpose |

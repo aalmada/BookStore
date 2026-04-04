@@ -77,7 +77,7 @@ public class BookAggregate : ISoftDeleted
         Sales.Add(@event.Sale);
     }
 
-    void Apply(BookSaleCancelled @event) => _ = Sales.RemoveAll(s => s.Start == @event.SaleStart);
+    void Apply(BookSaleCancelled @event) => _ = Sales.RemoveAll(s => TruncateToSeconds(s.Start) == TruncateToSeconds(@event.SaleStart));
 
     void Apply(BookDiscountUpdated @event) => CurrentDiscountPercentage = @event.DiscountPercentage;
 
@@ -399,13 +399,13 @@ public class BookAggregate : ISoftDeleted
             return Result.Failure<BookSaleCancelled>(Error.Conflict(ErrorCodes.Books.AlreadyDeleted, "Cannot cancel sale for a deleted book"));
         }
 
-        var sale = Sales.FirstOrDefault(s => s.Start == saleStart);
+        var sale = Sales.FirstOrDefault(s => TruncateToSeconds(s.Start) == TruncateToSeconds(saleStart));
         if (sale.Equals(default(BookSale)))
         {
             return Result.Failure<BookSaleCancelled>(Error.NotFound(ErrorCodes.Books.SaleNotFound, "No sale found with the specified start time"));
         }
 
-        return new BookSaleCancelled(Id, saleStart);
+        return new BookSaleCancelled(Id, sale.Start);
     }
 
     public Result<BookDiscountUpdated> ApplyDiscount(decimal percentage)
@@ -432,5 +432,8 @@ public class BookAggregate : ISoftDeleted
 
         return new BookDiscountUpdated(Id, 0);
     }
+
+    static DateTimeOffset TruncateToSeconds(DateTimeOffset dt)
+        => new(dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second, dt.Offset);
 }
 

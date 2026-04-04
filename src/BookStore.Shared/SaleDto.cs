@@ -6,6 +6,8 @@ public record SaleDto
     public string BookTitle { get; init; } = string.Empty;
     public string BuyerName { get; init; } = string.Empty;
     public DateTimeOffset Date { get; init; }
+    public DateTimeOffset EndDate { get; init; }
     public decimal Amount { get; init; }
     public string Status { get; init; } = string.Empty;
+    public string? ETag { get; init; }
 }

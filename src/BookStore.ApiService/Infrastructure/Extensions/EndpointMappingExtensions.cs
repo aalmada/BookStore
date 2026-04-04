@@ -65,6 +65,10 @@ public static class EndpointMappingExtensions
             .MapNotificationEndpoints()
             .WithTags("Notifications");
 
+        _ = publicApi.MapGroup("/sales")
+            .MapSalesEndpoints()
+            .WithTags("Sales");
+
         // Shopping Cart endpoints
         app.MapShoppingCartEndpoints();
     }

@@ -1,0 +1,136 @@
+@inject IBooksClient BooksClient
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Edit" Class="mr-3 mb-n1"/>
+            Edit Sale — @Sale.BookTitle
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="_isValid">
+            <MudGrid>
+                <MudItem xs="12">
+                    <MudNumericField T="decimal"
+                                     Label="Discount Percentage"
+                                     @bind-Value="_percentage"
+                                     Min="0.01m"
+                                     Max="99.99m"
+                                     Required="true"
+                                     Adornment="Adornment.End"
+                                     AdornmentText="%"
+                                     Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudDatePicker Label="Start Date"
+                                   @bind-Date="_startDate"
+                                   Required="true"
+                                   Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTimePicker Label="Start Time"
+                                   @bind-Time="_startTime"
+                                   Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudDatePicker Label="End Date"
+                                   @bind-Date="_endDate"
+                                   Required="true"
+                                   Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTimePicker Label="End Time"
+                                   @bind-Time="_endTime"
+                                   Variant="Variant.Outlined" />
+                </MudItem>
+            </MudGrid>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   OnClick="Submit"
+                   Disabled="@(!_isValid)">
+            Save
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public SaleDto Sale { get; set; } = null!;
+
+    private MudForm _form = null!;
+    private bool _isValid;
+    private decimal _percentage;
+    private DateTime? _startDate;
+    private TimeSpan? _startTime;
+    private DateTime? _endDate;
+    private TimeSpan? _endTime;
+
+    protected override void OnParametersSet()
+    {
+        _percentage = Sale.Amount;
+        _startDate = Sale.Date.UtcDateTime.Date;
+        _startTime = Sale.Date.UtcDateTime.TimeOfDay;
+        _endDate = Sale.EndDate.UtcDateTime.Date;
+        _endTime = Sale.EndDate.UtcDateTime.TimeOfDay;
+    }
+
+    private static DateTimeOffset BuildDateTimeOffset(DateTime? date, TimeSpan? time)
+    {
+        var selectedDate = date?.Date ?? DateTime.UtcNow.Date;
+        var selectedTime = time ?? TimeSpan.Zero;
+        var utcDateTime = DateTime.SpecifyKind(selectedDate.Add(selectedTime), DateTimeKind.Utc);
+        return new DateTimeOffset(utcDateTime);
+    }
+
+    private async Task Submit()
+    {
+        await _form.Validate();
+        if (!_form.IsValid)
+        {
+            return;
+        }
+
+        var newStart = BuildDateTimeOffset(_startDate, _startTime);
+        var newEnd = BuildDateTimeOffset(_endDate, _endTime);
+
+        if (newEnd <= newStart)
+        {
+            Snackbar.Add("End must be after Start.", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            var cancelResponse = await BooksClient.CancelBookSaleWithResponseAsync(Sale.Id, Sale.Date, Sale.ETag);
+            if (!cancelResponse.IsSuccessStatusCode)
+            {
+                Snackbar.Add($"Failed to cancel existing sale: {cancelResponse.Error?.Message}", Severity.Error);
+                return;
+            }
+
+            var scheduleResponse = await BooksClient.ScheduleBookSaleWithResponseAsync(
+                Sale.Id,
+                new ScheduleSaleRequest(_percentage, newStart, newEnd));
+
+            if (scheduleResponse.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Sale updated successfully.", Severity.Success);
+                MudDialog.Close(DialogResult.Ok(true));
+                return;
+            }
+
+            Snackbar.Add($"Failed to reschedule sale: {scheduleResponse.Error?.Message}", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error updating sale: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

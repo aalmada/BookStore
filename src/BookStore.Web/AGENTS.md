@@ -10,13 +10,19 @@
 ✅ Use BookStore.Client Refit clients  ❌ Call API endpoints directly
 ✅ ReactiveQuery<T> for reads          ❌ Manual data fetch without invalidation
 ✅ QueryInvalidationService + SSE      ❌ Polling for updates
-✅ OptimisticUpdateService for writes  ❌ UI waits for server roundtrip
+✅ MudTable Items=@(_query?.Data)      ❌ MudTable ServerData= on SSE-driven pages
+✅ _query?.MutateData for instant UI   ❌ await API then reload (blocks UX)
+✅ _query.InvalidateAsync() after dialogs ❌ _table.ReloadServerData() after mutations
 ✅ TenantService for tenant context    ❌ Hardcoded tenant or missing headers
 ```
 
 ## Common Mistakes
 - ❌ Calling HttpClient directly → Use injected BookStore.Client interfaces
-- ❌ Missing SSE invalidation mapping → Update QueryInvalidationService rules
+- ❌ `MudTable ServerData=` on SSE-driven admin pages → SSE-triggered reloads bypass `ServerData`; use `ReactiveQuery<IReadOnlyList<T>>` + `Items=@(_query?.Data)` instead
+- ❌ Missing SSE invalidation mapping → Update `QueryInvalidationService`; if the entity is stored inside a parent projection (e.g., sales inside `BookSearchProjection`), the parent notification must also yield the child query key
+- ❌ Forgetting rollback on failed mutations → Take a snapshot before `MutateData`, restore it in the catch block
+- ❌ Using `MutateData` for dialog-based mutations → Only use `MutateData` for inline single-step operations (cancel, delete); after dialogs use `_query.InvalidateAsync()` so the server response is the source of truth
+- ❌ Optimistic removal that leaves stale items after SSE → `MutateData` removes the row immediately; SSE then triggers a silent background `InvalidateAsync()` via `ReactiveQuery`, which replaces the local state; no extra reload needed
 - ❌ Business logic in .razor files → Move to Services/ or backing classes
 - ❌ Tenant mismatch in UI → Use TenantService and tenant-aware clients
 

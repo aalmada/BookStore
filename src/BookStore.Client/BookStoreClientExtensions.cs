@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Refit;
@@ -9,6 +11,11 @@ namespace BookStore.Client;
 /// </summary>
 public static class BookStoreClientExtensions
 {
+    // Use ISO 8601 round-trip format for DateTimeOffset query params to preserve sub-second precision
+    static readonly RefitSettings DefaultSettings = new()
+    {
+        UrlParameterFormatter = new Iso8601DateTimeOffsetFormatter()
+    };
     /// <summary>
     /// Registers all BookStore API client interfaces with the service collection.
     /// </summary>
@@ -45,7 +52,7 @@ public static class BookStoreClientExtensions
     // Helper to register client with standard configuration
     static IHttpClientBuilder AddClient<T>(this IServiceCollection services, Uri baseAddress, Action<IHttpClientBuilder>? configureClient = null) where T : class
     {
-        var builder = services.AddRefitClient<T>()
+        var builder = services.AddRefitClient<T>(DefaultSettings)
             .ConfigureHttpClient(c => c.BaseAddress = baseAddress)
             .AddHttpMessageHandler<BookStore.Client.Infrastructure.BookStoreHeaderHandler>()
             .AddHttpMessageHandler<BookStore.Client.Infrastructure.BookStoreErrorHandler>();
@@ -90,4 +97,16 @@ public static class BookStoreClientExtensions
         });
         return services;
     }
+}
+
+/// <summary>
+/// Formats <see cref="DateTimeOffset"/> query parameters using the ISO 8601 round-trip format ("O")
+/// to preserve sub-second precision through URL serialization.
+/// </summary>
+sealed class Iso8601DateTimeOffsetFormatter : DefaultUrlParameterFormatter
+{
+    public override string? Format(object? parameterValue, ICustomAttributeProvider attributeProvider, Type type)
+        => parameterValue is DateTimeOffset dto
+            ? dto.ToString("O", CultureInfo.InvariantCulture)
+            : base.Format(parameterValue, attributeProvider, type);
 }

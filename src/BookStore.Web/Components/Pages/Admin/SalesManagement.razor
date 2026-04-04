@@ -3,8 +3,14 @@
 @using BookStore.Shared.Models
 @using Microsoft.AspNetCore.Authorization
 @using MudBlazor
+@implements IDisposable
 @inject ISalesClient SalesClient
+@inject IBooksClient BooksClient
+@inject IDialogService DialogService
 @inject ISnackbar Snackbar
+@inject BookStoreEventsService EventsService
+@inject QueryInvalidationService InvalidationService
+@inject ILogger<SalesManagement> Logger
 @attribute [Authorize(Roles = "Admin")]
 
 <PageTitle>Sales Management - BookStore</PageTitle>
@@ -12,43 +18,156 @@
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-8 mb-12">
     <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-6">
         <MudText Typo="Typo.h4" Class="fw-bold">Sales Management</MudText>
+        <MudSpacer/>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenScheduleSaleDialog">
+            Schedule Sale
+        </MudButton>
     </MudStack>
 
-    <MudTable T="SaleDto" @ref="_table" ServerData="ReloadData" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="4">
-        <ToolBarContent>
-            <MudSpacer/>
-            <MudTextField @bind-Value="_searchString" Placeholder="Search sales..." Adornment="Adornment.Start"
-                          AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="search-field"
-                          Clearable="true" Immediate="true" Variant="Variant.Outlined" Margin="Margin.Dense"/>
-        </ToolBarContent>
-        <HeaderContent>
-            <MudTh>Book</MudTh>
-            <MudTh>Buyer</MudTh>
-            <MudTh>Date</MudTh>
-            <MudTh>Amount</MudTh>
-            <MudTh>Status</MudTh>
-            <MudTh>Actions</MudTh>
-        </HeaderContent>
-        <RowTemplate Context="context">
-            <MudTd DataLabel="Book">@context.BookTitle</MudTd>
-            <MudTd DataLabel="Buyer">@context.BuyerName</MudTd>
-            <MudTd DataLabel="Date">@context.Date.ToString("g")</MudTd>
-            <MudTd DataLabel="Amount">@context.Amount.ToString("C")</MudTd>
-            <MudTd DataLabel="Status">@context.Status</MudTd>
-            <MudTd DataLabel="Actions">
-                <!-- Actions like View/Refund can be added here -->
-            </MudTd>
-        </RowTemplate>
-    </MudTable>
+    @if (_query?.IsLoading == true && _query.Data == null)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4"/>
+    }
+    else if (_query?.IsError == true)
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4">@_query.Error</MudAlert>
+    }
+    else
+    {
+        @if (_query?.IsFetching == true)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-2"/>
+        }
+
+        <MudTable T="SaleDto" Items="@FilteredItems" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="4">
+            <ToolBarContent>
+                <MudSpacer/>
+                <MudTextField @bind-Value="_searchString" Placeholder="Search sales..." Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="search-field"
+                              Clearable="true" Immediate="true" Variant="Variant.Outlined" Margin="Margin.Dense"/>
+            </ToolBarContent>
+            <HeaderContent>
+                <MudTh>Book</MudTh>
+                <MudTh>Start Date</MudTh>
+                <MudTh>Discount</MudTh>
+                <MudTh>Status</MudTh>
+                <MudTh Class="text-end">Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate Context="context">
+                <MudTd DataLabel="Book">@context.BookTitle</MudTd>
+                <MudTd DataLabel="Start Date">@context.Date.ToString("g")</MudTd>
+                <MudTd DataLabel="Discount">@context.Amount.ToString("0.##")%</MudTd>
+                <MudTd DataLabel="Status">
+                    @if (context.Status == "Active")
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Text">Active</MudChip>
+                    }
+                    else if (context.Status == "Upcoming")
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Text">Upcoming</MudChip>
+                    }
+                    else
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Text">Expired</MudChip>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Actions" Class="text-end">
+                    @if (context.Status != "Expired")
+                    {
+                        <MudMenu Icon="@Icons.Material.Filled.MoreVert" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" Dense="true">
+                            <MudMenuItem Icon="@Icons.Material.Filled.Edit" OnClick="@(() => OpenEditSaleDialog(context))">Edit</MudMenuItem>
+                            <MudMenuItem Icon="@Icons.Material.Filled.Cancel" OnClick="@(() => CancelSale(context.Id, context.Date, context.ETag))">Cancel Sale</MudMenuItem>
+                        </MudMenu>
+                    }
+                </MudTd>
+            </RowTemplate>
+            <NoRecordsContent>
+                <MudText>No sales found.</MudText>
+            </NoRecordsContent>
+            <PagerContent>
+                <MudTablePager/>
+            </PagerContent>
+        </MudTable>
+    }
 </MudContainer>
 
 @code {
-    private MudTable<SaleDto> _table = null!;
+    private ReactiveQuery<IReadOnlyList<SaleDto>>? _query;
+    private readonly CancellationTokenSource _cts = new();
     private string? _searchString;
+    private bool _disposed;
 
-    private async Task<TableData<SaleDto>> ReloadData(TableState state, CancellationToken cancellationToken)
+    private IEnumerable<SaleDto>? FilteredItems => string.IsNullOrWhiteSpace(_searchString)
+        ? _query?.Data
+        : _query?.Data?.Where(s => s.BookTitle.Contains(_searchString, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync()
     {
-        // TODO: Implement server data loading
-        return new TableData<SaleDto> { Items = new List<SaleDto>(), TotalItems = 0 };
+        EventsService.StartListening();
+
+        _query = new ReactiveQuery<IReadOnlyList<SaleDto>>(
+            queryFn: async ct =>
+            {
+                var paged = await SalesClient.GetSalesAsync(page: 1, pageSize: 200, ct);
+                return paged.Items;
+            },
+            eventsService: EventsService,
+            invalidationService: InvalidationService,
+            queryKeys: ["Sales"],
+            onStateChanged: () => InvokeAsync(StateHasChanged),
+            logger: Logger);
+
+        await _query.LoadAsync(cancellationToken: _cts.Token);
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        _cts.Cancel();
+        _cts.Dispose();
+        _query?.Dispose();
+    }
+
+    private async Task OpenScheduleSaleDialog()
+    {
+        var dialog = await DialogService.ShowAsync<ScheduleSaleDialog>("Schedule Sale");
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+            await _query!.InvalidateAsync();
+    }
+
+    private async Task OpenEditSaleDialog(SaleDto sale)
+    {
+        var parameters = new DialogParameters<UpdateSaleDialog>
+        {
+            { x => x.Sale, sale }
+        };
+        var dialog = await DialogService.ShowAsync<UpdateSaleDialog>("Edit Sale", parameters);
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+            await _query!.InvalidateAsync();
+    }
+
+    private async Task CancelSale(Guid bookId, DateTimeOffset saleStart, string? etag)
+    {
+        // Capture snapshot for rollback
+        var snapshot = _query?.Data?.ToList();
+
+        // Optimistic: remove the row immediately without waiting for the server
+        _query?.MutateData(items => items.Where(s => !(s.Id == bookId && s.Date == saleStart)).ToList());
+
+        try
+        {
+            await BooksClient.CancelBookSaleAsync(bookId, saleStart, etag);
+            Snackbar.Add("Sale cancelled successfully.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            // Rollback: restore the original list
+            if (snapshot != null)
+                _query?.MutateData(_ => snapshot);
+            Snackbar.Add($"Error cancelling sale: {ex.Message}", Severity.Error);
+        }
     }
 }

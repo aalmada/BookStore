@@ -18,7 +18,8 @@ public record SaleAggregate
         ScheduledSales.Add(@event.Sale);
     }
 
-    internal void Apply(BookSaleCancelled @event) => _ = ScheduledSales.RemoveAll(s => s.Start == @event.SaleStart);
+    internal void Apply(BookSaleCancelled @event)
+        => _ = ScheduledSales.RemoveAll(s => TruncateToSeconds(s.Start) == TruncateToSeconds(@event.SaleStart));
 
     public Result<BookSaleScheduled> ScheduleSale(decimal percentage, DateTimeOffset start, DateTimeOffset end)
     {
@@ -44,12 +45,17 @@ public record SaleAggregate
 
     public Result<BookSaleCancelled> CancelSale(DateTimeOffset saleStart)
     {
-        var sale = ScheduledSales.FirstOrDefault(s => s.Start == saleStart);
+        // Truncate to seconds to be resilient against sub-second precision loss during URL serialization
+        var normalizedStart = TruncateToSeconds(saleStart);
+        var sale = ScheduledSales.FirstOrDefault(s => TruncateToSeconds(s.Start) == normalizedStart);
         if (sale.Equals(default(BookSale)))
         {
             return Result.Failure<BookSaleCancelled>(Error.NotFound(ErrorCodes.Books.SaleNotFound, "No sale found with the specified start time"));
         }
 
-        return new BookSaleCancelled(Id, saleStart);
+        return new BookSaleCancelled(Id, sale.Start);
     }
+
+    static DateTimeOffset TruncateToSeconds(DateTimeOffset dt)
+        => new(dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second, dt.Offset);
 }

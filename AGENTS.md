@@ -95,7 +95,7 @@ dotnet test -- --treenode-filter "/*/*/*/*[Category=Integration]"
 ## Common Mistakes
 
 - Business logic in endpoints -> put it in aggregates/handlers
-- Missing SSE notification -> add to `MartenCommitListener`
+- Missing SSE notification -> add handler in `ProjectionCommitListener` (API) AND add query key in `QueryInvalidationService` (Web)
 - Missing cache invalidation -> call `RemoveByTagAsync` after mutations
 
 ## Quick Troubleshooting

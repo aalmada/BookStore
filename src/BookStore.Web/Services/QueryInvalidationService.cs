@@ -3,7 +3,7 @@ using BookStore.Shared.Notifications;
 namespace BookStore.Web.Services;
 
 /// <summary>
-/// Service that defines the rules for which cache keys should be invalidated 
+/// Service that defines the rules for which cache keys should be invalidated
 /// when specific domain events occur.
 /// </summary>
 public class QueryInvalidationService
@@ -27,7 +27,7 @@ public class QueryInvalidationService
         // 1. Exact matches
         // 2. "Wildcard" matches where the event invalidates a parent key (e.g. "Books" invalidates "Book:123"?? No, usually the other way around or specific rules)
         // Actually, in React Query, we usually invalidate by matching keys.
-        // Here, let's keep it simple: 
+        // Here, let's keep it simple:
         // If the query listens to "Books" (list), and we return "Books", it matches.
         // If the query listens to "Book:123", and we return "Book:123", it matches.
 
@@ -53,6 +53,7 @@ public class QueryInvalidationService
             case BookUpdatedNotification n:
                 yield return "Books";
                 yield return $"Book:{n.EntityId}";
+                yield return "Sales"; // Book projections include sales data
                 break;
             case BookDeletedNotification n:
                 yield return "Books";
