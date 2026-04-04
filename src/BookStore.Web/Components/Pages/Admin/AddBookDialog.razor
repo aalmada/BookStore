@@ -1,7 +1,10 @@
 @using BookStore.Client
 @using BookStore.Shared.Models
+@using BookStore.Web.Infrastructure
 @using MudBlazor
+@using Refit
 @inject IBooksClient BooksClient
+@inject LanguageService LanguageService
 @inject IConfigurationClient ConfigurationClient
 @inject IAuthorsClient AuthorsClient
 @inject ICategoriesClient CategoriesClient
@@ -157,7 +160,7 @@
     private CategoryDto? _currentCategory;
     private List<CategoryDto> _selectedCategories = new();
 
-    private string _selectedLanguage = "en-US";
+    private string _selectedLanguage = "en";
     private string _currentDescription = "";
     private Dictionary<string, string> _translations = new();
     private readonly CancellationTokenSource _cts = new();
@@ -165,7 +168,9 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _model = Model ?? new CreateBookRequest { Language = "en-US" };
+        var defaultCulture = await LanguageService.GetDefaultCultureAsync();
+        _selectedLanguage = defaultCulture;
+        _model = Model ?? new CreateBookRequest { Language = defaultCulture };
 
         await LoadSupportedCurrenciesAsync();
 
@@ -397,6 +402,10 @@
             }
 
             MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (ApiException ex)
+        {
+            Snackbar.Add(ex.ToError().Message, Severity.Error);
         }
         catch (Exception ex)
         {
