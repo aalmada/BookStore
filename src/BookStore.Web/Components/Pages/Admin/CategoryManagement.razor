@@ -32,15 +32,17 @@
             <MudTh>
                 <MudTableSortLabel SortLabel="name" T="AdminCategoryDto">Name</MudTableSortLabel>
             </MudTh>
-            <MudTh>Actions</MudTh>
+            <MudTh Class="text-end">Actions</MudTh>
         </HeaderContent>
         <RowTemplate Context="context">
             <MudTd DataLabel="Name">
                 <MudText Typo="Typo.body2" Class="fw-semibold">@context.Name</MudText>
             </MudTd>
-            <MudTd DataLabel="Actions">
-                <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" OnClick="@(() => EditCategory(context))" Size="Size.Small"/>
-                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => DeleteCategory(context))" Size="Size.Small"/>
+            <MudTd DataLabel="Actions" Class="text-end">
+                <MudMenu Icon="@Icons.Material.Filled.MoreVert" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" Dense="true">
+                    <MudMenuItem Icon="@Icons.Material.Filled.Edit" OnClick="@(() => EditCategory(context))">Edit</MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Filled.Delete" OnClick="@(() => DeleteCategory(context))">Delete</MudMenuItem>
+                </MudMenu>
             </MudTd>
         </RowTemplate>
         <PagerContent>

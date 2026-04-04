@@ -32,7 +32,7 @@
             <MudTh>Name / Tagline</MudTh>
             <MudTh>Theme</MudTh>
             <MudTh>Status</MudTh>
-            <MudTh>Actions</MudTh>
+            <MudTh Class="text-end">Actions</MudTh>
         </HeaderContent>
         <RowTemplate>
             <MudTd DataLabel="ID">@context.Id</MudTd>
@@ -48,8 +48,10 @@
                     @(context.IsEnabled ? "Enabled" : "Disabled")
                 </MudChip>
             </MudTd>
-            <MudTd DataLabel="Actions">
-                <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Info" OnClick="@(() => OpenEditDialog(context))"/>
+            <MudTd DataLabel="Actions" Class="text-end">
+                <MudMenu Icon="@Icons.Material.Filled.MoreVert" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" Dense="true">
+                    <MudMenuItem Icon="@Icons.Material.Filled.Edit" OnClick="@(() => OpenEditDialog(context))">Edit</MudMenuItem>
+                </MudMenu>
             </MudTd>
         </RowTemplate>
     </MudTable>
