@@ -10,21 +10,24 @@ This skill enables AI coding agents to:
 - Use the Aspire CLI for project creation, orchestration, logs, and resource management
 - Integrate with agent workflows (skill files, MCP server, Playwright, etc.)
 - Support both .NET and TypeScript/Node.js stacks
+- Write integration tests that start the full Aspire stack and exercise services over real HTTP
 
 ## Reference Structure
 - [CLI Reference](./references/cli.md)
 - [Agent Integration](./references/agent.md)
-- [TypeScript AppHost](./references/typescript-apphost.md)
+- [AppHost (C# and TypeScript)](./references/apphost.md)
 - [Pipelines](./references/pipelines.md)
 - [Health Checks](./references/health-checks.md)
 - [Resource Model](./references/resource-model.md)
 - [Resource Hierarchies](./references/resource-hierarchies.md)
 - [Resource API Patterns](./references/resource-api-patterns.md)
+- [Integration Testing](./references/integration-testing.md)
 
 ## Usage Patterns
 - Start/stop AppHost, view resource status, logs, and traces
 - Add integrations, search docs, automate workflows
 - Configure agent environments with `aspire agent init`
+- Write integration tests with `DistributedApplicationTestingBuilder`, session-scoped setup, service-discovered HTTP clients, and SSE-based event awaiting
 
 ## For More
 - See reference files above for details, commands, and examples
@@ -35,6 +38,9 @@ This skill enables AI coding agents to:
 - "Show me how to start the AppHost and view logs using the Aspire CLI."
 - "How do I migrate from AGENTS.md to the new skill file for agents?"
 - "Add a Redis cache to my Aspire app and update the agent config."
+- "How do I write integration tests for an Aspire app without mocking?"
+- "Set up a shared DistributedApplicationTestingBuilder for all integration tests."
+- "How do I wait for an async event before asserting in an Aspire integration test?"
 
 ---
 
