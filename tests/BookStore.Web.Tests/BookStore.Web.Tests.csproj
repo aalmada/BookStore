@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.Testing" />
+    <PackageReference Include="Bogus" />
     <PackageReference Include="bunit" />
     <PackageReference Include="bunit.web" />
     <PackageReference Include="Microsoft.JSInterop" />

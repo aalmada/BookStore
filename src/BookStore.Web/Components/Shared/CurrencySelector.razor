@@ -1,36 +1,71 @@
+@using BookStore.Client
 @inject CurrencyService CurrencyService
+@inject IConfigurationClient ConfigurationClient
 @implements IDisposable
 
-<MudMenu @bind-Open="_isOpen" Dense="true" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" LockScroll="true">
-    <ActivatorContent>
-        <MudTooltip Text="Change Currency" Arrow="true" Placement="Placement.Bottom" Disabled="@_isOpen">
-            <MudButton Variant="Variant.Text" Color="Color.Inherit" Class="typography-button" EndIcon="@Icons.Material.Filled.KeyboardArrowDown" aria-label="Change Currency">
-                <span class="mr-2" style="font-size: 1.2em;">@GetCurrencyFlag(CurrencyService.CurrentCurrency)</span>
-                @CurrencyService.CurrentCurrency
-            </MudButton>
-        </MudTooltip>
-    </ActivatorContent>
-    <ChildContent>
+<MudTooltip Text="Change Currency" Arrow="true" Placement="Placement.Bottom">
+    <MudSelect T="string"
+               Label="Currency"
+               Value="@CurrencyService.CurrentCurrency"
+               ValueChanged="SetCurrencyAsync"
+               Variant="Variant.Text"
+               Dense="true"
+               Disabled="@_isLoadingCurrencies"
+               Class="currency-selector"
+               aria-label="Change Currency">
         @foreach (var currency in _currencies)
         {
-            <MudMenuItem OnClick="@(() => SetCurrencyAsync(currency))">
+            <MudSelectItem T="string" Value="@currency">
                 <div class="d-flex align-center gap-2">
                     <span style="font-size: 1.5em;">@GetCurrencyFlag(currency)</span>
                     <MudText Typo="Typo.body2">@currency</MudText>
                 </div>
-            </MudMenuItem>
+            </MudSelectItem>
         }
-    </ChildContent>
-</MudMenu>
+    </MudSelect>
+</MudTooltip>
+
+@if (_isLoadingCurrencies)
+{
+    <MudSkeleton Width="120px" Height="20px" Animation="Animation.Pulse" Class="mt-1"/>
+}
 
 @code {
-    private bool _isOpen;
-    private readonly string[] _currencies = { "USD", "EUR", "GBP" };
+    private static readonly string[] FallbackCurrencies = ["USD", "EUR", "GBP"];
+    private List<string> _currencies = [..FallbackCurrencies];
+    private bool _isLoadingCurrencies = true;
 
     protected override async Task OnInitializedAsync()
     {
         CurrencyService.OnCurrencyChanged += StateHasChanged;
         await CurrencyService.InitializeAsync();
+        await LoadCurrenciesAsync();
+    }
+
+    private async Task LoadCurrenciesAsync()
+    {
+        try
+        {
+            var config = await ConfigurationClient.GetCurrencyConfigAsync();
+            var loadedCurrencies = config.SupportedCurrencies
+                .Where(static currency => !string.IsNullOrWhiteSpace(currency))
+                .Select(static currency => currency.Trim().ToUpperInvariant())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (loadedCurrencies.Count > 0)
+            {
+                _currencies = loadedCurrencies;
+            }
+        }
+        catch
+        {
+            _currencies = [..FallbackCurrencies];
+        }
+        finally
+        {
+            _isLoadingCurrencies = false;
+        }
     }
 
     private async Task SetCurrencyAsync(string currency)
@@ -50,5 +85,4 @@
     {
         CurrencyService.OnCurrencyChanged -= StateHasChanged;
     }
-
 }

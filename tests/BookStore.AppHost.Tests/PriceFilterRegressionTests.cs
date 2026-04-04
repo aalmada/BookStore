@@ -48,7 +48,7 @@ public class PriceFilterRegressionTests
             AuthorIds = [],
             CategoryIds = []
         };
-        createRequest.Prices = new Dictionary<string, decimal> { ["USD"] = (decimal)originalPrice };
+        createRequest.Prices = new Dictionary<string, decimal> { ["GBP"] = (decimal)originalPrice };
 
         var book = await BookHelpers.CreateBookAsync(authClient, createRequest);
         var bookId = book.Id;
@@ -71,7 +71,7 @@ public class PriceFilterRegressionTests
             Search = "PriceScenario",
             MinPrice = (decimal)minPrice,
             MaxPrice = (decimal)maxPrice,
-            Currency = "USD"
+            Currency = "GBP"
         };
         var list = await publicClient.GetBooksAsync(request);
         var matched = list.Items.Any(b => b.Id == bookId);
@@ -109,7 +109,7 @@ public class PriceFilterRegressionTests
             Translations =
                 new Dictionary<string, BookTranslationDto> { ["en"] = new("Mixed non-match test") },
             PublicationDate = new SharedModels.PartialDate(2025),
-            Prices = new Dictionary<string, decimal> { ["USD"] = 200.0m, ["EUR"] = 200.0m },
+            Prices = new Dictionary<string, decimal> { ["GBP"] = 200.0m, ["EUR"] = 200.0m },
             AuthorIds = [],
             CategoryIds = []
         };
@@ -148,7 +148,7 @@ public class PriceFilterRegressionTests
             Translations =
                 new Dictionary<string, BookTranslationDto> { ["en"] = new("Update resets discount test") },
             PublicationDate = new SharedModels.PartialDate(2024),
-            Prices = new Dictionary<string, decimal> { ["USD"] = 100.0m },
+            Prices = new Dictionary<string, decimal> { ["GBP"] = 100.0m },
             AuthorIds = [],
             CategoryIds = []
         };
@@ -185,7 +185,7 @@ public class PriceFilterRegressionTests
             Search = uniqueTitle,
             MinPrice = 40,
             MaxPrice = 60,
-            Currency = "USD"
+            Currency = "GBP"
         };
         var searchList = await publicClient.GetBooksAsync(searchRequest);
         _ = await Assert.That(searchList.Items.Any(b => b.Id == bookId)).IsTrue();
@@ -220,7 +220,7 @@ public class PriceFilterRegressionTests
             Search = updatedTitle,
             MinPrice = 40,
             MaxPrice = 60,
-            Currency = "USD"
+            Currency = "GBP"
         };
         var searchListFinal = await publicClient.GetBooksAsync(searchRequestFinal);
         _ = await Assert.That(searchListFinal.Items.Any(b => b.Id == bookId)).IsTrue();

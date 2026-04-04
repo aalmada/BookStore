@@ -246,7 +246,7 @@ public static class GlobalHooks
                 publisherId,
                 [authorId],
                 [categoryId],
-                new Dictionary<string, decimal> { ["USD"] = 10m + i }
+                new Dictionary<string, decimal> { ["GBP"] = 10m + i }
             );
             _ = session.Events.StartStream<BookAggregate>(bookId, bookEvent);
         }

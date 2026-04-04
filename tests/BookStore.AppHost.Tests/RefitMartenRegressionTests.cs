@@ -44,7 +44,7 @@ public class RefitMartenRegressionTests
             Translations =
                 new Dictionary<string, BookTranslationDto> { ["en"] = new BookTranslationDto("Test description") },
             PublicationDate = new PartialDate(2024, 1, 1),
-            Prices = new Dictionary<string, decimal> { ["USD"] = 10.0m }
+            Prices = new Dictionary<string, decimal> { ["GBP"] = 10.0m }
         };
         _ = await BookHelpers.CreateBookAsync(authClient, createRequest);
 
@@ -81,7 +81,7 @@ public class RefitMartenRegressionTests
             Translations =
                 new Dictionary<string, BookTranslationDto> { ["en"] = new BookTranslationDto("Test description") },
             PublicationDate = new PartialDate(2024, 1, 1),
-            Prices = new Dictionary<string, decimal> { ["USD"] = 20.0m }
+            Prices = new Dictionary<string, decimal> { ["GBP"] = 20.0m }
         };
         _ = await BookHelpers.CreateBookAsync(authClient, createRequest);
 
@@ -115,7 +115,7 @@ public class RefitMartenRegressionTests
                 Translations =
                     new Dictionary<string, BookTranslationDto> { ["en"] = new BookTranslationDto("Test description") },
                 PublicationDate = new PartialDate(2024, 1, 1),
-                Prices = new Dictionary<string, decimal> { ["USD"] = 10.0m }
+                Prices = new Dictionary<string, decimal> { ["GBP"] = 10.0m }
             });
 
         var publicClient = RestService.For<IBooksClient>(HttpClientHelpers.GetUnauthenticatedClient());
@@ -134,8 +134,8 @@ public class RefitMartenRegressionTests
     {
         // Debugging Reproduction Test
         // "I tried it manually and its not working correctly."
-        // Hypothesis: Filtering ignores currency. If a book has { USD: 100, EUR: 10 } and we filter MaxPrice=15 (assuming USD context),
-        // it matches because 10 <= 15, even though the USD price is 100.
+        // Hypothesis: Filtering ignores currency. If a book has { GBP: 100, EUR: 10 } and we filter MaxPrice=15 (assuming GBP context),
+        // it matches because 10 <= 15, even though the GBP price is 100.
 
         // Arrange
         var authClient = await HttpClientHelpers.GetAuthenticatedClientAsync<IBooksClient>();
@@ -153,26 +153,26 @@ public class RefitMartenRegressionTests
             PublicationDate = new PartialDate(2024, 1, 1),
             Prices = new Dictionary<string, decimal>
             {
-                ["USD"] = 100.0m, // Expensive in USD
+                ["GBP"] = 100.0m, // Expensive in GBP
                 ["EUR"] = 10.0m // Cheap in EUR
             }
         };
         _ = await BookHelpers.CreateBookAsync(authClient, createRequest);
 
         // Act
-        // Filter: MaxPrice 15 AND Currency=USD.
-        // The system should now verify p.Currency == "USD" && p.Value <= maxPrice.
+        // Filter: MaxPrice 15 AND Currency=GBP.
+        // The system should now verify p.Currency == "GBP" && p.Value <= maxPrice.
         var response = await publicClient.GetBooksAsync(new BookSearchRequest
         {
             Search = uniqueTitle,
             MaxPrice = 15,
-            Currency = "USD"
+            Currency = "GBP"
         });
 
         // Assert
         _ = await Assert.That(response).IsNotNull();
 
-        // Assertion: Book should NOT be present because USD price (100) > MaxPrice (15) and EUR is ignored due to currency filter
+        // Assertion: Book should NOT be present because GBP price (100) > MaxPrice (15) and EUR is ignored due to currency filter
         _ = await Assert.That(response.Items.Any(b => b.Title == uniqueTitle)).IsFalse();
     }
 

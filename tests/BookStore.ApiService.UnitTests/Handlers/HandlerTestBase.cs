@@ -32,8 +32,8 @@ public abstract class HandlerTestBase
 
         CurrencyOptions = Options.Create(new CurrencyOptions
         {
-            DefaultCurrency = "USD",
-            SupportedCurrencies = ["USD", "EUR"]
+            DefaultCurrency = "GBP",
+            SupportedCurrencies = ["GBP", "USD", "EUR"]
         });
 
         var httpContext = new DefaultHttpContext();

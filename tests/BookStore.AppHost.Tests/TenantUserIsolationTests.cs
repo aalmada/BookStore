@@ -36,7 +36,7 @@ public class TenantUserIsolationTests
             Translations =
                 new Dictionary<string, BookTranslationDto> { ["en"] = new("Tenant Book") },
             PublicationDate = new SharedModels.PartialDate(2024),
-            Prices = new Dictionary<string, decimal> { ["USD"] = 10.99m },
+            Prices = new Dictionary<string, decimal> { ["GBP"] = 10.99m },
             AuthorIds = [],
             CategoryIds = []
         };
@@ -85,7 +85,7 @@ public class TenantUserIsolationTests
             Translations =
                 new Dictionary<string, BookTranslationDto> { ["en"] = new("Fav Book") },
             PublicationDate = new SharedModels.PartialDate(2024),
-            Prices = new Dictionary<string, decimal> { ["USD"] = 10.99m },
+            Prices = new Dictionary<string, decimal> { ["GBP"] = 10.99m },
             AuthorIds = [],
             CategoryIds = []
         };
@@ -137,7 +137,7 @@ public class TenantUserIsolationTests
             Translations =
                 new Dictionary<string, BookTranslationDto> { ["en"] = new("Cart Book") },
             PublicationDate = new SharedModels.PartialDate(2024),
-            Prices = new Dictionary<string, decimal> { ["USD"] = 10.99m },
+            Prices = new Dictionary<string, decimal> { ["GBP"] = 10.99m },
             AuthorIds = [],
             CategoryIds = []
         };
@@ -189,7 +189,7 @@ public class TenantUserIsolationTests
                 Translations =
                     new Dictionary<string, BookTranslationDto> { ["en"] = new("Iso Book") },
                 PublicationDate = new SharedModels.PartialDate(2024),
-                Prices = new Dictionary<string, decimal> { ["USD"] = 10.99m },
+                Prices = new Dictionary<string, decimal> { ["GBP"] = 10.99m },
                 AuthorIds = [],
                 CategoryIds = []
             };

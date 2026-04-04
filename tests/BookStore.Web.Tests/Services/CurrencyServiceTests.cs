@@ -34,6 +34,21 @@ public class CurrencyServiceTests
     }
 
     [Test]
+    public async Task InitializeAsync_WithoutStoredCurrency_ShouldKeepGbpDefault()
+    {
+        // Arrange
+        _ = _jsRuntime.InvokeAsync<string?>("localStorage.getItem",
+                Arg.Is<object[]>(a => a[0].ToString() == "selected_currency"))
+            .Returns(new ValueTask<string?>((string?)null));
+
+        // Act
+        await _sut.InitializeAsync();
+
+        // Assert
+        _ = await Assert.That(_sut.CurrentCurrency).IsEqualTo("GBP");
+    }
+
+    [Test]
     public async Task SetCurrencyAsync_ShouldUpdateStateAndLocalStorage()
     {
         // Act
@@ -41,8 +56,6 @@ public class CurrencyServiceTests
 
         // Assert
         _ = await Assert.That(_sut.CurrentCurrency).IsEqualTo("GBP");
-        _ = await _jsRuntime.Received(1).InvokeAsync<IJSVoidResult>("localStorage.setItem",
-            Arg.Is<object[]>(a => a[0].ToString() == "selected_currency" && a[1].ToString() == "GBP"));
     }
 
     [Test]

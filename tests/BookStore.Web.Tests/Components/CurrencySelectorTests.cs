@@ -1,3 +1,5 @@
+using BookStore.Client;
+using BookStore.Shared.Models;
 using BookStore.Web.Components.Shared;
 using BookStore.Web.Services;
 using BookStore.Web.Tests.Infrastructure;
@@ -11,15 +13,21 @@ namespace BookStore.Web.Tests.Components;
 
 public class CurrencySelectorTests : BunitTestContext
 {
+    IConfigurationClient _configurationClient = null!;
     IJSRuntime _jsRuntime = null!;
     CurrencyService _currencyService = null!;
 
     [Before(Test)]
     public void Setup()
     {
+        _configurationClient = Substitute.For<IConfigurationClient>();
         _jsRuntime = Substitute.For<IJSRuntime>();
         _currencyService = new CurrencyService(_jsRuntime);
 
+        _ = _configurationClient.GetCurrencyConfigAsync(Arg.Any<CancellationToken>())
+            .Returns(new CurrencyConfigDto("GBP", ["GBP", "EUR", "USD"]));
+
+        _ = Context.Services.AddSingleton(_configurationClient);
         _ = Context.Services.AddSingleton(_currencyService);
     }
 
@@ -30,9 +38,8 @@ public class CurrencySelectorTests : BunitTestContext
         var cut = RenderComponent<CurrencySelector>();
 
         // Assert
-        // The button text should contain the default currency (USD)
-        var button = cut.Find("button");
-        _ = await Assert.That(button.TextContent).Contains("USD");
+        var input = cut.Find("input");
+        _ = await Assert.That(input.GetAttribute("value")).IsEqualTo("GBP");
     }
 
     [Test]
@@ -45,7 +52,7 @@ public class CurrencySelectorTests : BunitTestContext
         await cut.InvokeAsync(async () => await _currencyService.SetCurrencyAsync("EUR"));
 
         // Assert
-        var button = cut.Find("button");
-        _ = await Assert.That(button.TextContent).Contains("EUR");
+        var input = cut.Find("input");
+        _ = await Assert.That(input.GetAttribute("value")).IsEqualTo("EUR");
     }
 }

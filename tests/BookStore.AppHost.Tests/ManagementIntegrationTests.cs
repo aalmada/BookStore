@@ -52,7 +52,7 @@ public class ManagementIntegrationTests
             Translations =
                 new Dictionary<string, BookTranslationDto> { ["en"] = new("Test") },
             PublicationDate = new SharedModels.PartialDate(2024),
-            Prices = new Dictionary<string, decimal> { ["USD"] = 10.99m },
+            Prices = new Dictionary<string, decimal> { ["GBP"] = 10.99m },
             AuthorIds = [author.Id],
             CategoryIds = [category.Id],
             PublisherId = publisher.Id
@@ -60,7 +60,7 @@ public class ManagementIntegrationTests
         var book = await BookHelpers.CreateBookAsync(client, createRequest);
 
         // Act
-        // Use search with empty params to get all (paged/list), 
+        // Use search with empty params to get all (paged/list),
         // but in parallel we filter by our unique prefix to ensure isolation and avoid paging issues.
         var books = await client.GetAllBooksAdminAsync();
         var authors =

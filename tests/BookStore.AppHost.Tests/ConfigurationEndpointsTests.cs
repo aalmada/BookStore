@@ -108,7 +108,7 @@ public class ConfigurationEndpointsTests
         // Assert
         _ = await Assert.That(config).IsNotNull();
         // Based on appsettings.json defaults
-        _ = await Assert.That(config!.DefaultCurrency).IsEqualTo("USD");
+        _ = await Assert.That(config!.DefaultCurrency).IsEqualTo("GBP");
         _ = await Assert.That(config.SupportedCurrencies).Contains("USD");
         _ = await Assert.That(config.SupportedCurrencies).Contains("EUR");
         _ = await Assert.That(config.SupportedCurrencies).Contains("GBP");

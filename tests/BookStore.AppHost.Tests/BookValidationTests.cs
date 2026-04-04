@@ -35,7 +35,7 @@ public class BookValidationTests
             PublicationDate = new SharedModels.PartialDate(2023),
             AuthorIds = [],
             CategoryIds = [],
-            Prices = new Dictionary<string, decimal> { ["USD"] = 10.99m }
+            Prices = new Dictionary<string, decimal> { ["GBP"] = 10.99m }
         };
 
         // Act & Assert

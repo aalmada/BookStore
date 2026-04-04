@@ -35,7 +35,7 @@ public class BookHandlerTests : HandlerTestBase
             Guid.CreateVersion7(), // PublisherId
             [Guid.CreateVersion7()], // AuthorIds
             [Guid.CreateVersion7()], // CategoryIds
-            new Dictionary<string, decimal> { ["USD"] = 10.0m } // Prices
+            new Dictionary<string, decimal> { ["GBP"] = 10.0m } // Prices
         );
 
         // Act
@@ -48,7 +48,41 @@ public class BookHandlerTests : HandlerTestBase
             Arg.Is<BookAdded>(e =>
                 e.Title == "Clean Code" &&
                 e.Isbn == "978-0132350884" &&
-                e.Prices["USD"] == 10.0m));
+                e.Prices["GBP"] == 10.0m));
+    }
+
+    [Test]
+    [Category("Unit")]
+    public async Task CreateBookHandler_WithGbpPrice_ShouldSucceed()
+    {
+        // Arrange
+        var command = new CreateBook(
+            Guid.CreateVersion7(),
+            "Domain-Driven Design",
+            "978-0321125217",
+            "en",
+            new Dictionary<string, BookTranslationDto>
+            {
+                ["en"] = new BookTranslationDto("Tackling Complexity in the Heart of Software")
+            },
+            new PartialDate(2003, 8, 30),
+            Guid.CreateVersion7(),
+            [Guid.CreateVersion7()],
+            [Guid.CreateVersion7()],
+            new Dictionary<string, decimal> { ["GBP"] = 9.99m }
+        );
+
+        // Act
+        var result = await BookHandlers.Handle(command, Session, LocalizationOptions, CurrencyOptions, Cache, Logger);
+
+        // Assert
+        _ = await Assert.That(result).IsNotNull();
+        _ = Session.Events.Received(1).StartStream<BookAggregate>(
+            command.Id,
+            Arg.Is<BookAdded>(e =>
+                e.Id == command.Id &&
+                e.Prices.Count == 1 &&
+                e.Prices["GBP"] == 9.99m));
     }
 
     [Test]
@@ -72,7 +106,7 @@ public class BookHandlerTests : HandlerTestBase
             Guid.CreateVersion7(),
             [Guid.CreateVersion7()],
             [Guid.CreateVersion7()],
-            new Dictionary<string, decimal> { ["USD"] = 10.0m }
+            new Dictionary<string, decimal> { ["GBP"] = 10.0m }
         );
 
         // Act
@@ -99,7 +133,7 @@ public class BookHandlerTests : HandlerTestBase
             null,
             [Guid.CreateVersion7()],
             [Guid.CreateVersion7()],
-            new Dictionary<string, decimal> { ["EUR"] = 10.0m } // No USD (default)
+            new Dictionary<string, decimal> { ["USD"] = 10.0m } // No GBP (default)
         );
 
         // Act
@@ -126,7 +160,7 @@ public class BookHandlerTests : HandlerTestBase
             null,
             [Guid.CreateVersion7()],
             [Guid.CreateVersion7()],
-            new Dictionary<string, decimal> { ["USD"] = 10.0m }
+            new Dictionary<string, decimal> { ["GBP"] = 10.0m }
         );
 
         _ = Session.Events.FetchStreamStateAsync(command.Id)

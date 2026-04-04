@@ -2,9 +2,11 @@
 @using BookStore.Shared.Models
 @using MudBlazor
 @inject IBooksClient BooksClient
+@inject IConfigurationClient ConfigurationClient
 @inject IAuthorsClient AuthorsClient
 @inject ICategoriesClient CategoriesClient
 @inject IPublishersClient PublishersClient
+@inject CurrencyService CurrencyService
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 
@@ -108,12 +110,18 @@
                 <MudItem xs="12">
                     <MudText Typo="Typo.subtitle2" Class="mb-2">Prices</MudText>
                     <MudGrid>
-                        <MudItem xs="6">
-                            <MudNumericField T="decimal" Label="USD" @bind-Value="_priceUsd" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.AttachMoney" Variant="Variant.Outlined"/>
-                        </MudItem>
-                        <MudItem xs="6">
-                            <MudNumericField T="decimal" Label="EUR" @bind-Value="_priceEur" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Euro" Variant="Variant.Outlined"/>
-                        </MudItem>
+                        @foreach (var currency in _supportedCurrencies)
+                        {
+                            <MudItem xs="12" sm="6">
+                                <MudNumericField T="decimal"
+                                                 Label="@GetCurrencyLabel(currency)"
+                                                 Value="@GetPrice(currency)"
+                                                 ValueChanged="@(value => SetPrice(currency, value))"
+                                                 Adornment="Adornment.Start"
+                                                 AdornmentText="@CurrencyService.GetCurrencySymbol(currency)"
+                                                 Variant="Variant.Outlined"/>
+                            </MudItem>
+                        }
                     </MudGrid>
                 </MudItem>
 
@@ -140,8 +148,8 @@
     private bool _success;
     private CreateBookRequest _model = new();
     private int _pubYear = DateTime.Now.Year;
-    private decimal _priceUsd;
-    private decimal _priceEur;
+    private Dictionary<string, decimal> _prices = new(StringComparer.OrdinalIgnoreCase);
+    private List<string> _supportedCurrencies = ["GBP", "USD", "EUR"];
 
     private PublisherDto? _selectedPublisher;
     private AuthorDto? _currentAuthor;
@@ -155,9 +163,12 @@
     private readonly CancellationTokenSource _cts = new();
     private bool _disposed;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         _model = Model ?? new CreateBookRequest { Language = "en-US" };
+
+        await LoadSupportedCurrenciesAsync();
+
         if (IsEdit)
         {
             _pubYear = _model.PublicationDate.Year > 0 ? _model.PublicationDate.Year : DateTime.Now.Year;
@@ -177,25 +188,64 @@
                     _currentDescription = desc;
                 }
             }
+        }
 
-            if (_model.AdditionalProperties.TryGetValue("prices", out var pricesObj))
+        InitializePrices();
+    }
+
+    private async Task LoadSupportedCurrenciesAsync()
+    {
+        try
+        {
+            var currencyConfig = await ConfigurationClient.GetCurrencyConfigAsync(_cts.Token);
+            if (currencyConfig.SupportedCurrencies.Length > 0)
             {
-                try
-                {
-                    var pricesStr = System.Text.Json.JsonSerializer.Serialize(pricesObj);
-                    var prices = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, decimal>>(pricesStr);
-                    if (prices != null)
-                    {
-                        if (prices.TryGetValue("USD", out var usd)) _priceUsd = usd;
-                        if (prices.TryGetValue("EUR", out var eur)) _priceEur = eur;
-                    }
-                }
-                catch
-                {
-                }
+                _supportedCurrencies = currencyConfig.SupportedCurrencies
+                    .Where(c => !string.IsNullOrWhiteSpace(c))
+                    .Select(c => c.Trim().ToUpperInvariant())
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
             }
         }
+        catch
+        {
+            // Keep fallback currency list when config endpoint is unavailable.
+        }
     }
+
+    private void InitializePrices()
+    {
+        foreach (var currency in _supportedCurrencies)
+        {
+            _prices[currency] = 0m;
+        }
+
+        if (_model.Prices == null)
+        {
+            return;
+        }
+
+        foreach (var (currency, value) in _model.Prices)
+        {
+            var normalizedCurrency = currency.ToUpperInvariant();
+
+            if (!_supportedCurrencies.Contains(normalizedCurrency, StringComparer.OrdinalIgnoreCase))
+            {
+                _supportedCurrencies.Add(normalizedCurrency);
+            }
+
+            _prices[normalizedCurrency] = value;
+        }
+    }
+
+    private decimal GetPrice(string currency) => _prices.TryGetValue(currency, out var value) ? value : 0m;
+
+    private void SetPrice(string currency, decimal value)
+    {
+        _prices[currency] = value;
+    }
+
+    private string GetCurrencyLabel(string currency) => $"{currency} ({CurrencyService.GetCurrencySymbol(currency)})";
 
     private void OnLanguageChanged(string lang)
     {
@@ -317,11 +367,9 @@
                 kvp => new BookTranslationDto(kvp.Value)
             );
 
-            _model.AdditionalProperties["prices"] = new Dictionary<string, decimal>
-            {
-                ["USD"] = _priceUsd,
-                ["EUR"] = _priceEur
-            };
+            _model.Prices = _prices
+                .Where(kvp => kvp.Value > 0)
+                .ToDictionary(kvp => kvp.Key, kvp => kvp.Value, StringComparer.OrdinalIgnoreCase);
 
             if (IsEdit)
             {
@@ -334,9 +382,9 @@
                     PublicationDate = _model.PublicationDate,
                     PublisherId = _model.PublisherId,
                     AuthorIds = _model.AuthorIds,
-                    CategoryIds = _model.CategoryIds
+                    CategoryIds = _model.CategoryIds,
+                    Prices = _model.Prices
                 };
-                updateRequest.AdditionalProperties["prices"] = _model.AdditionalProperties["prices"];
 
                 await BooksClient.UpdateBookAsync(BookId, updateRequest, ETag, _cts.Token);
                 Snackbar.Add("Book updated successfully.", Severity.Success);

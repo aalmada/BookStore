@@ -196,6 +196,7 @@
                         Translations = book.Translations?.ToDictionary(
                             kvp => kvp.Key,
                             kvp => new BookTranslationDto(kvp.Value.Description)),
+                        Prices = book.Prices?.ToDictionary(kvp => kvp.Key, kvp => kvp.Value) ?? new Dictionary<string, decimal>(),
                         PublicationDate = book.PublicationDate ?? new BookStore.Shared.Models.PartialDate(DateTime.Now.Year),
                         PublisherId = book.Publisher?.Id,
                         AuthorIds = book.Authors.Select(a => a.Id).ToList(),

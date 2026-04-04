@@ -55,7 +55,7 @@ public static class FakeDataGenerators
                 PublisherId = publisherId,
                 AuthorIds = [.. (authorIds ?? [])],
                 CategoryIds = [.. (categoryIds ?? [])],
-                Prices = new Dictionary<string, decimal> { ["USD"] = decimal.Parse(_faker.Commerce.Price(10, 100)) }
+                Prices = new Dictionary<string, decimal> { ["GBP"] = decimal.Parse(_faker.Commerce.Price(10, 100)) }
             };
 
     public static UpdateBookRequest
@@ -78,7 +78,7 @@ public static class FakeDataGenerators
                 PublisherId = publisherId,
                 AuthorIds = [.. (authorIds ?? [])],
                 CategoryIds = [.. (categoryIds ?? [])],
-                Prices = new Dictionary<string, decimal> { ["USD"] = decimal.Parse(_faker.Commerce.Price(10, 100)) }
+                Prices = new Dictionary<string, decimal> { ["GBP"] = decimal.Parse(_faker.Commerce.Price(10, 100)) }
             };
 
     /// <summary>

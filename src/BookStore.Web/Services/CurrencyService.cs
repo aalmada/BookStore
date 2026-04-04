@@ -7,7 +7,7 @@ public class CurrencyService(IJSRuntime jsRuntime)
 {
     const string CurrencyKey = "selected_currency";
 
-    public string CurrentCurrency { get; private set; } = "USD";
+    public string CurrentCurrency { get; private set; } = "GBP";
 
     public event Action? OnCurrencyChanged;
 
@@ -56,5 +56,21 @@ public class CurrencyService(IJSRuntime jsRuntime)
         "EUR" => string.Format(CultureInfo.InvariantCulture, "{0:N2}€", price),
         "GBP" => string.Format(CultureInfo.InvariantCulture, "£{0:N2}", price),
         _ => string.Format(CultureInfo.InvariantCulture, "{0:N2} {1}", price, CurrentCurrency)
+    };
+
+    public string GetCurrencySymbol(string currency) => currency.ToUpperInvariant() switch
+    {
+        "USD" => "$",
+        "EUR" => "€",
+        "GBP" => "£",
+        _ => currency.ToUpperInvariant()
+    };
+
+    public string FormatPrice(string currency, decimal price) => currency.ToUpperInvariant() switch
+    {
+        "USD" => string.Format(CultureInfo.InvariantCulture, "${0:N2}", price),
+        "EUR" => string.Format(CultureInfo.InvariantCulture, "{0:N2}€", price),
+        "GBP" => string.Format(CultureInfo.InvariantCulture, "£{0:N2}", price),
+        _ => string.Format(CultureInfo.InvariantCulture, "{0:N2} {1}", price, currency.ToUpperInvariant())
     };
 }

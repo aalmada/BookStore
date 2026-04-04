@@ -119,7 +119,7 @@ public class MultiLanguageTranslationTests
             PublicationDate = new SharedModels.PartialDate(2024),
             AuthorIds = [],
             CategoryIds = [],
-            Prices = new Dictionary<string, decimal> { ["USD"] = 10m }
+            Prices = new Dictionary<string, decimal> { ["GBP"] = 10m }
         };
 
         // Create

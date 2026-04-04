@@ -73,6 +73,42 @@ public class BookCrudTests
     }
 
     [Test]
+    public async Task UpdateBook_ShouldPreserveGbpPrice()
+    {
+        // Arrange
+        var client = await HttpClientHelpers.GetAuthenticatedClientAsync<IBooksClient>();
+        var createRequest = FakeDataGenerators.GenerateFakeBookRequest();
+        createRequest.Prices = new Dictionary<string, decimal>
+        {
+            ["GBP"] = 12.99m,
+            ["USD"] = 15.99m
+        };
+
+        var createdBook = await BookHelpers.CreateBookAsync(client, createRequest);
+
+        var getResponse = await client.GetBookWithResponseAsync(createdBook.Id);
+        _ = await Assert.That(getResponse.IsSuccessStatusCode).IsTrue();
+
+        var etag = getResponse.Headers.ETag?.Tag;
+        _ = await Assert.That(etag).IsNotNull();
+
+        var updateRequest = FakeDataGenerators.GenerateFakeUpdateBookRequest();
+        updateRequest.Prices = new Dictionary<string, decimal>
+        {
+            ["GBP"] = 12.99m,
+            ["USD"] = 17.99m
+        };
+
+        // Act
+        var updatedBook = await BookHelpers.UpdateBookAsync(client, createdBook.Id, updateRequest, etag!);
+
+        // Assert
+        _ = await Assert.That(updatedBook.Prices).IsNotNull();
+        _ = await Assert.That(updatedBook.Prices!["GBP"]).IsEqualTo(12.99m);
+        _ = await Assert.That(updatedBook.Prices["USD"]).IsEqualTo(17.99m);
+    }
+
+    [Test]
     public async Task DeleteBook_EndToEndFlow_ShouldReturnNoContent()
     {
         // Arrange

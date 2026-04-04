@@ -26,7 +26,7 @@ public class SearchTests
             PublisherId = null,
             AuthorIds = [],
             CategoryIds = [],
-            Prices = new Dictionary<string, decimal> { ["USD"] = 10.0m }
+            Prices = new Dictionary<string, decimal> { ["GBP"] = 10.0m }
         };
         var createdBook = await BookHelpers.CreateBookAsync(adminClient, createRequest);
 

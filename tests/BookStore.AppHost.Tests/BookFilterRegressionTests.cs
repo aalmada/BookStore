@@ -54,14 +54,14 @@ public class BookFilterRegressionTests
 
     [Test]
     [Arguments("EUR", 40.0, null, true)] // High price in EUR (50), Min 40 -> Found
-    [Arguments("USD", 40.0, null, false)] // Low price in USD (10), Min 40 -> Not Found
-    [Arguments("USD", null, 20.0, true)] // Low price in USD (10), Max 20 -> Found
+    [Arguments("GBP", 40.0, null, false)] // Low price in GBP (10), Min 40 -> Not Found
+    [Arguments("GBP", null, 20.0, true)] // Low price in GBP (10), Max 20 -> Found
     [Arguments("EUR", null, 20.0, false)] // High price in EUR (50), Max 20 -> Not Found
     [Arguments("EUR", 40.0, 60.0, true)] // EUR 50 is inside 40-60 -> Found
     [Arguments("EUR", 10.0, 40.0, false)] // EUR 50 is outside 10-40 -> Not Found
-    [Arguments("USD", 5.0, 15.0, true)] // USD 10 is inside 5-15 -> Found
-    [Arguments("USD", 12.0, 20.0, false)] // USD 10 is outside 12-20 -> Not Found
-    [Arguments("GBP", null, null, false)] // No price in GBP -> Not Found
+    [Arguments("GBP", 5.0, 15.0, true)] // GBP 10 is inside 5-15 -> Found
+    [Arguments("GBP", 12.0, 20.0, false)] // GBP 10 is outside 12-20 -> Not Found
+    [Arguments("USD", null, null, false)] // No price in USD -> Not Found
     public async Task SearchBooks_WithMultiCurrencyPrices_ShouldRespectCurrencyFilter(string currency, double? minPrice,
         double? maxPrice, bool expectedFound)
     {
@@ -70,7 +70,7 @@ public class BookFilterRegressionTests
         var publicClient = RestService.For<IBooksClient>(HttpClientHelpers.GetUnauthenticatedClient());
 
         var uniqueTitle = $"MultiCurrency-{Guid.CreateVersion7()}";
-        // Create book with: USD=10, EUR=50
+        // Create book with: GBP=10, EUR=50
         var createRequest = new CreateBookRequest
         {
             Id = Guid.CreateVersion7(),
@@ -80,7 +80,7 @@ public class BookFilterRegressionTests
             Translations =
                 new Dictionary<string, BookTranslationDto> { ["en"] = new BookTranslationDto("Test description") },
             PublicationDate = new PartialDate(2024, 1, 1),
-            Prices = new Dictionary<string, decimal> { ["USD"] = 10.0m, ["EUR"] = 50.0m }
+            Prices = new Dictionary<string, decimal> { ["GBP"] = 10.0m, ["EUR"] = 50.0m }
         };
 
         // Wait for projection
@@ -130,7 +130,7 @@ public class BookFilterRegressionTests
             Translations =
                 new Dictionary<string, BookTranslationDto> { ["en"] = new BookTranslationDto("Sales test") },
             PublicationDate = new PartialDate(2024, 1, 1),
-            Prices = new Dictionary<string, decimal> { ["USD"] = 50.0m }
+            Prices = new Dictionary<string, decimal> { ["GBP"] = 50.0m }
         };
 
         var book = await BookHelpers.CreateBookAsync(authClient, createRequest);
@@ -141,7 +141,7 @@ public class BookFilterRegressionTests
         {
             Search = uniqueTitle,
             MaxPrice = 40,
-            Currency = "USD"
+            Currency = "GBP"
         });
         _ = await Assert.That(preSaleList!.Items.Any(b => b.Title == uniqueTitle)).IsFalse();
 
@@ -164,7 +164,7 @@ public class BookFilterRegressionTests
         {
             Search = uniqueTitle,
             MaxPrice = 40,
-            Currency = "USD"
+            Currency = "GBP"
         });
 
         _ = await Assert.That(listFinal != null && listFinal.Items.Any(b => b.Id == bookId)).IsTrue();

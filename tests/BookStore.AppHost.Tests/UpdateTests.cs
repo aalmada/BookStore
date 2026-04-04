@@ -137,7 +137,7 @@ public class UpdateTests
             PublisherId = newPublisher.Id,
             AuthorIds = [newAuthor.Id],
             CategoryIds = [newCategory.Id],
-            Prices = new Dictionary<string, decimal> { ["USD"] = 19.99m },
+            Prices = new Dictionary<string, decimal> { ["GBP"] = 19.99m },
             Translations = new Dictionary<string, BookTranslationDto>
             {
                 ["en"] = new("New English Description"),
@@ -162,7 +162,7 @@ public class UpdateTests
         _ = await Assert.That(enBook.Categories.Select(c => c.Id)).Contains(newCategory.Id);
         _ = await Assert.That(enBook.Description).IsEqualTo("New English Description");
         _ = await Assert.That(enBook.Prices).IsNotNull();
-        _ = await Assert.That(enBook.Prices!["USD"]).IsEqualTo(19.99m);
+        _ = await Assert.That(enBook.Prices!["GBP"]).IsEqualTo(19.99m);
         _ = await Assert.That(ptBook.Description).IsEqualTo("Nova Descrição em Português");
     }
 }
