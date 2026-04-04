@@ -71,10 +71,10 @@ h1:focus {
     /* filter: grayscale(100%); */
 }
 
-/* If the whole card has filter, children are affected. 
+/* If the whole card has filter, children are affected.
    Option: Apply filter only to non-badge elements. */
-.deleted-book .mud-image, 
-.deleted-book .mud-card-content, 
+.deleted-book .mud-image,
+.deleted-book .mud-card-content,
 .deleted-book .mud-card-actions {
     /* These can be specifically filtered if we remove filter from .deleted-book */
 }
@@ -93,3 +93,9 @@ h1:focus {
     0%, 100% { opacity: 0.9; }
     50% { opacity: 1; }
 }
+
+/* Admin Management - Shared Styles */
+.search-field { max-width: 300px; }
+.fw-bold { font-weight: 700 !important; }
+.fw-semibold { font-weight: 600 !important; }
+.fw-medium { font-weight: 500 !important; }

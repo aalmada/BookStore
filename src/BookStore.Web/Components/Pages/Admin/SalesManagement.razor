@@ -14,8 +14,7 @@
         <MudText Typo="Typo.h4" Class="fw-bold">Sales Management</MudText>
     </MudStack>
 
-    <MudTable T="SaleDto" @ref="_table" ServerData="ReloadData" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="0"
-              Class="glass-table rounded-xl overflow-hidden">
+    <MudTable T="SaleDto" @ref="_table" ServerData="ReloadData" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="4">
         <ToolBarContent>
             <MudSpacer/>
             <MudTextField @bind-Value="_searchString" Placeholder="Search sales..." Adornment="Adornment.Start"

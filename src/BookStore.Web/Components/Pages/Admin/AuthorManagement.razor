@@ -21,8 +21,7 @@
         </MudButton>
     </MudStack>
 
-    <MudTable T="AdminAuthorDto" @ref="_table" ServerData="ReloadData" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="0"
-              Class="glass-table rounded-xl overflow-hidden">
+    <MudTable T="AdminAuthorDto" @ref="_table" ServerData="ReloadData" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="4">
         <ToolBarContent>
             <MudSpacer/>
             <MudTextField @bind-Value="_searchString" Placeholder="Search authors..." Adornment="Adornment.Start"
