@@ -2,57 +2,7 @@
 
 ## Multi-Tenancy
 
-### Conjoined Tenancy (Shared Database)
-
-All tenants share the same PostgreSQL database. Data is isolated by a `tenant_id` column on every table.
-
-```csharp
-// Configuration
-options.Events.TenancyStyle = TenancyStyle.Conjoined;
-options.Policies.AllDocumentsAreMultiTenanted();
-```
-
-Every query and event append automatically filters/tags with the current tenant ID — no manual filtering needed.
-
-### Per-Tenant Sessions
-
-Sessions must be scoped to a specific tenant. Wolverine creates tenant-appropriate sessions automatically when the tenant is part of the `IMessageContext`. For manual control:
-
-```csharp
-// Open a session for a specific tenant
-using var session = store.LightweightSession("acme");       // by tenant ID string
-// or
-using var session = store.LightweightSession(tenantId);
-
-// Query session
-using var query = store.QuerySession("acme");
-```
-
-### Global (Non-Tenanted) Documents
-
-Some documents should be accessible across all tenants (e.g., tenant registry, global config):
-
-```csharp
-[Marten.Schema.DoNotPartition]
-public class Tenant
-{
-    public string Id { get; set; } = string.Empty;
-    public string Name { get; set; } = string.Empty;
-    public bool IsEnabled { get; set; }
-}
-```
-
-> `[DoNotPartition]` requires Marten 8.5+. Without it, documents get a `tenant_id` column and cannot be queried globally.
-
-### Conjoined vs Separate Databases
-
-| Strategy | Isolation | Complexity | Use Case |
-|----------|-----------|------------|----------|
-| **Conjoined** | Row-level (`tenant_id`) | Low | Multi-tenant SaaS, shared infra |
-| **Separate Schemas** | Schema-level | Medium | Stricter isolation requirements |
-| **Separate Databases** | DB-level | High | Compliance, very high isolation |
-
-For most applications, conjoined tenancy is the right choice.
+See [marten-multi-tenancy.md](marten-multi-tenancy.md) for the full reference — conjoined tenancy config, per-tenant sessions, DI registration, middleware, global documents, cross-tenant queries, projection tenancy, table partitioning, index strategy, and tenant lifecycle management.
 
 ---
 
