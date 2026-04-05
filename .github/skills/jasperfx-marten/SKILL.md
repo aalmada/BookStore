@@ -17,7 +17,8 @@ Marten turns PostgreSQL into both a document database and an event store. It is 
 | [marten-documents.md](references/marten-documents.md) | Document storage (`Store/Load/Delete`), LINQ queries, text search, pagination, includes, natural keys |
 | [marten-events.md](references/marten-events.md) | Events design, `StartStream/Append`, `AggregateStreamAsync`, `FetchStreamStateAsync`, aggregates, `ISoftDeleted` |
 | [marten-projections.md](references/marten-projections.md) | `SingleStreamProjection`, `MultiStreamProjection`, lifecycle, registration, enrichment, composite projections |
-| [marten-advanced.md](references/marten-advanced.md) | Multi-tenancy, async daemon, commit listeners, side effects, metadata, performance |
+| [marten-multi-tenancy.md](references/marten-multi-tenancy.md) | Conjoined tenancy config, per-tenant sessions, middleware pattern, DI session registration, global documents (`[DoNotPartition]`), cross-tenant queries, projection tenancy, table partitioning, indexes, `DeleteAllTenantDataAsync`, `MultiTenancyConstants` |
+| [marten-advanced.md](references/marten-advanced.md) | Async daemon, commit listeners, side effects, metadata, natural keys, performance |
 
 ## Quick Reference
 
