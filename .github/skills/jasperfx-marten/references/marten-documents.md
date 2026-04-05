@@ -61,33 +61,20 @@ var titles = await session.Query<BookSearchProjection>()
 
 ## Full-Text Search
 
-Marten supports PostgreSQL full-text search with NGram (handles partial matches):
+See [marten-postgres-extensions.md](marten-postgres-extensions.md) for the full reference — `NgramIndex`/`NgramSearch`, `FullTextIndex`/`PlainTextSearch`/`PhraseSearch`/`WebStyleSearch`, `GinIndexJsonData`, required extensions (`pg_trgm`, `unaccent`), index strategy, and common pitfalls.
 
+Quick reference:
 ```csharp
-// PlainTextSearch — word-based, no partial matching
-var results = await session.Query<BookSearchProjection>()
-    .Where(b => b.SearchText.PlainTextSearch("clean code"))
-    .ToListAsync();
-
-// NgramSearch — handles partial word matching (needs GIN index)
+// Partial-word / trigram search (requires pg_trgm + NgramIndex)
 var results = await session.Query<BookSearchProjection>()
     .Where(b => b.SearchText.NgramSearch("clea"))
     .ToListAsync();
 
-// WebStyleSearch — handles natural language queries
+// Whole-word / linguistic search (requires FullTextIndex)
 var results = await session.Query<BookSearchProjection>()
-    .Where(b => b.SearchText.WebStyleSearch("clean OR agile"))
+    .Where(b => b.SearchText.PlainTextSearch("clean code"))
     .ToListAsync();
 ```
-
-> Full-text search requires a GIN index on the field. Configure in `AddMarten()`:
->
-> ```csharp
-> options.Schema.For<BookSearchProjection>()
->     .Index(x => x.SearchText, idx => idx.Method = IndexMethod.GIN);
-> ```
->
-> For multilingual support (accented characters), use `UseNGramSearchWithUnaccent()`.
 
 ## CollectionContains and JSON Queries
 
