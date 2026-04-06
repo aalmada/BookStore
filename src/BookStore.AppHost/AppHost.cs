@@ -17,11 +17,17 @@ var blobs = storage.AddBlobs(ResourceNames.Blobs);
 
 var cache = builder.AddRedis(ResourceNames.Cache);
 
+var keycloak = builder.AddKeycloak(ResourceNames.Keycloak, 8080)
+    .WithRealmImport("./Realms")
+    .WithDataVolume();
+
 var apiService = builder.AddProject<Projects.BookStore_ApiService>(ResourceNames.ApiService)
     .WithReference(bookStoreDb)
     .WithReference(blobs) // Add blob storage reference
     .WithReference(cache)
+    .WithReference(keycloak)
     .WaitFor(cache)
+    .WaitFor(keycloak)
     .WaitFor(postgres)
     .WithHttpHealthCheck(ResourceNames.HealthCheckEndpoint)
     .WithExternalHttpEndpoints()
@@ -58,7 +64,9 @@ if (!string.IsNullOrEmpty(emailDeliveryMethod))
 builder.AddProject<Projects.BookStore_Web>(ResourceNames.WebFrontend)
     .WithExternalHttpEndpoints()
     .WithHttpHealthCheck(ResourceNames.HealthCheckEndpoint)
+    .WithReference(keycloak)
     .WithReference(apiService)
+    .WaitFor(keycloak)
     .WaitFor(apiService);
 
 builder.Build().Run();

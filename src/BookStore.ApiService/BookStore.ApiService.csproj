@@ -29,6 +29,7 @@
     <PackageReference Include="Asp.Versioning.Http" />
     <PackageReference Include="AspNetCore.HealthChecks.NpgSql" />
     <PackageReference Include="Aspire.Azure.Storage.Blobs" />
+    <PackageReference Include="Aspire.Keycloak.Authentication" />
     <PackageReference Include="Aspire.StackExchange.Redis.DistributedCaching" />
     <PackageReference Include="Bogus" />
     <PackageReference Include="JasperFx.Core" />
@@ -44,7 +45,6 @@
     <PackageReference Include="WolverineFx.Marten" />
     <PackageReference Include="MailKit" />
     <PackageReference Include="MimeKit" />
-    <PackageReference Include="System.IdentityModel.Tokens.Jwt" />
     <PackageReference Include="Microsoft.IdentityModel.Tokens" />
     <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" />
   </ItemGroup>

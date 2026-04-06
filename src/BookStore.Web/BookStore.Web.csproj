@@ -10,11 +10,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Aspire.Keycloak.Authentication" />
     <PackageReference Include="Blazored.LocalStorage" />
     <PackageReference Include="Microsoft.Extensions.Http.Polly" />
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
     <PackageReference Include="MudBlazor" />
-    <PackageReference Include="System.IdentityModel.Tokens.Jwt" />
   </ItemGroup>
 
 </Project>

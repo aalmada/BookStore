@@ -1,11 +1,8 @@
 using System.Net;
 using System.Net.Http.Headers;
-using System.Net.Http.Json;
 using BookStore.AppHost.Tests.Helpers;
-using BookStore.Client;
+using BookStore.ServiceDefaults;
 using BookStore.Shared;
-using BookStore.Shared.Models;
-using Refit;
 
 namespace BookStore.AppHost.Tests;
 
@@ -13,8 +10,6 @@ public class MultiTenantAuthenticationTests
 {
     static string _tenant1 = string.Empty;
     static string _tenant2 = string.Empty;
-
-    HttpClient? _client;
 
     [Before(Class)]
     public static async Task ClassSetup()
@@ -30,33 +25,23 @@ public class MultiTenantAuthenticationTests
         await DatabaseHelpers.CreateTenantViaApiAsync(_tenant2);
     }
 
-    [Before(Test)]
-    public async Task Setup()
-    {
-        if (GlobalHooks.App == null)
-        {
-            throw new InvalidOperationException("App is not initialized");
-        }
-
-        _client = GlobalHooks.App.CreateHttpClient("apiservice");
-    }
-
-    // SeedTenantAsync moved to TestHelpers
-
-    [After(Test)]
-    public void Cleanup() => _client?.Dispose();
-
-    /// <summary>
-    /// Helper to login as admin for aspecific tenant
-    /// </summary>
-// LoginAsAdminAsync moved to TestHelpers
     [Test]
     public async Task TenantCreation_CreatesAdminForEachTenant()
     {
-        // Assert: All tenant admins (created via API during ClassSetup) can log in
-        var defaultLogin = await AuthenticationHelpers.LoginAsAdminAsync(_client!, MultiTenancyConstants.DefaultTenantId);
-        var tenant1Login = await AuthenticationHelpers.LoginAsAdminAsync(_client!, _tenant1);
-        var tenant2Login = await AuthenticationHelpers.LoginAsAdminAsync(_client!, _tenant2);
+        using var keycloakClient = GlobalHooks.App!.CreateHttpClient(ResourceNames.Keycloak);
+        var keycloakUrl = AuthenticationHelpers.GetServiceBaseUrl(keycloakClient);
+
+        var defaultLogin = await AuthenticationHelpers.LoginAsAdminAsync(keycloakClient, keycloakUrl);
+        var tenant1Login = await AuthenticationHelpers.LoginAsUserAsync(
+            keycloakClient,
+            keycloakUrl,
+            $"admin@{_tenant1}.com",
+            "Admin123!");
+        var tenant2Login = await AuthenticationHelpers.LoginAsUserAsync(
+            keycloakClient,
+            keycloakUrl,
+            $"admin@{_tenant2}.com",
+            "Admin123!");
 
         _ = await Assert.That(defaultLogin).IsNotNull();
         _ = await Assert.That(defaultLogin!.AccessToken).IsNotEmpty();
@@ -69,131 +54,87 @@ public class MultiTenantAuthenticationTests
     }
 
     [Test]
-    public async Task Login_AdminFromTenant1_CannotLoginToTenant2()
+    public async Task Login_TenantUser_TokenContainsCorrectTenantId()
     {
-        // Arrange: tenant1 admin credentials
-        var credentials = new { email = $"admin@{_tenant1}.com", password = "Admin123!" };
+        using var keycloakClient = GlobalHooks.App!.CreateHttpClient(ResourceNames.Keycloak);
+        var keycloakUrl = AuthenticationHelpers.GetServiceBaseUrl(keycloakClient);
+        var keycloakAdminToken = await AuthenticationHelpers.GetKeycloakAdminTokenAsync(keycloakClient, keycloakUrl);
 
-        // Act: Try to login with tenant1 credentials using tenant2 header
-        var request = new HttpRequestMessage(HttpMethod.Post, "/account/login")
-        {
-            Content = JsonContent.Create(credentials)
-        };
-        request.Headers.Add("X-Tenant-ID", _tenant2);
+        var tenant1Email = FakeDataGenerators.GenerateFakeEmail();
+        var tenant1Password = FakeDataGenerators.GenerateFakePassword();
+        var tenant2Email = FakeDataGenerators.GenerateFakeEmail();
+        var tenant2Password = FakeDataGenerators.GenerateFakePassword();
 
-        var response = await _client!.SendAsync(request);
+        _ = await AuthenticationHelpers.CreateTestUserInKeycloakAsync(
+            keycloakClient,
+            keycloakAdminToken,
+            tenant1Email,
+            tenant1Password,
+            _tenant1,
+            "User");
+        _ = await AuthenticationHelpers.CreateTestUserInKeycloakAsync(
+            keycloakClient,
+            keycloakAdminToken,
+            tenant2Email,
+            tenant2Password,
+            _tenant2,
+            "User");
 
-        // Assert: Should fail because admin@{_tenant1}.com doesn't exist in tenant2
-        _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
-    }
+        var tenant1Login = await AuthenticationHelpers.LoginAsUserAsync(
+            keycloakClient,
+            keycloakUrl,
+            tenant1Email,
+            tenant1Password);
+        var tenant2Login = await AuthenticationHelpers.LoginAsUserAsync(
+            keycloakClient,
+            keycloakUrl,
+            tenant2Email,
+            tenant2Password);
 
-    [Test]
-    public async Task Login_AdminFromTenant1_SucceedsInTenant1()
-    {
-        // Act: Login with tenant1 credentials
-        var response = await AuthenticationHelpers.LoginAsAdminAsync(_client!, _tenant1);
-
-        // Assert: Should succeed
-        _ = await Assert.That(response).IsNotNull();
-        _ = await Assert.That(response!.AccessToken).IsNotEmpty();
-    }
-
-    [Test]
-    public async Task AdminToken_FromTenant1_CanAccessTenant1Books()
-    {
-        // Arrange: Login as tenant1 admin and get token
-        var tenant1Login = await AuthenticationHelpers.LoginAsAdminAsync(_client!, _tenant1);
         _ = await Assert.That(tenant1Login).IsNotNull();
-
-        // Act: Access books with matching token and tenant header
-        var request = new HttpRequestMessage(HttpMethod.Get, "/api/books");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tenant1Login!.AccessToken);
-        request.Headers.Add("X-Tenant-ID", _tenant1);
-
-        var response = await _client!.SendAsync(request);
-
-        // Assert: Should succeed (200 OK)
-        _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-    }
-
-    [Test]
-    public async Task AdminToken_FromTenant1_WithTenant2Header_IsRejected()
-    {
-        // Arrange: Login as tenant1 admin
-        var tenant1Login = await AuthenticationHelpers.LoginAsAdminAsync(_client!, _tenant1);
-        _ = await Assert.That(tenant1Login).IsNotNull();
-
-        // Act: Use tenant1 JWT with tenant2 header (cross-tenant attack)
-        var request = new HttpRequestMessage(HttpMethod.Get, "/api/cart");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tenant1Login!.AccessToken);
-        request.Headers.Add("X-Tenant-ID", _tenant2);
-
-        var response = await _client!.SendAsync(request);
-
-        // Assert: Middleware detects JWT/header tenant mismatch
-        var isRejected = response.StatusCode is HttpStatusCode.BadRequest or
-            HttpStatusCode.Forbidden or
-            HttpStatusCode.Unauthorized;
-
-        _ = await Assert.That(isRejected).IsTrue();
-    }
-
-    [Test]
-    public async Task Admin_CanCreateBookInOwnTenant()
-    {
-        // Arrange: Login as tenant1 admin
-        var tenant1Login = await AuthenticationHelpers.LoginAsAdminAsync(_client!, _tenant1);
-        _ = await Assert.That(tenant1Login).IsNotNull();
-
-        // Build tenant1-scoped HTTP client
-        var tenantHttpClient = GlobalHooks.App!.CreateHttpClient("apiservice");
-        tenantHttpClient.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", tenant1Login!.AccessToken);
-        tenantHttpClient.DefaultRequestHeaders.Add("X-Tenant-ID", _tenant1);
-
-        // Create tenant1-scoped Refit clients
-        var publishersClient = RestService.For<IPublishersClient>(tenantHttpClient);
-        var authorsClient = RestService.For<IAuthorsClient>(tenantHttpClient);
-        var categoriesClient = RestService.For<ICategoriesClient>(tenantHttpClient);
-        var booksClient = RestService.For<IBooksClient>(tenantHttpClient);
-
-        // Create required dependencies within tenant1
-        var publisher = await PublisherHelpers.CreatePublisherAsync(
-            publishersClient, FakeDataGenerators.GenerateFakePublisherRequest());
-        var author = await AuthorHelpers.CreateAuthorAsync(
-            authorsClient, FakeDataGenerators.GenerateFakeAuthorRequest());
-        var category = await CategoryHelpers.CreateCategoryAsync(
-            categoriesClient, FakeDataGenerators.GenerateFakeCategoryRequest());
-
-        var createBookRequest = FakeDataGenerators.GenerateFakeBookRequest(
-            publisher.Id, [author.Id], [category.Id]);
-
-        // Act - Create a book inside tenant1
-        var book = await BookHelpers.CreateBookAsync(booksClient, createBookRequest);
-
-        // Assert - Book was created and belongs to tenant1
-        _ = await Assert.That(book).IsNotNull();
-        _ = await Assert.That(book.Id).IsNotEqualTo(Guid.Empty);
-    }
-
-    [Test]
-    public async Task Login_Tenant2Admin_CannotAccessTenant1Data()
-    {
-        // Arrange: Login as tenant2 admin
-        var tenant2Login = await AuthenticationHelpers.LoginAsAdminAsync(_client!, _tenant2);
         _ = await Assert.That(tenant2Login).IsNotNull();
 
-        // Act: Send tenant2 JWT with tenant1 header (cross-tenant attack)
-        var request = new HttpRequestMessage(HttpMethod.Get, "/api/cart");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tenant2Login!.AccessToken);
-        request.Headers.Add("X-Tenant-ID", _tenant1);
+        var tenant1Claim = AuthenticationHelpers.GetStringClaimFromToken(tenant1Login!.AccessToken, "tenant_id");
+        var tenant2Claim = AuthenticationHelpers.GetStringClaimFromToken(tenant2Login!.AccessToken, "tenant_id");
 
-        var response = await _client!.SendAsync(request);
+        _ = await Assert.That(tenant1Claim).IsEqualTo(_tenant1);
+        _ = await Assert.That(tenant2Claim).IsEqualTo(_tenant2);
+    }
 
-        // Assert: Should be rejected due to tenant mismatch
-        var isRejected = response.StatusCode is HttpStatusCode.BadRequest or
-            HttpStatusCode.Forbidden or
-            HttpStatusCode.Unauthorized;
+    [Test]
+    public async Task Login_TenantAUser_CannotAccessTenantBData()
+    {
+        using var keycloakClient = GlobalHooks.App!.CreateHttpClient(ResourceNames.Keycloak);
+        var keycloakUrl = AuthenticationHelpers.GetServiceBaseUrl(keycloakClient);
+        var keycloakAdminToken = await AuthenticationHelpers.GetKeycloakAdminTokenAsync(keycloakClient, keycloakUrl);
+
+        var tenantAEmail = FakeDataGenerators.GenerateFakeEmail();
+        var tenantAPassword = FakeDataGenerators.GenerateFakePassword();
+
+        _ = await AuthenticationHelpers.CreateTestUserInKeycloakAsync(
+            keycloakClient,
+            keycloakAdminToken,
+            tenantAEmail,
+            tenantAPassword,
+            _tenant1,
+            "User");
+
+        var tenantALogin = await AuthenticationHelpers.LoginAsUserAsync(
+            keycloakClient,
+            keycloakUrl,
+            tenantAEmail,
+            tenantAPassword);
+        _ = await Assert.That(tenantALogin).IsNotNull();
+
+        using var apiClient = HttpClientHelpers.GetUnauthenticatedClient(_tenant2);
+        apiClient.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", tenantALogin!.AccessToken);
+
+        using var response = await apiClient.GetAsync("/api/cart");
+
+        var isRejected = response.StatusCode is HttpStatusCode.BadRequest
+            or HttpStatusCode.Forbidden
+            or HttpStatusCode.Unauthorized;
 
         _ = await Assert.That(isRejected).IsTrue();
     }

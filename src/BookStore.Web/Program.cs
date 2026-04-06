@@ -1,14 +1,20 @@
 using System.Net;
+using System.Text.Json;
 using Blazored.LocalStorage;
 using BookStore.Client;
 using BookStore.Client.Infrastructure;
 using BookStore.Client.Services;
+using BookStore.Shared;
 using BookStore.Web.Components;
 using BookStore.Web.Infrastructure;
 using BookStore.Web.Services;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Http.Resilience;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using MudBlazor.Services;
 using Polly;
 using Polly.CircuitBreaker;
@@ -47,10 +53,10 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     options.RequireHeaderSymmetry = false;
 });
 
-builder.Services.AddCascadingAuthenticationState();
-
 // Add MudBlazor services
 builder.Services.AddMudServices();
+builder.Services.AddMemoryCache();
+builder.Services.AddHttpClient("keycloak-token");
 
 // Get API base URL from service discovery (Aspire)
 var apiServiceUrl = builder.Configuration[$"services:{BookStore.ServiceDefaults.ResourceNames.ApiService}:https:0"]
@@ -84,9 +90,7 @@ var resiliencePipeline = new ResiliencePipelineBuilder<HttpResponseMessage>()
     .AddTimeout(TimeSpan.FromSeconds(30))
     .Build();
 
-// Register BookStore API clients with authorization handler and resilience
-// We must register clients as Scoped to ensure handlers share the same
-// TokenService/TenantService instances as the Blazor Circuit.
+// Register BookStore API clients with authorization handler and resilience.
 RegisterScopedRefitClients(builder.Services, new Uri(apiServiceUrl), resiliencePipeline);
 
 static void RegisterScopedRefitClients(
@@ -99,16 +103,14 @@ static void RegisterScopedRefitClients(
     _ = services.AddTransient<TenantHeaderHandler>();
 
     // Register ITenantsClient separately — no TenantHeaderHandler to avoid circular dep:
-    // TenantService → ITenantsClient → TenantHeaderHandler → TenantService.
-    // Auth is provided by DefaultTenantAuthHandler which reads the default-tenant token
-    // from TokenService (no TenantService dep) and self-hydrates from localStorage on
-    // first use after a server restart that cleared in-memory state.
+    // TenantService -> ITenantsClient -> TenantHeaderHandler -> TenantService.
     _ = services.AddScoped<ITenantsClient>(sp =>
     {
-        var tokenService = sp.GetRequiredService<TokenService>();
-        var localStorage = sp.GetRequiredService<ILocalStorageService>();
+        var tokenAccessor = sp.GetRequiredService<KeycloakTokenAccessor>();
+        var authenticationStateProvider = sp.GetRequiredService<AuthenticationStateProvider>();
         var networkHandler = new HttpClientHandler();
-        var authHandler = new DefaultTenantAuthHandler(tokenService, localStorage) { InnerHandler = networkHandler };
+        var authHandler = new DefaultTenantAuthHandler(tokenAccessor, authenticationStateProvider)
+        { InnerHandler = networkHandler };
         var httpClient = new HttpClient(authHandler) { BaseAddress = baseAddress };
         return RestService.For<ITenantsClient>(httpClient);
     });
@@ -124,7 +126,8 @@ static void RegisterScopedRefitClients(
     // Handler chain: Resilience (Polly) -> Auth -> Tenant -> Network
     void AddScopedClient<T>() where T : class => _ = services.AddScoped<T>(sp =>
     {
-        var tokenService = sp.GetRequiredService<TokenService>();
+        var tokenAccessor = sp.GetRequiredService<KeycloakTokenAccessor>();
+        var authenticationStateProvider = sp.GetRequiredService<AuthenticationStateProvider>();
         var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
         var correlationService = sp.GetRequiredService<ClientContextService>();
         var tenantService = sp.GetRequiredService<TenantService>();
@@ -135,7 +138,10 @@ static void RegisterScopedRefitClients(
             new BookStore.Client.Infrastructure.BookStoreHeaderHandler() { InnerHandler = networkHandler };
         var tenantHandler = new TenantHeaderHandler(tenantService) { InnerHandler = headerHandler };
         var authHandler = new AuthorizationMessageHandler(
-            tokenService, tenantService, httpContextAccessor, correlationService)
+            tokenAccessor,
+            authenticationStateProvider,
+            httpContextAccessor,
+            correlationService)
         { InnerHandler = tenantHandler };
 
         // Wrap with resilience handler: Resilience -> Auth -> Tenant -> Network
@@ -145,61 +151,52 @@ static void RegisterScopedRefitClients(
         return RestService.For<T>(httpClient);
     });
 
-    // Passkey client needs cookie persistence for the ceremony state
-    _ = services.AddScoped<IPasskeyClient>(sp =>
-    {
-        var tokenService = sp.GetRequiredService<TokenService>();
-        var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
-        var correlationService = sp.GetRequiredService<ClientContextService>();
-        var tenantService = sp.GetRequiredService<TenantService>();
-
-        var cookieContainer = new System.Net.CookieContainer();
-        var networkHandler = new HttpClientHandler
-        {
-            CookieContainer = cookieContainer,
-            UseCookies = true
-        };
-
-        var headerHandler =
-            new BookStore.Client.Infrastructure.BookStoreHeaderHandler() { InnerHandler = networkHandler };
-        var tenantHandler = new TenantHeaderHandler(tenantService) { InnerHandler = headerHandler };
-        var authHandler = new AuthorizationMessageHandler(
-            tokenService, tenantService, httpContextAccessor, correlationService)
-        { InnerHandler = tenantHandler };
-
-        var resilienceHandler = new ResilienceHandler(resiliencePipeline) { InnerHandler = authHandler };
-
-        var httpClient = new HttpClient(resilienceHandler) { BaseAddress = baseAddress };
-        return RestService.For<IPasskeyClient>(httpClient);
-    });
-
     AddScopedClient<IBooksClient>();
     AddScopedClient<IAuthorsClient>();
     AddScopedClient<ICategoriesClient>();
     AddScopedClient<IPublishersClient>();
     AddScopedClient<IShoppingCartClient>();
     AddScopedClient<ISystemClient>();
-    AddScopedClient<IIdentityClient>();
     AddScopedClient<IUsersClient>();
     AddScopedClient<ISalesClient>();
 }
 
-// Add authentication services (JWT token-based)
-builder.Services.AddAuthentication(options => options.DefaultScheme = "Cookies")
-    .AddCookie("Cookies");
+builder.Services.AddAuthentication(options =>
+    {
+        options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = OpenIdConnectDefaults.AuthenticationScheme;
+        options.DefaultSignOutScheme = OpenIdConnectDefaults.AuthenticationScheme;
+    })
+    .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddKeycloakOpenIdConnect(
+        BookStore.ServiceDefaults.ResourceNames.Keycloak,
+        realm: "bookstore",
+        options =>
+        {
+            options.ClientId = "bookstore-web";
+            options.SignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+            options.ResponseType = OpenIdConnectResponseType.Code;
+            options.SaveTokens = true;
+            options.GetClaimsFromUserInfoEndpoint = true;
+            options.Scope.Add("openid");
+            options.Scope.Add("profile");
+            options.Scope.Add("email");
+
+            if (builder.Environment.IsDevelopment())
+            {
+                options.RequireHttpsMetadata = false;
+            }
+        });
+
 builder.Services.AddAuthorization();
 builder.Services.AddScoped<ClientContextService>();
 builder.Services.AddScoped<TenantService>();
-builder.Services.AddScoped<TokenService>();
+builder.Services.AddScoped<KeycloakTokenAccessor>();
 builder.Services.AddScoped<LanguageService>();
-builder.Services.AddScoped<PasskeyService>();
-builder.Services.AddScoped<AuthenticationService>();
-builder.Services.AddScoped<JwtAuthenticationStateProvider>();
-builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<JwtAuthenticationStateProvider>());
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddAuthorizationCore(options => options.AddPolicy("SystemAdmin",
     policy => policy.RequireRole("Admin")
-        .RequireClaim("tenant_id", "*DEFAULT*")));
+        .RequireClaim("tenant_id", MultiTenancyConstants.DefaultTenantId)));
 
 // Add Polly resilience policies to all HTTP clients
 // builder.Services.ConfigureHttpClientDefaults(http =>
@@ -246,6 +243,34 @@ app.UseForwardedHeaders();
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.Use(async (context, next) =>
+{
+    if (context.User.Identity?.IsAuthenticated == true)
+    {
+        var sub = context.User.FindFirst("sub")?.Value;
+        var accessToken = await context.GetTokenAsync("access_token");
+        var refreshToken = await context.GetTokenAsync("refresh_token");
+        if (!string.IsNullOrWhiteSpace(sub))
+        {
+            var tokenStore = context.RequestServices.GetRequiredService<KeycloakTokenAccessor>();
+
+            if (!string.IsNullOrWhiteSpace(accessToken))
+            {
+                var accessExpiry = ParseJwtExpiry(accessToken, DateTimeOffset.UtcNow.AddMinutes(5));
+                tokenStore.SetToken(sub, accessToken, accessExpiry);
+            }
+
+            if (!string.IsNullOrWhiteSpace(refreshToken))
+            {
+                var refreshExpiry = ParseJwtExpiry(refreshToken, DateTimeOffset.UtcNow.AddMinutes(30));
+                tokenStore.SetRefreshToken(sub, refreshToken, refreshExpiry);
+            }
+        }
+    }
+
+    await next(context);
+});
+
 // Fetch localization configuration from backend
 string[] supportedCultures;
 string defaultCulture;
@@ -279,6 +304,39 @@ app.UseMiddleware<LogEnrichmentMiddleware>();
 
 app.UseHttpsRedirection();
 
+app.MapGet("/login/oidc", (string? returnUrl) =>
+{
+    var redirectUri = returnUrl;
+
+    if (string.IsNullOrWhiteSpace(redirectUri) || !Uri.IsWellFormedUriString(redirectUri, UriKind.Relative))
+    {
+        redirectUri = "/";
+    }
+
+    var properties = new AuthenticationProperties { RedirectUri = redirectUri };
+
+    return Results.Challenge(
+        properties,
+        [OpenIdConnectDefaults.AuthenticationScheme]);
+});
+
+app.MapGet("/logout", async (HttpContext httpContext, string? returnUrl) =>
+{
+    var redirectUri = returnUrl;
+
+    if (string.IsNullOrWhiteSpace(redirectUri) || !Uri.IsWellFormedUriString(redirectUri, UriKind.Relative))
+    {
+        redirectUri = "/";
+    }
+
+    await httpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+    await httpContext.SignOutAsync(
+        OpenIdConnectDefaults.AuthenticationScheme,
+        new AuthenticationProperties { RedirectUri = redirectUri });
+
+    return Results.Empty;
+});
+
 app.UseAntiforgery();
 
 app.UseOutputCache();
@@ -291,4 +349,70 @@ app.MapRazorComponents<App>()
 app.MapDefaultEndpoints();
 
 app.Run();
+
+static DateTimeOffset ParseJwtExpiry(string token, DateTimeOffset fallback)
+{
+    try
+    {
+        var segments = token.Split('.');
+        if (segments.Length < 2)
+        {
+            return fallback;
+        }
+
+        var payloadBytes = DecodeBase64Url(segments[1]);
+        using var document = JsonDocument.Parse(payloadBytes);
+
+        if (!document.RootElement.TryGetProperty("exp", out var expProperty))
+        {
+            return fallback;
+        }
+
+        var unixSeconds = expProperty.ValueKind switch
+        {
+            JsonValueKind.Number when expProperty.TryGetInt64(out var numberValue) => numberValue,
+            JsonValueKind.String when long.TryParse(expProperty.GetString(), out var stringValue) => stringValue,
+            _ => long.MinValue
+        };
+
+        if (unixSeconds == long.MinValue)
+        {
+            return fallback;
+        }
+
+        try
+        {
+            return DateTimeOffset.FromUnixTimeSeconds(unixSeconds);
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return DateTimeOffset.UtcNow.AddMinutes(5);
+        }
+    }
+    catch (FormatException)
+    {
+        return fallback;
+    }
+    catch (JsonException)
+    {
+        return fallback;
+    }
+}
+
+static byte[] DecodeBase64Url(string input)
+{
+    var normalized = input.Replace('-', '+').Replace('_', '/');
+
+    switch (normalized.Length % 4)
+    {
+        case 2:
+            normalized += "==";
+            break;
+        case 3:
+            normalized += "=";
+            break;
+    }
+
+    return Convert.FromBase64String(normalized);
+}
 
