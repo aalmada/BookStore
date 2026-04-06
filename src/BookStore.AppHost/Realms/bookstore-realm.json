@@ -8,15 +8,6 @@
   "editUsernameAllowed": false,
   "duplicateEmailsAllowed": false,
   "passwordPolicy": "upperCase(1) and lowerCase(1) and digits(1) and specialChars(1) and length(8)",
-  "requiredActions": [
-    {
-      "alias": "VERIFY_EMAIL",
-      "name": "Verify Email",
-      "enabled": true,
-      "defaultAction": true,
-      "priority": 10
-    }
-  ],
   "smtpServer": {},
   "clients": [
     {
@@ -104,6 +95,52 @@
       "attributes": {
         "tenant_id": [
           "*DEFAULT*"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Admin123!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "Admin"
+      ]
+    },
+    {
+      "username": "admin@acme.com",
+      "email": "admin@acme.com",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Acme",
+      "lastName": "Admin",
+      "attributes": {
+        "tenant_id": [
+          "acme"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Admin123!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "Admin"
+      ]
+    },
+    {
+      "username": "admin@contoso.com",
+      "email": "admin@contoso.com",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Contoso",
+      "lastName": "Admin",
+      "attributes": {
+        "tenant_id": [
+          "contoso"
         ]
       },
       "credentials": [

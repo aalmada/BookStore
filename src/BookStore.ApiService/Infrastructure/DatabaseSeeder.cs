@@ -1,6 +1,7 @@
 using BookStore.ApiService.Aggregates;
 using BookStore.ApiService.Commands;
 using BookStore.ApiService.Events;
+using BookStore.ApiService.Infrastructure.Auth;
 using BookStore.ApiService.Infrastructure.Logging;
 using BookStore.ApiService.Infrastructure.Tenant;
 using BookStore.ApiService.Projections;
@@ -21,7 +22,8 @@ namespace BookStore.ApiService.Infrastructure;
 public class DatabaseSeeder(
     IDocumentStore store,
     IMessageBus bus,
-    ILogger<DatabaseSeeder> logger)
+    ILogger<DatabaseSeeder> logger,
+    IKeycloakAdminService? keycloakAdminService = null)
 {
 
     public async Task SeedTenantsAsync(string[] tenantIds)
@@ -82,6 +84,9 @@ public class DatabaseSeeder(
         // even if data was previously partially seeded. The method itself handles idempotency.
         _ = await SeedAdminUserAsync(session, tenantId, logger: logger);
 
+        // Seed the tenant admin in Keycloak (idempotent — handles already-exists gracefully)
+        await SeedKeycloakAdminAsync(tenantId);
+
         // Check if already seeded with books
         var existingBooks = await session.Query<BookSearchProjection>().AnyAsync();
         if (existingBooks)
@@ -106,6 +111,37 @@ public class DatabaseSeeder(
         await SeedSalesAsync(tenantId);
 
         Log.Seeding.DatabaseSeedingCompleted(logger);
+    }
+
+    async Task SeedKeycloakAdminAsync(string tenantId)
+    {
+        if (keycloakAdminService is null)
+        {
+            return;
+        }
+
+        var tenantAlias = StorageConstants.DefaultTenantId.Equals(tenantId, StringComparison.OrdinalIgnoreCase)
+            ? MultiTenancyConstants.DefaultTenantAlias
+            : tenantId;
+        var email = $"admin@{tenantAlias}.com";
+
+        Log.Seeding.SeedingKeycloakAdmin(logger, email, tenantId);
+
+        var result = await keycloakAdminService.CreateUserAsync(tenantId, email, "Admin123!");
+
+        if (result.IsFailure)
+        {
+            if (result.Error.Code == ErrorCodes.Auth.DuplicateEmail)
+            {
+                Log.Seeding.KeycloakAdminAlreadyExists(logger, email, tenantId);
+                return;
+            }
+
+            Log.Seeding.KeycloakAdminSeedingFailed(logger, email, tenantId, result.Error.Code);
+            return;
+        }
+
+        Log.Seeding.CreatedKeycloakAdmin(logger, email, tenantId);
     }
 
     /// <summary>

@@ -53,7 +53,8 @@ public static class DatabaseExtensions
                     {
                         var bus = scope.ServiceProvider.GetRequiredService<Wolverine.IMessageBus>();
                         var seederLogger = scope.ServiceProvider.GetRequiredService<ILogger<DatabaseSeeder>>();
-                        var seeder = new DatabaseSeeder(store, bus, seederLogger);
+                        var keycloakAdminService = scope.ServiceProvider.GetService<BookStore.ApiService.Infrastructure.Auth.IKeycloakAdminService>();
+                        var seeder = new DatabaseSeeder(store, bus, seederLogger, keycloakAdminService);
 
                         // 1. Ensure Tenants exist in the DB
                         await seeder.SeedTenantsAsync(TenantConstants.KnownTenants);
