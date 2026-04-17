@@ -150,7 +150,7 @@
 
     private async Task DeleteCategory(AdminCategoryDto category)
     {
-        var result = await DialogService.ShowMessageBox(
+        var result = await DialogService.ShowMessageBoxAsync(
             "Delete Category",
             $"Are you sure you want to delete category {category.Name}?",
             yesText: "Delete", cancelText: "Cancel");

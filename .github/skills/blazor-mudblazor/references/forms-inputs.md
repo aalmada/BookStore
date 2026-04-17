@@ -36,7 +36,7 @@ BookStore uses `MudForm` for validation, **not** `EditContext` or `DataAnnotatio
 
     private async Task Submit()
     {
-        await _form.Validate();
+        await _form.ValidateAsync();
         if (!_success) return;
 
         var result = await WidgetsClient.CreateWidgetAsync(_model);

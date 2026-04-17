@@ -262,7 +262,7 @@
     private async Task Submit()
     {
         if (_form == null) return;
-        await _form.Validate();
+        await _form.ValidateAsync();
         if (!_form.IsValid) return;
 
         try

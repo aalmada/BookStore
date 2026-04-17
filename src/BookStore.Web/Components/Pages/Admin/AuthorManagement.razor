@@ -151,7 +151,7 @@
 
     private async Task DeleteAuthor(AdminAuthorDto author)
     {
-        var result = await DialogService.ShowMessageBox(
+        var result = await DialogService.ShowMessageBoxAsync(
             "Delete Author",
             $"Are you sure you want to delete author {author.Name}?",
             yesText: "Delete", cancelText: "Cancel");

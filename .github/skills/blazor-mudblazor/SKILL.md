@@ -57,7 +57,10 @@ Every admin management page follows this shell (details in `../csharp-blazor/SKI
 
 ## Common Gotchas
 
+- `MudForm` validation: call `await _form.ValidateAsync()` (not `Validate()` — removed in v9).
+- `IDialogService` confirmation: use `await DialogService.ShowMessageBoxAsync(...)` (renamed from `ShowMessageBox` in v9).
 - `MudTable<T>` search: use a **property** with a setter that calls `_table.ReloadServerData()`, not field + `@bind-Value`. See `references/tables-data.md`.
+- `MudTabs.PanelClass` was removed in v9 — set `PanelClass` on each `<MudTabPanel>` individually instead.
 - `MudAutocomplete<T>` needs both `SearchFunc` and `ToStringFunc` for object types.
 - `ISnackbar.Add(message, Severity.X)` — inject `ISnackbar Snackbar` via `@inject`.
 - `MudDialog` requires `MudDialogProvider` to be registered in `Routes.razor`.

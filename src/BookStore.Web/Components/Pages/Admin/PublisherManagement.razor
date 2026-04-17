@@ -150,7 +150,7 @@
 
     private async Task DeletePublisher(PublisherDto publisher)
     {
-        var result = await DialogService.ShowMessageBox(
+        var result = await DialogService.ShowMessageBoxAsync(
             "Delete Publisher",
             $"Are you sure you want to delete publisher {publisher.Name}?",
             yesText: "Delete", cancelText: "Cancel");

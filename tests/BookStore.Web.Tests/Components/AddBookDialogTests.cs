@@ -108,7 +108,7 @@ public class AddBookDialogTests : BunitTestContext
 
         // Act
         var form = dialogProvider.FindComponent<MudForm>();
-        await dialogProvider.InvokeAsync(form.Instance.Validate);
+        await dialogProvider.InvokeAsync(form.Instance.ValidateAsync);
 
         var updateButton = dialogProvider.FindAll("button").Last(button => button.TextContent.Trim() == "Update");
         await updateButton.ClickAsync(new MouseEventArgs());

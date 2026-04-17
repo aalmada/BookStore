@@ -91,7 +91,7 @@ Dialog components **do not** declare `@rendermode` — they inherit it from thei
 
     private async Task Submit()
     {
-        await _form.Validate();
+        await _form.ValidateAsync();
         if (!_success) return;
 
         var result = await WidgetsClient.CreateWidgetAsync(_model);
@@ -127,7 +127,7 @@ For destructive actions, use `IDialogService` with a simple confirm dialog:
 ```csharp
 private async Task DeleteWidget(Guid id, string etag)
 {
-    var confirm = await DialogService.ShowMessageBox(
+    var confirm = await DialogService.ShowMessageBoxAsync(
         "Delete Widget",
         "Are you sure you want to delete this widget? This cannot be undone.",
         yesText: "Delete", cancelText: "Cancel");
