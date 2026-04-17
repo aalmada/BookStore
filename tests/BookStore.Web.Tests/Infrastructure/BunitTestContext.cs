@@ -7,7 +7,7 @@ namespace BookStore.Web.Tests.Infrastructure;
 
 public abstract class BunitTestContext : IDisposable
 {
-    protected Bunit.TestContext Context { get; } = new();
+    protected BunitContext Context { get; } = new();
 
     protected BunitTestContext()
     {
@@ -36,7 +36,7 @@ public abstract class BunitTestContext : IDisposable
         Action<ComponentParameterCollectionBuilder<TComponent>>? parameterBuilder = null)
         where TComponent : Microsoft.AspNetCore.Components.IComponent
     {
-        _ = Context.RenderComponent<MudPopoverProvider>();
-        return Context.RenderComponent(parameterBuilder);
+        _ = Context.Render<MudPopoverProvider>();
+        return Context.Render(parameterBuilder);
     }
 }

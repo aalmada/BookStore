@@ -12,10 +12,6 @@
     <PackageReference Include="Azure.Storage.Blobs" />
     <PackageReference Include="Bogus" />
     <PackageReference Include="Microsoft.Playwright" />
-    <PackageReference Include="coverlet.collector">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
     <PackageReference Include="Microsoft.Extensions.Logging.Console" />
     <PackageReference Include="Marten" />
     <PackageReference Include="Npgsql" />

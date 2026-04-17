@@ -38,8 +38,8 @@ public class CurrencySelectorTests : BunitTestContext
         var cut = RenderComponent<CurrencySelector>();
 
         // Assert
-        var input = cut.Find("input");
-        _ = await Assert.That(input.GetAttribute("value")).IsEqualTo("GBP");
+        var button = cut.Find("button[aria-label='Change Currency']");
+        _ = await Assert.That(button.TextContent).Contains("GBP");
     }
 
     [Test]
@@ -52,7 +52,7 @@ public class CurrencySelectorTests : BunitTestContext
         await cut.InvokeAsync(async () => await _currencyService.SetCurrencyAsync("EUR"));
 
         // Assert
-        var input = cut.Find("input");
-        _ = await Assert.That(input.GetAttribute("value")).IsEqualTo("EUR");
+        var button = cut.Find("button[aria-label='Change Currency']");
+        _ = await Assert.That(button.TextContent).Contains("EUR");
     }
 }

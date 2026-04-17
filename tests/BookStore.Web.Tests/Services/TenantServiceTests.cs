@@ -26,7 +26,7 @@ public class TenantServiceTests : BunitTestContext
         _localStorage = Substitute.For<ILocalStorageService>();
         _js = Substitute.For<IJSRuntime>();
 
-        // NavigationManager is already registered in bUnit Context.Services as FakeNavigationManager
+        // NavigationManager is already registered in bUnit Context.Services as BunitNavigationManager
         var navigation = Context.Services.GetRequiredService<NavigationManager>();
 
         _sut = new TenantService(_tenantClient, navigation, _localStorage, _js);
@@ -39,7 +39,7 @@ public class TenantServiceTests : BunitTestContext
     public async Task InitializeAsync_ShouldSetTenantFromUrl_WhenPresent()
     {
         // Arrange
-        var navigation = Context.Services.GetRequiredService<FakeNavigationManager>();
+        var navigation = Context.Services.GetRequiredService<BunitNavigationManager>();
         navigation.NavigateTo("http://localhost/?tenant=apple");
 
         var tenantInfo = new TenantInfoDto("apple", "Apple Store", "Tagline", "#FFFFFF", true);
@@ -58,7 +58,7 @@ public class TenantServiceTests : BunitTestContext
     public async Task InitializeAsync_ShouldFallbackToLocalStorage_WhenUrlEmpty()
     {
         // Arrange
-        var navigation = Context.Services.GetRequiredService<FakeNavigationManager>();
+        var navigation = Context.Services.GetRequiredService<BunitNavigationManager>();
         navigation.NavigateTo("http://localhost/");
 
         _ = _localStorage.GetItemAsStringAsync("selected-tenant").Returns("banana");

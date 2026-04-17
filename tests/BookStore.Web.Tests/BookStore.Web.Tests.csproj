@@ -11,7 +11,6 @@
     <PackageReference Include="Aspire.Hosting.Testing" />
     <PackageReference Include="Bogus" />
     <PackageReference Include="bunit" />
-    <PackageReference Include="bunit.web" />
     <PackageReference Include="Microsoft.JSInterop" />
     <PackageReference Include="Microsoft.AspNetCore.Components.Web" />
     <PackageReference Include="MudBlazor" />

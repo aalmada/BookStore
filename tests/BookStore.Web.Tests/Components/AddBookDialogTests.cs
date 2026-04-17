@@ -102,7 +102,7 @@ public class AddBookDialogTests : BunitTestContext
         dialogProvider.WaitForState(() => dialogProvider.Markup.Contains("Edit Book", StringComparison.Ordinal));
 
         // Assert pre-population
-        var expectedPriceValue = existingGbpPrice.ToString(System.Globalization.CultureInfo.CurrentCulture);
+        var expectedPriceValue = existingGbpPrice.ToString(System.Globalization.CultureInfo.InvariantCulture);
         var gbpInput = dialogProvider.Find($"input[value='{expectedPriceValue}']");
         _ = await Assert.That(gbpInput.GetAttribute("value")).IsEqualTo(expectedPriceValue);
 

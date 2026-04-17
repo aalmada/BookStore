@@ -9,9 +9,10 @@ namespace BookStore.AppHost.Tests;
 
 public class AuthTests
 {
-    readonly IIdentityClient _client;
+    IIdentityClient _client = null!;
 
-    public AuthTests()
+    [Before(Test)]
+    public void Setup()
     {
         var httpClient = HttpClientHelpers.GetUnauthenticatedClient();
         _client = RestService.For<IIdentityClient>(httpClient);

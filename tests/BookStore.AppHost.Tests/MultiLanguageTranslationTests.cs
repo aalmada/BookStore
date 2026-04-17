@@ -148,7 +148,7 @@ public class MultiLanguageTranslationTests
             }
         };
 
-        var updatedBook = await BookHelpers.UpdateBookAsync(client, book.Id, updateRequest, book.ETag);
+        var updatedBook = await BookHelpers.UpdateBookAsync(client, book.Id, updateRequest, etag!);
         _ = await Assert.That(updatedBook).IsNotNull();
 
         // 4. Verify using Accept-Language
