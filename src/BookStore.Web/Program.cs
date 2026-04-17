@@ -178,6 +178,13 @@ builder.Services.AddAuthentication(options =>
             options.ResponseType = OpenIdConnectResponseType.Code;
             options.SaveTokens = true;
             options.GetClaimsFromUserInfoEndpoint = true;
+            // Preserve original JWT claim names (e.g. "sub") instead of remapping to
+            // Microsoft-style ClaimTypes. Without this, FindFirst("sub") returns null
+            // and the token store key is never populated → all API Bearer calls return 401.
+            options.MapInboundClaims = false;
+            // Tell the identity stack which claim carries the user's roles so that
+            // User.IsInRole() and [Authorize(Roles = "Admin")] work correctly.
+            options.TokenValidationParameters.RoleClaimType = "roles";
             options.Scope.Add("openid");
             options.Scope.Add("profile");
             options.Scope.Add("email");

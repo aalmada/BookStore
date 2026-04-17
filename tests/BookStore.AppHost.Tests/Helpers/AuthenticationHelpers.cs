@@ -36,6 +36,19 @@ public static class AuthenticationHelpers
     public static Task<LoginResponse?> LoginAsAdminAsync(HttpClient client, string keycloakUrl)
         => LoginAsUserAsync(client, keycloakUrl, "admin@default.com", "Admin123!");
 
+    public static async Task<LoginResponse?> LoginAsRegularUserAsync(string tenantId)
+    {
+        var app = GlobalHooks.App!;
+        using var keycloakClient = app.CreateHttpClient(ResourceNames.Keycloak);
+        var keycloakUrl = GetServiceBaseUrl(keycloakClient);
+
+        var tenantAlias = StorageConstants.DefaultTenantId.Equals(tenantId, StringComparison.OrdinalIgnoreCase)
+            ? MultiTenancyConstants.DefaultTenantAlias
+            : tenantId;
+
+        return await LoginAsUserAsync(keycloakClient, keycloakUrl, $"user@{tenantAlias}.com", "User123!");
+    }
+
     public static async Task<LoginResponse?> LoginAsUserAsync(
         HttpClient client,
         string keycloakUrl,

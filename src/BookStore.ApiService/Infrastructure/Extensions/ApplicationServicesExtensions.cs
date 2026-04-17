@@ -157,6 +157,9 @@ public static class ApplicationServicesExtensions
             .AddKeycloakJwtBearer(ResourceNames.Keycloak, realm: "bookstore", options =>
             {
                 options.Audience = "bookstore-api";
+                // The realm uses a custom "roles" claim (not the standard realm_access structure).
+                // Without this, RequireRole() / policy checks always fail with 403.
+                options.TokenValidationParameters.RoleClaimType = "roles";
                 if (isDevelopment)
                 {
                     options.RequireHttpsMetadata = false;

@@ -39,6 +39,17 @@ public sealed class KeycloakRoleClaimsTransformation : IClaimsTransformation
     {
         var roles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
+        // Handle top-level "roles" claim produced by the oidc-usermodel-realm-role-mapper
+        // (the format used by the BookStore Keycloak realm configuration).
+        foreach (var claim in identity.FindAll("roles"))
+        {
+            if (!string.IsNullOrWhiteSpace(claim.Value))
+            {
+                _ = roles.Add(claim.Value);
+            }
+        }
+
+        // Handle flat realm_access.roles claims
         foreach (var claim in identity.FindAll("realm_access.roles"))
         {
             if (!string.IsNullOrWhiteSpace(claim.Value))
