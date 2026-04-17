@@ -89,4 +89,15 @@ public static partial class Log
         Level = LogLevel.Error,
         Message = "Failed to remove rating for book {BookId}")]
     public static partial void RatingRemovalFailed(ILogger logger, Guid bookId, Exception ex);
+
+    // KeycloakTokenAccessor
+    [LoggerMessage(
+        Level = LogLevel.Debug,
+        Message = "Access token refreshed for user {UserSub}")]
+    public static partial void AccessTokenRefreshed(ILogger logger, string userSub);
+
+    [LoggerMessage(
+        Level = LogLevel.Warning,
+        Message = "Token refresh failed for user {UserSub}; user must re-authenticate")]
+    public static partial void TokenRefreshFailed(ILogger logger, string userSub);
 }

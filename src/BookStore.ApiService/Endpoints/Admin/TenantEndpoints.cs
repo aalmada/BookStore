@@ -1,4 +1,5 @@
 using BookStore.ApiService.Infrastructure;
+using BookStore.ApiService.Infrastructure.Auth;
 using BookStore.ApiService.Infrastructure.Extensions;
 using BookStore.ApiService.Infrastructure.Tenant;
 using BookStore.ApiService.Models;
@@ -46,10 +47,12 @@ public static class TenantEndpoints
         IDocumentStore store,
         ITenantContext tenantContext,
         ITenantStore tenantStore,
-        [FromServices] Wolverine.IMessageBus bus,
-        [FromServices] Microsoft.Extensions.Options.IOptions<BookStore.ApiService.Infrastructure.Email.EmailOptions> emailOptions,
+        IKeycloakAdminService keycloakAdminService,
+        ILoggerFactory loggerFactory,
         CancellationToken ct)
     {
+        var logger = loggerFactory.CreateLogger("TenantEndpoints");
+
         // Security check
         if (!string.Equals(tenantContext.TenantId, JasperFx.StorageConstants.DefaultTenantId, StringComparison.OrdinalIgnoreCase))
         {
@@ -104,21 +107,59 @@ public static class TenantEndpoints
         };
 
         session.Store(tenant);
-        await session.SaveChangesAsync(ct);
 
-        // Seed initial admin user if provided
+        string? keycloakUserId = null;
+
+        // Provision tenant admin in Keycloak before committing tenant changes locally.
         if (!string.IsNullOrWhiteSpace(request.AdminEmail))
         {
-            var verificationRequired = emailOptions.Value.DeliveryMethod != "None";
-
-            // Invoke the seeding command in the context of the NEW tenant
-            var seedCommand = new Messages.Commands.SeedTenantAdmin(
+            var keycloakResult = await keycloakAdminService.CreateUserAsync(
                 tenant.Id,
                 request.AdminEmail,
-                request.AdminPassword,
-                verificationRequired);
+                request.AdminPassword ?? string.Empty,
+                ct);
 
-            await bus.InvokeAsync(seedCommand, new Wolverine.DeliveryOptions { TenantId = tenant.Id }, ct);
+            if (keycloakResult.IsFailure)
+            {
+                return keycloakResult.ToProblemDetails();
+            }
+
+            keycloakUserId = keycloakResult.Value;
+        }
+
+        try
+        {
+            await session.SaveChangesAsync(ct);
+        }
+        catch (Exception ex)
+        {
+            if (!string.IsNullOrWhiteSpace(keycloakUserId))
+            {
+                TenantEndpointsLog.TenantSaveFailedCompensating(logger, tenant.Id, keycloakUserId, ex);
+
+                var deleteUserResult = await keycloakAdminService.DeleteUserAsync(keycloakUserId, ct);
+                if (deleteUserResult.IsFailure)
+                {
+                    TenantEndpointsLog.CompensationDeleteFailed(logger, tenant.Id, keycloakUserId, deleteUserResult.Error.Code);
+
+                    return Result.Failure(Error.Failure(
+                        ErrorCodes.Tenancy.TenantPersistenceCompensationFailed,
+                        "Tenant creation failed after provisioning the tenant admin in Keycloak; compensation was attempted."))
+                        .ToProblemDetails();
+                }
+
+                TenantEndpointsLog.CompensationDeleteSucceeded(logger, tenant.Id, keycloakUserId);
+                return Result.Failure(Error.Failure(
+                    ErrorCodes.Tenancy.TenantPersistenceFailed,
+                    "Tenant creation failed while saving tenant data."))
+                    .ToProblemDetails();
+            }
+
+            TenantEndpointsLog.TenantSaveFailed(logger, tenant.Id, ex);
+            return Result.Failure(Error.Failure(
+                ErrorCodes.Tenancy.TenantPersistenceFailed,
+                "Tenant creation failed while saving tenant data."))
+                .ToProblemDetails();
         }
 
         // Invalidate cache
@@ -171,4 +212,18 @@ public static class TenantEndpoints
 
         return Results.Ok(tenant);
     }
+}
+static partial class TenantEndpointsLog
+{
+    [LoggerMessage(EventId = 9300, Level = LogLevel.Error, Message = "Failed to save tenant {TenantId} after provisioning Keycloak user {KeycloakUserId}; starting compensation")]
+    public static partial void TenantSaveFailedCompensating(ILogger logger, string tenantId, string keycloakUserId, Exception exception);
+
+    [LoggerMessage(EventId = 9301, Level = LogLevel.Error, Message = "Compensation failed deleting Keycloak user {KeycloakUserId} for tenant {TenantId}. Error code: {ErrorCode}")]
+    public static partial void CompensationDeleteFailed(ILogger logger, string tenantId, string keycloakUserId, string errorCode);
+
+    [LoggerMessage(EventId = 9302, Level = LogLevel.Information, Message = "Compensation succeeded deleting Keycloak user {KeycloakUserId} for tenant {TenantId}")]
+    public static partial void CompensationDeleteSucceeded(ILogger logger, string tenantId, string keycloakUserId);
+
+    [LoggerMessage(EventId = 9303, Level = LogLevel.Error, Message = "Failed to save tenant {TenantId}")]
+    public static partial void TenantSaveFailed(ILogger logger, string tenantId, Exception exception);
 }

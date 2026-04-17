@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using BookStore.Client.Services;
+using Microsoft.AspNetCore.Components.Authorization;
 
 namespace BookStore.Web.Services;
 
@@ -8,19 +9,19 @@ namespace BookStore.Web.Services;
 /// </summary>
 public class AuthorizationMessageHandler : DelegatingHandler
 {
-    readonly TokenService _tokenService;
-    readonly TenantService _tenantService;
+    readonly KeycloakTokenAccessor _tokenAccessor;
+    readonly AuthenticationStateProvider _authenticationStateProvider;
     readonly IHttpContextAccessor _httpContextAccessor;
     readonly ClientContextService _clientContextService;
 
     public AuthorizationMessageHandler(
-        TokenService tokenService,
-        TenantService tenantService,
+        KeycloakTokenAccessor tokenAccessor,
+        AuthenticationStateProvider authenticationStateProvider,
         IHttpContextAccessor httpContextAccessor,
         ClientContextService clientContextService)
     {
-        _tokenService = tokenService;
-        _tenantService = tenantService;
+        _tokenAccessor = tokenAccessor;
+        _authenticationStateProvider = authenticationStateProvider;
         _httpContextAccessor = httpContextAccessor;
         _clientContextService = clientContextService;
     }
@@ -32,7 +33,9 @@ public class AuthorizationMessageHandler : DelegatingHandler
         request.Headers.Add("X-Correlation-ID", _clientContextService.CorrelationId);
         request.Headers.Add("X-Causation-ID", _clientContextService.CausationId);
 
-        var token = _tokenService.GetAccessToken(_tenantService.CurrentTenantId);
+        var authState = await _authenticationStateProvider.GetAuthenticationStateAsync();
+        var userSub = authState.User.FindFirst("sub")?.Value;
+        var token = await _tokenAccessor.GetAccessTokenAsync(userSub ?? string.Empty);
         if (!string.IsNullOrEmpty(token))
         {
             request.Headers.Authorization =

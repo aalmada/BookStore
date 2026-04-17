@@ -116,6 +116,7 @@ public static class ErrorCodes
         public const string UserNotFound = "ERR_ADMIN_USER_NOT_FOUND";
         public const string AlreadyAdmin = "ERR_ADMIN_ALREADY_ADMIN";
         public const string NotAdmin = "ERR_ADMIN_NOT_ADMIN";
+        public const string UserManagementNotImplemented = "ERR_ADMIN_USER_MANAGEMENT_NOT_IMPLEMENTED";
         public const string FileEmpty = "ERR_ADMIN_FILE_EMPTY";
         public const string FileTooLarge = "ERR_ADMIN_FILE_TOO_LARGE";
         public const string InvalidFileType = "ERR_ADMIN_INVALID_FILE_TYPE";
@@ -132,6 +133,8 @@ public static class ErrorCodes
         public const string TenantNotFound = "ERR_TENANT_NOT_FOUND";
         public const string AccessDenied = "ERR_TENANT_ACCESS_DENIED";
         public const string ConcurrencyConflict = "ERR_TENANT_CONCURRENCY_CONFLICT";
+        public const string TenantPersistenceFailed = "ERR_TENANT_PERSISTENCE_FAILED";
+        public const string TenantPersistenceCompensationFailed = "ERR_TENANT_PERSISTENCE_COMPENSATION";
     }
 
     // Passkey Codes

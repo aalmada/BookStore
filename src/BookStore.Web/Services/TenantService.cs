@@ -4,6 +4,7 @@ using BookStore.Shared;
 using BookStore.Shared.Models;
 using BookStore.Web.Infrastructure;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.JSInterop;
 
@@ -17,18 +18,24 @@ public class TenantService : IDisposable
     readonly ITenantsClient _tenantClient;
     readonly NavigationManager _navigation;
     readonly ILocalStorageService _localStorage;
+    readonly AuthenticationStateProvider _authStateProvider;
     readonly IJSRuntime _js;
 
     public event Action? OnChange;
 
     bool _isSubscribed;
 
-    public TenantService(ITenantsClient tenantClient, NavigationManager navigation, ILocalStorageService localStorage,
+    public TenantService(
+        ITenantsClient tenantClient,
+        NavigationManager navigation,
+        ILocalStorageService localStorage,
+        AuthenticationStateProvider authStateProvider,
         IJSRuntime js)
     {
         _tenantClient = tenantClient;
         _navigation = navigation;
         _localStorage = localStorage;
+        _authStateProvider = authStateProvider;
         _js = js;
 
         // NavigationManager may not be initialized during prerendering
@@ -78,6 +85,15 @@ public class TenantService : IDisposable
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
+        var authState = await _authStateProvider.GetAuthenticationStateAsync();
+        var tenantIdClaim = authState.User.FindFirst("tenant_id")?.Value;
+
+        if (authState.User.Identity?.IsAuthenticated == true && !string.IsNullOrEmpty(tenantIdClaim))
+        {
+            _ = await SetTenantAsync(tenantIdClaim, cancellationToken);
+            return;
+        }
+
         // Priority 1: Check URL parameter
         var uri = _navigation.ToAbsoluteUri(_navigation.Uri);
         var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);

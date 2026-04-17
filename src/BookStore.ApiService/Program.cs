@@ -119,12 +119,9 @@ if (app.Environment.IsDevelopment())
             .WithMetadata(new AllowAnonymousTenantAttribute());
 }
 
-// Map JWT authentication endpoints
-app.MapGroup("/account").MapJwtAuthenticationEndpoints();
 app.MapGroup("/api/admin/tenants").WithTags("Tenants").MapTenantEndpoints().RequireAuthorization("Admin"); // Require Admin role
 app.MapGroup("/api/tenants").WithTags("Tenants").MapTenantInfoEndpoints(); // Public
 app.MapGroup("/api/config").WithTags("Configuration").MapConfigurationEndpoints(); // Public
-app.MapPasskeyEndpoints();
 
 // Map all API endpoints
 app.MapApiEndpoints();

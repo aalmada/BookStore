@@ -27,4 +27,9 @@
     <Using Include="TUnit.Assertions" />
   </ItemGroup>
 
+  <!-- Clean stale coverage mapping file before build to prevent MSB3492 error -->
+  <Target Name="CleanStaleCoverageMappingFile" BeforeTargets="BeforeBuild">
+    <Delete Files="$(OutputPath).msCoverageExtensionSourceRootsMapping_$(MSBuildProjectName)" ContinueOnError="true" />
+  </Target>
+
 </Project>

@@ -137,5 +137,26 @@ public static partial class Log
             Level = LogLevel.Information,
             Message = "Created new admin user {Email} in tenant {TenantId}")]
         public static partial void CreatedNewAdminUser(ILogger logger, string email, string tenantId);
+
+        // Keycloak Admin Seeding
+        [LoggerMessage(
+            Level = LogLevel.Information,
+            Message = "Seeding Keycloak admin user {Email} for tenant {TenantId}")]
+        public static partial void SeedingKeycloakAdmin(ILogger logger, string email, string tenantId);
+
+        [LoggerMessage(
+            Level = LogLevel.Information,
+            Message = "Keycloak admin user {Email} already exists for tenant {TenantId}, skipping")]
+        public static partial void KeycloakAdminAlreadyExists(ILogger logger, string email, string tenantId);
+
+        [LoggerMessage(
+            Level = LogLevel.Information,
+            Message = "Created Keycloak admin user {Email} for tenant {TenantId}")]
+        public static partial void CreatedKeycloakAdmin(ILogger logger, string email, string tenantId);
+
+        [LoggerMessage(
+            Level = LogLevel.Warning,
+            Message = "Failed to seed Keycloak admin user {Email} for tenant {TenantId}: {ErrorCode}")]
+        public static partial void KeycloakAdminSeedingFailed(ILogger logger, string email, string tenantId, string errorCode);
     }
 }

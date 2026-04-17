@@ -1,15 +1,17 @@
-using System.Net.Http.Json;
+using System.Net.Http.Headers;
 using Aspire.Hosting;
 using Aspire.Hosting.Testing;
 using BookStore.ApiService.Aggregates;
 using BookStore.ApiService.Events;
 using BookStore.AppHost.Tests.Helpers;
+using BookStore.ServiceDefaults;
 using BookStore.Shared;
 using BookStore.Shared.Models;
 using JasperFx;
 using JasperFx.Core;
 using JasperFx.Events;
 using Marten;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Projects;
 using Weasel.Core;
@@ -26,41 +28,53 @@ public static class GlobalHooks
     public static ResourceNotificationService? NotificationService { get; private set; }
     public static string? AdminAccessToken { get; private set; }
     public static HttpClient? AdminHttpClient { get; private set; }
+    public static string KeycloakAdminUsername { get; private set; } = string.Empty;
+    public static string KeycloakAdminPassword { get; private set; } = string.Empty;
 
     [Before(TestSession)]
     public static async Task SetUp()
     {
-        try
+        var builder = await DistributedApplicationTestingBuilder.CreateAsync<Projects.BookStore_AppHost>([
+            "--RateLimit:Disabled=true",
+            "--Seeding:Enabled=false",
+            "--Email:DeliveryMethod=None",
+            "--Jwt:ExpirationMinutes=240"
+        ]);
+
+        _ = builder.Services.AddLogging(logging =>
         {
-            var builder = await DistributedApplicationTestingBuilder.CreateAsync<Projects.BookStore_AppHost>([
-                "--RateLimit:Disabled=true",
-                "--Seeding:Enabled=false",
-                "--Email:DeliveryMethod=None",
-                "--Jwt:ExpirationMinutes=240"
-            ]);
-            _ = builder.Services.AddLogging(logging =>
+            _ = logging.SetMinimumLevel(LogLevel.Information);
+            _ = logging.AddSimpleConsole(options =>
             {
-                _ = logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Information);
-                _ = logging.AddSimpleConsole(options =>
-                {
-                    options.SingleLine = true;
-                    options.TimestampFormat = "[HH:mm:ss] ";
-                });
+                options.SingleLine = true;
+                options.TimestampFormat = "[HH:mm:ss] ";
             });
+        });
 
-            App = await builder.BuildAsync();
+        App = await builder.BuildAsync();
+        NotificationService = App.Services.GetRequiredService<ResourceNotificationService>();
+        var configuration = App.Services.GetRequiredService<IConfiguration>();
 
-            NotificationService = App.Services.GetRequiredService<ResourceNotificationService>();
+        KeycloakAdminUsername = ResolveConfigurationValue(
+            configuration,
+            [
+                "Keycloak:Admin:AdminUsername",
+                "Parameters:keycloak-admin"
+            ])
+            // safe: Aspire Keycloak defaults the master admin username to "admin" in local dev/test.
+            ?? "admin";
 
-            await App.StartAsync();
+        KeycloakAdminPassword = ResolveConfigurationValue(
+            configuration,
+            [
+                "Keycloak:Admin:AdminPassword",
+                "Parameters:keycloak-password",
+                "Parameters:keycloak-admin-password"
+            ]) ?? throw new InvalidOperationException(
+            "Could not resolve the Keycloak admin password from runtime configuration.");
 
-            // Authenticate once and cache the token for all tests
-            await AuthenticateAdminAsync();
-        }
-        catch
-        {
-            throw;
-        }
+        await App.StartAsync();
+        await AuthenticateAdminAsync();
     }
 
     static async Task AuthenticateAdminAsync()
@@ -70,21 +84,19 @@ public static class GlobalHooks
             throw new InvalidOperationException("App or NotificationService is not initialized");
         }
 
-        var httpClient = App.CreateHttpClient("apiservice");
-        httpClient.DefaultRequestHeaders.Add("X-Tenant-ID", StorageConstants.DefaultTenantId);
-
         try
         {
             using var healthCts = new CancellationTokenSource(TimeSpan.FromSeconds(120));
-            _ = await NotificationService.WaitForResourceHealthyAsync("apiservice", healthCts.Token);
+            _ = await NotificationService.WaitForResourceHealthyAsync(ResourceNames.ApiService, healthCts.Token);
         }
         catch (Exception ex)
         {
-            throw new InvalidOperationException("apiservice failed to become healthy", ex);
+            throw new InvalidOperationException($"{ResourceNames.ApiService} failed to become healthy", ex);
         }
 
-        // Manually seed the default admin user since automatic seeding is disabled
-        // This ensures tests are self-contained and don't rely on background processes
+        using var keycloakClient = App.CreateHttpClient(ResourceNames.Keycloak);
+        await WaitForKeycloakReadyAsync(keycloakClient);
+
         var connectionString = await App.GetConnectionStringAsync("bookstore");
         if (string.IsNullOrEmpty(connectionString))
         {
@@ -108,7 +120,6 @@ public static class GlobalHooks
                    opts.Events.TenancyStyle = Marten.Storage.TenancyStyle.Conjoined;
                }))
         {
-            // Tenant documents use Marten's native default tenant bucket
             await using var tenantSession = store.LightweightSession();
             var defaultTenantId = StorageConstants.DefaultTenantId;
 
@@ -130,32 +141,11 @@ public static class GlobalHooks
             }
 
             await tenantSession.SaveChangesAsync();
-
-            // Seed minimal books for testing (default tenant)
             await SeedBooksAsync(store, StorageConstants.DefaultTenantId);
-
-            // Only seed the default tenant admin directly.
-            // Other tenant admins are created via the API as part of tenant creation (full tenant isolation).
-            await SeedTenantAdminAsync(store, StorageConstants.DefaultTenantId);
         }
 
-        // Retry login mechanism (less aggressive now that we control seeding)
-        HttpResponseMessage? loginResponse = null;
-        await SseEventHelpers.WaitForConditionAsync(async () =>
-        {
-            try
-            {
-                loginResponse = await httpClient.PostAsJsonAsync("/account/login",
-                    new { Email = $"admin@{MultiTenancyConstants.DefaultTenantAlias}.com", Password = "Admin123!" });
-                return loginResponse.IsSuccessStatusCode;
-            }
-            catch
-            {
-                return false;
-            }
-        }, TimeSpan.FromSeconds(60), "Failed to authenticate admin user after startup");
-
-        var loginResult = await loginResponse!.Content.ReadFromJsonAsync<LoginResponse>();
+        var keycloakUrl = AuthenticationHelpers.GetServiceBaseUrl(keycloakClient);
+        var loginResult = await AuthenticationHelpers.LoginAsAdminAsync(keycloakClient, keycloakUrl);
         if (loginResult == null || string.IsNullOrEmpty(loginResult.AccessToken))
         {
             throw new InvalidOperationException("Failed to retrieve access token");
@@ -163,52 +153,74 @@ public static class GlobalHooks
 
         AdminAccessToken = loginResult.AccessToken;
 
-        // Configure the shared HttpClient with the admin token
-        httpClient.DefaultRequestHeaders.Authorization =
-            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", AdminAccessToken);
+        var httpClient = App.CreateHttpClient(ResourceNames.ApiService);
+        httpClient.DefaultRequestHeaders.Add("X-Tenant-ID", StorageConstants.DefaultTenantId);
+        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", AdminAccessToken);
         AdminHttpClient = httpClient;
     }
 
-    static async Task SeedTenantAdminAsync(IDocumentStore store, string tenantId)
+    static async Task WaitForKeycloakReadyAsync(HttpClient keycloakClient)
     {
-        await using var session = store.LightweightSession(tenantId);
-        var tenantAlias = StorageConstants.DefaultTenantId.Equals(tenantId, StringComparison.OrdinalIgnoreCase)
-            ? MultiTenancyConstants.DefaultTenantAlias
-            : tenantId;
-        var adminEmail = $"admin@{tenantAlias}.com";
-
-        var existingAdmin = await session.Query<BookStore.ApiService.Models.ApplicationUser>()
-            .Where(u => u.Email == adminEmail)
-            .FirstOrDefaultAsync();
-
-        if (existingAdmin == null)
+        Exception? lastException = null;
+        try
         {
-            var adminUser = new BookStore.ApiService.Models.ApplicationUser
-            {
-                UserName = adminEmail,
-                NormalizedUserName = adminEmail.ToUpperInvariant(),
-                Email = adminEmail,
-                NormalizedEmail = adminEmail.ToUpperInvariant(),
-                EmailConfirmed = true,
-                Roles = ["Admin"],
-                SecurityStamp = Guid.CreateVersion7().ToString("D"),
-                ConcurrencyStamp = Guid.CreateVersion7().ToString("D")
-            };
+            await SseEventHelpers.WaitForConditionAsync(
+                async () =>
+                {
+                    try
+                    {
+                        using var response = await keycloakClient.GetAsync(
+                            "/realms/bookstore/.well-known/openid-configuration");
 
-            var hasher =
-                new Microsoft.AspNetCore.Identity.PasswordHasher<BookStore.ApiService.Models.ApplicationUser>();
-            adminUser.PasswordHash = hasher.HashPassword(adminUser, "Admin123!");
+                        if (response.IsSuccessStatusCode)
+                        {
+                            return true;
+                        }
 
-            session.Store(adminUser);
-            await session.SaveChangesAsync();
+                        lastException = new InvalidOperationException(
+                            $"Keycloak readiness probe returned {(int)response.StatusCode}.");
+                        return false;
+                    }
+                    catch (Exception ex)
+                    {
+                        lastException = ex;
+                        return false;
+                    }
+                },
+                TimeSpan.FromSeconds(120),
+                "Keycloak failed to become ready within 120 seconds.");
         }
+        catch (Exception) when (lastException is not null)
+        {
+            throw new InvalidOperationException("Keycloak failed to become ready within 120 seconds.", lastException);
+        }
+    }
+
+    static string? ResolveConfigurationValue(IConfiguration configuration, string[] keys)
+    {
+        foreach (var key in keys)
+        {
+            var configurationValue = configuration[key];
+            if (!string.IsNullOrWhiteSpace(configurationValue))
+            {
+                return configurationValue;
+            }
+
+            var environmentKey = key.Replace(':', '_').Replace('-', '_').ToUpperInvariant();
+            var environmentValue = Environment.GetEnvironmentVariable(environmentKey);
+            if (!string.IsNullOrWhiteSpace(environmentValue))
+            {
+                return environmentValue;
+            }
+        }
+
+        return null;
     }
 
     static async Task SeedBooksAsync(IDocumentStore store, string tenantId)
     {
         await using var session = store.LightweightSession(tenantId);
 
-        // Check if already seeded
         if (await session.Events.QueryRawEventDataOnly<BookAdded>().AnyAsync())
         {
             return;
@@ -218,21 +230,17 @@ public static class GlobalHooks
         var authorId = Guid.CreateVersion7();
         var categoryId = Guid.CreateVersion7();
 
-        // Seed Publisher
         var publisherEvent = new PublisherAdded(publisherId, "Test Publisher", DateTimeOffset.UtcNow);
         _ = session.Events.StartStream<PublisherAggregate>(publisherId, publisherEvent);
 
-        // Seed Author
         var authorEvent = new AuthorAdded(authorId, "Test Author",
             new Dictionary<string, AuthorTranslation> { ["en"] = new("Test Bio") }, DateTimeOffset.UtcNow);
         _ = session.Events.StartStream<AuthorAggregate>(authorId, authorEvent);
 
-        // Seed Category
         var categoryEvent = new CategoryAdded(categoryId,
             new Dictionary<string, CategoryTranslation> { ["en"] = new("Test Category") }, DateTimeOffset.UtcNow);
         _ = session.Events.StartStream<CategoryAggregate>(categoryId, categoryEvent);
 
-        // Seed Books
         for (var i = 1; i <= 5; i++)
         {
             var bookId = Guid.CreateVersion7();
@@ -262,6 +270,4 @@ public static class GlobalHooks
             await App.DisposeAsync();
         }
     }
-
-    record LoginResponse(string AccessToken, string RefreshToken);
 }

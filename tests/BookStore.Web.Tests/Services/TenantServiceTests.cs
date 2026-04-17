@@ -6,6 +6,7 @@ using BookStore.Web.Tests.Infrastructure;
 using Bunit;
 using Bunit.TestDoubles;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.JSInterop;
 using NSubstitute;
 using TUnit.Core;
@@ -16,6 +17,7 @@ public class TenantServiceTests : BunitTestContext
 {
     ITenantsClient _tenantClient = null!;
     ILocalStorageService _localStorage = null!;
+    AuthenticationStateProvider _authStateProvider = null!;
     IJSRuntime _js = null!;
     TenantService _sut = null!;
 
@@ -24,12 +26,14 @@ public class TenantServiceTests : BunitTestContext
     {
         _tenantClient = Substitute.For<ITenantsClient>();
         _localStorage = Substitute.For<ILocalStorageService>();
+        _ = Context.AddTestAuthorization();
+        _authStateProvider = Context.Services.GetRequiredService<AuthenticationStateProvider>();
         _js = Substitute.For<IJSRuntime>();
 
         // NavigationManager is already registered in bUnit Context.Services as FakeNavigationManager
         var navigation = Context.Services.GetRequiredService<NavigationManager>();
 
-        _sut = new TenantService(_tenantClient, navigation, _localStorage, _js);
+        _sut = new TenantService(_tenantClient, navigation, _localStorage, _authStateProvider, _js);
     }
 
     [After(Test)]

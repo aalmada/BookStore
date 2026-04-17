@@ -1,10 +1,6 @@
 @using Microsoft.AspNetCore.Components.Authorization
-@using BookStore.Web.Services
-@using Microsoft.JSInterop
-@inject AuthenticationService AuthService
-@inject JwtAuthenticationStateProvider AuthStateProvider
+@inject IConfiguration Configuration
 @inject NavigationManager Navigation
-@inject IJSRuntime JS
 
 <AuthorizeView>
     <Authorized>
@@ -14,13 +10,9 @@
                     <MudText Typo="Typo.body2">@context.User.Identity?.Name</MudText>
                 </MudMenuItem>
                 <MudDivider/>
-                <MudMenuItem Href="/account/password">
-                    <MudIcon Icon="@Icons.Material.Filled.Lock" Class="mr-2"/>
-                    Manage Password
-                </MudMenuItem>
-                <MudMenuItem Href="/account/passkeys">
-                    <MudIcon Icon="@Icons.Material.Filled.Key" Class="mr-2"/>
-                    Manage Passkeys
+                <MudMenuItem Href="@_accountConsoleUrl" Target="_blank">
+                    <MudIcon Icon="@Icons.Material.Filled.ManageAccounts" Class="mr-2"/>
+                    Manage Account
                 </MudMenuItem>
                 <MudMenuItem OnClick="HandleLogout">
                     <MudIcon Icon="@Icons.Material.Filled.Logout" Class="mr-2"/>
@@ -31,7 +23,7 @@
     </Authorized>
     <NotAuthorized>
         <MudTooltip Text="Login" Arrow="true" Placement="Placement.Bottom">
-            <MudButton Href="/login" Variant="Variant.Text" Color="Color.Inherit" StartIcon="@Icons.Material.Filled.Login">
+            <MudButton Href="/login/oidc" Variant="Variant.Text" Color="Color.Inherit" StartIcon="@Icons.Material.Filled.Login">
                 Login
             </MudButton>
         </MudTooltip>
@@ -45,27 +37,22 @@
 
 @code {
     bool _isUserMenuOpen;
+    string _accountConsoleUrl = "/account/password";
 
-    async Task HandleLogout()
+    protected override void OnInitialized()
     {
-        await AuthService.LogoutAsync();
+        var keycloakBaseUrl = Configuration[$"services:{BookStore.ServiceDefaults.ResourceNames.Keycloak}:https:0"]
+            ?? Configuration[$"services:{BookStore.ServiceDefaults.ResourceNames.Keycloak}:http:0"];
 
-        // Notify the authentication state provider that the user has logged out
-        // This triggers UI updates for AuthorizeView and other auth-dependent components
-        await AuthStateProvider.NotifyUserLogout();
-
-        // Notify other tabs via BroadcastChannel
-        try
+        if (!string.IsNullOrWhiteSpace(keycloakBaseUrl))
         {
-            await JS.InvokeVoidAsync("authBroadcast.notifyLogout");
+            _accountConsoleUrl = $"{keycloakBaseUrl.TrimEnd('/')}/realms/bookstore/account";
         }
-        catch
-        {
-            // BroadcastChannel might not be available, continue anyway
-        }
+    }
 
-        // Navigate without forceLoad - state is already updated
-        Navigation.NavigateTo("/");
+    void HandleLogout()
+    {
+        Navigation.NavigateTo("/logout", forceLoad: true);
     }
 
 }

@@ -1,6 +1,7 @@
-using Marten;
+using BookStore.ApiService.Infrastructure.Auth;
+using BookStore.ServiceDefaults;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.HttpOverrides;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 
 namespace BookStore.ApiService.Infrastructure.Extensions;
@@ -53,22 +54,17 @@ public static class ApplicationServicesExtensions
         // Add Blob Storage service
         _ = services.AddSingleton<BookStore.ApiService.Services.BlobStorageService>();
 
-        _ = services.AddOptions<Identity.AccountCleanupOptions>()
-            .BindConfiguration(Identity.AccountCleanupOptions.SectionName)
-            .ValidateDataAnnotations()
-            .ValidateOnStart();
-
-        // Register Unverified Account Cleanup background service
-        _ = services.AddHostedService<Infrastructure.Services.UnverifiedAccountCleanupService>();
-
         // Add HybridCache for L1 (in-memory) + L2 (Redis) caching
         _ = services.AddHybridCache();
 
         // Register Marten Projection Commit Listener in DI
         _ = services.AddSingleton<Infrastructure.ProjectionCommitListener>();
 
-        // Configure Identity with JWT authentication
-        AddIdentityServices(services, configuration);
+        // Configure email services
+        AddEmailServices(services);
+
+        // Configure Keycloak authentication
+        AddKeycloakAuthentication(services, configuration);
 
         // Configure Forwarded Headers
         AddForwardedHeaders(services);
@@ -121,179 +117,8 @@ public static class ApplicationServicesExtensions
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
-    static void AddIdentityServices(IServiceCollection services, IConfiguration configuration)
+    static void AddEmailServices(IServiceCollection services)
     {
-        // Add core Identity services without API endpoints (we'll use custom JWT endpoints)
-        _ = services.AddIdentityCore<Models.ApplicationUser>(options =>
-            {
-                // Password requirements
-                options.Password.RequireDigit = true;
-                options.Password.RequireLowercase = true;
-                options.Password.RequireUppercase = true;
-                options.Password.RequireNonAlphanumeric = true;
-                options.Password.RequiredLength = 8;
-
-                // Require email confirmation for login
-                options.SignIn.RequireConfirmedEmail = true;
-
-            })
-            .AddUserStore<Identity.MartenUserStore>()
-            .AddSignInManager() // This registers SignInManager and IPasskeyHandler
-            .AddDefaultTokenProviders();
-
-        // Configure Passkey options
-        _ = services.Configure<Microsoft.AspNetCore.Identity.IdentityPasskeyOptions>(options =>
-        {
-            var passkeyDomain = configuration["Authentication:Passkey:ServerDomain"];
-            options.ServerDomain = !string.IsNullOrEmpty(passkeyDomain) ? passkeyDomain : "localhost";
-            options.AuthenticatorTimeout = TimeSpan.FromMinutes(2);
-            options.ChallengeSize = 32;
-            options.UserVerificationRequirement = "required";
-            options.ResidentKeyRequirement = "required";
-            options.AttestationConveyancePreference = "none";
-            options.IsAllowedAlgorithm = algorithm => algorithm is -7 or -8;
-
-            // Configure origin validation to allow Web app origin
-            // By default, ASP.NET Core Identity rejects cross-origin passkey requests
-            // We need to explicitly allow the Web app origin (https://localhost:7260)
-            options.ValidateOrigin = context =>
-            {
-                // Allow same-origin requests (when API is called directly)
-                if (!context.CrossOrigin)
-                {
-                    return ValueTask.FromResult(true);
-                }
-
-                // Allow requests from the Web app (even if marked as same-origin by browser)
-                var allowedOrigins = configuration.GetSection("Authentication:Passkey:AllowedOrigins").Get<string[]>() ?? [];
-                if (!Uri.TryCreate(context.Origin, UriKind.Absolute, out var originUri))
-                {
-                    return ValueTask.FromResult(false);
-                }
-
-                // Only allow HTTP for localhost in Development environment
-                var env = context.HttpContext.RequestServices.GetRequiredService<Microsoft.AspNetCore.Hosting.IWebHostEnvironment>();
-                var isSecureOrigin = originUri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)
-                                     || (env.IsDevelopment() && originUri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase));
-
-                if (isSecureOrigin && allowedOrigins.Contains(context.Origin, StringComparer.OrdinalIgnoreCase))
-                {
-                    return ValueTask.FromResult(true);
-                }
-
-                return ValueTask.FromResult(false);
-            };
-        });
-
-        // Add roles support not needed via AddRoles (which requires IRoleStore),
-        // as we use simple string roles on the user object via MartenUserStore implementation of IUserRoleStore.
-
-        // Add HttpContextAccessor required for SignInManager
-        _ = services.AddHttpContextAccessor();
-
-        // Add JWT Bearer authentication
-        var jwtSettings = configuration.GetSection("Jwt");
-        var secretKey = jwtSettings["SecretKey"];
-        var environment = services.BuildServiceProvider().GetRequiredService<Microsoft.AspNetCore.Hosting.IWebHostEnvironment>();
-
-        // SECURITY: Validate JWT secret key in production
-        if (!environment.IsDevelopment())
-        {
-            if (string.IsNullOrEmpty(secretKey) ||
-                secretKey == "your-secret-key-must-be-at-least-32-characters-long-for-hs256")
-            {
-                throw new InvalidOperationException(
-                    "Production JWT secret key must be configured via environment variables or secure key vault. " +
-                    "Set the 'Jwt:SecretKey' configuration value. Never use the default key in production.");
-            }
-        }
-
-        _ = services.AddAuthentication(options =>
-            {
-                options.DefaultAuthenticateScheme = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme;
-                options.DefaultChallengeScheme = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme;
-            })
-            .AddJwtBearer(options =>
-            {
-                options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
-                {
-                    ValidateIssuer = true,
-                    ValidateAudience = true,
-                    ValidateLifetime = true,
-                    ValidateIssuerSigningKey = true,
-                    ValidIssuer = jwtSettings["Issuer"],
-                    ValidAudience = jwtSettings["Audience"],
-                    IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(
-                            System.Text.Encoding.UTF8.GetBytes(secretKey!)),
-                    ClockSkew = TimeSpan.Zero, // Remove default 5 minute clock skew
-                    RoleClaimType = System.Security.Claims.ClaimTypes.Role,
-                    NameClaimType = System.Security.Claims.ClaimTypes.Name
-                };
-
-                // Validate security stamp on each request to detect token revocation
-                options.Events = new Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerEvents
-                {
-                    OnChallenge = async context =>
-                    {
-                        // If authentication failed (either by exception or by calling context.Fail()), ensure 401 is returned
-                        if (context.AuthenticateFailure != null || !string.IsNullOrEmpty(context.Error))
-                        {
-                            context.HandleResponse(); // Prevent default challenge behavior
-                            context.Response.StatusCode = 401;
-                            context.Response.ContentType = "application/json";
-                            await context.Response.WriteAsJsonAsync(new
-                            {
-                                error = context.Error ?? "unauthorized",
-                                error_description = context.ErrorDescription ?? context.AuthenticateFailure?.Message ?? "Authentication failed"
-                            });
-                        }
-                    },
-                    OnTokenValidated = async context =>
-                    {
-                        // Get user directly from Marten session to bypass identity map caching
-                        var session = context.HttpContext.RequestServices.GetRequiredService<Marten.IDocumentSession>();
-                        var userId = context.Principal?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-
-                        if (!string.IsNullOrEmpty(userId) && Guid.TryParse(userId, out var userGuid))
-                        {
-                            // Use Query instead of Load to bypass Marten's identity map caching
-                            var user = await session.Query<Models.ApplicationUser>()
-                                .FirstOrDefaultAsync(u => u.Id == userGuid, context.HttpContext.RequestAborted);
-
-                            if (user != null)
-                            {
-                                // Get security stamp from token (null if claim doesn't exist)
-                                var tokenSecurityStamp = context.Principal?.FindFirst("security_stamp")?.Value;
-
-                                // Only validate if token HAS a security_stamp claim and user HAS a security stamp
-                                // This allows old tokens without the claim to work (backward compatibility)
-                                if (!string.IsNullOrEmpty(tokenSecurityStamp) &&
-                                    !string.IsNullOrEmpty(user.SecurityStamp) &&
-                                    tokenSecurityStamp != user.SecurityStamp)
-                                {
-                                    // CRITICAL: Clear the principal to prevent downstream middleware from seeing an authenticated user
-                                    context.HttpContext.User = new System.Security.Claims.ClaimsPrincipal();
-                                    context.Fail("Token has been revoked due to security stamp change.");
-                                }
-                            }
-                            else
-                            {
-                                // CRITICAL: Clear the principal
-                                context.HttpContext.User = new System.Security.Claims.ClaimsPrincipal();
-                                context.Fail("User not found.");
-                            }
-                        }
-                    }
-                };
-            })
-            // Add cookies required by SignInManager
-            .AddCookie(Microsoft.AspNetCore.Identity.IdentityConstants.ApplicationScheme)
-            .AddCookie(Microsoft.AspNetCore.Identity.IdentityConstants.ExternalScheme)
-            .AddCookie(Microsoft.AspNetCore.Identity.IdentityConstants.TwoFactorUserIdScheme);
-
-        // Add JWT token service
-        _ = services.AddSingleton<BookStore.ApiService.Services.JwtTokenService>();
-
         // Configure Email Services
         _ = services.AddOptions<Infrastructure.Email.EmailOptions>()
             .BindConfiguration(Infrastructure.Email.EmailOptions.SectionName)
@@ -319,6 +144,35 @@ public static class ApplicationServicesExtensions
                 _ => new Infrastructure.Email.LoggingEmailService(logger, sp.GetRequiredService<IOptions<Infrastructure.Email.EmailOptions>>())
             };
         });
+    }
+
+    static void AddKeycloakAuthentication(IServiceCollection services, IConfiguration configuration)
+    {
+        var isDevelopment = string.Equals(
+            configuration["ASPNETCORE_ENVIRONMENT"] ?? configuration["DOTNET_ENVIRONMENT"],
+            "Development",
+            StringComparison.OrdinalIgnoreCase);
+
+        _ = services.AddAuthentication()
+            .AddKeycloakJwtBearer(ResourceNames.Keycloak, realm: "bookstore", options =>
+            {
+                options.Audience = "bookstore-api";
+                // The realm uses a custom "roles" claim (not the standard realm_access structure).
+                // Without this, RequireRole() / policy checks always fail with 403.
+                options.TokenValidationParameters.RoleClaimType = "roles";
+                if (isDevelopment)
+                {
+                    options.RequireHttpsMetadata = false;
+                }
+            });
+
+        _ = services.AddSingleton<IClaimsTransformation, KeycloakRoleClaimsTransformation>();
+
+        _ = services.AddOptions<KeycloakAdminOptions>()
+            .BindConfiguration(KeycloakAdminOptions.SectionName)
+            .ValidateOnStart();
+
+        _ = services.AddHttpClient<IKeycloakAdminService, KeycloakAdminService>();
 
         // Add authorization services
         _ = services.AddAuthorizationBuilder()

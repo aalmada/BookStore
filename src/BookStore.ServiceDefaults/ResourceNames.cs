@@ -7,6 +7,7 @@ public static class ResourceNames
     public const string Storage = "storage";
     public const string Blobs = "blobs";
     public const string Cache = "cache";
+    public const string Keycloak = "keycloak";
     public const string ApiService = "apiservice";
     public const string WebFrontend = "webfrontend";
 

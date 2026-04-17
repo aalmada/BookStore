@@ -38,4 +38,20 @@
     <ProjectReference Include="..\..\src\BookStore.ApiService\BookStore.ApiService.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="AccountLockoutTests.cs" />
+    <Compile Remove="AuthTests.cs" />
+    <Compile Remove="CrossTenantAuthenticationTests.cs" />
+    <Compile Remove="EmailVerificationTests.cs" />
+    <Compile Remove="PasskeyDeletionTests.cs" />
+    <Compile Remove="PasskeyRegistrationSecurityTests.cs" />
+    <Compile Remove="PasskeySecurityTests.cs" />
+    <Compile Remove="PasskeyTenantIsolationTests.cs" />
+    <Compile Remove="PasskeyTestHelpers.cs" />
+    <Compile Remove="PasskeyTests.cs" />
+    <Compile Remove="PasswordManagementTests.cs" />
+    <Compile Remove="RefreshTokenSecurityTests.cs" />
+    <Compile Remove="SecurityStampValidationTests.cs" />
+  </ItemGroup>
+
 </Project>

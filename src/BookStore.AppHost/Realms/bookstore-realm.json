@@ -1,0 +1,254 @@
+{
+  "realm": "bookstore",
+  "enabled": true,
+  "registrationAllowed": true,
+  "verifyEmail": true,
+  "loginWithEmailAllowed": true,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "duplicateEmailsAllowed": false,
+  "passwordPolicy": "upperCase(1) and lowerCase(1) and digits(1) and specialChars(1) and length(8)",
+  "smtpServer": {},
+  "clients": [
+    {
+      "clientId": "bookstore-api",
+      "name": "bookstore-api",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "bearerOnly": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false
+    },
+    {
+      "clientId": "bookstore-web",
+      "name": "bookstore-web",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "bearerOnly": false,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
+      "redirectUris": [
+        "*"
+      ],
+      "webOrigins": [
+        "*"
+      ],
+      "protocolMappers": [
+        {
+          "name": "tenant-id-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "tenant_id",
+            "claim.name": "tenant_id",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "roles",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "bookstore-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "bookstore-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "roles": {
+    "realm": [
+      {
+        "name": "Admin",
+        "description": "Tenant administrator"
+      },
+      {
+        "name": "User",
+        "description": "Regular user"
+      },
+      {
+        "name": "default-roles-bookstore",
+        "description": "${role_default-roles}",
+        "composite": true,
+        "composites": {
+          "realm": [
+            "User"
+          ],
+          "client": {
+            "account": [
+              "view-profile",
+              "manage-account"
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "users": [
+    {
+      "username": "admin@default.com",
+      "email": "admin@default.com",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Default",
+      "lastName": "Admin",
+      "attributes": {
+        "tenant_id": [
+          "*DEFAULT*"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Admin123!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "Admin"
+      ]
+    },
+    {
+      "username": "admin@acme.com",
+      "email": "admin@acme.com",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Acme",
+      "lastName": "Admin",
+      "attributes": {
+        "tenant_id": [
+          "acme"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Admin123!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "Admin"
+      ]
+    },
+    {
+      "username": "admin@contoso.com",
+      "email": "admin@contoso.com",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Contoso",
+      "lastName": "Admin",
+      "attributes": {
+        "tenant_id": [
+          "contoso"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Admin123!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "Admin"
+      ]
+    },
+    {
+      "username": "user@default.com",
+      "email": "user@default.com",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Default",
+      "lastName": "User",
+      "attributes": {
+        "tenant_id": [
+          "*DEFAULT*"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "User123!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "User"
+      ]
+    },
+    {
+      "username": "user@acme.com",
+      "email": "user@acme.com",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Acme",
+      "lastName": "User",
+      "attributes": {
+        "tenant_id": [
+          "acme"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "User123!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "User"
+      ]
+    },
+    {
+      "username": "user@contoso.com",
+      "email": "user@contoso.com",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Contoso",
+      "lastName": "User",
+      "attributes": {
+        "tenant_id": [
+          "contoso"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "User123!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "User"
+      ]
+    }
+  ]
+}
