@@ -15,7 +15,8 @@ public static class ApplicationServicesExtensions
     /// </summary>
     public static IServiceCollection AddApplicationServices(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IWebHostEnvironment environment)
     {
         // Problem details for error handling
         _ = services.AddProblemDetails();
@@ -68,7 +69,7 @@ public static class ApplicationServicesExtensions
         _ = services.AddSingleton<Infrastructure.ProjectionCommitListener>();
 
         // Configure Identity with JWT authentication
-        AddIdentityServices(services, configuration);
+        AddIdentityServices(services, configuration, environment);
 
         // Configure Forwarded Headers
         AddForwardedHeaders(services);
@@ -120,7 +121,7 @@ public static class ApplicationServicesExtensions
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
-    static void AddIdentityServices(IServiceCollection services, IConfiguration configuration)
+    static void AddIdentityServices(IServiceCollection services, IConfiguration configuration, IWebHostEnvironment environment)
     {
         // Add core Identity services without API endpoints (we'll use custom JWT endpoints)
         _ = services.AddIdentityCore<Models.ApplicationUser>(options =>
@@ -198,7 +199,6 @@ public static class ApplicationServicesExtensions
         // Add JWT Bearer authentication
         var jwtSettings = configuration.GetSection("Jwt");
         var secretKey = jwtSettings["SecretKey"];
-        var environment = services.BuildServiceProvider().GetRequiredService<Microsoft.AspNetCore.Hosting.IWebHostEnvironment>();
 
         // SECURITY: Validate JWT secret key in production
         if (!environment.IsDevelopment())

@@ -28,7 +28,7 @@ public class ForwardedHeadersOptionsTests
             ["Authentication:Passkey:AllowedOrigins:0"] = "https://localhost:7260"
         });
 
-        _ = builder.Services.AddApplicationServices(builder.Configuration);
+        _ = builder.Services.AddApplicationServices(builder.Configuration, builder.Environment);
         await using var provider = builder.Services.BuildServiceProvider();
 
         // Act

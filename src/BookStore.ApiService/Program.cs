@@ -26,7 +26,7 @@ builder.AddRedisDistributedCache(BookStore.ServiceDefaults.ResourceNames.Cache);
 
 // Configure services
 builder.Services.AddJsonConfiguration(builder.Environment);
-builder.Services.AddApplicationServices(builder.Configuration);
+builder.Services.AddApplicationServices(builder.Configuration, builder.Environment);
 builder.Services.AddLocalization();
 builder.Services.AddHttpContextAccessor();
 
