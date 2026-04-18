@@ -261,6 +261,57 @@ public class SecurityStampValidationTests
     }
 
     [Test]
+    public async Task DeletePasskey_UpdatesSecurityStamp_InvalidatesOldJWT()
+    {
+        // Arrange: Create user and get JWT
+        var (email, password, loginResponse, _) = await AuthenticationHelpers.RegisterAndLoginUserAsync();
+
+        // Add a passkey so there is something to delete (user keeps their password)
+        var credentialId = Guid.CreateVersion7().ToByteArray();
+        await PasskeyTestHelpers.AddPasskeyToUserAsync(
+            StorageConstants.DefaultTenantId, email, "Passkey To Delete", credentialId);
+
+        // Re-login to get a fresh JWT — adding the passkey rotated the security stamp
+        var unauthClient = RestService.For<IIdentityClient>(HttpClientHelpers.GetUnauthenticatedClient());
+        var freshLogin = await unauthClient.LoginAsync(new LoginRequest(email, password));
+        var freshToken = freshLogin.AccessToken;
+
+        // List passkeys and locate the one we just added
+        var passkeyClient = RestService.For<IPasskeyClient>(
+            HttpClientHelpers.GetAuthenticatedClient(freshToken));
+        var passkeys = await passkeyClient.ListPasskeysAsync();
+        var target = passkeys.FirstOrDefault(p => p.Name == "Passkey To Delete");
+        _ = await Assert.That(target).IsNotNull();
+
+        // Act: Delete the passkey (should rotate security stamp, invalidating freshToken)
+        await passkeyClient.DeletePasskeyAsync(target!.Id, "\"0\"");
+
+        // Assert: freshToken should now be rejected (poll until propagated)
+        var booksClient = RestService.For<IBooksClient>(
+            HttpClientHelpers.GetAuthenticatedClient(freshToken));
+
+        ApiException? exception = null;
+        await SseEventHelpers.WaitForConditionAsync(
+            async () =>
+            {
+                try
+                {
+                    _ = await booksClient.GetFavoriteBooksAsync(new OrderedPagedRequest());
+                    return false;
+                }
+                catch (ApiException ex)
+                {
+                    exception = ex;
+                    return ex.StatusCode == HttpStatusCode.Unauthorized;
+                }
+            },
+            TimeSpan.FromSeconds(5),
+            "JWT was not rejected after passkey deletion");
+
+        _ = await Assert.That(exception!.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+    }
+
+    [Test]
     public async Task SecurityStampClaim_IsPresentInJWT()
     {
         // Arrange & Act: Create user and get JWT

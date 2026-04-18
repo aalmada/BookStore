@@ -485,7 +485,9 @@ public static class PasskeyEndpoints
                     }
 
                     await passkeyStore.RemovePasskeyAsync(user, credentialId, cancellationToken);
-                    _ = await userManager.UpdateAsync(user);
+                    // UpdateSecurityStampAsync persists the passkey removal AND rotates the
+                    // security stamp, which immediately invalidates any existing JWTs.
+                    _ = await userManager.UpdateSecurityStampAsync(user);
                     return Results.Ok(new { Message = "Passkey deleted." });
                 }
 
