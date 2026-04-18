@@ -20,7 +20,7 @@ public static class ProjectionEndpoints
             .WithName("GetProjectionStatus")
             .WithSummary("Get projection status");
 
-        return group;
+        return group.RequireAuthorization("Admin");
     }
 
     static async Task<Ok<RebuildResponse>> RebuildProjections(

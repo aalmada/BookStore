@@ -109,4 +109,6 @@ public record RefreshTokenInfo(
     DateTimeOffset Expires,
     DateTimeOffset Created,
     string TenantId,
-    string SecurityStamp);
+    string SecurityStamp,
+    string FamilyId,
+    bool IsUsed = false);

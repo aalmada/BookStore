@@ -136,6 +136,11 @@ public static class ApplicationServicesExtensions
                 // Require email confirmation for login
                 options.SignIn.RequireConfirmedEmail = true;
 
+                // Explicit lockout configuration (do not rely on defaults)
+                options.Lockout.MaxFailedAccessAttempts = 5;
+                options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+                options.Lockout.AllowedForNewUsers = true;
+
             })
             .AddUserStore<Identity.MartenUserStore>()
             .AddSignInManager() // This registers SignInManager and IPasskeyHandler
@@ -240,12 +245,16 @@ public static class ApplicationServicesExtensions
                         {
                             context.HandleResponse(); // Prevent default challenge behavior
                             context.Response.StatusCode = 401;
-                            context.Response.ContentType = "application/json";
-                            await context.Response.WriteAsJsonAsync(new
+                            context.Response.ContentType = "application/problem+json";
+                            var problemDetails = new Microsoft.AspNetCore.Mvc.ProblemDetails
                             {
-                                error = context.Error ?? "unauthorized",
-                                error_description = context.ErrorDescription ?? context.AuthenticateFailure?.Message ?? "Authentication failed"
-                            });
+                                Status = 401,
+                                Title = "Unauthorized",
+                                Detail = "Authentication is required to access this resource.",
+                                Type = "https://tools.ietf.org/html/rfc7235#section-3.1"
+                            };
+                            problemDetails.Extensions["error"] = context.Error ?? "unauthorized";
+                            await context.Response.WriteAsJsonAsync(problemDetails);
                         }
                     },
                     OnTokenValidated = async context =>

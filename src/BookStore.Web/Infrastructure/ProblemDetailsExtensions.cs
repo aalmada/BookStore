@@ -31,8 +31,10 @@ public static class ProblemDetailsExtensions
                 }
             }
 
-            // Fallback: check if "code" is at the root (unlikely but possible)
+            // Fallback: check if "code" or "error" is at the root.
+            // ProblemDetails with [JsonExtensionData] extensions are serialized at root level (not nested under "extensions").
             code ??= doc.RootElement.TryGetProperty("code", out var rootCode) ? rootCode.GetString() : null;
+            code ??= doc.RootElement.TryGetProperty("error", out var rootError) ? rootError.GetString() : null;
 
             // Default code if still null
             code ??= $"ERR_HTTP_{exception.StatusCode.ToString().ToUpperInvariant()}";

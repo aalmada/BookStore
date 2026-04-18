@@ -3,7 +3,7 @@
 SubagentStop hook: Gate for coding agents before they are allowed to finish.
 
 For BackendDeveloper, FrontendDeveloper, and TestEngineer:
-  1. Runs 'dotnet build --no-restore -q' — blocks if compilation fails.
+  1. Runs 'dotnet build --no-restore -v:m' — blocks if compilation fails.
   2. Runs 'dotnet format --verify-no-changes' — blocks if style violations found.
 
 For all known agents:
@@ -65,7 +65,7 @@ def main() -> None:
 
     # 1. Build check
     build_ok, build_output = run_command(
-        ["dotnet", "build", "--no-restore", "-q"], cwd
+        ["dotnet", "build", "--no-restore", "-v:m"], cwd
     )
     if not build_ok:
         block(

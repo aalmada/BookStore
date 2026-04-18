@@ -303,7 +303,7 @@ public static class PasskeyEndpoints
             catch (Exception ex)
             {
                 Log.Users.PasskeyRegistrationUnhandledException(logger, ex);
-                return Result.Failure(Error.InternalServerError("ERR_INTERNAL_SERVER_ERROR", $"Registration failed: {ex.Message}")).ToProblemDetails();
+                return Result.Failure(Error.InternalServerError("ERR_INTERNAL_SERVER_ERROR", "Passkey registration failed. Please try again.")).ToProblemDetails();
             }
         });
 
@@ -423,7 +423,7 @@ public static class PasskeyEndpoints
             catch (Exception ex)
             {
                 Log.Users.PasskeyLoginUnhandledException(logger, ex);
-                return Result.Failure(Error.InternalServerError("ERR_INTERNAL_SERVER_ERROR", $"Login failed: {ex.Message}")).ToProblemDetails();
+                return Result.Failure(Error.InternalServerError("ERR_INTERNAL_SERVER_ERROR", "Passkey login failed. Please try again.")).ToProblemDetails();
             }
         });
 

@@ -2,8 +2,12 @@
 """
 Stop hook: Block session end if the build is broken.
 
-Runs 'dotnet build --no-restore -q' when the session ends. If compilation
+Runs 'dotnet build --no-restore -v:m' when the session ends. If compilation
 fails, the agent is blocked from stopping so it can fix errors first.
+
+Note: -v:m (minimal) is used instead of -q (quiet) because .NET 10 SDK's
+quiet mode triggers a "Question build" that exits with code 1 when any
+output is not up-to-date — without doing the actual compile.
 
 Checks stop_hook_active to prevent infinite loops.
 
@@ -19,7 +23,7 @@ import sys
 def run_build(cwd: str) -> tuple[bool, str]:
     try:
         result = subprocess.run(
-            ["dotnet", "build", "--no-restore", "-q"],
+            ["dotnet", "build", "--no-restore", "-v:m"],
             cwd=cwd,
             capture_output=True,
             text=True,

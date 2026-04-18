@@ -45,8 +45,8 @@ builder.Services.AddWolverineMessaging();
 
 // Add CORS to allow Web app to call API
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy => _ = policy.WithOrigins("https://localhost:7260", "http://localhost:7260")
-              .AllowAnyHeader()
-              .AllowAnyMethod()
+              .WithHeaders("Authorization", "Content-Type", "Accept", "X-Tenant-ID", "X-Requested-With")
+              .WithMethods("GET", "POST", "PUT", "DELETE", "PATCH")
               .AllowCredentials()));
 
 // Add Rate Limiting

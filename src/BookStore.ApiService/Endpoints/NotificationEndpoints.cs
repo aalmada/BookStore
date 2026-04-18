@@ -15,8 +15,13 @@ public static class NotificationEndpoints
             .WithSummary("Subscribe to real-time notifications via SSE")
             .Produces(StatusCodes.Status200OK, contentType: "text/event-stream");
 
-        _ = group.MapPost("/test-notification", async (string type, Guid id, INotificationService service) =>
+        _ = group.MapPost("/test-notification", async (string type, Guid id, INotificationService service, IWebHostEnvironment env) =>
         {
+            if (!env.IsDevelopment())
+            {
+                return Results.NotFound();
+            }
+
             IDomainEventNotification notification = type.ToLowerInvariant() switch
             {
                 "author" => new AuthorUpdatedNotification(Guid.CreateVersion7(), id, "Test Author", DateTimeOffset.UtcNow),
@@ -30,7 +35,9 @@ public static class NotificationEndpoints
             return Results.Ok($"Sent {notification.EventType} for {id}");
         })
         .WithName("SendTestNotification")
-        .WithSummary("Manually trigger a notification for debugging");
+        .WithSummary("Manually trigger a notification for debugging")
+        .RequireAuthorization("Admin")
+        .ExcludeFromDescription();
 
         return group;
     }

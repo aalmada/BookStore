@@ -163,7 +163,8 @@ public class PasskeySecurityTests
                     Expires: DateTimeOffset.UtcNow.AddDays(7),
                     Created: DateTimeOffset.UtcNow,
                     TenantId: spoofedTenantId, // Different tenant!
-                    SecurityStamp: user.SecurityStamp ?? string.Empty
+                    SecurityStamp: user.SecurityStamp ?? string.Empty,
+                    FamilyId: Guid.CreateVersion7().ToString()
                 ));
                 session.Update(user);
                 await session.SaveChangesAsync();

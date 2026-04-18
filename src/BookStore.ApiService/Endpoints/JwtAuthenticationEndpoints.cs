@@ -324,8 +324,21 @@ public static class JwtAuthenticationEndpoints
             return Result.Failure(Error.Unauthorized(ErrorCodes.Auth.InvalidToken, "Invalid refresh token.")).ToProblemDetails();
         }
 
-        // 2. Validate token exists and is not expired
+        // 2. Find the token record
         var existingToken = user.RefreshTokens.FirstOrDefault(rt => rt.Token == request.RefreshToken);
+
+        // SECURITY: Token found but already used — this is a replay attack.
+        // Revoke the entire token family to protect the legitimate session.
+        if (existingToken is { IsUsed: true })
+        {
+            Log.Users.RefreshFailedTokenNotFound(logger);
+            var familyId = existingToken.FamilyId;
+            user.RefreshTokens = [.. user.RefreshTokens.Where(rt => rt.FamilyId != familyId)];
+            _ = await userManager.UpdateAsync(user);
+            return Result.Failure(Error.Unauthorized(ErrorCodes.Auth.InvalidToken, "Invalid refresh token.")).ToProblemDetails();
+        }
+
+        // 3. Validate token exists and is not expired
         if (existingToken == null || existingToken.Expires <= DateTimeOffset.UtcNow)
         {
             Log.Users.RefreshFailedTokenExpiredOrInvalid(logger, user.UserName);
@@ -338,7 +351,7 @@ public static class JwtAuthenticationEndpoints
             return Result.Failure(Error.Unauthorized(ErrorCodes.Auth.TokenExpired, "Refresh token expired or invalid.")).ToProblemDetails();
         }
 
-        // 3. Validate tenant matches the token's original tenant (security: prevent cross-tenant token theft)
+        // 4. Validate tenant matches the token's original tenant (security: prevent cross-tenant token theft)
         if (!string.Equals(existingToken.TenantId, tenantContext.TenantId, StringComparison.OrdinalIgnoreCase))
         {
             // CRITICAL SECURITY VIOLATION: Cross-tenant token theft attempt
@@ -370,7 +383,7 @@ public static class JwtAuthenticationEndpoints
             return Result.Failure(Error.Forbidden(ErrorCodes.Auth.SecurityViolation, "Security violation detected. Account has been locked.")).ToProblemDetails();
         }
 
-        // 4. Validate security stamp hasn't changed (invalidates tokens after password change, passkey addition, etc.)
+        // 5. Validate security stamp hasn't changed (invalidates tokens after password change, passkey addition, etc.)
         if (!string.Equals(existingToken.SecurityStamp, user.SecurityStamp, StringComparison.Ordinal))
         {
             Log.Users.RefreshFailedSecurityStampMismatch(logger, user.UserName);
@@ -382,7 +395,7 @@ public static class JwtAuthenticationEndpoints
             return Result.Failure(Error.Unauthorized(ErrorCodes.Auth.TokenExpired, "Refresh token has been invalidated due to security changes.")).ToProblemDetails();
         }
 
-        // 5. Generate new tokens using the original tenant from the refresh token
+        // 6. Generate new tokens using the original tenant from the refresh token
         var roles = await userManager.GetRolesAsync(user);
         var newAccessToken = jwtTokenService.GenerateAccessToken(user, existingToken.TenantId, roles);
         var newRefreshToken = jwtTokenService.RotateRefreshToken(user, existingToken.TenantId, existingToken.Token);

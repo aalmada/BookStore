@@ -2,6 +2,8 @@
   <PropertyGroup>
     <!-- General -->
     <NoWarn>$(NoWarn);EXTEXP0018;NU1608</NoWarn>
+    <!-- MSB3492: transient cache-file read race — MSBuild overwrites gracefully; not a real failure -->
+    <MSBuildWarningsNotAsErrors>$(MSBuildWarningsNotAsErrors);MSB3492</MSBuildWarningsNotAsErrors>
     <TargetFramework>net10.0</TargetFramework>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>

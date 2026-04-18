@@ -86,36 +86,54 @@ public class JwtTokenService
     }
 
     /// <summary>
-    /// Rotates refresh tokens for a user, maintaining the latest 5 tokens.
+    /// Rotates refresh tokens for a user, maintaining the latest 5 active tokens.
+    /// Marks the old token as used (for replay detection) rather than removing it immediately.
     /// </summary>
     public string RotateRefreshToken(BookStore.ApiService.Models.ApplicationUser user, string tenantId, string? oldToken = null)
     {
-        // 1. Remove old token if provided
+        string familyId;
+
+        // 1. Mark the old token as used (do NOT remove it — presence of a used token enables replay detection)
         if (!string.IsNullOrEmpty(oldToken))
         {
             var existing = user.RefreshTokens.FirstOrDefault(rt => rt.Token == oldToken);
             if (existing != null)
             {
-                _ = user.RefreshTokens.Remove(existing);
+                familyId = existing.FamilyId;
+                var index = user.RefreshTokens.IndexOf(existing);
+                user.RefreshTokens[index] = existing with { IsUsed = true };
             }
+            else
+            {
+                // Old token not found — start a new family
+                familyId = Guid.CreateVersion7().ToString();
+            }
+        }
+        else
+        {
+            // No old token supplied — start a new token family
+            familyId = Guid.CreateVersion7().ToString();
         }
 
         // 2. Generate new token
         var newToken = GenerateRefreshToken();
 
-        // 3. Add to collection
+        // 3. Add to collection (same family as parent)
         user.RefreshTokens.Add(new BookStore.ApiService.Models.RefreshTokenInfo(
             newToken,
             DateTimeOffset.UtcNow.AddDays(7),
             DateTimeOffset.UtcNow,
             tenantId,
-            user.SecurityStamp ?? string.Empty));
+            user.SecurityStamp ?? string.Empty,
+            familyId,
+            IsUsed: false));
 
-        // 4. Prune old tokens (keep latest 5)
-        if (user.RefreshTokens.Count > 5)
-        {
-            user.RefreshTokens = [.. user.RefreshTokens.OrderByDescending(r => r.Created).Take(5)];
-        }
+        // 4. Prune expired tokens but keep recently-used ones for replay detection (up to 24 h)
+        var cutoff = DateTimeOffset.UtcNow.AddHours(-24);
+        user.RefreshTokens = [.. user.RefreshTokens
+            .Where(r => !r.IsUsed || r.Created >= cutoff)
+            .OrderByDescending(r => r.Created)
+            .Take(20)];
 
         return newToken;
     }

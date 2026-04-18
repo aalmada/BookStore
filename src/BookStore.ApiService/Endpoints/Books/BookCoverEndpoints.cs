@@ -21,15 +21,28 @@ public static class BookCoverEndpoints
         [FromQuery] string? tenantId,
         [FromServices] BlobStorageService blobStorage,
         [FromServices] ITenantContext tenantContext,
+        [FromServices] ITenantStore tenantStore,
         CancellationToken ct)
     {
         try
         {
-            // If tenantId is provided in query (e.g. from <img> tag), use it.
-            // Otherwise fall back to the resolved tenant context (e.g. host header).
-            var resolvedTenantId = !string.IsNullOrWhiteSpace(tenantId)
-                ? tenantId
-                : tenantContext.TenantId;
+            string resolvedTenantId;
+
+            if (!string.IsNullOrWhiteSpace(tenantId))
+            {
+                // Validate the query-supplied tenant against the known tenant list
+                // to prevent cross-tenant data probing on anonymous endpoints
+                if (!await tenantStore.IsValidTenantAsync(tenantId))
+                {
+                    return Result.Failure(Error.NotFound(ErrorCodes.Books.BookNotFound, "Book cover not found.")).ToProblemDetails();
+                }
+
+                resolvedTenantId = tenantId;
+            }
+            else
+            {
+                resolvedTenantId = tenantContext.TenantId;
+            }
 
             var result = await blobStorage.GetBookCoverAsync(id, resolvedTenantId, ct);
 
@@ -43,10 +56,9 @@ public static class BookCoverEndpoints
         {
             return Result.Failure(Error.NotFound(ErrorCodes.Books.BookNotFound, "Book cover not found.")).ToProblemDetails();
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            // Log?
-            return Result.Failure(Error.InternalServerError("ERR_BOOK_COVER_FAILED", ex.Message)).ToProblemDetails();
+            return Result.Failure(Error.InternalServerError("ERR_BOOK_COVER_FAILED", "Failed to retrieve book cover.")).ToProblemDetails();
         }
     }
 }

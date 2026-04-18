@@ -46,6 +46,27 @@ public class ProblemDetailsExtensionsTests
     }
 
     [Test]
+    public async Task ToError_WithErrorAtRootLevel_ShouldExtractCode()
+    {
+        // Arrange - matches the actual format produced by Results.Problem() with ProblemDetails [JsonExtensionData]
+        // extensions are serialized at root level, not nested under "extensions"
+        var content = JsonSerializer.Serialize(new
+        {
+            detail = "Invalid email or password.",
+            status = 401,
+            error = "ERR_AUTH_INVALID_CREDENTIALS"
+        });
+        var exception = await CreateApiException(HttpStatusCode.Unauthorized, content);
+
+        // Act
+        var error = exception.ToError();
+
+        // Assert
+        _ = await Assert.That(error.Code).IsEqualTo("ERR_AUTH_INVALID_CREDENTIALS");
+        _ = await Assert.That(error.Message).IsEqualTo("Invalid email or password.");
+    }
+
+    [Test]
     public async Task ToError_WithNoCode_ShouldUseFallbackCode()
     {
         // Arrange
