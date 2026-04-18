@@ -43,7 +43,7 @@ public class SmtpEmailService(
             await client.ConnectAsync(settings.SmtpHost, settings.SmtpPort, SecureSocketOptions.StartTls);
 
             // Authenticate if needed
-            if (!string.IsNullOrEmpty(settings.SmtpUsername))
+            if (!string.IsNullOrEmpty(settings.SmtpUsername) && settings.SmtpPassword is not null)
             {
                 await client.AuthenticateAsync(settings.SmtpUsername, settings.SmtpPassword);
             }
