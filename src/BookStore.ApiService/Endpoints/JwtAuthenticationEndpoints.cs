@@ -123,6 +123,11 @@ public static class JwtAuthenticationEndpoints
         // Build claims and generate tokens
         var roles = await userManager.GetRolesAsync(user);
         var accessToken = jwtTokenService.GenerateAccessToken(user, tenantContext.TenantId, roles);
+
+        // Clear all existing refresh tokens for security (full logout from all other sessions).
+        // Consistent with passkey login behavior: re-authenticating invalidates all prior sessions,
+        // preventing an attacker who holds a stale refresh token from maintaining access.
+        user.RefreshTokens.Clear();
         var refreshToken = jwtTokenService.RotateRefreshToken(user, tenantContext.TenantId);
 
         _ = await userManager.UpdateAsync(user);

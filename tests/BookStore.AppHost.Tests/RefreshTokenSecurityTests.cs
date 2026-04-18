@@ -127,61 +127,36 @@ public class RefreshTokenSecurityTests
     }
 
     [Test]
-    public async Task RefreshToken_KeepsLatestFiveTokens()
+    public async Task PasswordLogin_ClearsExistingRefreshTokens()
     {
-        // Arrange: Use a unique tenant per run to avoid parallel token-pool contamination
+        // Arrange: Use a unique tenant per run to avoid parallel contamination
         var tenantId = FakeDataGenerators.GenerateFakeTenantId();
         await DatabaseHelpers.CreateTenantViaApiAsync(tenantId);
 
-        var (email, password, loginResponse, _) = await AuthenticationHelpers.RegisterAndLoginUserAsync(tenantId);
+        var (email, password, firstLogin, _) = await AuthenticationHelpers.RegisterAndLoginUserAsync(tenantId);
 
-        var tokens = new List<(string RefreshToken, string AccessToken)>
-        {
-            (loginResponse.RefreshToken, loginResponse.AccessToken)
-        };
-
-        // Act: Simulate 6 additional login sessions (multi-device scenario) to exceed the limit of 5
-        // Use separate logins rather than rotations because rotation removes the old token immediately.
-        // The 5-token limit applies to concurrent sessions (e.g. multiple devices).
         var unauthClient = RestService.For<IIdentityClient>(HttpClientHelpers.GetUnauthenticatedClient(tenantId));
-        for (var i = 0; i < 6; i++)
-        {
-            var loginResult = await unauthClient.LoginAsync(new LoginRequest(email, password));
-            tokens.Add((loginResult.RefreshToken, loginResult.AccessToken));
-        }
 
-        // After 7 sessions, the pool is pruned to 5 newest.
-        // tokens[0] and tokens[1] are the oldest and should have been removed.
-        // tokens[^2] (tokens[5]) and tokens[^1] (tokens[6]) should still be valid.
+        // Act: Perform additional password logins. Each login should invalidate previous refresh tokens.
+        var secondLogin = await unauthClient.LoginAsync(new LoginRequest(email, password));
+        var thirdLogin = await unauthClient.LoginAsync(new LoginRequest(email, password));
 
-        // Assert: First token should be invalid (pruned as beyond the 5-token limit)
-        var firstTokenClient = RestService.For<IIdentityClient>(
-            HttpClientHelpers.GetAuthenticatedClient(tokens[0].AccessToken, tenantId));
-
-        var exception = await Assert.That(async () =>
-            await firstTokenClient.RefreshTokenAsync(new RefreshRequest(tokens[0].RefreshToken)))
+        // Assert: Prior refresh tokens are rejected
+        var firstException = await Assert.That(async () =>
+            await unauthClient.RefreshTokenAsync(new RefreshRequest(firstLogin.RefreshToken)))
             .Throws<ApiException>();
 
-        _ = await Assert.That(exception!.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+        _ = await Assert.That(firstException!.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
 
-        // Assert: Second oldest token is also invalid (both oldest are pruned to keep exactly 5)
-        var secondTokenClient = RestService.For<IIdentityClient>(
-            HttpClientHelpers.GetAuthenticatedClient(tokens[1].AccessToken, tenantId));
-
-        var exception2 = await Assert.That(async () =>
-            await secondTokenClient.RefreshTokenAsync(new RefreshRequest(tokens[1].RefreshToken)))
+        var secondException = await Assert.That(async () =>
+            await unauthClient.RefreshTokenAsync(new RefreshRequest(secondLogin.RefreshToken)))
             .Throws<ApiException>();
 
-        _ = await Assert.That(exception2!.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+        _ = await Assert.That(secondException!.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
 
-        // Assert: One of the recent tokens should still be valid
-        var recentTokenClient = RestService.For<IIdentityClient>(
-            HttpClientHelpers.GetAuthenticatedClient(tokens[^2].AccessToken, tenantId));
-
-        var validRefresh = await recentTokenClient.RefreshTokenAsync(
-            new RefreshRequest(tokens[^2].RefreshToken));
-
-        _ = await Assert.That(validRefresh).IsNotNull();
+        // Assert: The latest refresh token remains valid
+        var latestRefresh = await unauthClient.RefreshTokenAsync(new RefreshRequest(thirdLogin.RefreshToken));
+        _ = await Assert.That(latestRefresh).IsNotNull();
     }
 
     async Task ManuallyExpireRefreshTokenAsync(string email, string refreshToken, string? tenantId = null)
