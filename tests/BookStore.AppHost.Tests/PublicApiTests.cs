@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.ServerSentEvents;
 using BookStore.AppHost.Tests.Helpers;
 using BookStore.Client;
 using Refit;
@@ -88,5 +89,24 @@ public class PublicApiTests
 
         // Assert
         _ = await Assert.That(response).IsNotNull();
+    }
+
+    [Test]
+    public async Task GetNotificationStream_AnonymousAccess_ShouldReturnSseStream()
+    {
+        // The stream is intentionally accessible to anonymous users to support real-time
+        // updates on the public catalog. This test verifies that anonymous access works.
+        var httpClient = HttpClientHelpers.GetUnauthenticatedClient();
+        httpClient.Timeout = TestConstants.DefaultStreamTimeout;
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        using var response = await httpClient.GetAsync(
+            "/api/notifications/stream",
+            HttpCompletionOption.ResponseHeadersRead,
+            cts.Token);
+
+        _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        _ = await Assert.That(response.Content.Headers.ContentType?.MediaType)
+            .IsEqualTo("text/event-stream");
     }
 }

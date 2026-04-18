@@ -62,6 +62,7 @@ public static class EndpointMappingExtensions
             .WithTags("Publishers");
 
         _ = publicApi.MapGroup("/notifications")
+            .WithMetadata(new AllowAnonymousTenantAttribute())
             .MapNotificationEndpoints()
             .WithTags("Notifications");
 
