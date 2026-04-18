@@ -43,11 +43,19 @@ builder.Services.AddScoped<ITenantStore>(sp =>
 builder.Services.AddMartenEventStore(builder.Configuration);
 builder.Services.AddWolverineMessaging();
 
-// Add CORS to allow Web app to call API
-builder.Services.AddCors(options => options.AddDefaultPolicy(policy => _ = policy.WithOrigins("https://localhost:7260", "http://localhost:7260")
-              .WithHeaders("Authorization", "Content-Type", "Accept", "X-Tenant-ID", "X-Requested-With")
-              .WithMethods("GET", "POST", "PUT", "DELETE", "PATCH")
-              .AllowCredentials()));
+// Add CORS using configured allowed origins (shared with passkey origin validation).
+var allowedCorsOrigins = builder.Configuration.GetSection("Authentication:Passkey:AllowedOrigins").Get<string[]>() ?? [];
+builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
+{
+    if (allowedCorsOrigins.Length > 0)
+    {
+        _ = policy.WithOrigins(allowedCorsOrigins);
+    }
+
+    _ = policy.WithHeaders("Authorization", "Content-Type", "Accept", "X-Tenant-ID", "X-Requested-With")
+        .WithMethods("GET", "POST", "PUT", "DELETE", "PATCH")
+        .AllowCredentials();
+}));
 
 // Add Rate Limiting
 // Add Rate Limiting (using extension)

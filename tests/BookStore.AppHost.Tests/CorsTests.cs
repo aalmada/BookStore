@@ -20,7 +20,7 @@ public class CorsTests
 
         // Act
         var request = new HttpRequestMessage(HttpMethod.Options, "/api/books");
-        request.Headers.Add("Origin", "https://localhost:7260"); // Matches allowed origin in Program.cs
+        request.Headers.Add("Origin", "https://localhost:7260"); // Matches configured Authentication:Passkey:AllowedOrigins
         request.Headers.Add("Access-Control-Request-Method", "GET");
 
         var response = await httpClient.SendAsync(request);
