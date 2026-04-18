@@ -1,6 +1,7 @@
 using BookStore.ApiService.Infrastructure.Logging;
 using BookStore.Shared.Infrastructure;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 
 namespace BookStore.ApiService.Infrastructure.Tenant;
 
@@ -31,8 +32,8 @@ public class TenantSecurityMiddleware(RequestDelegate next, ILogger<TenantSecuri
             if (string.IsNullOrEmpty(userTenant))
             {
                 Log.Tenants.CrossTenantAccessAttempted(logger, "MISSING_CLAIM", currentTenant ?? "UNKNOWN");
-                context.Response.StatusCode = StatusCodes.Status403Forbidden;
-                await context.Response.WriteAsJsonAsync(new { error = "Security violation: Missing tenant claim" });
+                await WriteProblemDetailsAsync(context, StatusCodes.Status403Forbidden,
+                    "Forbidden", "Security violation: Missing tenant claim");
                 return;
             }
 
@@ -41,8 +42,8 @@ public class TenantSecurityMiddleware(RequestDelegate next, ILogger<TenantSecuri
                 !string.Equals(userTenant, currentTenant, StringComparison.OrdinalIgnoreCase))
             {
                 Log.Tenants.CrossTenantAccessAttempted(logger, userTenant, currentTenant);
-                context.Response.StatusCode = StatusCodes.Status403Forbidden;
-                await context.Response.WriteAsJsonAsync(new { error = "Cross-tenant access denied" });
+                await WriteProblemDetailsAsync(context, StatusCodes.Status403Forbidden,
+                    "Forbidden", "Cross-tenant access denied");
                 return;
             }
         }
@@ -52,14 +53,33 @@ public class TenantSecurityMiddleware(RequestDelegate next, ILogger<TenantSecuri
                 !string.Equals(currentTenant, JasperFx.StorageConstants.DefaultTenantId, StringComparison.OrdinalIgnoreCase))
             {
                 Log.Tenants.CrossTenantAccessAttempted(logger, "ANONYMOUS", currentTenant);
-                context.Response.StatusCode = StatusCodes.Status403Forbidden;
-                await context.Response.WriteAsJsonAsync(new { error = "Anonymous access to tenant specific data is denied" });
+                await WriteProblemDetailsAsync(context, StatusCodes.Status403Forbidden,
+                    "Forbidden", "Anonymous access to tenant specific data is denied");
                 return;
             }
         }
 
         await next(context);
     }
+
+    static async Task WriteProblemDetailsAsync(HttpContext context, int statusCode, string title, string detail)
+    {
+        context.Response.StatusCode = statusCode;
+        await context.Response.WriteAsJsonAsync(new ProblemDetails
+        {
+            Status = statusCode,
+            Title = title,
+            Detail = detail,
+            Type = $"https://tools.ietf.org/html/rfc9110#section-{GetRfcSection(statusCode)}"
+        }, options: null, contentType: "application/problem+json");
+    }
+
+    static string GetRfcSection(int statusCode) => statusCode switch
+    {
+        StatusCodes.Status401Unauthorized => "15.5.2",
+        StatusCodes.Status403Forbidden => "15.5.4",
+        _ => "15.6"
+    };
 }
 
 public static class TenantSecurityMiddlewareExtensions

@@ -47,21 +47,26 @@ public class TenantSecurityTests
     }
 
     [Test]
-    public async Task Request_Anonymous_WithTenantHeader_ShouldBeForbidden()
+    public async Task Request_Anonymous_WithTenantHeader_ShouldReturnProblemDetailsFormat()
     {
+        // The TenantSecurityMiddleware must return RFC 7807 ProblemDetails (application/problem+json),
+        // not a plain JSON error object, so clients get a consistent error contract.
         if (GlobalHooks.App == null)
         {
             throw new InvalidOperationException("App is not initialized");
         }
 
-        // Anonymous request targeting any non-default tenant should be Forbidden
         var otherTenant = FakeDataGenerators.GenerateFakeTenantId();
         await DatabaseHelpers.CreateTenantViaApiAsync(otherTenant);
 
-        var client = RestService.For<IShoppingCartClient>(HttpClientHelpers.GetUnauthenticatedClient(otherTenant));
+        using var httpClient = GlobalHooks.App.CreateHttpClient("apiservice");
+        httpClient.DefaultRequestHeaders.Add("X-Tenant-ID", otherTenant);
 
-        // Act & Assert
-        var exception = await Assert.That(async () => await client.GetShoppingCartAsync()).Throws<ApiException>();
-        _ = await Assert.That(exception!.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
+        // /api/cart does not have AllowAnonymousTenantAttribute, so the middleware blocks anonymous access
+        var response = await httpClient.GetAsync("/api/cart");
+
+        _ = await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
+        _ = await Assert.That(response.Content.Headers.ContentType?.MediaType)
+            .IsEqualTo("application/problem+json");
     }
 }
