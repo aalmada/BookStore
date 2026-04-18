@@ -32,7 +32,7 @@
     <!-- CI/CD -->
     <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
   </PropertyGroup>
-  
+
   <ItemGroup>
     <!-- Dependencies -->
     <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="all"/>
