@@ -72,6 +72,9 @@ app.RunDatabaseSeedingAsync();
 // Configure the HTTP request pipeline
 app.UseExceptionHandler();
 
+// Add baseline security headers to all responses.
+app.UseMiddleware<SecurityHeadersMiddleware>();
+
 // Add Forwarded Headers middleware early in the pipeline
 app.UseForwardedHeaders();
 
