@@ -33,11 +33,21 @@ public class JwtAuthenticationStateProvider : AuthenticationStateProvider, IDisp
         _tenantService = tenantService;
         _identityClient = identityClient;
         _tenantService.OnChange += HandleTenantChanged;
+        _tokenService.OnTokensCleared += HandleTokensCleared;
     }
 
     void HandleTenantChanged() => NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
 
+    void HandleTokensCleared(string tenantId)
+    {
+        if (string.Equals(tenantId, _tenantService.CurrentTenantId, StringComparison.OrdinalIgnoreCase))
+        {
+            NotifyAuthenticationStateChanged(Task.FromResult(CreateAnonymousState()));
+        }
+    }
+
     string GetStorageKey(string tenantId) => $"accessToken_{tenantId}";
+    string GetRefreshStorageKey(string tenantId) => $"refreshToken_{tenantId}";
 
     public override async Task<AuthenticationState> GetAuthenticationStateAsync()
     {
@@ -53,7 +63,8 @@ public class JwtAuthenticationStateProvider : AuthenticationStateProvider, IDisp
                 if (!string.IsNullOrEmpty(storedToken))
                 {
                     token = storedToken;
-                    _tokenService.SetTokens(currentTenant, token);
+                    var storedRefreshToken = await _localStorage.GetItemAsync<string>(GetRefreshStorageKey(currentTenant));
+                    _tokenService.SetTokens(currentTenant, token, storedRefreshToken);
                 }
             }
             catch (InvalidOperationException)
@@ -103,11 +114,12 @@ public class JwtAuthenticationStateProvider : AuthenticationStateProvider, IDisp
             }
             else if (jwtToken.ValidTo < DateTime.UtcNow.Add(TokenRefreshThreshold))
             {
-                // Token will expire soon - trigger background refresh
+                // Token will expire soon - trigger background refresh on the current sync context
+                // (Task.Run would leave the Blazor circuit context and break JS interop in localStorage)
                 var refreshToken = _tokenService.GetRefreshToken(currentTenant);
                 if (!string.IsNullOrEmpty(refreshToken))
                 {
-                    _ = Task.Run(async () => await TryRefreshTokenAsync(currentTenant, refreshToken));
+                    _ = TryRefreshTokenAsync(currentTenant, refreshToken);
                 }
             }
 
@@ -144,6 +156,10 @@ public class JwtAuthenticationStateProvider : AuthenticationStateProvider, IDisp
                 try
                 {
                     await _localStorage.SetItemAsync(GetStorageKey(tenantId), response.AccessToken);
+                    if (!string.IsNullOrEmpty(response.RefreshToken))
+                    {
+                        await _localStorage.SetItemAsync(GetRefreshStorageKey(tenantId), response.RefreshToken);
+                    }
                 }
                 catch
                 {
@@ -168,7 +184,11 @@ public class JwtAuthenticationStateProvider : AuthenticationStateProvider, IDisp
     static AuthenticationState CreateAnonymousState()
         => new(new ClaimsPrincipal(new ClaimsIdentity()));
 
-    public void Dispose() => _tenantService.OnChange -= HandleTenantChanged;
+    public void Dispose()
+    {
+        _tenantService.OnChange -= HandleTenantChanged;
+        _tokenService.OnTokensCleared -= HandleTokensCleared;
+    }
 
     /// <summary>
     /// Notify that user has authenticated with new tokens for the current tenant
@@ -181,6 +201,10 @@ public class JwtAuthenticationStateProvider : AuthenticationStateProvider, IDisp
         try
         {
             await _localStorage.SetItemAsync(GetStorageKey(currentTenant), accessToken);
+            if (!string.IsNullOrEmpty(refreshToken))
+            {
+                await _localStorage.SetItemAsync(GetRefreshStorageKey(currentTenant), refreshToken);
+            }
         }
         catch
         {
@@ -204,6 +228,7 @@ public class JwtAuthenticationStateProvider : AuthenticationStateProvider, IDisp
         try
         {
             await _localStorage.RemoveItemAsync(GetStorageKey(currentTenant));
+            await _localStorage.RemoveItemAsync(GetRefreshStorageKey(currentTenant));
         }
         catch
         {

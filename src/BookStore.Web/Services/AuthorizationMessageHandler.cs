@@ -71,6 +71,13 @@ public class AuthorizationMessageHandler : DelegatingHandler
             }
         }
 
+        // On 401 the token is expired or revoked — clear it so the auth state
+        // provider detects the change and redirects the user to log in.
+        if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        {
+            _tokenService.ClearTokens(_tenantService.CurrentTenantId);
+        }
+
         return response;
     }
 }

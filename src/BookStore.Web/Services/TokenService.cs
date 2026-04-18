@@ -32,9 +32,18 @@ public class TokenService
         => _tokens.TryGetValue(tenantId, out var tokens) && !string.IsNullOrEmpty(tokens.AccessToken);
 
     /// <summary>
+    /// Raised when tokens are cleared for a specific tenant.
+    /// </summary>
+    public event Action<string>? OnTokensCleared;
+
+    /// <summary>
     /// Clear tokens for a specific tenant (logout)
     /// </summary>
-    public void ClearTokens(string tenantId) => _tokens.Remove(tenantId);
+    public void ClearTokens(string tenantId)
+    {
+        _ = _tokens.Remove(tenantId);
+        OnTokensCleared?.Invoke(tenantId);
+    }
 
     /// <summary>
     /// Clear all tokens for all tenants
