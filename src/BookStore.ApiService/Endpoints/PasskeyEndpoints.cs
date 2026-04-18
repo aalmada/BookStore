@@ -283,13 +283,14 @@ public static class PasskeyEndpoints
                     // Build claims and generate tokens
                     var accessToken = tokenService.GenerateAccessToken(newUser, tenantContext.TenantId, []);
                     var refreshToken = tokenService.RotateRefreshToken(newUser, tenantContext.TenantId);
+                    var expiresIn = tokenService.GetAccessTokenExpiresInSeconds();
 
                     _ = await userManager.UpdateAsync(newUser);
 
                     return Results.Ok(new LoginResponse(
                         "Bearer",
                         accessToken,
-                        3600,
+                        expiresIn,
                         refreshToken
                     ));
                 }
@@ -410,13 +411,14 @@ public static class PasskeyEndpoints
                 var roles = await userManager.GetRolesAsync(user);
                 var accessToken = tokenService.GenerateAccessToken(user, tenantContext.TenantId, roles);
                 var refreshToken = tokenService.RotateRefreshToken(user, tenantContext.TenantId);
+                var expiresIn = tokenService.GetAccessTokenExpiresInSeconds();
 
                 _ = await userManager.UpdateAsync(user);
 
                 return Results.Ok(new LoginResponse(
                     "Bearer",
                     accessToken,
-                    3600,
+                    expiresIn,
                     refreshToken
                 ));
             }

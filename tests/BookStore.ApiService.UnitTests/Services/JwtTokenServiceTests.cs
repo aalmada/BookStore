@@ -296,6 +296,50 @@ public class JwtTokenServiceTests
         _ = await Assert.That(jwtToken.ValidTo).IsLessThan(expectedExpiration + tolerance);
     }
 
+    [Test]
+    [Category("Unit")]
+    [Arguments(15, 900)]
+    [Arguments(90, 5400)]
+    [Arguments(240, 14400)]
+    public async Task GetAccessTokenExpiresInSeconds_WithConfiguredValue_ShouldReturnMatchingSeconds(int expirationMinutes, int expectedSeconds)
+    {
+        // Arrange
+        var configuration = CreateMockConfiguration(expirationMinutes: expirationMinutes);
+        var service = new JwtTokenService(configuration);
+
+        // Act
+        var expiresIn = service.GetAccessTokenExpiresInSeconds();
+
+        // Assert
+        _ = await Assert.That(expiresIn).IsEqualTo(expectedSeconds);
+    }
+
+    [Test]
+    [Category("Unit")]
+    public async Task GetAccessTokenExpiresInSeconds_WithInvalidConfiguredValue_ShouldDefaultTo3600()
+    {
+        // Arrange
+        var configDict = new Dictionary<string, string?>
+        {
+            ["Jwt:SecretKey"] = "super-secret-key-that-is-long-enough-for-hmacsha256-algorithm",
+            ["Jwt:Issuer"] = "test-issuer",
+            ["Jwt:Audience"] = "test-audience",
+            ["Jwt:ExpirationMinutes"] = "invalid"
+        };
+
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(configDict)
+            .Build();
+
+        var service = new JwtTokenService(configuration);
+
+        // Act
+        var expiresIn = service.GetAccessTokenExpiresInSeconds();
+
+        // Assert
+        _ = await Assert.That(expiresIn).IsEqualTo(3600);
+    }
+
     #endregion
 
     #region GenerateRefreshToken Tests

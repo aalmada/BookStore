@@ -133,11 +133,12 @@ public static class JwtAuthenticationEndpoints
         _ = await userManager.UpdateAsync(user);
 
         Log.Users.JwtLoginSuccessful(logger, request.Email);
+        var expiresIn = jwtTokenService.GetAccessTokenExpiresInSeconds();
 
         return Results.Ok(new LoginResponse(
             TokenType: "Bearer",
             AccessToken: accessToken,
-            ExpiresIn: 3600,
+            ExpiresIn: expiresIn,
             RefreshToken: refreshToken
         ));
     }
@@ -200,11 +201,12 @@ public static class JwtAuthenticationEndpoints
         await session.SaveChangesAsync(cancellationToken);
 
         Log.Users.JwtRegistrationSuccessful(logger, request.Email);
+        var expiresIn = jwtTokenService.GetAccessTokenExpiresInSeconds();
 
         return Results.Ok(new LoginResponse(
             TokenType: "Bearer",
             AccessToken: accessToken,
-            ExpiresIn: 3600,
+            ExpiresIn: expiresIn,
             RefreshToken: refreshToken
         ));
     }
@@ -406,11 +408,12 @@ public static class JwtAuthenticationEndpoints
         var newRefreshToken = jwtTokenService.RotateRefreshToken(user, existingToken.TenantId, existingToken.Token);
 
         _ = await userManager.UpdateAsync(user);
+        var expiresIn = jwtTokenService.GetAccessTokenExpiresInSeconds();
 
         return Results.Ok(new LoginResponse(
             TokenType: "Bearer",
             AccessToken: newAccessToken,
-            ExpiresIn: 3600,
+            ExpiresIn: expiresIn,
             RefreshToken: newRefreshToken
         ));
     }

@@ -11,6 +11,7 @@ namespace BookStore.ApiService.Services;
 /// </summary>
 public class JwtTokenService
 {
+    const int DefaultAccessTokenExpirationMinutes = 60;
     readonly IConfiguration _configuration;
 
     public JwtTokenService(IConfiguration configuration) => _configuration = configuration;
@@ -61,7 +62,7 @@ public class JwtTokenService
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-        var expirationMinutes = int.Parse(jwtSettings["ExpirationMinutes"] ?? "60");
+        var expirationMinutes = GetAccessTokenExpirationMinutes();
 
         var token = new JwtSecurityToken(
             issuer: jwtSettings["Issuer"],
@@ -72,6 +73,25 @@ public class JwtTokenService
         );
 
         return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    public int GetAccessTokenExpiresInSeconds()
+    {
+        var expirationMinutes = GetAccessTokenExpirationMinutes();
+        return checked(expirationMinutes * 60);
+    }
+
+    int GetAccessTokenExpirationMinutes()
+    {
+        var jwtSettings = _configuration.GetSection("Jwt");
+        var configuredMinutes = jwtSettings["ExpirationMinutes"];
+
+        if (int.TryParse(configuredMinutes, out var minutes) && minutes > 0)
+        {
+            return minutes;
+        }
+
+        return DefaultAccessTokenExpirationMinutes;
     }
 
     /// <summary>

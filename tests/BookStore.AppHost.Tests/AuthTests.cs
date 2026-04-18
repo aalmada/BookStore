@@ -75,6 +75,7 @@ public class AuthTests
         _ = await Assert.That(loginResult).IsNotNull();
         _ = await Assert.That(loginResult.AccessToken).IsNotNull().And.IsNotEmpty();
         _ = await Assert.That(loginResult.RefreshToken).IsNotNull().And.IsNotEmpty();
+        _ = await Assert.That(loginResult.ExpiresIn).IsGreaterThan(0);
     }
 
     [Test]
@@ -149,6 +150,7 @@ public class AuthTests
         _ = await Assert.That(refreshResult).IsNotNull();
         _ = await Assert.That(refreshResult.AccessToken).IsNotNull().And.IsNotEmpty();
         _ = await Assert.That(refreshResult.AccessToken).IsNotEqualTo(loginResult.AccessToken);
+        _ = await Assert.That(refreshResult.ExpiresIn).IsGreaterThan(0);
     }
 
     [Test]
