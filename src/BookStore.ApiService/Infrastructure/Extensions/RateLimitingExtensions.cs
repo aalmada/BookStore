@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Threading.RateLimiting;
 using BookStore.Shared.Models;
 using Microsoft.AspNetCore.Builder;
@@ -11,6 +12,8 @@ namespace BookStore.ApiService.Infrastructure.Extensions;
 
 public static class RateLimitingExtensions
 {
+    internal const string AuthRateLimitEmailItemKey = "AuthRateLimitEmail";
+
     public static IServiceCollection AddCustomRateLimiting(this IServiceCollection services, IConfiguration configuration) => services.AddRateLimiter(options =>
     {
         options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -59,9 +62,9 @@ public static class RateLimitingExtensions
                 return RateLimitPartition.GetNoLimiter("disabled");
             }
 
-            var ipAddress = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+            var partitionKey = BuildAuthPolicyPartitionKey(httpContext);
 
-            return RateLimitPartition.GetFixedWindowLimiter(ipAddress, _ =>
+            return RateLimitPartition.GetFixedWindowLimiter(partitionKey, _ =>
                 new FixedWindowRateLimiterOptions
                 {
                     PermitLimit = rateLimitOptions.AuthPermitLimit,
@@ -88,4 +91,85 @@ public static class RateLimitingExtensions
             }, cancellationToken);
         };
     });
+
+    public static IApplicationBuilder UseAuthRateLimitIdentityExtraction(this IApplicationBuilder app)
+        => app.Use(async (context, next) =>
+        {
+            if (ShouldExtractAuthEmail(context.Request))
+            {
+                context.Request.EnableBuffering();
+
+                try
+                {
+                    using var document = await JsonDocument.ParseAsync(context.Request.Body, cancellationToken: context.RequestAborted);
+                    if (TryGetAuthEmail(document.RootElement, out var email))
+                    {
+                        context.Items[AuthRateLimitEmailItemKey] = email;
+                    }
+                }
+                catch (JsonException)
+                {
+                    // Ignore malformed JSON and continue without an email-specific partition.
+                }
+                finally
+                {
+                    context.Request.Body.Position = 0;
+                }
+            }
+
+            await next();
+        });
+
+    internal static string BuildAuthPolicyPartitionKey(HttpContext context)
+    {
+        var tenantId = context.Items["TenantId"]?.ToString()
+            ?? JasperFx.StorageConstants.DefaultTenantId;
+
+        var ipAddress = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        var email = context.Items[AuthRateLimitEmailItemKey]?.ToString();
+        var normalizedEmail = string.IsNullOrWhiteSpace(email)
+            ? "anonymous"
+            : email.Trim().ToUpperInvariant();
+
+        return $"{tenantId}:{ipAddress}:{normalizedEmail}";
+    }
+
+    internal static bool TryGetAuthEmail(JsonElement body, out string email)
+    {
+        email = string.Empty;
+
+        if (!body.TryGetProperty("email", out var emailProperty))
+        {
+            return false;
+        }
+
+        var value = emailProperty.GetString();
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        email = value.Trim();
+        return true;
+    }
+
+    static bool ShouldExtractAuthEmail(HttpRequest request)
+    {
+        if (!HttpMethods.IsPost(request.Method))
+        {
+            return false;
+        }
+
+        if (!request.Path.StartsWithSegments("/account"))
+        {
+            return false;
+        }
+
+        if (request.ContentLength is null or <= 0)
+        {
+            return false;
+        }
+
+        return request.ContentType?.Contains("application/json", StringComparison.OrdinalIgnoreCase) == true;
+    }
 }

@@ -98,6 +98,9 @@ app.UseLoggingEnricher();
 // Enable CORS
 app.UseCors();
 
+// Extract auth identifiers (email) for auth rate-limiting partitions.
+app.UseAuthRateLimitIdentityExtraction();
+
 // Enable Rate Limiting
 app.UseRateLimiter();
 
