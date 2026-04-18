@@ -79,11 +79,10 @@ public static class ApplicationServicesExtensions
     static void AddForwardedHeaders(IServiceCollection services) => _ = services.Configure<ForwardedHeadersOptions>(options =>
                                                                          {
                                                                              options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
-                                                                             // Clear known networks/proxies to trust standard proxies in the environment (Aspire/Docker)
-                                                                             options.KnownIPNetworks.Clear();
-                                                                             options.KnownProxies.Clear();
-                                                                             options.ForwardLimit = null;
-                                                                             options.RequireHeaderSymmetry = false;
+                                                                             options.ForwardLimit = 1;
+                                                                             options.RequireHeaderSymmetry = true;
+                                                                             // Keep framework defaults for KnownNetworks/KnownProxies
+                                                                             // to avoid trusting arbitrary X-Forwarded-* headers.
                                                                          });
 
     static void AddApiVersioning(IServiceCollection services) => services.AddApiVersioning(options =>
