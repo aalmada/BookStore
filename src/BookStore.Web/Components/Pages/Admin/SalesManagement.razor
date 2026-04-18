@@ -39,7 +39,7 @@
             <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-2"/>
         }
 
-        <MudTable T="SaleDto" Items="@FilteredItems" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="4">
+        <MudTable T="SaleDto" Items="@FilteredItems" Hover="true" Breakpoint="Breakpoint.None" Elevation="4">
             <ToolBarContent>
                 <MudSpacer/>
                 <MudTextField @bind-Value="_searchString" Placeholder="Search sales..." Adornment="Adornment.Start"

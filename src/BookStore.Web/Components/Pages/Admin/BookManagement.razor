@@ -21,7 +21,7 @@
         </MudButton>
     </MudStack>
 
-    <MudTable T="AdminBookDto" @ref="_table" ServerData="ReloadData" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="4">
+    <MudTable T="AdminBookDto" @ref="_table" ServerData="ReloadData" Hover="true" Breakpoint="Breakpoint.None" Elevation="4">
         <ToolBarContent>
             <MudSpacer/>
             <MudTextField @bind-Value="_searchString" Placeholder="Search books..." Adornment="Adornment.Start"

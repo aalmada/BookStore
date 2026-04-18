@@ -26,7 +26,13 @@
         </MudButton>
     </MudPaper>
 
-    <MudTable Items="@_tenants" Loading="@_isLoading" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="4">
+    <MudTable Items="@FilteredTenants" Loading="@_isLoading" Hover="true" Breakpoint="Breakpoint.None" Elevation="4">
+        <ToolBarContent>
+            <MudSpacer/>
+            <MudTextField @bind-Value="_searchString" Placeholder="Search tenants..." Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="search-field"
+                          Clearable="true" Immediate="true" Variant="Variant.Outlined" Margin="Margin.Dense"/>
+        </ToolBarContent>
         <HeaderContent>
             <MudTh>ID</MudTh>
             <MudTh>Name / Tagline</MudTh>
@@ -54,6 +60,12 @@
                 </MudMenu>
             </MudTd>
         </RowTemplate>
+        <NoRecordsContent>
+            <MudText>No tenants found.</MudText>
+        </NoRecordsContent>
+        <PagerContent>
+            <MudTablePager/>
+        </PagerContent>
     </MudTable>
 </MudContainer>
 
@@ -148,6 +160,26 @@
     private bool _passwordVisibility;
     private MudForm? _form;
     private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
+
+    private string? _searchString
+    {
+        get => _searchStringFieldValue;
+        set
+        {
+            if (_searchStringFieldValue == value) return;
+            _searchStringFieldValue = value;
+            StateHasChanged();
+        }
+    }
+
+    private string? _searchStringFieldValue;
+
+    private IEnumerable<TenantInfoDto> FilteredTenants =>
+        string.IsNullOrWhiteSpace(_searchString)
+            ? _tenants
+            : _tenants.Where(t =>
+                t.Name.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ||
+                t.Id.Contains(_searchString, StringComparison.OrdinalIgnoreCase));
 
     protected override async Task OnInitializedAsync()
     {

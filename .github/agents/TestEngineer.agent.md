@@ -7,7 +7,7 @@ description: >
 target: vscode
 user-invocable: false
 disable-model-invocation: true
-model: GPT-5.4 (copilot)
+model: GPT-5.3-Codex (copilot)
 tools: ['search', 'read', 'edit', 'execute/runInTerminal', 'execute/testFailure', 'vscode/memory', 'agent', 'vscode/askQuestions']
 agents: ['*']
 ---

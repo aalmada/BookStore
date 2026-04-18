@@ -51,7 +51,7 @@
         </MudPaper>
     </MudCollapse>
 
-    <MudTable @ref="_table" ServerData="ServerReload" Loading="@_isLoading" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="4">
+    <MudTable @ref="_table" ServerData="ServerReload" Loading="@_isLoading" Hover="true" Breakpoint="Breakpoint.None" Elevation="4">
         <ToolBarContent>
             <MudSpacer/>
             <MudTextField @bind-Value="_searchString" Placeholder="Search users..." Adornment="Adornment.Start"
@@ -129,6 +129,9 @@
                 }
             </MudTd>
         </RowTemplate>
+        <PagerContent>
+            <MudTablePager/>
+        </PagerContent>
     </MudTable>
 
 </MudContainer>
