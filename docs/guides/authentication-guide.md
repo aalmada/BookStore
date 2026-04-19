@@ -64,6 +64,12 @@ graph TB
 - In Development/Test only, if no explicit password is provided, the legacy fallback `Admin123!` is still used to keep local and automated test flows deterministic.
 - For CI, staging, and production environments, always provide `Seeding__AdminPassword` through your secret store or deployment pipeline variables.
 
+### Email Delivery Startup Guard
+
+- Startup configuration validation now blocks `Email:DeliveryMethod=None` outside Development.
+- This allows local development flows that skip email delivery while failing fast in Test, Staging, and Production if email delivery is disabled.
+- Use `Email:DeliveryMethod=Logging` for non-delivery diagnostics or `Email:DeliveryMethod=Smtp` for real delivery in non-development environments.
+
 Example configuration:
 
 ```json

@@ -340,6 +340,9 @@ public static class ApplicationServicesExtensions
         _ = services.AddOptions<Infrastructure.Email.EmailOptions>()
             .BindConfiguration(Infrastructure.Email.EmailOptions.SectionName)
             .ValidateDataAnnotations()
+            .Validate(
+                options => environment.IsDevelopment() || !string.Equals(options.DeliveryMethod, "None", StringComparison.OrdinalIgnoreCase),
+                "Email:DeliveryMethod cannot be 'None' outside Development. Use 'Logging' or 'Smtp'.")
             .ValidateOnStart();
 
         _ = services.AddSingleton<Infrastructure.Email.EmailTemplateService>();

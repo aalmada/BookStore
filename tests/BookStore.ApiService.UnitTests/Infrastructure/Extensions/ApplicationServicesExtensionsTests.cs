@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Security.Cryptography;
+using BookStore.ApiService.Infrastructure.Email;
 using BookStore.ApiService.Infrastructure.Extensions;
 using BookStore.ApiService.Infrastructure.Identity;
 using BookStore.ApiService.Models;
@@ -170,6 +171,72 @@ public class ApplicationServicesExtensionsTests
 
         // Assert
         _ = await Assert.That(jwtOptions.TokenValidationParameters.IssuerSigningKey).IsTypeOf<SymmetricSecurityKey>();
+    }
+
+    [Test]
+    [Category("Unit")]
+    public async Task AddApplicationServices_WithEmailDeliveryMethodNoneInDevelopment_ShouldAllowConfiguration()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Jwt:SecretKey"] = "test-secret-key-must-be-at-least-32-characters-long",
+                ["Jwt:Issuer"] = "BookStore.ApiService",
+                ["Jwt:Audience"] = "BookStore.Web",
+                ["Jwt:ExpirationMinutes"] = "60",
+                ["Authentication:Passkey:ServerDomain"] = "localhost",
+                ["Email:DeliveryMethod"] = "None"
+            })
+            .Build();
+
+        var environment = new TestWebHostEnvironment
+        {
+            EnvironmentName = "Development"
+        };
+        _ = services.AddSingleton<IConfiguration>(configuration);
+
+        // Act
+        _ = services.AddApplicationServices(configuration, environment);
+        await using var provider = services.BuildServiceProvider();
+        var options = provider.GetRequiredService<IOptions<EmailOptions>>().Value;
+
+        // Assert
+        _ = await Assert.That(options.DeliveryMethod).IsEqualTo("None");
+    }
+
+    [Test]
+    [Category("Unit")]
+    public async Task AddApplicationServices_WithEmailDeliveryMethodNoneOutsideDevelopment_ShouldThrowOptionsValidationException()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Jwt:SecretKey"] = "test-secret-key-must-be-at-least-32-characters-long",
+                ["Jwt:Issuer"] = "BookStore.ApiService",
+                ["Jwt:Audience"] = "BookStore.Web",
+                ["Jwt:ExpirationMinutes"] = "60",
+                ["Authentication:Passkey:ServerDomain"] = "localhost",
+                ["Email:DeliveryMethod"] = "None"
+            })
+            .Build();
+
+        var environment = new TestWebHostEnvironment
+        {
+            EnvironmentName = "Production"
+        };
+        _ = services.AddSingleton<IConfiguration>(configuration);
+
+        _ = services.AddApplicationServices(configuration, environment);
+        await using var provider = services.BuildServiceProvider();
+
+        // Act + Assert
+        _ = await Assert.That(() => provider.GetRequiredService<IOptions<EmailOptions>>().Value)
+            .Throws<OptionsValidationException>()
+            .WithMessage("Email:DeliveryMethod cannot be 'None' outside Development. Use 'Logging' or 'Smtp'.");
     }
 
     [Test]

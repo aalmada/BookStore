@@ -813,12 +813,16 @@ Required for email verification.
 
 **Key Settings**:
 - **DeliveryMethod**:
-    - `None`: Disables email sending. **Users are auto-verified.**
-    - `Logging`: Logs email content to console (Development).
-    - `Smtp`: Sends actual emails via SMTP (Production).
+  - `None`: Disables email sending. **Users are auto-verified.** Allowed only in Development.
+  - `Logging`: Logs email content to console (Development).
+  - `Smtp`: Sends actual emails via SMTP (Production).
 - **BaseUrl**: The base URL of the frontend application (used for verification links).
 - **FromEmail/FromName**: Sender details.
 - **Smtp***: SMTP server credentials (required if method is `Smtp`).
+
+> [!WARNING]
+> Startup validation now fails fast outside Development when `Email:DeliveryMethod` is set to `None`.
+> For Test, Staging, and Production environments, use `Logging` (non-delivery diagnostics) or `Smtp` (real delivery).
 
 ---
 
