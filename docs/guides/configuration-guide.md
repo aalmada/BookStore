@@ -662,6 +662,8 @@ public class LocalizationOptions : IValidatableObject
 }
 ```
 
+> **`RateLimit:Disabled`**: Setting `RateLimit:Disabled=true` bypasses all rate limiting. This flag is intended **only** for automated testing. If it is set to `true` in any non-development, non-test environment, a **Critical** log warning is emitted at startup. Never set this flag in production.
+
 ```csharp
 public class RateLimitOptions
 {

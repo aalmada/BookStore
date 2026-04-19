@@ -213,6 +213,11 @@ public static partial class Log
             int count);
 
         [LoggerMessage(
+            Level = LogLevel.Critical,
+            Message = "Rate limiting is disabled (RateLimit:Disabled=true) in non-development environment '{EnvironmentName}'. This exposes the API to abuse and must not be used in production.")]
+        public static partial void RateLimitingDisabledInProduction(ILogger logger, string environmentName);
+
+        [LoggerMessage(
             Level = LogLevel.Information,
             Message = "Creating {NotificationType} for book {BookId}, version {Version}")]
         public static partial void CreatingBookNotification(
