@@ -2,6 +2,8 @@ namespace BookStore.ApiService.Infrastructure;
 
 public sealed class SecurityHeadersMiddleware(RequestDelegate next, IWebHostEnvironment environment)
 {
+    public const string HstsValue = "max-age=31536000; includeSubDomains; preload";
+
     public async Task InvokeAsync(HttpContext context)
     {
         context.Response.OnStarting(() =>
@@ -17,7 +19,7 @@ public sealed class SecurityHeadersMiddleware(RequestDelegate next, IWebHostEnvi
             // HSTS should only be emitted in non-development HTTPS environments.
             if (!environment.IsDevelopment() && context.Request.IsHttps)
             {
-                SetHeaderIfMissing(headers, "Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+                SetHeaderIfMissing(headers, "Strict-Transport-Security", HstsValue);
             }
 
             return Task.CompletedTask;

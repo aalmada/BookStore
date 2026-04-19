@@ -798,6 +798,15 @@ jobs:
 6. **Container Scanning** - Scan images for vulnerabilities
 7. **Regular Updates** - Keep dependencies and base images updated
 
+### HSTS Preload
+
+The API emits `Strict-Transport-Security: max-age=31536000; includeSubDomains; preload` on all non-development HTTPS responses.
+
+> **Before submitting to the [HSTS Preload list](https://hstspreload.org/):**
+> - All subdomains of your domain must support HTTPS.
+> - The `preload` directive signals intent to be included in browser preload lists, but the domain must be explicitly submitted.
+> - Once a domain is on preload lists, removal can take months. Only add `preload` when you are confident all subdomains are HTTPS-capable.
+
 ---
 
 ## Additional Resources
