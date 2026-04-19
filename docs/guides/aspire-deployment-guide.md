@@ -26,6 +26,12 @@ Both the API and Web frontend process forwarded headers and must only trust know
 
 This prevents spoofing of client IP and protocol through arbitrary `X-Forwarded-*` headers.
 
+## JWT Algorithm Guidance For Production
+
+- `HS256` remains supported and is the default local/development configuration.
+- For production, configure `Jwt:Algorithm` as `RS256` and provide `Jwt:RS256:PrivateKeyPem` plus `Jwt:RS256:PublicKeyPem` through your secret management system.
+- If production keeps `HS256`, the API emits an explicit startup warning so the risk is visible in operational logs.
+
 ## Prerequisites
 
 ### General Requirements

@@ -78,6 +78,13 @@ public static class ApplicationServicesExtensions
         // Configure Identity with JWT authentication
         AddIdentityServices(services, configuration, environment);
 
+        // Log a startup warning when production uses the default HS256 algorithm.
+        _ = services.AddHostedService(sp => new Infrastructure.Services.JwtAlgorithmWarningService(
+            configuration["Jwt:Algorithm"],
+            environment.EnvironmentName,
+            environment.IsDevelopment(),
+            sp.GetRequiredService<ILogger<Infrastructure.Services.JwtAlgorithmWarningService>>()));
+
         // Configure Forwarded Headers
         AddForwardedHeaders(services);
 

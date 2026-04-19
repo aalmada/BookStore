@@ -55,6 +55,7 @@ graph TB
 - Startup validation enforces this rule for HS256 configuration.
 - `JwtTokenService` also enforces this rule when creating signing credentials as a defense-in-depth guard.
 - In production, the development placeholder secret remains blocked even if it satisfies length requirements.
+- **Production recommendation**: Use `RS256` with a managed asymmetric key pair (for example, Azure Key Vault-backed key material). `HS256` is still supported for compatibility, but startup now emits a warning when a non-development environment uses `HS256`.
 
 ### Tenant Admin Seeding Password
 

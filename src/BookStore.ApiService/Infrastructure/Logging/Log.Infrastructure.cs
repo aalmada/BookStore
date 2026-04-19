@@ -153,6 +153,11 @@ public static partial class Log
         public static partial void StartupError(ILogger logger, Exception exception);
 
         [LoggerMessage(
+            Level = LogLevel.Warning,
+            Message = "JWT algorithm HS256 is configured in non-development environment {EnvironmentName}. HS256 remains supported, but RS256 with asymmetric keys is recommended for production deployments.")]
+        public static partial void JwtHs256ConfiguredInProduction(ILogger logger, string environmentName);
+
+        [LoggerMessage(
             Level = LogLevel.Error,
             Message = "Unhandled exception: {Message}")]
         public static partial void UnhandledException(ILogger logger, Exception exception, string message);

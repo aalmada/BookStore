@@ -758,6 +758,10 @@ Required for token generation and validation.
 - **ExpirationMinutes**: Lifetime of the Access Token.
 - **RS256.PrivateKeyPem / RS256.PublicKeyPem**: PEM-encoded key pair used only when `Algorithm` is `RS256`.
 
+> [!WARNING]
+> For production deployments, prefer `RS256` over the default `HS256`.
+> `HS256` remains supported, but the API logs a startup warning in non-development environments when `Jwt:Algorithm` is `HS256`.
+
 ### Passkey Configuration
 
 Required for WebAuthn/FIDO2 operations.
