@@ -49,7 +49,7 @@ graph TB
 - **Passkey Integration**: Passkey login flow (`/account/assertion/result`) also results in the issuance of standard JWTs, making the frontend agnostic to *how* the user logged in.
     Passkey registration flow (`/account/attestation/result`) returns generic attestation failure messages to clients and keeps detailed failure diagnostics in server logs.
     Passkey device names derived from `User-Agent` are sanitized and HTML-encoded before persistence.
-    During passkey assertion, lookup (`FindByPasskeyIdAsync`) validates that the active Marten session tenant matches the request tenant context as a defense-in-depth tenant-isolation invariant.
+    During passkey assertion, lookup (`FindByPasskeyIdAsync`) validates at runtime that the active Marten session tenant matches the request tenant context as a defense-in-depth tenant-isolation invariant. The same runtime enforcement applies to `FindByNameAsync` and `FindByEmailAsync`. A violation logs a `Critical`-level message and silently returns `null` (deny access) rather than throwing — to avoid leaking information.
 
 ### JWT Signing Key Requirements
 

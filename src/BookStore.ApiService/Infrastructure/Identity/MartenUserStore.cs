@@ -1,8 +1,10 @@
+using BookStore.ApiService.Infrastructure.Logging;
 using BookStore.ApiService.Infrastructure.Tenant;
 using BookStore.ApiService.Models;
 using Marten;
 using Marten.Linq.MatchesSql;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Logging;
 using Npgsql;
 
 namespace BookStore.ApiService.Infrastructure.Identity;
@@ -23,11 +25,13 @@ public sealed class MartenUserStore :
 {
     readonly IDocumentSession _session;
     readonly ITenantContext _tenantContext;
+    readonly ILogger<MartenUserStore> _logger;
 
-    public MartenUserStore(IDocumentSession session, ITenantContext tenantContext)
+    public MartenUserStore(IDocumentSession session, ITenantContext tenantContext, ILogger<MartenUserStore> logger)
     {
         _session = session;
         _tenantContext = tenantContext;
+        _logger = logger;
     }
 
     #region IUserStore
@@ -102,16 +106,7 @@ public sealed class MartenUserStore :
         var user = await _session.Query<ApplicationUser>()
             .FirstOrDefaultAsync(u => u.NormalizedUserName == normalizedUserName, cancellationToken);
 
-        // Defense-in-depth: Validate tenant isolation
-        // Marten's session should already filter by tenant_id, but verify for security
-        if (user != null)
-        {
-            System.Diagnostics.Debug.Assert(
-                _session.TenantId == _session.TenantId,
-                "Tenant isolation violation detected in FindByNameAsync");
-        }
-
-        return user;
+        return EnforceTenantIsolation(user, nameof(FindByNameAsync));
     }
 
     public Task<string> GetUserIdAsync(ApplicationUser user, CancellationToken cancellationToken)
@@ -187,16 +182,7 @@ public sealed class MartenUserStore :
         var user = await _session.Query<ApplicationUser>()
             .FirstOrDefaultAsync(u => u.NormalizedEmail == normalizedEmail, cancellationToken);
 
-        // Defense-in-depth: Validate tenant isolation
-        // Marten's session should already filter by tenant_id, but verify for security
-        if (user != null)
-        {
-            System.Diagnostics.Debug.Assert(
-                _session.TenantId == _session.TenantId,
-                "Tenant isolation violation detected in FindByEmailAsync");
-        }
-
-        return user;
+        return EnforceTenantIsolation(user, nameof(FindByEmailAsync));
     }
 
     #endregion
@@ -281,19 +267,25 @@ public sealed class MartenUserStore :
                 $"[{{\"credentialId\": \"{Convert.ToBase64String(credentialId)}\"}}]"))
             .FirstOrDefaultAsync(cancellationToken);
 
-        // Defense-in-depth: Validate tenant isolation for passkey queries
-        // This is critical for preventing cross-tenant passkey authentication
-        if (user != null)
+        return EnforceTenantIsolation(user, nameof(FindByPasskeyIdAsync));
+    }
+
+    /// <summary>
+    /// Defense-in-depth: Validates that the Marten session tenant matches the request tenant context.
+    /// Returns the user when the invariant holds, or null (deny access) on violation to avoid leaking information.
+    /// </summary>
+    internal ApplicationUser? EnforceTenantIsolation(ApplicationUser? user, string methodName)
+    {
+        if (user is not null && !IsTenantIsolationInvariantSatisfied(_session.TenantId, _tenantContext.TenantId))
         {
-            System.Diagnostics.Debug.Assert(
-                IsPasskeyLookupTenantIsolationInvariantSatisfied(_session.TenantId, _tenantContext.TenantId),
-                $"Tenant isolation violation detected in FindByPasskeyIdAsync. Session tenant '{_session.TenantId}' does not match request tenant '{_tenantContext.TenantId}'.");
+            Log.Users.TenantIsolationViolation(_logger, methodName, _session.TenantId, _tenantContext.TenantId);
+            return null;
         }
 
         return user;
     }
 
-    internal static bool IsPasskeyLookupTenantIsolationInvariantSatisfied(string? sessionTenantId, string? requestTenantId)
+    internal static bool IsTenantIsolationInvariantSatisfied(string? sessionTenantId, string? requestTenantId)
         => !string.IsNullOrWhiteSpace(sessionTenantId)
             && !string.IsNullOrWhiteSpace(requestTenantId)
             && string.Equals(sessionTenantId, requestTenantId, StringComparison.OrdinalIgnoreCase);

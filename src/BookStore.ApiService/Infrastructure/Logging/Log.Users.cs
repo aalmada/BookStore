@@ -202,5 +202,10 @@ public static partial class Log
             Message = "Anonymous cart merged for user {UserId}: mergedItems={MergedItems}, mergedQuantity={MergedQuantity}")]
         public static partial void AnonymousCartMerged(ILogger logger, Guid userId, int mergedItems, int mergedQuantity);
 
+        [LoggerMessage(
+            Level = LogLevel.Critical,
+            Message = "Tenant isolation violation detected in {MethodName}. Session tenant '{SessionTenantId}' does not match request tenant '{RequestTenantId}'.")]
+        public static partial void TenantIsolationViolation(ILogger logger, string methodName, string? sessionTenantId, string? requestTenantId);
+
     }
 }
