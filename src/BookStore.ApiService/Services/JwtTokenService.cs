@@ -95,7 +95,9 @@ public class JwtTokenService
     }
 
     /// <summary>
-    /// Generate a cryptographically secure refresh token
+    /// Generate a cryptographically secure refresh token.
+    /// The returned value is plaintext and should only be sent to the client;
+    /// persisted values must use <see cref="HashRefreshToken"/>.
     /// </summary>
     public string GenerateRefreshToken()
     {
@@ -103,6 +105,18 @@ public class JwtTokenService
         using var rng = RandomNumberGenerator.Create();
         rng.GetBytes(randomBytes);
         return Convert.ToBase64String(randomBytes);
+    }
+
+    /// <summary>
+    /// Computes a deterministic SHA-256 hash for refresh-token storage and lookup.
+    /// </summary>
+    public string HashRefreshToken(string refreshToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(refreshToken);
+
+        var tokenBytes = Encoding.UTF8.GetBytes(refreshToken);
+        var hash = SHA256.HashData(tokenBytes);
+        return Convert.ToHexString(hash);
     }
 
     /// <summary>
@@ -116,7 +130,8 @@ public class JwtTokenService
         // 1. Mark the old token as used (do NOT remove it — presence of a used token enables replay detection)
         if (!string.IsNullOrEmpty(oldToken))
         {
-            var existing = user.RefreshTokens.FirstOrDefault(rt => rt.Token == oldToken);
+            var hashedOldToken = HashRefreshToken(oldToken);
+            var existing = user.RefreshTokens.FirstOrDefault(rt => rt.Token == hashedOldToken);
             if (existing != null)
             {
                 familyId = existing.FamilyId;
@@ -137,10 +152,11 @@ public class JwtTokenService
 
         // 2. Generate new token
         var newToken = GenerateRefreshToken();
+        var hashedNewToken = HashRefreshToken(newToken);
 
         // 3. Add to collection (same family as parent)
         user.RefreshTokens.Add(new BookStore.ApiService.Models.RefreshTokenInfo(
-            newToken,
+            hashedNewToken,
             DateTimeOffset.UtcNow.AddDays(7),
             DateTimeOffset.UtcNow,
             tenantId,

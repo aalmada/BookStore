@@ -227,12 +227,7 @@ public class PasskeySecurityTests
         var userAfter = await DatabaseHelpers.GetUserByEmailAsync(sessionFinal, email);
 
         _ = await Assert.That(userAfter).IsNotNull();
-        var oldTokens = userAfter!.RefreshTokens
-            .Where(t => t.Token == login1.RefreshToken
-                     || t.Token == login2.RefreshToken
-                     || t.Token == login3.RefreshToken)
-            .ToList();
-        _ = await Assert.That(oldTokens).IsEmpty();
+        _ = await Assert.That(userAfter!.RefreshTokens.Count).IsEqualTo(1);
     }
 
     [Test]

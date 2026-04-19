@@ -320,10 +320,12 @@ public static class JwtAuthenticationEndpoints
         ILogger<Program> logger,
         CancellationToken cancellationToken)
     {
+        var refreshTokenHash = jwtTokenService.HashRefreshToken(request.RefreshToken);
+
         // 1. Find user with this refresh token across ALL tenants (needed for cross-tenant theft detection)
         await using var globalSession = store.LightweightSession();
         var user = await globalSession.Query<ApplicationUser>()
-            .FirstOrDefaultAsync(u => u.AnyTenant() && u.RefreshTokens.Any(rt => rt.Token == request.RefreshToken), cancellationToken);
+            .FirstOrDefaultAsync(u => u.AnyTenant() && u.RefreshTokens.Any(rt => rt.Token == refreshTokenHash), cancellationToken);
 
         if (user == null)
         {
@@ -332,7 +334,7 @@ public static class JwtAuthenticationEndpoints
         }
 
         // 2. Find the token record
-        var existingToken = user.RefreshTokens.FirstOrDefault(rt => rt.Token == request.RefreshToken);
+        var existingToken = user.RefreshTokens.FirstOrDefault(rt => rt.Token == refreshTokenHash);
 
         // SECURITY: Token found but already used — this is a replay attack.
         // Revoke the entire token family to protect the legitimate session.
@@ -405,7 +407,7 @@ public static class JwtAuthenticationEndpoints
         // 6. Generate new tokens using the original tenant from the refresh token
         var roles = await userManager.GetRolesAsync(user);
         var newAccessToken = jwtTokenService.GenerateAccessToken(user, existingToken.TenantId, roles);
-        var newRefreshToken = jwtTokenService.RotateRefreshToken(user, existingToken.TenantId, existingToken.Token);
+        var newRefreshToken = jwtTokenService.RotateRefreshToken(user, existingToken.TenantId, request.RefreshToken);
 
         _ = await userManager.UpdateAsync(user);
         var expiresIn = jwtTokenService.GetAccessTokenExpiresInSeconds();
@@ -421,6 +423,7 @@ public static class JwtAuthenticationEndpoints
     static async Task<IResult> LogoutAsync(
         LogoutRequest request,
         UserManager<ApplicationUser> userManager,
+        JwtTokenService jwtTokenService,
         ClaimsPrincipal user,
         ILogger<Program> logger,
         CancellationToken cancellationToken)
@@ -440,7 +443,8 @@ public static class JwtAuthenticationEndpoints
         if (!string.IsNullOrEmpty(request.RefreshToken))
         {
             // Remove specific refresh token
-            var tokenToRemove = appUser.RefreshTokens.FirstOrDefault(rt => rt.Token == request.RefreshToken);
+            var refreshTokenHash = jwtTokenService.HashRefreshToken(request.RefreshToken);
+            var tokenToRemove = appUser.RefreshTokens.FirstOrDefault(rt => rt.Token == refreshTokenHash);
             if (tokenToRemove != null)
             {
                 _ = appUser.RefreshTokens.Remove(tokenToRemove);

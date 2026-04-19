@@ -427,6 +427,82 @@ public class JwtTokenServiceTests
 
     #endregion
 
+    #region Refresh Token Hashing Tests
+
+    [Test]
+    [Category("Unit")]
+    public async Task HashRefreshToken_ShouldBeDeterministicAndNotEqualToRawToken()
+    {
+        // Arrange
+        var configuration = CreateMockConfiguration();
+        var service = new JwtTokenService(configuration);
+        var rawToken = service.GenerateRefreshToken();
+
+        // Act
+        var firstHash = service.HashRefreshToken(rawToken);
+        var secondHash = service.HashRefreshToken(rawToken);
+
+        // Assert
+        _ = await Assert.That(firstHash).IsEqualTo(secondHash);
+        _ = await Assert.That(firstHash).IsNotEqualTo(rawToken);
+    }
+
+    [Test]
+    [Category("Unit")]
+    public async Task RotateRefreshToken_ShouldPersistOnlyTokenHash()
+    {
+        // Arrange
+        var configuration = CreateMockConfiguration();
+        var service = new JwtTokenService(configuration);
+
+        var user = new BookStore.ApiService.Models.ApplicationUser
+        {
+            Email = "test@example.com",
+            UserName = "test@example.com",
+            SecurityStamp = Guid.CreateVersion7().ToString()
+        };
+
+        // Act
+        var rawToken = service.RotateRefreshToken(user, "default");
+
+        // Assert
+        _ = await Assert.That(user.RefreshTokens.Count).IsEqualTo(1);
+        var stored = user.RefreshTokens.Single();
+        _ = await Assert.That(stored.Token).IsNotEqualTo(rawToken);
+        _ = await Assert.That(stored.Token).IsEqualTo(service.HashRefreshToken(rawToken));
+    }
+
+    [Test]
+    [Category("Unit")]
+    public async Task RotateRefreshToken_WithOldRawToken_ShouldMarkPreviousHashAsUsed()
+    {
+        // Arrange
+        var configuration = CreateMockConfiguration();
+        var service = new JwtTokenService(configuration);
+
+        var user = new BookStore.ApiService.Models.ApplicationUser
+        {
+            Email = "test@example.com",
+            UserName = "test@example.com",
+            SecurityStamp = Guid.CreateVersion7().ToString()
+        };
+
+        var firstRawToken = service.RotateRefreshToken(user, "default");
+
+        // Act
+        var secondRawToken = service.RotateRefreshToken(user, "default", firstRawToken);
+
+        // Assert
+        var firstHash = service.HashRefreshToken(firstRawToken);
+        var firstStored = user.RefreshTokens.First(t => t.Token == firstHash);
+        _ = await Assert.That(firstStored.IsUsed).IsTrue();
+
+        var secondHash = service.HashRefreshToken(secondRawToken);
+        _ = await Assert.That(user.RefreshTokens.Any(t => t.Token == secondHash)).IsTrue();
+    }
+
+    #endregion
+
     #region Helper Methods
 
     static IConfiguration CreateMockConfiguration(

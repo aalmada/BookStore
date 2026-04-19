@@ -1,4 +1,6 @@
 using System.Net;
+using System.Security.Cryptography;
+using System.Text;
 using BookStore.ApiService.Models;
 using BookStore.AppHost.Tests.Helpers;
 using BookStore.Client;
@@ -170,7 +172,8 @@ public class RefreshTokenSecurityTests
 
         if (user != null)
         {
-            var token = user.RefreshTokens.FirstOrDefault(t => t.Token == refreshToken);
+            var tokenHash = HashRefreshToken(refreshToken);
+            var token = user.RefreshTokens.FirstOrDefault(t => t.Token == tokenHash);
             if (token != null)
             {
                 // RefreshTokenInfo is immutable, so we need to replace it
@@ -180,5 +183,12 @@ public class RefreshTokenSecurityTests
                 await session.SaveChangesAsync();
             }
         }
+    }
+
+    static string HashRefreshToken(string refreshToken)
+    {
+        var bytes = Encoding.UTF8.GetBytes(refreshToken);
+        var hash = SHA256.HashData(bytes);
+        return Convert.ToHexString(hash);
     }
 }

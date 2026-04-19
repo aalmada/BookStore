@@ -70,7 +70,7 @@ public sealed class ApplicationUser
     public IList<UserPasskeyInfo> Passkeys { get; set; } = [];
 
     /// <summary>
-    /// Refresh tokens for maintaining sessions
+    /// Refresh tokens for maintaining sessions (hashed at rest)
     /// </summary>
     public IList<RefreshTokenInfo> RefreshTokens { get; set; } = [];
 
@@ -105,6 +105,7 @@ public sealed class ApplicationUser
 /// Information about a refresh token
 /// </summary>
 public record RefreshTokenInfo(
+    // SHA-256 hash of the raw refresh token returned to the client.
     string Token,
     DateTimeOffset Expires,
     DateTimeOffset Created,
