@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using System.Threading.RateLimiting;
 using BookStore.ApiService.Infrastructure.Extensions;
 using BookStore.Shared.Models;
 using Microsoft.AspNetCore.Http;
@@ -10,24 +11,23 @@ public class RateLimitingExtensionsTests
 {
     [Test]
     [Category("Unit")]
-    public async Task BuildAuthPolicyPartitionKey_WithEmailTenantAndIp_ShouldNormalizeAndIncludeAllParts()
+    public async Task BuildAuthPolicyPartitionKey_WithTenantAndIp_ShouldIncludeBothParts()
     {
         // Arrange
         var context = new DefaultHttpContext();
         context.Items["TenantId"] = "tenant-a";
-        context.Items[RateLimitingExtensions.AuthRateLimitEmailItemKey] = "  User@Test.com  ";
         context.Connection.RemoteIpAddress = IPAddress.Parse("203.0.113.10");
 
         // Act
         var key = RateLimitingExtensions.BuildAuthPolicyPartitionKey(context);
 
         // Assert
-        _ = await Assert.That(key).IsEqualTo("tenant-a:203.0.113.10:USER@TEST.COM");
+        _ = await Assert.That(key).IsEqualTo("tenant-a:203.0.113.10");
     }
 
     [Test]
     [Category("Unit")]
-    public async Task BuildAuthPolicyPartitionKey_WithoutTenantIpOrEmail_ShouldUseSafeDefaults()
+    public async Task BuildAuthPolicyPartitionKey_WithoutTenantOrIp_ShouldUseSafeDefaults()
     {
         // Arrange
         var context = new DefaultHttpContext();
@@ -36,44 +36,96 @@ public class RateLimitingExtensionsTests
         var key = RateLimitingExtensions.BuildAuthPolicyPartitionKey(context);
 
         // Assert
-        _ = await Assert.That(key).IsEqualTo($"{JasperFx.StorageConstants.DefaultTenantId}:unknown:anonymous");
+        _ = await Assert.That(key).IsEqualTo($"{JasperFx.StorageConstants.DefaultTenantId}:unknown");
     }
 
     [Test]
     [Category("Unit")]
-    public async Task TryGetAuthEmail_WithValidEmailProperty_ShouldReturnTrueAndTrimmedEmail()
+    public async Task BuildAuthPolicyPartitionKey_SameTenantAndIp_WithDifferentEmailItems_ShouldSharePartition()
     {
         // Arrange
-        using var document = JsonDocument.Parse("""
-            {
-              "email": "  person@example.com  "
-            }
-            """);
+        var contextWithFirstEmail = new DefaultHttpContext();
+        contextWithFirstEmail.Items["TenantId"] = "tenant-a";
+        contextWithFirstEmail.Items["AuthRateLimitEmail"] = "first@example.com";
+        contextWithFirstEmail.Connection.RemoteIpAddress = IPAddress.Parse("203.0.113.10");
+
+        var contextWithSecondEmail = new DefaultHttpContext();
+        contextWithSecondEmail.Items["TenantId"] = "tenant-a";
+        contextWithSecondEmail.Items["AuthRateLimitEmail"] = "second@example.com";
+        contextWithSecondEmail.Connection.RemoteIpAddress = IPAddress.Parse("203.0.113.10");
 
         // Act
-        var success = RateLimitingExtensions.TryGetAuthEmail(document.RootElement, out var email);
+        var firstKey = RateLimitingExtensions.BuildAuthPolicyPartitionKey(contextWithFirstEmail);
+        var secondKey = RateLimitingExtensions.BuildAuthPolicyPartitionKey(contextWithSecondEmail);
 
         // Assert
-        _ = await Assert.That(success).IsTrue();
-        _ = await Assert.That(email).IsEqualTo("person@example.com");
+        _ = await Assert.That(firstKey).IsEqualTo("tenant-a:203.0.113.10");
+        _ = await Assert.That(secondKey).IsEqualTo(firstKey);
     }
 
     [Test]
     [Category("Unit")]
-    [Arguments("{}")]
-    [Arguments("{\"email\":\"\"}")]
-    [Arguments("{\"email\":\"   \"}")]
-    public async Task TryGetAuthEmail_WithMissingOrBlankEmail_ShouldReturnFalse(string json)
+    public async Task BuildAuthPolicyPartitionKey_DifferentTenant_WithSameIp_ShouldUseDifferentPartitions()
     {
         // Arrange
-        using var document = JsonDocument.Parse(json);
+        var contextForTenantA = new DefaultHttpContext();
+        contextForTenantA.Items["TenantId"] = "tenant-a";
+        contextForTenantA.Connection.RemoteIpAddress = IPAddress.Parse("203.0.113.10");
+
+        var contextForTenantB = new DefaultHttpContext();
+        contextForTenantB.Items["TenantId"] = "tenant-b";
+        contextForTenantB.Connection.RemoteIpAddress = IPAddress.Parse("203.0.113.10");
 
         // Act
-        var success = RateLimitingExtensions.TryGetAuthEmail(document.RootElement, out var email);
+        var keyForTenantA = RateLimitingExtensions.BuildAuthPolicyPartitionKey(contextForTenantA);
+        var keyForTenantB = RateLimitingExtensions.BuildAuthPolicyPartitionKey(contextForTenantB);
 
         // Assert
-        _ = await Assert.That(success).IsFalse();
-        _ = await Assert.That(email).IsEqualTo(string.Empty);
+        _ = await Assert.That(keyForTenantA).IsEqualTo("tenant-a:203.0.113.10");
+        _ = await Assert.That(keyForTenantB).IsEqualTo("tenant-b:203.0.113.10");
+        _ = await Assert.That(keyForTenantB).IsNotEqualTo(keyForTenantA);
+    }
+
+    [Test]
+    [Category("Unit")]
+    public async Task AuthPartitioning_SameTenantAndIp_WithDifferentEmails_ShouldShareThrottleBucket()
+    {
+        // Arrange
+        using var limiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                RateLimitingExtensions.BuildAuthPolicyPartitionKey(context),
+                _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 1,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueLimit = 0,
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst
+                }));
+
+        var firstAttempt = new DefaultHttpContext();
+        firstAttempt.Items["TenantId"] = "tenant-a";
+        firstAttempt.Items["AuthRateLimitEmail"] = "first@example.com";
+        firstAttempt.Connection.RemoteIpAddress = IPAddress.Parse("203.0.113.10");
+
+        var secondAttemptDifferentEmail = new DefaultHttpContext();
+        secondAttemptDifferentEmail.Items["TenantId"] = "tenant-a";
+        secondAttemptDifferentEmail.Items["AuthRateLimitEmail"] = "second@example.com";
+        secondAttemptDifferentEmail.Connection.RemoteIpAddress = IPAddress.Parse("203.0.113.10");
+
+        var differentTenant = new DefaultHttpContext();
+        differentTenant.Items["TenantId"] = "tenant-b";
+        differentTenant.Items["AuthRateLimitEmail"] = "second@example.com";
+        differentTenant.Connection.RemoteIpAddress = IPAddress.Parse("203.0.113.10");
+
+        // Act
+        using var firstLease = await limiter.AcquireAsync(firstAttempt, permitCount: 1);
+        using var secondLease = await limiter.AcquireAsync(secondAttemptDifferentEmail, permitCount: 1);
+        using var differentTenantLease = await limiter.AcquireAsync(differentTenant, permitCount: 1);
+
+        // Assert
+        _ = await Assert.That(firstLease.IsAcquired).IsTrue();
+        _ = await Assert.That(secondLease.IsAcquired).IsFalse();
+        _ = await Assert.That(differentTenantLease.IsAcquired).IsTrue();
     }
 
     [Test]

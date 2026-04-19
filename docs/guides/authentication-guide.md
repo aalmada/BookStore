@@ -309,11 +309,18 @@ public class ApplicationUser
 
 To protect against abuse and Denial of Service (DoS) attacks, all authentication endpoints are protected by the **AuthPolicy**.
 
-- **Limit**: Configurable via `RateLimit:PermitLimit`.
-    - **Production**: Defaults to 10 requests per minute.
-    - **Development**: Defaults to 1000 requests per minute (to support **parallel integration tests**).
+- **Partition key**: `tenantId:clientIp`.
+    - Uses resolved tenant context plus caller IP address.
+    - Does **not** use request-body fields (for example, `email`) for partitioning.
+    - This prevents attackers from bypassing throttles by rotating email values.
+- **Limit**: Configurable via auth-specific settings:
+    - `RateLimit:AuthPermitLimit`
+    - `RateLimit:AuthWindowSeconds`
+    - `RateLimit:AuthQueueLimit`
 - **Scope**: Applied globally to all endpoint in the `/account` group (Login, Register, Passkeys, etc.).
 - **Response**: `429 Too Many Requests` when exceeded.
+
+The policy remains tenant-aware while preserving anonymity-safe behavior: responses do not expose whether a specific email exists, and throttling is enforced at the tenant+IP boundary.
 
 ## Related Guides
 

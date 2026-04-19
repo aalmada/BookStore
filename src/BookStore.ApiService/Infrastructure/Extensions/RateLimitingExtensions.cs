@@ -1,4 +1,3 @@
-using System.Text.Json;
 using System.Threading.RateLimiting;
 using BookStore.ApiService.Infrastructure.Logging;
 using BookStore.Shared.Models;
@@ -16,8 +15,6 @@ namespace BookStore.ApiService.Infrastructure.Extensions;
 
 public static class RateLimitingExtensions
 {
-    internal const string AuthRateLimitEmailItemKey = "AuthRateLimitEmail";
-
     public static IServiceCollection AddCustomRateLimiting(
         this IServiceCollection services,
         IConfiguration configuration,
@@ -130,84 +127,12 @@ public static class RateLimitingExtensions
         await context.Response.WriteAsJsonAsync(problemDetails, options: null, contentType: "application/problem+json", cancellationToken: cancellationToken);
     }
 
-    public static IApplicationBuilder UseAuthRateLimitIdentityExtraction(this IApplicationBuilder app)
-        => app.Use(async (context, next) =>
-        {
-            if (ShouldExtractAuthEmail(context.Request))
-            {
-                context.Request.EnableBuffering();
-
-                try
-                {
-                    using var document = await JsonDocument.ParseAsync(context.Request.Body, cancellationToken: context.RequestAborted);
-                    if (TryGetAuthEmail(document.RootElement, out var email))
-                    {
-                        context.Items[AuthRateLimitEmailItemKey] = email;
-                    }
-                }
-                catch (JsonException)
-                {
-                    // Ignore malformed JSON and continue without an email-specific partition.
-                }
-                finally
-                {
-                    context.Request.Body.Position = 0;
-                }
-            }
-
-            await next();
-        });
-
     internal static string BuildAuthPolicyPartitionKey(HttpContext context)
     {
         var tenantId = context.Items["TenantId"]?.ToString()
             ?? JasperFx.StorageConstants.DefaultTenantId;
 
         var ipAddress = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-        var email = context.Items[AuthRateLimitEmailItemKey]?.ToString();
-        var normalizedEmail = string.IsNullOrWhiteSpace(email)
-            ? "anonymous"
-            : email.Trim().ToUpperInvariant();
-
-        return $"{tenantId}:{ipAddress}:{normalizedEmail}";
-    }
-
-    internal static bool TryGetAuthEmail(JsonElement body, out string email)
-    {
-        email = string.Empty;
-
-        if (!body.TryGetProperty("email", out var emailProperty))
-        {
-            return false;
-        }
-
-        var value = emailProperty.GetString();
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return false;
-        }
-
-        email = value.Trim();
-        return true;
-    }
-
-    static bool ShouldExtractAuthEmail(HttpRequest request)
-    {
-        if (!HttpMethods.IsPost(request.Method))
-        {
-            return false;
-        }
-
-        if (!request.Path.StartsWithSegments("/account"))
-        {
-            return false;
-        }
-
-        if (request.ContentLength is null or <= 0)
-        {
-            return false;
-        }
-
-        return request.ContentType?.Contains("application/json", StringComparison.OrdinalIgnoreCase) == true;
+        return $"{tenantId}:{ipAddress}";
     }
 }
