@@ -23,6 +23,8 @@ public class DatabaseSeeder(
     IMessageBus bus,
     ILogger<DatabaseSeeder> logger)
 {
+    const string DevelopmentFallbackAdminPassword = "Admin123!";
+
 
     public async Task SeedTenantsAsync(string[] tenantIds)
     {
@@ -72,7 +74,10 @@ public class DatabaseSeeder(
         _ => ("BookStore", "Discover your next great read from our curated collection", "#594AE2")
     };
 
-    public async Task SeedAsync(string tenantId)
+    public async Task SeedAsync(
+        string tenantId,
+        string? defaultAdminPassword = null,
+        bool allowInsecureDevelopmentFallback = false)
     {
         // Since we use "*DEFAULT*" as the default tenant ID, we can pass it directly
         await using var session = store.LightweightSession(tenantId);
@@ -80,7 +85,13 @@ public class DatabaseSeeder(
         // Seed tenant-specific admin user using the tenant-scoped session
         // This is outside the 'existingBooks' guard to ensure admins are always present
         // even if data was previously partially seeded. The method itself handles idempotency.
-        _ = await SeedAdminUserAsync(session, tenantId, logger: logger);
+        _ = await SeedAdminUserAsync(
+            session,
+            tenantId,
+            password: null,
+            defaultPassword: defaultAdminPassword,
+            allowInsecureDevelopmentFallback: allowInsecureDevelopmentFallback,
+            logger: logger);
 
         // Check if already seeded with books
         var existingBooks = await session.Query<BookSearchProjection>().AnyAsync();
@@ -116,6 +127,8 @@ public class DatabaseSeeder(
         string tenantId,
         string? email = null,
         string? password = null,
+        string? defaultPassword = null,
+        bool allowInsecureDevelopmentFallback = false,
         bool confirmEmail = true,
         ILogger? logger = null)
     {
@@ -125,7 +138,10 @@ public class DatabaseSeeder(
             : tenantId;
         var adminEmail = email ?? $"admin@{tenantAlias}.com";
 
-        var adminPassword = password ?? "Admin123!";
+        var adminPassword = ResolveAdminSeedPassword(
+            password,
+            defaultPassword,
+            allowInsecureDevelopmentFallback);
 
         // Check if admin user already exists in THIS tenant
         var existingAdmin = await session.Query<Models.ApplicationUser>()
@@ -198,6 +214,31 @@ public class DatabaseSeeder(
         }
 
         return adminUser;
+    }
+
+    internal static string ResolveAdminSeedPassword(
+        string? password,
+        string? defaultPassword,
+        bool allowInsecureDevelopmentFallback)
+    {
+        if (!string.IsNullOrWhiteSpace(password))
+        {
+            return password;
+        }
+
+        if (!string.IsNullOrWhiteSpace(defaultPassword))
+        {
+            return defaultPassword;
+        }
+
+        if (allowInsecureDevelopmentFallback)
+        {
+            return DevelopmentFallbackAdminPassword;
+        }
+
+        throw new InvalidOperationException(
+            "Tenant admin seeding requires an explicit password outside Development/Test. " +
+            "Provide the command password or configure Seeding:AdminPassword.");
     }
 
     static Dictionary<string, PublisherAdded> SeedPublishers(IDocumentSession session, ILogger logger)

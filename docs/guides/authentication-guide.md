@@ -59,6 +59,7 @@ graph TB
 - Tenant admin seeding now requires an explicit password outside Development/Test contexts.
 - Configure a default seed password with `Seeding:AdminPassword` (or the environment variable `Seeding__AdminPassword`) when startup seeding is enabled.
 - In Development/Test only, if no explicit password is provided, the legacy fallback `Admin123!` is still used to keep local and automated test flows deterministic.
+- For CI, staging, and production environments, always provide `Seeding__AdminPassword` through your secret store or deployment pipeline variables.
 
 Example configuration:
 

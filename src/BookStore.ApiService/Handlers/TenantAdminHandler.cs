@@ -4,6 +4,8 @@ using BookStore.ApiService.Messages.Commands;
 using BookStore.ApiService.Models;
 using Marten;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Wolverine;
 
@@ -16,10 +18,14 @@ public static class TenantAdminHandler
         IDocumentSession session,
         UserManager<ApplicationUser> userManager,
         IMessageBus bus,
+        IConfiguration configuration,
+        IHostEnvironment environment,
         ILogger logger,
         CancellationToken ct)
     {
         Log.Tenants.SeedingAdminUser(logger, command.TenantId, session.TenantId);
+        var defaultAdminPassword = configuration["Seeding:AdminPassword"];
+        var allowInsecureDevelopmentFallback = environment.IsDevelopment() || environment.IsEnvironment("Testing") || environment.IsEnvironment("Test");
 
         // Seed the admin user using the tenant-scoped session
         // confirmEmail is false if verification is required
@@ -28,6 +34,8 @@ public static class TenantAdminHandler
             command.TenantId,
             command.Email,
             command.Password,
+            defaultPassword: defaultAdminPassword,
+            allowInsecureDevelopmentFallback: allowInsecureDevelopmentFallback,
             confirmEmail: !command.VerificationRequired);
 
         if (adminUser != null)

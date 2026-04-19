@@ -30,6 +30,8 @@ public static class DatabaseExtensions
             var logger = app.Services.GetRequiredService<ILogger<Program>>();
             var env = app.Services.GetRequiredService<IHostEnvironment>();
             var seedingEnabled = app.Configuration.GetValue("Seeding:Enabled", true);
+            var seedingAdminPassword = app.Configuration["Seeding:AdminPassword"];
+            var allowInsecureDevelopmentFallback = env.IsDevelopment() || env.IsEnvironment("Testing") || env.IsEnvironment("Test");
 
             Log.Infrastructure.StartupTaskRunning(logger, env.EnvironmentName, seedingEnabled);
 
@@ -65,7 +67,10 @@ public static class DatabaseExtensions
                         {
                             Log.Infrastructure.SeedingTenant(logger, tenantId);
 
-                            await seeder.SeedAsync(tenantId);
+                            await seeder.SeedAsync(
+                                tenantId,
+                                seedingAdminPassword,
+                                allowInsecureDevelopmentFallback);
 
                             // Wait for async projections to process the seeded events for this tenant
                             await WaitForProjectionsAsync(store, logger, tenantId);
