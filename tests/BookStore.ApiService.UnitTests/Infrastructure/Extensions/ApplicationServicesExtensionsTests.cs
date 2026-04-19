@@ -4,6 +4,7 @@ using BookStore.ApiService.Infrastructure.Email;
 using BookStore.ApiService.Infrastructure.Extensions;
 using BookStore.ApiService.Infrastructure.Identity;
 using BookStore.ApiService.Models;
+using BookStore.Shared.Validation;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
@@ -532,6 +533,33 @@ public class ApplicationServicesExtensionsTests
 
         // Assert
         _ = await Assert.That(validators.Any(v => v is MaximumLengthPasswordValidator<ApplicationUser>)).IsTrue();
+    }
+
+    [Test]
+    [Category("Unit")]
+    public async Task AddApplicationServices_ShouldConfigureIdentityRequiredLengthFromSharedPasswordValidator()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Jwt:SecretKey"] = "test-secret-key-must-be-at-least-32-characters-long",
+                ["Jwt:Issuer"] = "BookStore.ApiService",
+                ["Jwt:Audience"] = "BookStore.Web",
+                ["Jwt:ExpirationMinutes"] = "60",
+                ["Authentication:Passkey:ServerDomain"] = "localhost"
+            })
+            .Build();
+        var environment = new TestWebHostEnvironment();
+
+        // Act
+        _ = services.AddApplicationServices(configuration, environment);
+        await using var provider = services.BuildServiceProvider();
+        var identityOptions = provider.GetRequiredService<IOptions<IdentityOptions>>().Value;
+
+        // Assert
+        _ = await Assert.That(identityOptions.Password.RequiredLength).IsEqualTo(PasswordValidator.MinLength);
     }
 
     sealed class TestWebHostEnvironment : IWebHostEnvironment

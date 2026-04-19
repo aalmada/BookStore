@@ -283,7 +283,9 @@ Standard email/password login flow.
 ```
 
 Password validation limits:
+- **Minimum length**: 12 characters.
 - **Maximum length**: 128 characters.
+- **Validation message (minimum)**: "At least 12 characters".
 - **Reason**: Mitigates oversized-input DoS risk while still allowing long passphrases.
 - **Boundary behavior**: 128 characters is valid; 129 characters is invalid.
 - **Validation message**: "At most 128 characters".

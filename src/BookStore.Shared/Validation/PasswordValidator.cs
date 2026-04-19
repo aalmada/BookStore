@@ -8,7 +8,7 @@ public static class PasswordValidator
     /// <summary>
     /// Minimum required password length
     /// </summary>
-    public const int MinLength = 8;
+    public const int MinLength = 12;
 
     /// <summary>
     /// Maximum allowed password length
