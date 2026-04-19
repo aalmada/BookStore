@@ -40,7 +40,7 @@ graph TB
     - Automatically handles **Silent Refresh** when the access token is close to expiry.
 
 #### Backend (API)
-- **`JwtTokenService`**: Central service for generating access tokens, rotating refresh tokens, and building standardized user claims (supports `HS256` by default and optional `RS256` signing).
+- **`JwtTokenService`**: Central service for generating access tokens, rotating refresh tokens, and building standardized user claims. Signing algorithm resolution is shared with API validation: explicit `Jwt:Algorithm` wins, otherwise `RS256` is auto-selected when both RS256 keys are configured, else it falls back to `HS256`.
 - **`JwtAuthenticationEndpoints`**:
     - `POST /account/login`: Exchange credentials for tokens.
     - `POST /account/resend-verification`: Returns a generic success payload to avoid account enumeration; validation failures (for example, missing email) return RFC7807 `ProblemDetails` with a machine-readable error code.
@@ -57,7 +57,44 @@ graph TB
 - Startup validation enforces this rule for HS256 configuration.
 - `JwtTokenService` also enforces this rule when creating signing credentials as a defense-in-depth guard.
 - In production, the development placeholder secret remains blocked even if it satisfies length requirements.
-- **Production recommendation**: Use `RS256` with a managed asymmetric key pair (for example, Azure Key Vault-backed key material). `HS256` is still supported for compatibility, but startup now emits a warning when a non-development environment uses `HS256`.
+- **Production recommendation**: Use `RS256` with a managed asymmetric key pair (for example, Azure Key Vault-backed key material). `HS256` is still supported for compatibility, but startup now emits a warning when a non-development environment resolves to `HS256`.
+
+Algorithm resolution order (used by both token issuance and token validation):
+
+1. If `Jwt:Algorithm` is explicitly set, that value is used (`HS256` or `RS256`).
+2. If `Jwt:Algorithm` is omitted and both `Jwt:RS256:PrivateKeyPem` and `Jwt:RS256:PublicKeyPem` are present, `RS256` is auto-selected.
+3. If `Jwt:Algorithm` is omitted and RS256 keys are absent, it falls back to `HS256`.
+
+Recommended production configuration (explicit `RS256`):
+
+```json
+{
+    "Jwt": {
+        "Algorithm": "RS256",
+        "Issuer": "BookStore.ApiService",
+        "Audience": "BookStore.Web",
+        "RS256": {
+            "PrivateKeyPem": "-----BEGIN PRIVATE KEY-----...",
+            "PublicKeyPem": "-----BEGIN PUBLIC KEY-----..."
+        }
+    }
+}
+```
+
+Alternative production configuration (auto-select `RS256`):
+
+```json
+{
+    "Jwt": {
+        "Issuer": "BookStore.ApiService",
+        "Audience": "BookStore.Web",
+        "RS256": {
+            "PrivateKeyPem": "-----BEGIN PRIVATE KEY-----...",
+            "PublicKeyPem": "-----BEGIN PUBLIC KEY-----..."
+        }
+    }
+}
+```
 
 ### Tenant Admin Seeding Password
 

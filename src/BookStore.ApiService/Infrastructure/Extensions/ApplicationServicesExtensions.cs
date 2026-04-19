@@ -15,8 +15,6 @@ namespace BookStore.ApiService.Infrastructure.Extensions;
 public static class ApplicationServicesExtensions
 {
     const int MinimumHs256SecretKeyBytes = 32;
-    const string JwtAlgorithmHs256 = "HS256";
-    const string JwtAlgorithmRs256 = "RS256";
 
     /// <summary>
     /// Configures all application services including pagination, OpenAPI, versioning, localization, etc.
@@ -81,7 +79,7 @@ public static class ApplicationServicesExtensions
 
         // Log a startup warning when production uses the default HS256 algorithm.
         _ = services.AddHostedService(sp => new Infrastructure.Services.JwtAlgorithmWarningService(
-            configuration["Jwt:Algorithm"],
+            configuration.GetSection("Jwt"),
             environment.EnvironmentName,
             environment.IsDevelopment(),
             sp.GetRequiredService<ILogger<Infrastructure.Services.JwtAlgorithmWarningService>>()));
@@ -214,7 +212,7 @@ public static class ApplicationServicesExtensions
 
         // Add JWT Bearer authentication
         var jwtSettings = configuration.GetSection("Jwt");
-        var algorithm = (jwtSettings["Algorithm"] ?? JwtAlgorithmHs256).ToUpperInvariant();
+        var algorithm = JwtAlgorithmResolver.Resolve(jwtSettings);
         ValidateJwtConfiguration(jwtSettings, algorithm, environment);
 
         _ = services.AddAuthentication(options =>
@@ -380,7 +378,7 @@ public static class ApplicationServicesExtensions
             throw new InvalidOperationException("JWT Issuer and Audience must be configured.");
         }
 
-        if (algorithm == JwtAlgorithmRs256)
+        if (algorithm == JwtAlgorithmResolver.JwtAlgorithmRs256)
         {
             var privateKeyPem = jwtSettings["RS256:PrivateKeyPem"];
             var publicKeyPem = jwtSettings["RS256:PublicKeyPem"];
@@ -392,7 +390,7 @@ public static class ApplicationServicesExtensions
             return;
         }
 
-        if (algorithm != JwtAlgorithmHs256)
+        if (algorithm != JwtAlgorithmResolver.JwtAlgorithmHs256)
         {
             throw new InvalidOperationException($"Unsupported JWT algorithm: {algorithm}");
         }
@@ -421,8 +419,8 @@ public static class ApplicationServicesExtensions
 
     static SecurityKey CreateJwtValidationKey(IConfigurationSection jwtSettings, string algorithm) => algorithm switch
     {
-        JwtAlgorithmHs256 => CreateHs256ValidationKey(jwtSettings),
-        JwtAlgorithmRs256 => CreateRs256ValidationKey(jwtSettings),
+        JwtAlgorithmResolver.JwtAlgorithmHs256 => CreateHs256ValidationKey(jwtSettings),
+        JwtAlgorithmResolver.JwtAlgorithmRs256 => CreateRs256ValidationKey(jwtSettings),
         _ => throw new InvalidOperationException($"Unsupported JWT algorithm: {algorithm}")
     };
 

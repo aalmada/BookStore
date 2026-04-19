@@ -85,6 +85,106 @@ public class ApplicationServicesExtensionsTests
 
     [Test]
     [Category("Unit")]
+    public async Task AddApplicationServices_WithAlgorithmOmittedAndRs256KeysPresent_ShouldConfigureRsaValidationKey()
+    {
+        // Arrange
+        using var rsa = RSA.Create(2048);
+        var privateKeyPem = rsa.ExportPkcs8PrivateKeyPem();
+        var publicKeyPem = rsa.ExportSubjectPublicKeyInfoPem();
+
+        var services = new ServiceCollection();
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Jwt:SecretKey"] = "test-secret-key-must-be-at-least-32-characters-long",
+                ["Jwt:Issuer"] = "BookStore.ApiService",
+                ["Jwt:Audience"] = "BookStore.Web",
+                ["Jwt:ExpirationMinutes"] = "60",
+                ["Jwt:RS256:PrivateKeyPem"] = privateKeyPem,
+                ["Jwt:RS256:PublicKeyPem"] = publicKeyPem,
+                ["Authentication:Passkey:ServerDomain"] = "localhost"
+            })
+            .Build();
+
+        var environment = new TestWebHostEnvironment();
+
+        // Act
+        _ = services.AddApplicationServices(configuration, environment);
+        await using var provider = services.BuildServiceProvider();
+        var optionsMonitor = provider.GetRequiredService<IOptionsMonitor<JwtBearerOptions>>();
+        var jwtOptions = optionsMonitor.Get(JwtBearerDefaults.AuthenticationScheme);
+
+        // Assert
+        _ = await Assert.That(jwtOptions.TokenValidationParameters.IssuerSigningKey).IsTypeOf<RsaSecurityKey>();
+    }
+
+    [Test]
+    [Category("Unit")]
+    public async Task AddApplicationServices_WithAlgorithmOmittedAndRs256KeysAbsent_ShouldConfigureSymmetricValidationKey()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Jwt:SecretKey"] = "test-secret-key-must-be-at-least-32-characters-long",
+                ["Jwt:Issuer"] = "BookStore.ApiService",
+                ["Jwt:Audience"] = "BookStore.Web",
+                ["Jwt:ExpirationMinutes"] = "60",
+                ["Authentication:Passkey:ServerDomain"] = "localhost"
+            })
+            .Build();
+
+        var environment = new TestWebHostEnvironment();
+
+        // Act
+        _ = services.AddApplicationServices(configuration, environment);
+        await using var provider = services.BuildServiceProvider();
+        var optionsMonitor = provider.GetRequiredService<IOptionsMonitor<JwtBearerOptions>>();
+        var jwtOptions = optionsMonitor.Get(JwtBearerDefaults.AuthenticationScheme);
+
+        // Assert
+        _ = await Assert.That(jwtOptions.TokenValidationParameters.IssuerSigningKey).IsTypeOf<SymmetricSecurityKey>();
+    }
+
+    [Test]
+    [Category("Unit")]
+    public async Task AddApplicationServices_WithExplicitHs256AndRs256KeysPresent_ShouldConfigureSymmetricValidationKey()
+    {
+        // Arrange
+        using var rsa = RSA.Create(2048);
+        var privateKeyPem = rsa.ExportPkcs8PrivateKeyPem();
+        var publicKeyPem = rsa.ExportSubjectPublicKeyInfoPem();
+
+        var services = new ServiceCollection();
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Jwt:Algorithm"] = "HS256",
+                ["Jwt:SecretKey"] = "test-secret-key-must-be-at-least-32-characters-long",
+                ["Jwt:Issuer"] = "BookStore.ApiService",
+                ["Jwt:Audience"] = "BookStore.Web",
+                ["Jwt:ExpirationMinutes"] = "60",
+                ["Jwt:RS256:PrivateKeyPem"] = privateKeyPem,
+                ["Jwt:RS256:PublicKeyPem"] = publicKeyPem,
+                ["Authentication:Passkey:ServerDomain"] = "localhost"
+            })
+            .Build();
+
+        var environment = new TestWebHostEnvironment();
+
+        // Act
+        _ = services.AddApplicationServices(configuration, environment);
+        await using var provider = services.BuildServiceProvider();
+        var optionsMonitor = provider.GetRequiredService<IOptionsMonitor<JwtBearerOptions>>();
+        var jwtOptions = optionsMonitor.Get(JwtBearerDefaults.AuthenticationScheme);
+
+        // Assert
+        _ = await Assert.That(jwtOptions.TokenValidationParameters.IssuerSigningKey).IsTypeOf<SymmetricSecurityKey>();
+    }
+
+    [Test]
+    [Category("Unit")]
     public async Task AddApplicationServices_WithHs256SecretShorterThan32Bytes_ShouldThrowInvalidOperationException()
     {
         // Arrange

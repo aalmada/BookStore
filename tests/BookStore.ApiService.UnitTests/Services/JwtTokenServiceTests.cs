@@ -308,6 +308,71 @@ public class JwtTokenServiceTests
 
     [Test]
     [Category("Unit")]
+    public async Task GenerateAccessToken_WithAlgorithmOmittedAndRs256KeysPresent_ShouldGenerateTokenWithRs256Header()
+    {
+        // Arrange
+        var (privateKeyPem, publicKeyPem) = CreateRsaPemKeyPair();
+        var configuration = CreateMockConfiguration(
+            algorithm: null,
+            secretKey: "super-secret-key-that-is-long-enough-for-hmacsha256-algorithm",
+            rs256PrivateKeyPem: privateKeyPem,
+            rs256PublicKeyPem: publicKeyPem);
+        var service = new JwtTokenService(configuration);
+        var claims = new List<Claim> { new(ClaimTypes.Name, "test") };
+
+        // Act
+        var token = service.GenerateAccessToken(claims);
+
+        // Assert
+        var jwtToken = new JwtSecurityTokenHandler().ReadJwtToken(token);
+        _ = await Assert.That(jwtToken.Header.Alg).IsEqualTo(SecurityAlgorithms.RsaSha256);
+    }
+
+    [Test]
+    [Category("Unit")]
+    public async Task GenerateAccessToken_WithAlgorithmOmittedAndRs256KeysAbsent_ShouldGenerateTokenWithHs256Header()
+    {
+        // Arrange
+        var configuration = CreateMockConfiguration(
+            algorithm: null,
+            secretKey: "super-secret-key-that-is-long-enough-for-hmacsha256-algorithm",
+            rs256PrivateKeyPem: null,
+            rs256PublicKeyPem: null);
+        var service = new JwtTokenService(configuration);
+        var claims = new List<Claim> { new(ClaimTypes.Name, "test") };
+
+        // Act
+        var token = service.GenerateAccessToken(claims);
+
+        // Assert
+        var jwtToken = new JwtSecurityTokenHandler().ReadJwtToken(token);
+        _ = await Assert.That(jwtToken.Header.Alg).IsEqualTo(SecurityAlgorithms.HmacSha256);
+    }
+
+    [Test]
+    [Category("Unit")]
+    public async Task GenerateAccessToken_WithExplicitHs256AndRs256KeysPresent_ShouldUseExplicitHs256()
+    {
+        // Arrange
+        var (privateKeyPem, publicKeyPem) = CreateRsaPemKeyPair();
+        var configuration = CreateMockConfiguration(
+            algorithm: "HS256",
+            secretKey: "super-secret-key-that-is-long-enough-for-hmacsha256-algorithm",
+            rs256PrivateKeyPem: privateKeyPem,
+            rs256PublicKeyPem: publicKeyPem);
+        var service = new JwtTokenService(configuration);
+        var claims = new List<Claim> { new(ClaimTypes.Name, "test") };
+
+        // Act
+        var token = service.GenerateAccessToken(claims);
+
+        // Assert
+        var jwtToken = new JwtSecurityTokenHandler().ReadJwtToken(token);
+        _ = await Assert.That(jwtToken.Header.Alg).IsEqualTo(SecurityAlgorithms.HmacSha256);
+    }
+
+    [Test]
+    [Category("Unit")]
     public async Task GenerateAccessToken_WithRs256MissingPrivateKey_ShouldThrowInvalidOperationException()
     {
         // Arrange
@@ -570,7 +635,7 @@ public class JwtTokenServiceTests
     #region Helper Methods
 
     static IConfiguration CreateMockConfiguration(
-        string algorithm = "HS256",
+        string? algorithm = "HS256",
         string secretKey = "super-secret-key-that-is-long-enough-for-hmacsha256-algorithm",
         string issuer = "test-issuer",
         string audience = "test-audience",
@@ -580,7 +645,6 @@ public class JwtTokenServiceTests
     {
         var configDict = new Dictionary<string, string?>
         {
-            ["Jwt:Algorithm"] = algorithm,
             ["Jwt:SecretKey"] = secretKey,
             ["Jwt:Issuer"] = issuer,
             ["Jwt:Audience"] = audience,
@@ -588,6 +652,11 @@ public class JwtTokenServiceTests
             ["Jwt:RS256:PrivateKeyPem"] = rs256PrivateKeyPem,
             ["Jwt:RS256:PublicKeyPem"] = rs256PublicKeyPem
         };
+
+        if (!string.IsNullOrWhiteSpace(algorithm))
+        {
+            configDict["Jwt:Algorithm"] = algorithm;
+        }
 
         return new ConfigurationBuilder()
             .AddInMemoryCollection(configDict)

@@ -1,20 +1,19 @@
 using BookStore.ApiService.Infrastructure.Logging;
+using Microsoft.Extensions.Configuration;
 
 namespace BookStore.ApiService.Infrastructure.Services;
 
 public sealed class JwtAlgorithmWarningService(
-    string? configuredAlgorithm,
+    IConfigurationSection jwtSettings,
     string environmentName,
     bool isDevelopment,
     ILogger<JwtAlgorithmWarningService> logger) : IHostedService
 {
-    const string JwtAlgorithmHs256 = "HS256";
-
     public Task StartAsync(CancellationToken cancellationToken)
     {
-        var algorithm = (configuredAlgorithm ?? JwtAlgorithmHs256).ToUpperInvariant();
+        var algorithm = JwtAlgorithmResolver.Resolve(jwtSettings);
 
-        if (!isDevelopment && algorithm == JwtAlgorithmHs256)
+        if (!isDevelopment && algorithm == JwtAlgorithmResolver.JwtAlgorithmHs256)
         {
             Log.Infrastructure.JwtHs256ConfiguredInProduction(logger, environmentName);
         }

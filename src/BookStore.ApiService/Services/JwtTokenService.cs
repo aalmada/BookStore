@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using BookStore.ApiService.Infrastructure;
 using Microsoft.IdentityModel.Tokens;
 
 namespace BookStore.ApiService.Services;
@@ -13,8 +14,6 @@ public class JwtTokenService
 {
     const int DefaultAccessTokenExpirationMinutes = 60;
     const int MinimumHs256SecretKeyBytes = 32;
-    const string JwtAlgorithmHs256 = "HS256";
-    const string JwtAlgorithmRs256 = "RS256";
     readonly IConfiguration _configuration;
 
     public JwtTokenService(IConfiguration configuration) => _configuration = configuration;
@@ -76,12 +75,12 @@ public class JwtTokenService
 
     static SigningCredentials CreateSigningCredentials(IConfigurationSection jwtSettings)
     {
-        var algorithm = (jwtSettings["Algorithm"] ?? JwtAlgorithmHs256).ToUpperInvariant();
+        var algorithm = JwtAlgorithmResolver.Resolve(jwtSettings);
 
         return algorithm switch
         {
-            JwtAlgorithmHs256 => CreateHs256SigningCredentials(jwtSettings),
-            JwtAlgorithmRs256 => CreateRs256SigningCredentials(jwtSettings),
+            JwtAlgorithmResolver.JwtAlgorithmHs256 => CreateHs256SigningCredentials(jwtSettings),
+            JwtAlgorithmResolver.JwtAlgorithmRs256 => CreateRs256SigningCredentials(jwtSettings),
             _ => throw new InvalidOperationException($"Unsupported JWT algorithm: {algorithm}")
         };
     }
