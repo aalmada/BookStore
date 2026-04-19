@@ -37,15 +37,7 @@ builder.Services.AddBlazoredLocalStorage();
 builder.Services.AddScoped<TenantService>();
 
 // Configure Forwarded Headers to correctly capture client IP behind proxies
-builder.Services.Configure<ForwardedHeadersOptions>(options =>
-{
-    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
-    // Clear known networks/proxies to trust standard proxies in the environment (Aspire/Docker)
-    options.KnownIPNetworks.Clear();
-    options.KnownProxies.Clear();
-    options.ForwardLimit = null;
-    options.RequireHeaderSymmetry = false;
-});
+builder.Services.ConfigureSecureForwardedHeaders();
 
 builder.Services.AddCascadingAuthenticationState();
 

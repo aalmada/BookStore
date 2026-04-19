@@ -15,6 +15,17 @@ The BookStore application uses Aspire to orchestrate:
 - **PostgreSQL** - Database with event store and projections
 - **Azure Blob Storage** - File storage (Azurite emulator locally)
 
+## Trusted Proxy Configuration
+
+Both the API and Web frontend process forwarded headers and must only trust known proxy hops.
+
+- `ForwardedHeaders`: `X-Forwarded-For` and `X-Forwarded-Proto`
+- `ForwardLimit`: `1` (trust a single proxy hop)
+- `RequireHeaderSymmetry`: `true` (requires consistent forwarded headers)
+- `KnownIPNetworks` / `KnownProxies`: framework defaults are preserved
+
+This prevents spoofing of client IP and protocol through arbitrary `X-Forwarded-*` headers.
+
 ## Prerequisites
 
 ### General Requirements
