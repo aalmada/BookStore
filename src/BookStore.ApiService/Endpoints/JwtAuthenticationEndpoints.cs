@@ -323,10 +323,22 @@ public static class JwtAuthenticationEndpoints
     {
         var refreshTokenHash = jwtTokenService.HashRefreshToken(request.RefreshToken);
 
-        // 1. Find user with this refresh token across ALL tenants (needed for cross-tenant theft detection)
-        await using var globalSession = store.LightweightSession();
-        var user = await globalSession.Query<ApplicationUser>()
-            .FirstOrDefaultAsync(u => u.AnyTenant() && u.RefreshTokens.Any(rt => rt.Token == refreshTokenHash), cancellationToken);
+        // 1. Query current tenant first to avoid unnecessary cross-tenant scans on the common path.
+        ApplicationUser? user;
+        await using (var tenantSession = store.QuerySession(tenantContext.TenantId))
+        {
+            user = await tenantSession.Query<ApplicationUser>()
+                .FirstOrDefaultAsync(u => u.RefreshTokens.Any(rt => rt.Token == refreshTokenHash), cancellationToken);
+        }
+
+        // 2. Fallback to cross-tenant lookup only when the token is not found in the current tenant.
+        // This preserves cross-tenant theft detection behavior.
+        if (user == null)
+        {
+            await using var globalSession = store.LightweightSession();
+            user = await globalSession.Query<ApplicationUser>()
+                .FirstOrDefaultAsync(u => u.AnyTenant() && u.RefreshTokens.Any(rt => rt.Token == refreshTokenHash), cancellationToken);
+        }
 
         if (user == null)
         {

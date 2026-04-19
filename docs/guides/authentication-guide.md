@@ -108,6 +108,12 @@ public string HashRefreshToken(string refreshToken)
 
 All lookups (login, token refresh, logout) hash the incoming plaintext value before querying stored tokens. A database compromise exposes only hashes — the raw tokens cannot be recovered.
 
+Refresh token validation uses a tenant-first lookup path:
+- First query the current tenant context for the refresh token hash.
+- Only if not found, perform a cross-tenant fallback lookup for theft-detection handling.
+
+This keeps the common path scoped and fast while preserving cross-tenant security checks.
+
 ### Security Stamp Validation
 
 `MartenUserStore` implements `IUserSecurityStampStore`. Every JWT access token includes a `security_stamp` claim. On each authenticated API request the `OnTokenValidated` handler verifies the token's stamp still matches the current value in the database:

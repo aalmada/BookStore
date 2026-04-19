@@ -1,4 +1,5 @@
 using System.Net;
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Cryptography;
 using System.Text;
 using BookStore.ApiService.Models;
@@ -159,6 +160,33 @@ public class RefreshTokenSecurityTests
         // Assert: The latest refresh token remains valid
         var latestRefresh = await unauthClient.RefreshTokenAsync(new RefreshRequest(thirdLogin.RefreshToken));
         _ = await Assert.That(latestRefresh).IsNotNull();
+    }
+
+    [Test]
+    public async Task RefreshToken_WithSameEmailAcrossTenants_UsesCurrentTenantContext()
+    {
+        // Arrange: same email exists in two tenants with different refresh tokens
+        var email = FakeDataGenerators.GenerateFakeEmail();
+        var (_, _, tenantALogin, _) = await AuthenticationHelpers.RegisterAndLoginUserAsync("tenant-a", email);
+        var (_, _, tenantBLogin, _) = await AuthenticationHelpers.RegisterAndLoginUserAsync("tenant-b", email);
+
+        var tenantAClient = RestService.For<IIdentityClient>(HttpClientHelpers.GetUnauthenticatedClient("tenant-a"));
+
+        // Act: refresh using tenant-a context and tenant-a token
+        var refreshResult = await tenantAClient.RefreshTokenAsync(new RefreshRequest(tenantALogin.RefreshToken));
+
+        // Assert: refresh succeeds and tenant claim remains tenant-a
+        _ = await Assert.That(refreshResult).IsNotNull();
+        _ = await Assert.That(refreshResult.AccessToken).IsNotEmpty();
+
+        var jwt = new JwtSecurityTokenHandler().ReadJwtToken(refreshResult.AccessToken);
+        var tenantClaim = jwt.Claims.FirstOrDefault(c => c.Type == "tenant_id")?.Value;
+        _ = await Assert.That(tenantClaim).IsEqualTo("tenant-a");
+
+        // Ensure the second tenant still has an independent, valid refresh token.
+        var tenantBClient = RestService.For<IIdentityClient>(HttpClientHelpers.GetUnauthenticatedClient("tenant-b"));
+        var tenantBRefresh = await tenantBClient.RefreshTokenAsync(new RefreshRequest(tenantBLogin.RefreshToken));
+        _ = await Assert.That(tenantBRefresh).IsNotNull();
     }
 
     async Task ManuallyExpireRefreshTokenAsync(string email, string refreshToken, string? tenantId = null)
