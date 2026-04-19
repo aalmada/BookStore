@@ -152,6 +152,7 @@ The application exposes the following endpoints for Passkey operations:
     *   **Logic**: 
         *   Verifies the WebAuthn signature.
         *   Retrieves the user via `IUserPasskeyStore.FindByPasskeyIdAsync`.
+        *   Enforces tenant isolation by requiring the Marten session tenant to match the current request tenant context before accepting the passkey lookup result.
         *   On successful assertion, resets `AccessFailedCount` so prior password failures do not cause an unexpected lockout after passkey sign-in.
         *   Uses centralized `JwtTokenService` to generate access tokens and rotate refresh tokens.
         *   Returns a standard `LoginResponse`.

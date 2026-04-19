@@ -1,3 +1,4 @@
+using BookStore.ApiService.Infrastructure.Tenant;
 using BookStore.ApiService.Models;
 using Marten;
 using Marten.Linq.MatchesSql;
@@ -21,8 +22,13 @@ public sealed class MartenUserStore :
     IUserTwoFactorStore<ApplicationUser>
 {
     readonly IDocumentSession _session;
+    readonly ITenantContext _tenantContext;
 
-    public MartenUserStore(IDocumentSession session) => _session = session;
+    public MartenUserStore(IDocumentSession session, ITenantContext tenantContext)
+    {
+        _session = session;
+        _tenantContext = tenantContext;
+    }
 
     #region IUserStore
 
@@ -280,12 +286,17 @@ public sealed class MartenUserStore :
         if (user != null)
         {
             System.Diagnostics.Debug.Assert(
-                _session.TenantId == _session.TenantId,
-                "Tenant isolation violation detected in FindByPasskeyIdAsync");
+                IsPasskeyLookupTenantIsolationInvariantSatisfied(_session.TenantId, _tenantContext.TenantId),
+                $"Tenant isolation violation detected in FindByPasskeyIdAsync. Session tenant '{_session.TenantId}' does not match request tenant '{_tenantContext.TenantId}'.");
         }
 
         return user;
     }
+
+    internal static bool IsPasskeyLookupTenantIsolationInvariantSatisfied(string? sessionTenantId, string? requestTenantId)
+        => !string.IsNullOrWhiteSpace(sessionTenantId)
+            && !string.IsNullOrWhiteSpace(requestTenantId)
+            && string.Equals(sessionTenantId, requestTenantId, StringComparison.OrdinalIgnoreCase);
 
     public Task<UserPasskeyInfo?> FindPasskeyAsync(ApplicationUser user, byte[] credentialId, CancellationToken cancellationToken)
         => Task.FromResult(user.Passkeys.FirstOrDefault(p => p.CredentialId.SequenceEqual(credentialId)));

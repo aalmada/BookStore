@@ -48,6 +48,7 @@ graph TB
 - **`MartenUserStore`**: Custom Identity store implementing `IUserSecurityStampStore`, `IUserLockoutStore`, and `IUserTwoFactorStore` for full Identity compatibility.
 - **Passkey Integration**: Passkey login flow (`/account/assertion/result`) also results in the issuance of standard JWTs, making the frontend agnostic to *how* the user logged in.
     Passkey registration flow (`/account/attestation/result`) returns generic attestation failure messages to clients and keeps detailed failure diagnostics in server logs.
+    During passkey assertion, lookup (`FindByPasskeyIdAsync`) validates that the active Marten session tenant matches the request tenant context as a defense-in-depth tenant-isolation invariant.
 
 ### JWT Signing Key Requirements
 
