@@ -536,7 +536,14 @@ public static class JwtAuthenticationEndpoints
         var passkeys = await passkeyStore.GetPasskeysAsync(appUser, cancellationToken);
         if (passkeys.Count == 0)
         {
-            return Result.Failure(Error.Validation(ErrorCodes.Auth.InvalidRequest, "You must have at least one passkey registered to remove your password.")).ToProblemDetails();
+            return Results.Problem(
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Cannot Remove Password Without a Passkey",
+                detail: "To keep account recovery available, register at least one passkey before removing your password. If you cannot register a passkey right now, keep your password and contact an administrator for recovery assistance.",
+                extensions: new Dictionary<string, object?>
+                {
+                    { "error", ErrorCodes.Auth.InvalidRequest }
+                });
         }
 
         var result = await userManager.RemovePasswordAsync(appUser);

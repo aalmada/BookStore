@@ -476,47 +476,70 @@ public static class PasskeyEndpoints
             HybridCache cache,
             ITenantContext tenantContext,
             IUserStore<ApplicationUser> userStore,
-            CancellationToken cancellationToken) =>
-        {
-            var user = await userManager.GetUserAsync(context.User);
-            if (user is null)
-            {
-                return Result.Failure(Error.Unauthorized(ErrorCodes.Auth.InvalidToken, "User not found.")).ToProblemDetails();
-            }
-
-            try
-            {
-                var credentialId = Base64UrlTextEncoder.Decode(id);
-                if (userStore is IUserPasskeyStore<ApplicationUser> passkeyStore)
-                {
-                    // Prevent deleting last passkey if user has no password
-                    var passkeys = await passkeyStore.GetPasskeysAsync(user, cancellationToken);
-                    if (passkeys.Count <= 1)
-                    {
-                        var hasPassword = await userManager.HasPasswordAsync(user);
-                        if (!hasPassword)
-                        {
-                            return Result.Failure(Error.Validation(ErrorCodes.Passkey.LastPasskey, "Cannot delete your only passkey. You would be locked out of your account. Set a password first.")).ToProblemDetails();
-                        }
-                    }
-
-                    await passkeyStore.RemovePasskeyAsync(user, credentialId, cancellationToken);
-                    // UpdateSecurityStampAsync persists the passkey removal AND rotates the
-                    // security stamp, which immediately invalidates any existing JWTs.
-                    _ = await userManager.UpdateSecurityStampAsync(user);
-                    await SecurityStampCache.InvalidateAsync(cache, tenantContext.TenantId, user.Id, cancellationToken);
-                    return Results.Ok(new { Message = "Passkey deleted." });
-                }
-
-                return Result.Failure(Error.Validation(ErrorCodes.Passkey.StoreNotAvailable, "Passkey store not available.")).ToProblemDetails();
-            }
-            catch (FormatException)
-            {
-                return Result.Failure(Error.Validation(ErrorCodes.Passkey.InvalidFormat, "Invalid passkey ID format.")).ToProblemDetails();
-            }
-        }).RequireAuthorization().RequireRateLimiting("AuthPolicy");
+            CancellationToken cancellationToken) => await DeletePasskeyAsync(
+                id,
+                context.User,
+                userManager,
+                cache,
+                tenantContext,
+                userStore,
+                cancellationToken)).RequireAuthorization().RequireRateLimiting("AuthPolicy");
 
         return endpoints;
+    }
+
+    static async Task<IResult> DeletePasskeyAsync(
+        string id,
+        ClaimsPrincipal principal,
+        UserManager<ApplicationUser> userManager,
+        HybridCache cache,
+        ITenantContext tenantContext,
+        IUserStore<ApplicationUser> userStore,
+        CancellationToken cancellationToken)
+    {
+        var user = await userManager.GetUserAsync(principal);
+        if (user is null)
+        {
+            return Result.Failure(Error.Unauthorized(ErrorCodes.Auth.InvalidToken, "User not found.")).ToProblemDetails();
+        }
+
+        try
+        {
+            var credentialId = Base64UrlTextEncoder.Decode(id);
+            if (userStore is IUserPasskeyStore<ApplicationUser> passkeyStore)
+            {
+                // Prevent deleting last passkey if user has no password.
+                var passkeys = await passkeyStore.GetPasskeysAsync(user, cancellationToken);
+                if (passkeys.Count <= 1)
+                {
+                    var hasPassword = await userManager.HasPasswordAsync(user);
+                    if (!hasPassword)
+                    {
+                        return Results.Problem(
+                            statusCode: StatusCodes.Status400BadRequest,
+                            title: "Cannot Remove Your Last Passkey",
+                            detail: "This account has no password. Add a password while signed in, then register a replacement passkey before removing this one. If you have already lost access to all factors, contact an administrator for account recovery and re-enrollment.",
+                            extensions: new Dictionary<string, object?>
+                            {
+                                { "error", ErrorCodes.Passkey.LastPasskey }
+                            });
+                    }
+                }
+
+                await passkeyStore.RemovePasskeyAsync(user, credentialId, cancellationToken);
+                // UpdateSecurityStampAsync persists the passkey removal AND rotates the
+                // security stamp, which immediately invalidates any existing JWTs.
+                _ = await userManager.UpdateSecurityStampAsync(user);
+                await SecurityStampCache.InvalidateAsync(cache, tenantContext.TenantId, user.Id, cancellationToken);
+                return Results.Ok(new { Message = "Passkey deleted." });
+            }
+
+            return Result.Failure(Error.Validation(ErrorCodes.Passkey.StoreNotAvailable, "Passkey store not available.")).ToProblemDetails();
+        }
+        catch (FormatException)
+        {
+            return Result.Failure(Error.Validation(ErrorCodes.Passkey.InvalidFormat, "Invalid passkey ID format.")).ToProblemDetails();
+        }
     }
 
     /// <summary>

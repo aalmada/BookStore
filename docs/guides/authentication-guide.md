@@ -327,6 +327,32 @@ The application supports WebAuthn/FIDO2 for passwordless login. This flow is ful
 
 See [Passkey Guide](passkey-guide.md) for implementation details.
 
+### Passkey Account Recovery
+
+The API enforces a hard invariant: an account must always keep at least one sign-in factor available (password or passkey).
+
+Supported recovery flows:
+
+1. **User is still signed in on a trusted device**
+    - Add a password using `POST /account/add-password`.
+    - Register a replacement passkey.
+    - Remove the old passkey only after a replacement factor exists.
+
+2. **User has another passkey**
+    - Sign in with the backup passkey.
+    - Register any needed replacement passkey.
+    - Remove the old passkey only after confirming another factor is available.
+
+3. **User lost all passkeys and has no password**
+    - Self-service recovery is not available.
+    - Admin-assisted recovery is required.
+    - There is currently no dedicated admin API endpoint for passkey re-enrollment recovery.
+    - Operations/support must perform manual recovery and keep the account locked until the user re-enrolls at least one authentication factor.
+
+For safety, two endpoint guards return actionable RFC 7807 responses:
+- `POST /account/remove-password` is blocked when the user has zero passkeys.
+- `DELETE /account/passkeys/{id}` is blocked when deleting the last passkey on an account with no password.
+
 ## State Management & Re-Authentication
 
 ### In-Memory Token Storage
