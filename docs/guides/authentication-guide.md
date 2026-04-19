@@ -153,6 +153,16 @@ The stamp is cached with a **30 s L2 / 15 s L1 TTL** (intentionally short) to av
 
 - **Security Stamp**: `MartenUserStore` implements `IUserSecurityStampStore`, allowing global token invalidation (e.g., on password change).
 
+### Clock Skew Tolerance
+
+JWT access token validation uses a **30-second** clock skew tolerance:
+
+```csharp
+ClockSkew = TimeSpan.FromSeconds(30)
+```
+
+This keeps validation strict while avoiding false 401 responses from minor client/server clock drift.
+
 ### Cross-Tenant Protection
 
 `TenantSecurityMiddleware` blocks requests where the JWT's `tenant_id` differs from the `X-Tenant-ID` header:

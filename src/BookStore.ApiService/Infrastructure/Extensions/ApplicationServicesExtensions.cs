@@ -230,7 +230,7 @@ public static class ApplicationServicesExtensions
                     ValidAudience = jwtSettings["Audience"],
                     IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(
                             System.Text.Encoding.UTF8.GetBytes(secretKey!)),
-                    ClockSkew = TimeSpan.Zero, // Remove default 5 minute clock skew
+                    ClockSkew = TimeSpan.FromSeconds(30), // Allow minor client/server clock drift without relaxing security too much
                     RoleClaimType = System.Security.Claims.ClaimTypes.Role,
                     NameClaimType = System.Security.Claims.ClaimTypes.Name
                 };
