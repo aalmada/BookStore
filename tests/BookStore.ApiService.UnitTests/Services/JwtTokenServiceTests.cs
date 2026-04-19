@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using BookStore.ApiService.Services;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 
 namespace BookStore.ApiService.UnitTests.Services;
@@ -460,13 +461,27 @@ public class JwtTokenServiceTests
             .AddInMemoryCollection(configDict)
             .Build();
 
-        var service = new JwtTokenService(configuration);
+        var logger = Substitute.For<ILogger<JwtTokenService>>();
+        _ = logger.IsEnabled(LogLevel.Warning).Returns(true);
+
+        var service = new JwtTokenService(configuration, logger);
 
         // Act
         var expiresIn = service.GetAccessTokenExpiresInSeconds();
 
         // Assert
         _ = await Assert.That(expiresIn).IsEqualTo(900);
+
+        var warningCalls = logger.ReceivedCalls()
+            .Where(call => call.GetMethodInfo().Name == nameof(ILogger.Log))
+            .Select(call => call.GetArguments())
+            .Where(args => args.Length >= 3 && args[0] is LogLevel level && level == LogLevel.Warning)
+            .ToList();
+
+        _ = await Assert.That(warningCalls.Count).IsEqualTo(1);
+
+        var eventId = (EventId)warningCalls[0][1]!;
+        _ = await Assert.That(eventId.Name).IsEqualTo("InvalidJwtExpirationMinutes");
     }
 
     #endregion

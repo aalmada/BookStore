@@ -223,6 +223,14 @@ public static partial class Log
         public static partial void TokenValidationUnexpectedError(ILogger logger, Exception exception);
 
         [LoggerMessage(
+            Level = LogLevel.Warning,
+            Message = "Invalid Jwt:ExpirationMinutes value '{ConfiguredMinutes}'. Falling back to default {DefaultExpirationMinutes} minutes.")]
+        public static partial void InvalidJwtExpirationMinutes(
+            ILogger logger,
+            string configuredMinutes,
+            int defaultExpirationMinutes);
+
+        [LoggerMessage(
             Level = LogLevel.Information,
             Message = "Creating {NotificationType} for book {BookId}, version {Version}")]
         public static partial void CreatingBookNotification(

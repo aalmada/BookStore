@@ -3,6 +3,9 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using BookStore.ApiService.Infrastructure;
+using BookStore.ApiService.Infrastructure.Logging;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.IdentityModel.Tokens;
 
 namespace BookStore.ApiService.Services;
@@ -15,8 +18,18 @@ public class JwtTokenService
     const int DefaultAccessTokenExpirationMinutes = 15;
     const int MinimumHs256SecretKeyBytes = 32;
     readonly IConfiguration _configuration;
+    readonly ILogger<JwtTokenService> _logger;
 
-    public JwtTokenService(IConfiguration configuration) => _configuration = configuration;
+    public JwtTokenService(IConfiguration configuration)
+        : this(configuration, NullLogger<JwtTokenService>.Instance)
+    {
+    }
+
+    public JwtTokenService(IConfiguration configuration, ILogger<JwtTokenService> logger)
+    {
+        _configuration = configuration;
+        _logger = logger;
+    }
 
     /// <summary>
     /// Builds the standard set of claims for a user token
@@ -124,10 +137,20 @@ public class JwtTokenService
         var jwtSettings = _configuration.GetSection("Jwt");
         var configuredMinutes = jwtSettings["ExpirationMinutes"];
 
+        if (string.IsNullOrWhiteSpace(configuredMinutes))
+        {
+            return DefaultAccessTokenExpirationMinutes;
+        }
+
         if (int.TryParse(configuredMinutes, out var minutes) && minutes > 0)
         {
             return minutes;
         }
+
+        Log.Infrastructure.InvalidJwtExpirationMinutes(
+            _logger,
+            configuredMinutes,
+            DefaultAccessTokenExpirationMinutes);
 
         return DefaultAccessTokenExpirationMinutes;
     }
