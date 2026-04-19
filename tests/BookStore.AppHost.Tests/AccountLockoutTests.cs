@@ -150,6 +150,49 @@ public class AccountLockoutTests
     }
 
     [Test]
+    [Arguments("default")]
+    [Arguments("tenant-a")]
+    [Arguments("tenant-b")]
+    public async Task SuccessfulPasskeyLogin_ResetsAccessFailedCount(string tenantId)
+    {
+        // Arrange: create user, register passkey, and increment failed password attempts below lockout threshold
+        var (email, _, loginResponse, _) = await AuthenticationHelpers.RegisterAndLoginUserAsync(tenantId);
+
+        await using var webAuthn = await WebAuthnTestHelper.CreateAsync();
+        var registeredPasskey = await webAuthn.RegisterPasskeyAsync(email, tenantId, loginResponse.AccessToken);
+
+        var client = RestService.For<IIdentityClient>(HttpClientHelpers.GetUnauthenticatedClient(tenantId));
+        const string wrongPassword = "WrongPassword123!";
+        for (var i = 0; i < 3; i++)
+        {
+            _ = await Assert.That(async () =>
+                    await client.LoginAsync(new LoginRequest(email, wrongPassword)))
+                .Throws<ApiException>();
+        }
+
+        var failedCountBeforePasskey = await GetAccessFailedCountAsync(email, tenantId);
+        _ = await Assert.That(failedCountBeforePasskey).IsGreaterThan(0);
+
+        // Act: passkey login should clear stale failed-password attempts
+        var passkeyLogin = await webAuthn.LoginWithPasskeyAsync(registeredPasskey);
+
+        // Assert: login succeeded and AccessFailedCount was reset to zero
+        _ = await Assert.That(passkeyLogin.AccessToken).IsNotEmpty();
+
+        var failedCountAfterPasskey = -1;
+        await SseEventHelpers.WaitForConditionAsync(
+            async () =>
+            {
+                failedCountAfterPasskey = await GetAccessFailedCountAsync(email, tenantId);
+                return failedCountAfterPasskey == 0;
+            },
+            TimeSpan.FromSeconds(5),
+            $"AccessFailedCount was not reset after successful passkey login for {email}");
+
+        _ = await Assert.That(failedCountAfterPasskey).IsEqualTo(0);
+    }
+
+    [Test]
     public async Task LockoutDuration_EnforcesConfiguredTimeout()
     {
         // Arrange: Create user
@@ -247,5 +290,17 @@ public class AccountLockoutTests
                 await session.SaveChangesAsync();
             }
         }
+    }
+
+    async Task<int> GetAccessFailedCountAsync(string email, string? tenantId = null)
+    {
+        await using var store = await DatabaseHelpers.GetDocumentStoreAsync();
+        var actualTenantId = tenantId ?? StorageConstants.DefaultTenantId;
+        await using var session = store.LightweightSession(actualTenantId);
+
+        var user = await DatabaseHelpers.GetUserByEmailAsync(session, email);
+        _ = await Assert.That(user).IsNotNull();
+
+        return user?.AccessFailedCount ?? -1;
     }
 }

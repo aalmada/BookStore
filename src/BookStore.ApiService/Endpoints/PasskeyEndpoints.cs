@@ -411,6 +411,12 @@ public static class PasskeyEndpoints
                     }
                 }
 
+                var resetAccessFailedCountResult = await userManager.ResetAccessFailedCountAsync(user);
+                if (!resetAccessFailedCountResult.Succeeded)
+                {
+                    return Result.Failure(Error.InternalServerError("ERR_INTERNAL_SERVER_ERROR", "Passkey login failed. Please try again.")).ToProblemDetails();
+                }
+
                 // Clear all existing refresh tokens for security (full logout from all other sessions)
                 user.RefreshTokens.Clear();
 

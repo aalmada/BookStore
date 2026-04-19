@@ -152,6 +152,7 @@ The application exposes the following endpoints for Passkey operations:
     *   **Logic**: 
         *   Verifies the WebAuthn signature.
         *   Retrieves the user via `IUserPasskeyStore.FindByPasskeyIdAsync`.
+        *   On successful assertion, resets `AccessFailedCount` so prior password failures do not cause an unexpected lockout after passkey sign-in.
         *   Uses centralized `JwtTokenService` to generate access tokens and rotate refresh tokens.
         *   Returns a standard `LoginResponse`.
 
