@@ -45,6 +45,25 @@ public class NotificationEndpointsRateLimitingTests
         _ = await Assert.That(allowAnonymousMetadata).IsNotNull();
     }
 
+    [Test]
+    [Category("Unit")]
+    public async Task MapNotificationEndpoints_TestNotificationRoute_ShouldRequireAdminAuthorization()
+    {
+        // Arrange
+        using var app = CreateApplication();
+
+        // Act
+        _ = app.MapGroup("/api/notifications").MapNotificationEndpoints();
+        var endpoint = FindEndpoint(app, "/api/notifications/test-notification", "POST");
+        var authorizeMetadata = endpoint.Metadata.OfType<IAuthorizeData>().ToArray();
+        var adminPolicyMetadata = authorizeMetadata.FirstOrDefault(x => string.Equals(x.Policy, "Admin", StringComparison.Ordinal));
+        var allowAnonymousMetadata = endpoint.Metadata.GetMetadata<IAllowAnonymous>();
+
+        // Assert
+        _ = await Assert.That(adminPolicyMetadata).IsNotNull();
+        _ = await Assert.That(allowAnonymousMetadata is null).IsTrue();
+    }
+
     static WebApplication CreateApplication()
     {
         var builder = WebApplication.CreateBuilder();

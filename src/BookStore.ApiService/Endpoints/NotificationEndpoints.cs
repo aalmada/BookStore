@@ -39,7 +39,7 @@ public static class NotificationEndpoints
             return Results.Ok($"Sent {notification.EventType} for {id}");
         })
         .WithName("SendTestNotification")
-        .WithSummary("Manually trigger a notification for debugging")
+        .WithSummary("Manually trigger a notification for debugging (Development + Admin only)")
         .RequireAuthorization("Admin")
         .ExcludeFromDescription();
 
