@@ -1,7 +1,9 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using BookStore.Client;
+using BookStore.Web.Logging;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.Extensions.Logging;
 
 namespace BookStore.Web.Services;
 
@@ -16,6 +18,7 @@ public class JwtAuthenticationStateProvider : AuthenticationStateProvider, IDisp
     readonly Blazored.LocalStorage.ILocalStorageService _localStorage;
     readonly TenantService _tenantService;
     readonly IIdentityClient _identityClient;
+    readonly ILogger<JwtAuthenticationStateProvider> _logger;
 
     /// <summary>
     /// Time before token expiry to trigger background refresh (5 minutes)
@@ -26,12 +29,14 @@ public class JwtAuthenticationStateProvider : AuthenticationStateProvider, IDisp
         TokenService tokenService,
         Blazored.LocalStorage.ILocalStorageService localStorage,
         TenantService tenantService,
-        IIdentityClient identityClient)
+        IIdentityClient identityClient,
+        ILogger<JwtAuthenticationStateProvider> logger)
     {
         _tokenService = tokenService;
         _localStorage = localStorage;
         _tenantService = tenantService;
         _identityClient = identityClient;
+        _logger = logger;
         _tenantService.OnChange += HandleTenantChanged;
         _tokenService.OnTokensCleared += HandleTokensCleared;
     }
@@ -73,7 +78,7 @@ public class JwtAuthenticationStateProvider : AuthenticationStateProvider, IDisp
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Storage hydration failed: {ex.Message}");
+                Log.AuthStateStorageHydrationFailed(_logger, currentTenant, ex);
             }
         }
 
@@ -134,8 +139,9 @@ public class JwtAuthenticationStateProvider : AuthenticationStateProvider, IDisp
             var identity = new ClaimsIdentity(jwtToken.Claims, "jwt");
             return new AuthenticationState(new ClaimsPrincipal(identity));
         }
-        catch
+        catch (Exception ex)
         {
+            Log.AuthStateTokenReadFailed(_logger, currentTenant, ex);
             _tokenService.ClearTokens(currentTenant);
             return CreateAnonymousState();
         }
@@ -161,9 +167,9 @@ public class JwtAuthenticationStateProvider : AuthenticationStateProvider, IDisp
                         await _localStorage.SetItemAsync(GetRefreshStorageKey(tenantId), response.RefreshToken);
                     }
                 }
-                catch
+                catch (Exception ex)
                 {
-                    /* Storage write error is non-critical */
+                    Log.AuthStateStorageWriteFailed(_logger, tenantId, ex);
                 }
 
                 NotifyAuthenticationStateChanged(Task.FromResult(
@@ -173,9 +179,9 @@ public class JwtAuthenticationStateProvider : AuthenticationStateProvider, IDisp
                 return true;
             }
         }
-        catch
+        catch (Exception ex)
         {
-            /* Refresh failed - caller will handle */
+            Log.AuthStateRefreshFailed(_logger, tenantId, ex);
         }
 
         return false;
@@ -206,9 +212,9 @@ public class JwtAuthenticationStateProvider : AuthenticationStateProvider, IDisp
                 await _localStorage.SetItemAsync(GetRefreshStorageKey(currentTenant), refreshToken);
             }
         }
-        catch
+        catch (Exception ex)
         {
-            /* Storage write error */
+            Log.AuthStateAuthenticationPersistFailed(_logger, currentTenant, ex);
         }
 
         var claims = ParseClaimsFromJwt(accessToken);
@@ -230,9 +236,9 @@ public class JwtAuthenticationStateProvider : AuthenticationStateProvider, IDisp
             await _localStorage.RemoveItemAsync(GetStorageKey(currentTenant));
             await _localStorage.RemoveItemAsync(GetRefreshStorageKey(currentTenant));
         }
-        catch
+        catch (Exception ex)
         {
-            /* Storage delete error */
+            Log.AuthStateStorageDeleteFailed(_logger, currentTenant, ex);
         }
 
         NotifyAuthenticationStateChanged(Task.FromResult(CreateAnonymousState()));

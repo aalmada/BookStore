@@ -89,4 +89,35 @@ public static partial class Log
         Level = LogLevel.Error,
         Message = "Failed to remove rating for book {BookId}")]
     public static partial void RatingRemovalFailed(ILogger logger, Guid bookId, Exception ex);
+
+    // JwtAuthenticationStateProvider
+    [LoggerMessage(
+        Level = LogLevel.Warning,
+        Message = "Failed to hydrate authentication token from local storage for tenant {TenantId}.")]
+    public static partial void AuthStateStorageHydrationFailed(ILogger logger, string tenantId, Exception ex);
+
+    [LoggerMessage(
+        Level = LogLevel.Warning,
+        Message = "Failed to parse or validate authentication token for tenant {TenantId}.")]
+    public static partial void AuthStateTokenReadFailed(ILogger logger, string tenantId, Exception ex);
+
+    [LoggerMessage(
+        Level = LogLevel.Warning,
+        Message = "Failed to refresh access token for tenant {TenantId}.")]
+    public static partial void AuthStateRefreshFailed(ILogger logger, string tenantId, Exception ex);
+
+    [LoggerMessage(
+        Level = LogLevel.Warning,
+        Message = "Failed to persist refreshed authentication tokens to local storage for tenant {TenantId}.")]
+    public static partial void AuthStateStorageWriteFailed(ILogger logger, string tenantId, Exception ex);
+
+    [LoggerMessage(
+        Level = LogLevel.Warning,
+        Message = "Failed to persist authentication token to local storage for tenant {TenantId}.")]
+    public static partial void AuthStateAuthenticationPersistFailed(ILogger logger, string tenantId, Exception ex);
+
+    [LoggerMessage(
+        Level = LogLevel.Warning,
+        Message = "Failed to remove authentication tokens from local storage for tenant {TenantId}.")]
+    public static partial void AuthStateStorageDeleteFailed(ILogger logger, string tenantId, Exception ex);
 }
