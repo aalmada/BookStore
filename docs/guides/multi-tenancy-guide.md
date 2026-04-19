@@ -216,6 +216,7 @@ group.WithMetadata(new AllowAnonymousTenantAttribute());
 
 - **System Admin**: Only the **Default** tenant administrator (`admin@bookstore.com`) can access global management endpoints under `/api/admin/tenants`.
 - **Tenant Admin**: Authenticated administrators for specific tenants (e.g., `acme`) are restricted to their own data and cannot list or manage other tenants.
+- **Default Tenant Constants**: In code, always use shared constants (e.g., `MultiTenancyConstants.DefaultTenantId`) for default-tenant checks instead of hardcoded `*DEFAULT*`/`default` literals.
 
 ### Rate Limiting
 

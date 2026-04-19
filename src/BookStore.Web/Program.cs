@@ -187,9 +187,7 @@ builder.Services.AddScoped<AuthenticationService>();
 builder.Services.AddScoped<JwtAuthenticationStateProvider>();
 builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<JwtAuthenticationStateProvider>());
 builder.Services.AddCascadingAuthenticationState();
-builder.Services.AddAuthorizationCore(options => options.AddPolicy("SystemAdmin",
-    policy => policy.RequireRole("Admin")
-        .RequireClaim("tenant_id", "*DEFAULT*")));
+builder.Services.AddAuthorizationCore(options => options.AddSystemAdminPolicy());
 
 // Add Polly resilience policies to all HTTP clients
 // builder.Services.ConfigureHttpClientDefaults(http =>
