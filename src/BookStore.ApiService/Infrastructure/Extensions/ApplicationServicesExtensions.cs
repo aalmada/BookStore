@@ -293,14 +293,17 @@ public static class ApplicationServicesExtensions
                                 return;
                             }
 
-                            // Get security stamp from token (null if claim doesn't exist)
+                            // Get security stamp from token (claim is required)
                             var tokenSecurityStamp = context.Principal?.FindFirst("security_stamp")?.Value;
 
-                            // Only validate if token HAS a security_stamp claim and user HAS a security stamp
-                            // This allows old tokens without the claim to work (backward compatibility)
-                            if (!string.IsNullOrEmpty(tokenSecurityStamp) &&
-                                !string.IsNullOrEmpty(currentSecurityStamp) &&
-                                tokenSecurityStamp != currentSecurityStamp)
+                            if (string.IsNullOrEmpty(tokenSecurityStamp))
+                            {
+                                context.HttpContext.User = new System.Security.Claims.ClaimsPrincipal();
+                                context.Fail("Token missing required security stamp claim.");
+                                return;
+                            }
+
+                            if (string.IsNullOrEmpty(currentSecurityStamp) || tokenSecurityStamp != currentSecurityStamp)
                             {
                                 // CRITICAL: Clear the principal to prevent downstream middleware from seeing an authenticated user
                                 context.HttpContext.User = new System.Security.Claims.ClaimsPrincipal();

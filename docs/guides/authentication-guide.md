@@ -116,7 +116,7 @@ This keeps the common path scoped and fast while preserving cross-tenant securit
 
 ### Security Stamp Validation
 
-`MartenUserStore` implements `IUserSecurityStampStore`. Every JWT access token includes a `security_stamp` claim. On each authenticated API request the `OnTokenValidated` handler verifies the token's stamp still matches the current value in the database:
+`MartenUserStore` implements `IUserSecurityStampStore`. Every JWT access token must include a `security_stamp` claim. On each authenticated API request the `OnTokenValidated` handler enforces claim presence and verifies the token's stamp still matches the current value in the database:
 
 ```csharp
 OnTokenValidated = async context =>
@@ -136,12 +136,16 @@ OnTokenValidated = async context =>
 
     if (currentSecurityStamp == "__missing__")  // User deleted
         context.Fail("User not found.");
+    if (string.IsNullOrEmpty(tokenSecurityStamp))
+        context.Fail("Token missing required security stamp claim.");
     else if (tokenSecurityStamp != currentSecurityStamp)
         context.Fail("Token has been revoked due to security stamp change.");
 };
 ```
 
 The stamp is cached with a **30 s L2 / 15 s L1 TTL** (intentionally short) to avoid a database round-trip on every request. The cache is tag-invalidated immediately after any security event:
+
+Tokens missing `security_stamp` are rejected with `401 Unauthorized`.
 
 | Event | Invalidation trigger |
 |---|---|

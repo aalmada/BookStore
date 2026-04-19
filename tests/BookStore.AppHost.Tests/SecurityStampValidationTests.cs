@@ -1,10 +1,13 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
+using System.Security.Claims;
+using System.Text;
 using BookStore.ApiService.Models;
 using BookStore.AppHost.Tests.Helpers;
 using BookStore.Client;
 using BookStore.Shared.Models;
 using JasperFx;
+using Microsoft.IdentityModel.Tokens;
 using Refit;
 using TUnit;
 
@@ -326,6 +329,48 @@ public class SecurityStampValidationTests
         var securityStampClaim = jwt.Claims.FirstOrDefault(c => c.Type == "security_stamp");
         _ = await Assert.That(securityStampClaim).IsNotNull();
         _ = await Assert.That(securityStampClaim!.Value).IsNotEmpty();
+    }
+
+    [Test]
+    public async Task JWT_MissingSecurityStampClaim_IsRejected_WhenSignatureIsOtherwiseValid()
+    {
+        // Arrange
+        var (_, _, loginResponse, tenantId) = await AuthenticationHelpers.RegisterAndLoginUserAsync();
+        var sourceToken = new JwtSecurityTokenHandler().ReadJwtToken(loginResponse.AccessToken);
+
+        var validResignedToken = SignTokenFromClaims(sourceToken.Claims);
+        var missingSecurityStampToken = SignTokenFromClaims(sourceToken.Claims.Where(c => c.Type != "security_stamp"));
+
+        var validClient = RestService.For<IBooksClient>(
+            HttpClientHelpers.GetAuthenticatedClient(validResignedToken, tenantId));
+        var invalidClient = RestService.For<IBooksClient>(
+            HttpClientHelpers.GetAuthenticatedClient(missingSecurityStampToken, tenantId));
+
+        // Act: signed token with security stamp still works
+        _ = await validClient.GetFavoriteBooksAsync(new OrderedPagedRequest());
+
+        // Act + Assert: signed token missing security_stamp is rejected
+        var exception = await Assert.That(async () =>
+            await invalidClient.GetFavoriteBooksAsync(new OrderedPagedRequest()))
+            .Throws<ApiException>();
+
+        _ = await Assert.That(exception!.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+    }
+
+    static string SignTokenFromClaims(IEnumerable<Claim> claims)
+    {
+        const string secretKey = "your-secret-key-must-be-at-least-32-characters-long-for-hs256";
+        var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
+        var credentials = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256);
+
+        var token = new JwtSecurityToken(
+            issuer: "BookStore.ApiService",
+            audience: "BookStore.Web",
+            claims: claims,
+            expires: DateTimeOffset.UtcNow.AddMinutes(10).UtcDateTime,
+            signingCredentials: credentials);
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
     async Task ManuallyUpdateSecurityStampAsync(string email, string? tenantId = null)
