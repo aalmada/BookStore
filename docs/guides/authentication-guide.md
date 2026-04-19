@@ -66,11 +66,16 @@ Every JWT access token includes a `tenant_id` claim:
 ### Token Rotation & Security
 
 Refresh tokens follow a strict rotation policy:
+- **Single-session enforcement on login**: Successful password and passkey logins clear all previously issued refresh tokens before issuing a new one.
 - **Rotation**: A new refresh token is issued every time an access token is refreshed. The old token is marked as used (not deleted) to enable replay detection.
 - **History**: The latest active tokens plus recently-used ones (within 24 hours) are retained per user for security/concurrency balance.
 - **Tenant Context**: Refresh tokens store their originating tenant for defense-in-depth.
 - **Security Stamp Snapshot**: Each refresh token captures the user's security stamp at issuance. If the user's stamp has since changed (e.g., password reset), the token is rejected.
 - **Token Families**: Each login session starts a new *token family* (`FamilyId`). Replaying a used token invalidates all tokens in that family (refresh token theft detection).
+
+Single-session enforcement is verified by integration tests for both login mechanisms:
+- `AuthTests.Login_ShouldInvalidatePreviousRefreshTokens`
+- `PasskeySecurityTests.PasskeyLogin_ClearsAllExistingRefreshTokens`
 
 ```csharp
 public record RefreshTokenInfo(

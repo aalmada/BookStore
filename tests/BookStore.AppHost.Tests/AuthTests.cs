@@ -220,4 +220,32 @@ public class AuthTests
             _ = await Assert.That((int)ex.StatusCode).IsEqualTo((int)HttpStatusCode.Unauthorized);
         }
     }
+
+    [Test]
+    public async Task Login_ShouldInvalidatePreviousRefreshTokens()
+    {
+        // Arrange
+        var email = FakeDataGenerators.GenerateFakeEmail();
+        var password = FakeDataGenerators.GenerateFakePassword();
+
+        _ = await _client.RegisterAsync(new RegisterRequest(email, password));
+
+        var loginResult1 = await _client.LoginAsync(new LoginRequest(email, password));
+        var loginResult2 = await _client.LoginAsync(new LoginRequest(email, password));
+        var loginResult3 = await _client.LoginAsync(new LoginRequest(email, password));
+
+        // Assert - oldest refresh tokens are invalid
+        var oldToken1Exception = await Assert.That(async () =>
+            await _client.RefreshTokenAsync(new RefreshRequest(loginResult1.RefreshToken))).Throws<ApiException>();
+        _ = await Assert.That(oldToken1Exception!.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+
+        var oldToken2Exception = await Assert.That(async () =>
+            await _client.RefreshTokenAsync(new RefreshRequest(loginResult2.RefreshToken))).Throws<ApiException>();
+        _ = await Assert.That(oldToken2Exception!.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+
+        // Assert - newest token remains valid
+        var latestRefreshResult = await _client.RefreshTokenAsync(new RefreshRequest(loginResult3.RefreshToken));
+        _ = await Assert.That(latestRefreshResult).IsNotNull();
+        _ = await Assert.That(latestRefreshResult.AccessToken).IsNotEmpty();
+    }
 }
