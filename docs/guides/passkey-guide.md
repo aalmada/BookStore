@@ -158,6 +158,16 @@ The application exposes the following endpoints for Passkey operations:
         *   Uses centralized `JwtTokenService` to generate access tokens and rotate refresh tokens.
         *   Returns a standard `LoginResponse`.
 
+### Passkey Management (Authenticated)
+
+1.  **GET `/account/passkeys`**
+    *   **Purpose**: Lists the current user's registered passkeys.
+    *   **Security**: Requires authentication and the `AuthPolicy` rate limiting policy.
+
+2.  **DELETE `/account/passkeys/{id}`**
+    *   **Purpose**: Removes a registered passkey by credential ID.
+    *   **Security**: Requires authentication and the `AuthPolicy` rate limiting policy.
+
 ## Client-Side Integration
 
 ### `passkeys.js`

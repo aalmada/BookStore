@@ -466,7 +466,7 @@ public static class PasskeyEndpoints
             }
 
             return Results.Ok(Array.Empty<PasskeyInfo>());
-        }).RequireAuthorization();
+        }).RequireAuthorization().RequireRateLimiting("AuthPolicy");
 
         // 6. Delete Passkey (Authenticated)
         _ = paramsGroup.MapDelete("/passkeys/{id}", async Task<IResult> (
@@ -514,7 +514,7 @@ public static class PasskeyEndpoints
             {
                 return Result.Failure(Error.Validation(ErrorCodes.Passkey.InvalidFormat, "Invalid passkey ID format.")).ToProblemDetails();
             }
-        }).RequireAuthorization();
+        }).RequireAuthorization().RequireRateLimiting("AuthPolicy");
 
         return endpoints;
     }

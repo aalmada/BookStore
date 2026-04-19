@@ -325,7 +325,7 @@ To protect against abuse and Denial of Service (DoS) attacks, all authentication
     - `RateLimit:AuthPermitLimit`
     - `RateLimit:AuthWindowSeconds`
     - `RateLimit:AuthQueueLimit`
-- **Scope**: Applied globally to all endpoint in the `/account` group (Login, Register, Passkeys, etc.).
+- **Scope**: Applied globally to all endpoint in the `/account` group (Login, Register, Passkeys, including `GET /account/passkeys` and `DELETE /account/passkeys/{id}`).
 - **Response**: `429 Too Many Requests` when exceeded.
 
 The policy remains tenant-aware while preserving anonymity-safe behavior: responses do not expose whether a specific email exists, and throttling is enforced at the tenant+IP boundary.
