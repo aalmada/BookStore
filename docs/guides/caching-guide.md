@@ -29,7 +29,7 @@ The caching infrastructure is automatically wired up by Aspire.
     ```csharp
     // In Program.cs
     builder.AddRedisDistributedCache("cache");  // L2 distributed cache
-    
+
     // In ApplicationServicesExtensions.cs
     services.AddHybridCache();  // Registers HybridCache service
     ```
@@ -137,7 +137,7 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
 {
     readonly HybridCache _cache;
     readonly INotificationService _notificationService;
-    
+
     // Called AFTER projections are committed to the database
     public async Task AfterCommitAsync(IDocumentSession _, IChangeSet commit, CancellationToken token)
     {
@@ -180,7 +180,7 @@ sequenceDiagram
     participant Daemon as Async Daemon
     participant Listener as ProjectionCommitListener
     participant Cache as HybridCache
-    
+
     Command->>Marten: 1. Append event to stream
     Command->>Command: 2. SaveChangesAsync()
     Command-->>Command: 3. Return HTTP response
@@ -200,7 +200,7 @@ sequenceDiagram
 
 **For Updated/Created Entities:**
 - Invalidates the **specific item** cache (all language variants via tags)
-- Invalidates **related list** caches 
+- Invalidates **related list** caches
 
 Example: Updating `Category:123` triggers:
 ```csharp
@@ -280,6 +280,62 @@ await cache.RemoveByTagAsync($"book:{id}");
 await cache.RemoveByTagAsync("books");
 ```
 
+## Security Stamp Caching
+
+The `OnTokenValidated` JWT Bearer event verifies each access token's embedded `security_stamp` claim against the current value in the database. To avoid a database round-trip on **every authenticated API request**, the stamp is cached with a deliberately short TTL via `SecurityStampCache`.
+
+### Cache Key & Tag Format
+
+```csharp
+// Key:  auth:security-stamp:{tenantId}:{userId}
+// Tag:  security-stamp:{tenantId}:{userId}
+public static string GetCacheKey(string tenantId, Guid userId)
+    => $"auth:security-stamp:{tenantId}:{userId:D}";
+```
+
+The key is scoped per-tenant to prevent cross-tenant leakage.
+
+### TTL Strategy
+
+```csharp
+public static HybridCacheEntryOptions CreateEntryOptions() => new()
+{
+    Expiration = TimeSpan.FromSeconds(30),      // L2 (Redis) — shared across instances
+    LocalCacheExpiration = TimeSpan.FromSeconds(15)  // L1 (in-memory) — per instance
+};
+```
+
+The TTL is intentionally short (30 s) to bound the window during which a revoked token might still be accepted. After a security event the cache is **immediately invalidated** so there is no forced wait.
+
+### Sentinel Value for Deleted Users
+
+If the user no longer exists in the database, the factory returns the sentinel `"__missing__"` instead of `null`. This prevents `null` from being cached (which could mask a real missing-user condition on the next lookup).
+
+```csharp
+var user = await session.Query<ApplicationUser>()
+    .FirstOrDefaultAsync(u => u.Id == userGuid, ct);
+return user?.SecurityStamp ?? "__missing__";
+
+// Caller checks:
+if (currentSecurityStamp == "__missing__")
+    context.Fail("User not found.");
+```
+
+### Invalidation
+
+The security stamp cache is invalidated immediately after any event that rotates the stamp:
+
+```csharp
+// Called in password change, passkey add/delete, etc.
+public static ValueTask InvalidateAsync(
+    HybridCache cache, string tenantId, Guid userId,
+    CancellationToken cancellationToken = default)
+    => cache.RemoveByTagAsync([GetCacheTag(tenantId, userId)], cancellationToken);
+```
+
+> [!NOTE]
+> Unlike content cache invalidation (which is fire-and-forget via `ProjectionCommitListener`), security stamp invalidation is **awaited inline** in the endpoint handler — revocation is immediate.
+
 ## Cache Expiration Strategy
 
 | Content Type | L2 (Redis) | L1 (In-Memory) | Rationale |
@@ -287,6 +343,7 @@ await cache.RemoveByTagAsync("books");
 | Single entities (book, author, category) | 5 min | 2 min | Relatively stable, infrequent updates |
 | Search results | 2 min | 1 min | Dynamic, parameter-dependent |
 | Lists (paginated) | 5 min | 2 min | Moderate stability |
+| Security stamp | 30 s | 15 s | Short to bound revocation window; invalidated immediately on security events |
 
 ## Best Practices
 
@@ -298,8 +355,8 @@ await cache.RemoveByTagAsync("books");
 
 ## Architecture Benefits
 
-✅ **Two-Tier Caching**: L1 (fast, local) + L2 (shared, distributed)  
-✅ **Stampede Protection**: Built-in request coalescing  
-✅ **Localization-Aware**: Automatic culture-based cache keys  
-✅ **Tag-Based Invalidation**: Clear all language variants at once  
+✅ **Two-Tier Caching**: L1 (fast, local) + L2 (shared, distributed)
+✅ **Stampede Protection**: Built-in request coalescing
+✅ **Localization-Aware**: Automatic culture-based cache keys
+✅ **Tag-Based Invalidation**: Clear all language variants at once
 ✅ **Aspire Integration**: Automatic Redis orchestration and service discovery

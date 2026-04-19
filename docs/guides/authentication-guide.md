@@ -16,14 +16,14 @@ graph TB
         C --> D[JwtAuthenticationStateProvider]
         D --> E[Notify State Changed]
     end
-    
+
     subgraph "Backend API"
         F[Identity Endpoints] --> G[JwtTokenService]
         G --> H["Issue Access/Refresh Tokens"]
         I[API Requests] --> J[Authorization Header]
         J --> K[Validate Bearer Token]
     end
-    
+
     B --> F
 ```
 
@@ -66,16 +66,85 @@ Every JWT access token includes a `tenant_id` claim:
 ### Token Rotation & Security
 
 Refresh tokens follow a strict rotation policy:
-- **Rotation**: A new refresh token is issued every time an access token is refreshed. The old token is invalidated.
-- **History**: Only the latest 5 refresh tokens are kept per user for security/concurrency balance.
-- **Tenant Context**: Refresh tokens store their originating tenant for defense-in-depth:
+- **Rotation**: A new refresh token is issued every time an access token is refreshed. The old token is marked as used (not deleted) to enable replay detection.
+- **History**: The latest active tokens plus recently-used ones (within 24 hours) are retained per user for security/concurrency balance.
+- **Tenant Context**: Refresh tokens store their originating tenant for defense-in-depth.
+- **Security Stamp Snapshot**: Each refresh token captures the user's security stamp at issuance. If the user's stamp has since changed (e.g., password reset), the token is rejected.
+- **Token Families**: Each login session starts a new *token family* (`FamilyId`). Replaying a used token invalidates all tokens in that family (refresh token theft detection).
+
 ```csharp
 public record RefreshTokenInfo(
-    string Token,
+    string Token,           // SHA-256 hash of the raw token (never stored in plaintext)
     DateTimeOffset Expires,
     DateTimeOffset Created,
-    string TenantId);  // Prevents cross-tenant token usage
+    string TenantId,        // Prevents cross-tenant token usage
+    string SecurityStamp,   // Snapshot at issuance for replay detection
+    string FamilyId,        // Groups related tokens for theft detection
+    bool IsUsed = false);   // Marked true after rotation, kept for replay detection
 ```
+
+### Refresh Token Hashing
+
+Refresh tokens are **never stored in plaintext**. The raw token is issued to the client once, then immediately hashed before persistence.
+
+```csharp
+// Generate a cryptographically secure raw token (64 random bytes)
+public string GenerateRefreshToken()
+{
+    var randomBytes = new byte[64];
+    using var rng = RandomNumberGenerator.Create();
+    rng.GetBytes(randomBytes);
+    return Convert.ToBase64String(randomBytes);
+}
+
+// Compute a deterministic SHA-256 hash for storage and lookup
+public string HashRefreshToken(string refreshToken)
+{
+    var tokenBytes = Encoding.UTF8.GetBytes(refreshToken);
+    var hash = SHA256.HashData(tokenBytes);
+    return Convert.ToHexString(hash);
+}
+```
+
+All lookups (login, token refresh, logout) hash the incoming plaintext value before querying stored tokens. A database compromise exposes only hashes — the raw tokens cannot be recovered.
+
+### Security Stamp Validation
+
+`MartenUserStore` implements `IUserSecurityStampStore`. Every JWT access token includes a `security_stamp` claim. On each authenticated API request the `OnTokenValidated` handler verifies the token's stamp still matches the current value in the database:
+
+```csharp
+OnTokenValidated = async context =>
+{
+    var cache = context.HttpContext.RequestServices.GetRequiredService<HybridCache>();
+    // ...
+    var currentSecurityStamp = await cache.GetOrCreateAsync(
+        key: SecurityStampCache.GetCacheKey(tenantId, userGuid),
+        factory: async ct =>
+        {
+            var user = await session.Query<ApplicationUser>()
+                .FirstOrDefaultAsync(u => u.Id == userGuid, ct);
+            return user?.SecurityStamp ?? "__missing__";
+        },
+        options: SecurityStampCache.CreateEntryOptions(),  // 30 s L2 / 15 s L1
+        tags: [SecurityStampCache.GetCacheTag(tenantId, userGuid)]);
+
+    if (currentSecurityStamp == "__missing__")  // User deleted
+        context.Fail("User not found.");
+    else if (tokenSecurityStamp != currentSecurityStamp)
+        context.Fail("Token has been revoked due to security stamp change.");
+};
+```
+
+The stamp is cached with a **30 s L2 / 15 s L1 TTL** (intentionally short) to avoid a database round-trip on every request. The cache is tag-invalidated immediately after any security event:
+
+| Event | Invalidation trigger |
+|---|---|
+| Password change | `JwtAuthenticationEndpoints.ChangePasswordAsync` |
+| Password removed | `JwtAuthenticationEndpoints.RemovePasswordAsync` |
+| Password added | `JwtAuthenticationEndpoints.AddPasswordAsync` |
+| Passkey added | `PasskeyEndpoints` attestation result handler |
+| Passkey deleted | `PasskeyEndpoints` delete handler |
+
 - **Security Stamp**: `MartenUserStore` implements `IUserSecurityStampStore`, allowing global token invalidation (e.g., on password change).
 
 ### Cross-Tenant Protection
@@ -119,13 +188,10 @@ See [Passkey Guide](passkey-guide.md) for implementation details.
 
 ### In-Memory Token Storage
 We store tokens in a Scoped service (`TokenService`). This means:
-- **Pros**: Immune to XSS (malicious JS cannot read the service memory).
-- **Cons**: User is logged out if they refresh the page (F5).
+- **Pros**: Immune to XSS — malicious JavaScript running in the browser cannot access service memory.
+- **Cons**: User is logged out if they refresh the page (F5) or the Blazor circuit is recreated.
 
-### Preventing Logout on Refresh
-To mitigate the refresh issue while maintaining security, the application can optionally use a **Refresh Token** flow that persists *only* the refresh token in a secure HttpOnly cookie (future enhancement) or relies on the user simply logging in again, which is acceptable for high-security banking-style apps. 
-
-*Current Implementation*: In-memory only. Refreshing the page requires re-login.
+This is the intentional, final design for Blazor Server. Because all code (including `TokenService`) executes server-side, tokens are never serialised to the browser — not even as HttpOnly cookies. Refreshing the page requires re-login, which is an acceptable trade-off for high-security applications.
 
 ### Authorization Headers
 All outgoing HTTP requests to the API are intercepted by `AuthorizationMessageHandler`, which attaches the Bearer token:
@@ -169,12 +235,12 @@ public class ApplicationUser
     public Guid Id { get; set; }
     public string Email { get; set; }
     public string PasswordHash { get; set; }
-    public string SecurityStamp { get; set; }
+    public string SecurityStamp { get; set; }   // Rotated on every security event
     public bool LockoutEnabled { get; set; }
     public DateTimeOffset? LockoutEnd { get; set; }
     public int AccessFailedCount { get; set; }
     public ICollection<string> Roles { get; set; }
-    public IList<RefreshTokenInfo> RefreshTokens { get; set; }
+    public IList<RefreshTokenInfo> RefreshTokens { get; set; }  // Hashed tokens only
     public IList<UserPasskeyInfo> Passkeys { get; set; }
 }
 ```
