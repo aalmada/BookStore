@@ -114,6 +114,29 @@ Alternative production configuration (auto-select `RS256`):
 - This allows local development flows that skip email delivery while failing fast in Test, Staging, and Production if email delivery is disabled.
 - Use `Email:DeliveryMethod=Logging` for non-delivery diagnostics or `Email:DeliveryMethod=Smtp` for real delivery in non-development environments.
 
+### Passkey/CORS Allowed Origins Startup Guard
+
+- `Authentication:Passkey:AllowedOrigins` is validated during startup.
+- In **non-development environments**, at least one allowed origin is required.
+- In **Development**, an empty list is allowed to keep local workflows flexible.
+- Each configured origin must be an absolute `http`/`https` origin and must not include a path, query string, fragment, or user-info.
+- Trailing slash variants are normalized to canonical origin format (`https://host:port`) and reused by both passkey origin checks and CORS policy configuration.
+
+Example configuration:
+
+```json
+{
+    "Authentication": {
+        "Passkey": {
+            "AllowedOrigins": [
+                "https://localhost:7260",
+                "https://bookstore.example.com"
+            ]
+        }
+    }
+}
+```
+
 Example configuration:
 
 ```json

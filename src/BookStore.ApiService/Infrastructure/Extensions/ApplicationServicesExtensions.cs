@@ -47,6 +47,13 @@ public static class ApplicationServicesExtensions
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
+        // Configure passkey allowed origins with environment-aware startup validation.
+        _ = services.AddOptions<Identity.PasskeyAllowedOriginsOptions>()
+            .BindConfiguration(Identity.PasskeyAllowedOriginsOptions.SectionName)
+            .PostConfigure(options => options.AllowedOrigins = Identity.PasskeyAllowedOriginsOptions.NormalizeOrigins(options.AllowedOrigins))
+            .ValidateOnStart();
+        _ = services.AddSingleton<IValidateOptions<Identity.PasskeyAllowedOriginsOptions>>(_ => new Identity.PasskeyAllowedOriginsOptionsValidator(environment));
+
         // Configure OpenAPI with metadata
         _ = services.AddOpenApi(options => options.AddBookStoreApiDocumentation());
 
@@ -174,48 +181,46 @@ public static class ApplicationServicesExtensions
             .AddDefaultTokenProviders();
 
         // Configure Passkey options
-        _ = services.Configure<Microsoft.AspNetCore.Identity.IdentityPasskeyOptions>(options =>
-        {
-            var passkeyDomain = configuration["Authentication:Passkey:ServerDomain"];
-            options.ServerDomain = !string.IsNullOrEmpty(passkeyDomain) ? passkeyDomain : "localhost";
-            options.AuthenticatorTimeout = TimeSpan.FromMinutes(2);
-            options.ChallengeSize = 32;
-            options.UserVerificationRequirement = "required";
-            options.ResidentKeyRequirement = "required";
-            options.AttestationConveyancePreference = "none";
-            options.IsAllowedAlgorithm = algorithm => algorithm is -7 or -8;
-
-            // Configure origin validation to allow Web app origin
-            // By default, ASP.NET Core Identity rejects cross-origin passkey requests
-            // We need to explicitly allow the Web app origin (https://localhost:7260)
-            options.ValidateOrigin = context =>
+        _ = services.AddOptions<Microsoft.AspNetCore.Identity.IdentityPasskeyOptions>()
+            .Configure<IOptions<Identity.PasskeyAllowedOriginsOptions>>((options, passkeyAllowedOriginsOptions) =>
             {
-                // Allow same-origin requests (when API is called directly)
-                if (!context.CrossOrigin)
+                var passkeyDomain = configuration["Authentication:Passkey:ServerDomain"];
+                options.ServerDomain = !string.IsNullOrEmpty(passkeyDomain) ? passkeyDomain : "localhost";
+                options.AuthenticatorTimeout = TimeSpan.FromMinutes(2);
+                options.ChallengeSize = 32;
+                options.UserVerificationRequirement = "required";
+                options.ResidentKeyRequirement = "required";
+                options.AttestationConveyancePreference = "none";
+                options.IsAllowedAlgorithm = algorithm => algorithm is -7 or -8;
+
+                var allowedOrigins = passkeyAllowedOriginsOptions.Value.AllowedOrigins;
+                var allowedOriginSet = new HashSet<string>(allowedOrigins, StringComparer.OrdinalIgnoreCase);
+
+                // Configure origin validation to allow Web app origin
+                // By default, ASP.NET Core Identity rejects cross-origin passkey requests
+                options.ValidateOrigin = context =>
                 {
-                    return ValueTask.FromResult(true);
-                }
+                    // Allow same-origin requests (when API is called directly)
+                    if (!context.CrossOrigin)
+                    {
+                        return ValueTask.FromResult(true);
+                    }
 
-                // Allow requests from the Web app (even if marked as same-origin by browser)
-                var allowedOrigins = configuration.GetSection("Authentication:Passkey:AllowedOrigins").Get<string[]>() ?? [];
-                if (!Uri.TryCreate(context.Origin, UriKind.Absolute, out var originUri))
-                {
-                    return ValueTask.FromResult(false);
-                }
+                    if (!Identity.PasskeyAllowedOriginsOptions.TryNormalizeOrigin(context.Origin, out var normalizedOrigin))
+                    {
+                        return ValueTask.FromResult(false);
+                    }
 
-                // Only allow HTTP for localhost in Development environment
-                var env = context.HttpContext.RequestServices.GetRequiredService<Microsoft.AspNetCore.Hosting.IWebHostEnvironment>();
-                var isSecureOrigin = originUri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)
-                                     || (env.IsDevelopment() && originUri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase));
+                    var originUri = new Uri(normalizedOrigin, UriKind.Absolute);
 
-                if (isSecureOrigin && allowedOrigins.Contains(context.Origin, StringComparer.OrdinalIgnoreCase))
-                {
-                    return ValueTask.FromResult(true);
-                }
+                    // Only allow HTTP for localhost in Development environment
+                    var env = context.HttpContext.RequestServices.GetRequiredService<Microsoft.AspNetCore.Hosting.IWebHostEnvironment>();
+                    var isSecureOrigin = originUri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)
+                                         || (env.IsDevelopment() && originUri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase));
 
-                return ValueTask.FromResult(false);
-            };
-        });
+                    return ValueTask.FromResult(isSecureOrigin && allowedOriginSet.Contains(normalizedOrigin));
+                };
+            });
 
         // Add roles support not needed via AddRoles (which requires IRoleStore),
         // as we use simple string roles on the user object via MartenUserStore implementation of IUserRoleStore.

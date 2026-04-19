@@ -3,12 +3,14 @@ using BookStore.ApiService.Endpoints;
 using BookStore.ApiService.Endpoints.Admin;
 using BookStore.ApiService.Infrastructure;
 using BookStore.ApiService.Infrastructure.Extensions;
+using BookStore.ApiService.Infrastructure.Identity;
 using BookStore.ApiService.Infrastructure.Logging;
 using BookStore.ApiService.Infrastructure.Tenant;
 
 using BookStore.Shared.Infrastructure;
 using BookStore.Shared.Models;
 
+using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Options;
 using Scalar.AspNetCore;
@@ -43,19 +45,24 @@ builder.Services.AddScoped<ITenantStore>(sp =>
 builder.Services.AddMartenEventStore(builder.Configuration);
 builder.Services.AddWolverineMessaging();
 
-// Add CORS using configured allowed origins (shared with passkey origin validation).
-var allowedCorsOrigins = builder.Configuration.GetSection("Authentication:Passkey:AllowedOrigins").Get<string[]>() ?? [];
-builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
-{
-    if (allowedCorsOrigins.Length > 0)
+// Add CORS using validated allowed origins shared with passkey origin validation.
+builder.Services.AddCors();
+_ = builder.Services.AddOptions<CorsOptions>()
+    .Configure<IOptions<PasskeyAllowedOriginsOptions>>((corsOptions, passkeyAllowedOriginsOptions) =>
     {
-        _ = policy.WithOrigins(allowedCorsOrigins);
-    }
+        var allowedCorsOrigins = passkeyAllowedOriginsOptions.Value.AllowedOrigins;
+        corsOptions.AddDefaultPolicy(policy =>
+        {
+            if (allowedCorsOrigins.Length > 0)
+            {
+                _ = policy.WithOrigins(allowedCorsOrigins);
+            }
 
-    _ = policy.WithHeaders("Authorization", "Content-Type", "Accept", "X-Tenant-ID", "X-Requested-With")
-        .WithMethods("GET", "POST", "PUT", "DELETE", "PATCH")
-        .AllowCredentials();
-}));
+            _ = policy.WithHeaders("Authorization", "Content-Type", "Accept", "X-Tenant-ID", "X-Requested-With")
+                .WithMethods("GET", "POST", "PUT", "DELETE", "PATCH")
+                .AllowCredentials();
+        });
+    });
 
 // Add Rate Limiting
 // Add Rate Limiting (using extension)

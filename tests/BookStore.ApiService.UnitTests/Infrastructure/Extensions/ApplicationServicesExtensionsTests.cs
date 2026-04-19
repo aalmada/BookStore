@@ -462,6 +462,137 @@ public class ApplicationServicesExtensionsTests
 
     [Test]
     [Category("Unit")]
+    public async Task AddApplicationServices_WithEmptyPasskeyAllowedOriginsOutsideDevelopment_ShouldThrowOptionsValidationException()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Jwt:SecretKey"] = "test-secret-key-must-be-at-least-32-characters-long",
+                ["Jwt:Issuer"] = "BookStore.ApiService",
+                ["Jwt:Audience"] = "BookStore.Web",
+                ["Jwt:ExpirationMinutes"] = "60",
+                ["Authentication:Passkey:ServerDomain"] = "localhost"
+            })
+            .Build();
+
+        var environment = new TestWebHostEnvironment
+        {
+            EnvironmentName = "Production"
+        };
+
+        _ = services.AddSingleton<IConfiguration>(configuration);
+        _ = services.AddApplicationServices(configuration, environment);
+        await using var provider = services.BuildServiceProvider();
+
+        // Act + Assert
+        _ = await Assert.That(() => provider.GetRequiredService<IOptions<PasskeyAllowedOriginsOptions>>().Value)
+            .Throws<OptionsValidationException>();
+    }
+
+    [Test]
+    [Category("Unit")]
+    public async Task AddApplicationServices_WithEmptyPasskeyAllowedOriginsInDevelopment_ShouldAllowConfiguration()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Jwt:SecretKey"] = "test-secret-key-must-be-at-least-32-characters-long",
+                ["Jwt:Issuer"] = "BookStore.ApiService",
+                ["Jwt:Audience"] = "BookStore.Web",
+                ["Jwt:ExpirationMinutes"] = "60",
+                ["Authentication:Passkey:ServerDomain"] = "localhost"
+            })
+            .Build();
+
+        var environment = new TestWebHostEnvironment
+        {
+            EnvironmentName = "Development"
+        };
+
+        _ = services.AddSingleton<IConfiguration>(configuration);
+        _ = services.AddApplicationServices(configuration, environment);
+        await using var provider = services.BuildServiceProvider();
+
+        // Act
+        var options = provider.GetRequiredService<IOptions<PasskeyAllowedOriginsOptions>>().Value;
+
+        // Assert
+        _ = await Assert.That(options.AllowedOrigins).IsEmpty();
+    }
+
+    [Test]
+    [Category("Unit")]
+    public async Task AddApplicationServices_WithInvalidPasskeyAllowedOrigin_ShouldThrowOptionsValidationException()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Jwt:SecretKey"] = "test-secret-key-must-be-at-least-32-characters-long",
+                ["Jwt:Issuer"] = "BookStore.ApiService",
+                ["Jwt:Audience"] = "BookStore.Web",
+                ["Jwt:ExpirationMinutes"] = "60",
+                ["Authentication:Passkey:ServerDomain"] = "localhost",
+                ["Authentication:Passkey:AllowedOrigins:0"] = "https://localhost:7260/path"
+            })
+            .Build();
+
+        var environment = new TestWebHostEnvironment
+        {
+            EnvironmentName = "Production"
+        };
+
+        _ = services.AddSingleton<IConfiguration>(configuration);
+        _ = services.AddApplicationServices(configuration, environment);
+        await using var provider = services.BuildServiceProvider();
+
+        // Act + Assert
+        _ = await Assert.That(() => provider.GetRequiredService<IOptions<PasskeyAllowedOriginsOptions>>().Value)
+            .Throws<OptionsValidationException>();
+    }
+
+    [Test]
+    [Category("Unit")]
+    public async Task AddApplicationServices_WithPasskeyAllowedOriginTrailingSlash_ShouldNormalizeOrigin()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Jwt:SecretKey"] = "test-secret-key-must-be-at-least-32-characters-long",
+                ["Jwt:Issuer"] = "BookStore.ApiService",
+                ["Jwt:Audience"] = "BookStore.Web",
+                ["Jwt:ExpirationMinutes"] = "60",
+                ["Authentication:Passkey:ServerDomain"] = "localhost",
+                ["Authentication:Passkey:AllowedOrigins:0"] = "https://localhost:7260/"
+            })
+            .Build();
+
+        var environment = new TestWebHostEnvironment
+        {
+            EnvironmentName = "Production"
+        };
+
+        _ = services.AddSingleton<IConfiguration>(configuration);
+        _ = services.AddApplicationServices(configuration, environment);
+        await using var provider = services.BuildServiceProvider();
+
+        // Act
+        var options = provider.GetRequiredService<IOptions<PasskeyAllowedOriginsOptions>>().Value;
+
+        // Assert
+        _ = await Assert.That(options.AllowedOrigins.Length).IsEqualTo(1);
+        _ = await Assert.That(options.AllowedOrigins[0]).IsEqualTo("https://localhost:7260");
+    }
+
+    [Test]
+    [Category("Unit")]
     public async Task OnTokenValidated_WhenUnexpectedExceptionOccurs_ShouldFailAuthAndClearUser()
     {
         // Arrange – build services WITHOUT Marten so the handler throws on IDocumentSession resolution
