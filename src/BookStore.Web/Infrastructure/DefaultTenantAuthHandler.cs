@@ -1,5 +1,4 @@
 using System.Net.Http.Headers;
-using Blazored.LocalStorage;
 using BookStore.Shared;
 using BookStore.Web.Services;
 
@@ -11,34 +10,13 @@ namespace BookStore.Web.Infrastructure;
 /// TenantService → ITenantsClient → TenantHeaderHandler → TenantService.
 /// Admin tenant endpoints always require a default-tenant admin, so the
 /// default-tenant token is the correct one to use.
-/// Falls back to localStorage hydration after a server restart that cleared
-/// the in-memory TokenService.
 /// </summary>
-public class DefaultTenantAuthHandler(TokenService tokenService, ILocalStorageService localStorage) : DelegatingHandler
+public class DefaultTenantAuthHandler(TokenService tokenService) : DelegatingHandler
 {
-    static readonly string StorageKey = $"accessToken_{MultiTenancyConstants.DefaultTenantId}";
-
     protected override async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request, CancellationToken cancellationToken)
     {
         var token = tokenService.GetAccessToken(MultiTenancyConstants.DefaultTenantId);
-
-        if (string.IsNullOrEmpty(token))
-        {
-            try
-            {
-                var stored = await localStorage.GetItemAsync<string>(StorageKey, cancellationToken);
-                if (!string.IsNullOrEmpty(stored))
-                {
-                    token = stored;
-                    tokenService.SetTokens(MultiTenancyConstants.DefaultTenantId, token);
-                }
-            }
-            catch (InvalidOperationException)
-            {
-                // JS interop not yet available during prerendering — skip.
-            }
-        }
 
         if (!string.IsNullOrEmpty(token))
         {

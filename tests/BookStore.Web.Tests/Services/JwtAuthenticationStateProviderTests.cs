@@ -41,7 +41,6 @@ public class JwtAuthenticationStateProviderTests : BunitTestContext
         _tenantService = new TenantService(_tenantClient, navigation, _localStorage, _jsRuntime);
         _sut = new JwtAuthenticationStateProvider(
             _tokenService,
-            _localStorage,
             _tenantService,
             _identityClient,
             _logger);
@@ -56,20 +55,13 @@ public class JwtAuthenticationStateProviderTests : BunitTestContext
 
     [Test]
     [Category("Unit")]
-    public async Task GetAuthenticationStateAsync_WhenStorageHydrationFails_ShouldReturnAnonymousAndLog()
+    public async Task GetAuthenticationStateAsync_WhenNoTokenInMemory_ShouldReturnAnonymous()
     {
-        // Arrange
-        _ = _localStorage.GetItemAsync<string>(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(_ => ValueTask.FromException<string>(new Exception("storage read failed")));
-
         // Act
         var state = await _sut.GetAuthenticationStateAsync();
 
         // Assert
         _ = await Assert.That(state.User.Identity?.IsAuthenticated ?? false).IsFalse();
-
-        var logCallCount = _logger.ReceivedCalls().Count(c => c.GetMethodInfo().Name == nameof(ILogger.Log));
-        _ = await Assert.That(logCallCount).IsGreaterThan(0);
     }
 
     [Test]

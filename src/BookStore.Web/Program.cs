@@ -101,14 +101,12 @@ static void RegisterScopedRefitClients(
     // Register ITenantsClient separately — no TenantHeaderHandler to avoid circular dep:
     // TenantService → ITenantsClient → TenantHeaderHandler → TenantService.
     // Auth is provided by DefaultTenantAuthHandler which reads the default-tenant token
-    // from TokenService (no TenantService dep) and self-hydrates from localStorage on
-    // first use after a server restart that cleared in-memory state.
+    // from TokenService (no TenantService dep).
     _ = services.AddScoped<ITenantsClient>(sp =>
     {
         var tokenService = sp.GetRequiredService<TokenService>();
-        var localStorage = sp.GetRequiredService<ILocalStorageService>();
         var networkHandler = new HttpClientHandler();
-        var authHandler = new DefaultTenantAuthHandler(tokenService, localStorage) { InnerHandler = networkHandler };
+        var authHandler = new DefaultTenantAuthHandler(tokenService) { InnerHandler = networkHandler };
         var httpClient = new HttpClient(authHandler) { BaseAddress = baseAddress };
         return RestService.For<ITenantsClient>(httpClient);
     });

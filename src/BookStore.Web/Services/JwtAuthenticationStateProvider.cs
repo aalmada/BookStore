@@ -15,7 +15,6 @@ namespace BookStore.Web.Services;
 public class JwtAuthenticationStateProvider : AuthenticationStateProvider, IDisposable
 {
     readonly TokenService _tokenService;
-    readonly Blazored.LocalStorage.ILocalStorageService _localStorage;
     readonly TenantService _tenantService;
     readonly IIdentityClient _identityClient;
     readonly ILogger<JwtAuthenticationStateProvider> _logger;
@@ -27,13 +26,11 @@ public class JwtAuthenticationStateProvider : AuthenticationStateProvider, IDisp
 
     public JwtAuthenticationStateProvider(
         TokenService tokenService,
-        Blazored.LocalStorage.ILocalStorageService localStorage,
         TenantService tenantService,
         IIdentityClient identityClient,
         ILogger<JwtAuthenticationStateProvider> logger)
     {
         _tokenService = tokenService;
-        _localStorage = localStorage;
         _tenantService = tenantService;
         _identityClient = identityClient;
         _logger = logger;
@@ -51,36 +48,10 @@ public class JwtAuthenticationStateProvider : AuthenticationStateProvider, IDisp
         }
     }
 
-    string GetStorageKey(string tenantId) => $"accessToken_{tenantId}";
-    string GetRefreshStorageKey(string tenantId) => $"refreshToken_{tenantId}";
-
     public override async Task<AuthenticationState> GetAuthenticationStateAsync()
     {
         var currentTenant = _tenantService.CurrentTenantId;
         var token = _tokenService.GetAccessToken(currentTenant);
-
-        if (string.IsNullOrEmpty(token))
-        {
-            // Try to hydrate from LocalStorage with tenant-specific key
-            try
-            {
-                var storedToken = await _localStorage.GetItemAsync<string>(GetStorageKey(currentTenant));
-                if (!string.IsNullOrEmpty(storedToken))
-                {
-                    token = storedToken;
-                    var storedRefreshToken = await _localStorage.GetItemAsync<string>(GetRefreshStorageKey(currentTenant));
-                    _tokenService.SetTokens(currentTenant, token, storedRefreshToken);
-                }
-            }
-            catch (InvalidOperationException)
-            {
-                // JavaScript interop calls cannot be issued at this time (Prerendering)
-            }
-            catch (Exception ex)
-            {
-                Log.AuthStateStorageHydrationFailed(_logger, currentTenant, ex);
-            }
-        }
 
         if (string.IsNullOrEmpty(token))
         {
@@ -119,8 +90,7 @@ public class JwtAuthenticationStateProvider : AuthenticationStateProvider, IDisp
             }
             else if (jwtToken.ValidTo < DateTime.UtcNow.Add(TokenRefreshThreshold))
             {
-                // Token will expire soon - trigger background refresh on the current sync context
-                // (Task.Run would leave the Blazor circuit context and break JS interop in localStorage)
+                // Token will expire soon - trigger background refresh on the current sync context.
                 var refreshToken = _tokenService.GetRefreshToken(currentTenant);
                 if (!string.IsNullOrEmpty(refreshToken))
                 {
@@ -159,19 +129,6 @@ public class JwtAuthenticationStateProvider : AuthenticationStateProvider, IDisp
             {
                 _tokenService.SetTokens(tenantId, response.AccessToken, response.RefreshToken);
 
-                try
-                {
-                    await _localStorage.SetItemAsync(GetStorageKey(tenantId), response.AccessToken);
-                    if (!string.IsNullOrEmpty(response.RefreshToken))
-                    {
-                        await _localStorage.SetItemAsync(GetRefreshStorageKey(tenantId), response.RefreshToken);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Log.AuthStateStorageWriteFailed(_logger, tenantId, ex);
-                }
-
                 NotifyAuthenticationStateChanged(Task.FromResult(
                     new AuthenticationState(new ClaimsPrincipal(
                         new ClaimsIdentity(ParseClaimsFromJwt(response.AccessToken), "jwt")))));
@@ -199,49 +156,30 @@ public class JwtAuthenticationStateProvider : AuthenticationStateProvider, IDisp
     /// <summary>
     /// Notify that user has authenticated with new tokens for the current tenant
     /// </summary>
-    public async Task NotifyUserAuthentication(string accessToken, string? refreshToken = null)
+    public Task NotifyUserAuthentication(string accessToken, string? refreshToken = null)
     {
         var currentTenant = _tenantService.CurrentTenantId;
         _tokenService.SetTokens(currentTenant, accessToken, refreshToken);
-
-        try
-        {
-            await _localStorage.SetItemAsync(GetStorageKey(currentTenant), accessToken);
-            if (!string.IsNullOrEmpty(refreshToken))
-            {
-                await _localStorage.SetItemAsync(GetRefreshStorageKey(currentTenant), refreshToken);
-            }
-        }
-        catch (Exception ex)
-        {
-            Log.AuthStateAuthenticationPersistFailed(_logger, currentTenant, ex);
-        }
 
         var claims = ParseClaimsFromJwt(accessToken);
         var identity = new ClaimsIdentity(claims, "jwt");
         var user = new ClaimsPrincipal(identity);
         NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(user)));
+
+        return Task.CompletedTask;
     }
 
     /// <summary>
     /// Notify that user has logged out of the current tenant
     /// </summary>
-    public async Task NotifyUserLogout()
+    public Task NotifyUserLogout()
     {
         var currentTenant = _tenantService.CurrentTenantId;
         _tokenService.ClearTokens(currentTenant);
 
-        try
-        {
-            await _localStorage.RemoveItemAsync(GetStorageKey(currentTenant));
-            await _localStorage.RemoveItemAsync(GetRefreshStorageKey(currentTenant));
-        }
-        catch (Exception ex)
-        {
-            Log.AuthStateStorageDeleteFailed(_logger, currentTenant, ex);
-        }
-
         NotifyAuthenticationStateChanged(Task.FromResult(CreateAnonymousState()));
+
+        return Task.CompletedTask;
     }
 
     static IEnumerable<Claim> ParseClaimsFromJwt(string jwt)
