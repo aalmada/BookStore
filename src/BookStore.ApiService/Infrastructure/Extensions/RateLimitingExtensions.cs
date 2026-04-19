@@ -3,6 +3,7 @@ using System.Threading.RateLimiting;
 using BookStore.Shared.Models;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -76,21 +77,38 @@ public static class RateLimitingExtensions
 
         options.OnRejected = async (context, cancellationToken) =>
         {
-            context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
-
             double? retryAfterSeconds = null;
             if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
             {
                 retryAfterSeconds = retryAfter.TotalSeconds;
             }
 
-            await context.HttpContext.Response.WriteAsJsonAsync(new
-            {
-                error = "Rate limit exceeded",
-                retryAfter = retryAfterSeconds
-            }, cancellationToken);
+            await WriteRateLimitProblemDetailsAsync(context.HttpContext, retryAfterSeconds, cancellationToken);
         };
     });
+
+    internal static async Task WriteRateLimitProblemDetailsAsync(
+        HttpContext context,
+        double? retryAfterSeconds,
+        CancellationToken cancellationToken)
+    {
+        var problemDetails = new ProblemDetails
+        {
+            Status = StatusCodes.Status429TooManyRequests,
+            Title = "Too Many Requests",
+            Detail = "Rate limit exceeded. Please retry after the specified duration.",
+            Type = "https://tools.ietf.org/html/rfc6585#section-4"
+        };
+        problemDetails.Extensions["error"] = ErrorCodes.Auth.RateLimitExceeded;
+        if (retryAfterSeconds.HasValue)
+        {
+            problemDetails.Extensions["retryAfter"] = retryAfterSeconds.Value;
+        }
+
+        context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+        context.Response.ContentType = "application/problem+json";
+        await context.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
+    }
 
     public static IApplicationBuilder UseAuthRateLimitIdentityExtraction(this IApplicationBuilder app)
         => app.Use(async (context, next) =>

@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using BookStore.ApiService.Infrastructure.Extensions;
+using BookStore.Shared.Models;
 using Microsoft.AspNetCore.Http;
 
 namespace BookStore.ApiService.UnitTests.Infrastructure;
@@ -73,5 +74,30 @@ public class RateLimitingExtensionsTests
         // Assert
         _ = await Assert.That(success).IsFalse();
         _ = await Assert.That(email).IsEqualTo(string.Empty);
+    }
+
+    [Test]
+    [Category("Unit")]
+    public async Task WriteRateLimitProblemDetailsAsync_ShouldWriteRfc7807Payload()
+    {
+        // Arrange
+        var context = new DefaultHttpContext();
+        await using var responseBody = new MemoryStream();
+        context.Response.Body = responseBody;
+
+        // Act
+        await RateLimitingExtensions.WriteRateLimitProblemDetailsAsync(context, 12.5, CancellationToken.None);
+        context.Response.Body.Position = 0;
+        using var document = await JsonDocument.ParseAsync(context.Response.Body);
+
+        // Assert
+        _ = await Assert.That(context.Response.StatusCode).IsEqualTo(StatusCodes.Status429TooManyRequests);
+        _ = await Assert.That(context.Response.ContentType).IsEqualTo("application/problem+json");
+
+        var root = document.RootElement;
+        _ = await Assert.That(root.GetProperty("status").GetInt32()).IsEqualTo(StatusCodes.Status429TooManyRequests);
+        _ = await Assert.That(root.GetProperty("title").GetString()).IsEqualTo("Too Many Requests");
+        _ = await Assert.That(root.GetProperty("error").GetString()).IsEqualTo(ErrorCodes.Auth.RateLimitExceeded);
+        _ = await Assert.That(root.GetProperty("retryAfter").GetDouble()).IsEqualTo(12.5);
     }
 }

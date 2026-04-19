@@ -549,6 +549,19 @@ Use `result.ToProblemDetails()` extension method in endpoints/handlers to automa
 - `ErrorType.Conflict` → `409 Conflict`
 - `ErrorType.Failure` → `500 Internal Server Error`
 
+Rate-limit rejections use the same RFC 7807 structure with `429 Too Many Requests`:
+
+```json
+{
+    "type": "https://tools.ietf.org/html/rfc6585#section-4",
+    "title": "Too Many Requests",
+    "status": 429,
+    "detail": "Rate limit exceeded. Please retry after the specified duration.",
+    "error": "ERR_AUTH_RATE_LIMIT_EXCEEDED",
+    "retryAfter": 12.5
+}
+```
+
 #### Standard Error Response Format
 
 ```json
