@@ -40,7 +40,7 @@ graph TB
     - Automatically handles **Silent Refresh** when the access token is close to expiry.
 
 #### Backend (API)
-- **`JwtTokenService`**: Central service for generating access tokens, rotating refresh tokens, and building standardized user claims.
+- **`JwtTokenService`**: Central service for generating access tokens, rotating refresh tokens, and building standardized user claims (supports `HS256` by default and optional `RS256` signing).
 - **`JwtAuthenticationEndpoints`**:
     - `POST /account/login`: Exchange credentials for tokens.
     - `POST /account/refresh-token`: Exchange refresh token for new access token (with automatic rotation).

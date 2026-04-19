@@ -1,7 +1,9 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using BookStore.ApiService.Services;
 using Microsoft.Extensions.Configuration;
+using Microsoft.IdentityModel.Tokens;
 
 namespace BookStore.ApiService.UnitTests.Services;
 
@@ -263,6 +265,53 @@ public class JwtTokenServiceTests
 
     [Test]
     [Category("Unit")]
+    public async Task GenerateAccessToken_WithRs256Algorithm_ShouldGenerateTokenWithRs256Header()
+    {
+        // Arrange
+        var (privateKeyPem, publicKeyPem) = CreateRsaPemKeyPair();
+        var configuration = CreateMockConfiguration(
+            algorithm: "RS256",
+            secretKey: string.Empty,
+            rs256PrivateKeyPem: privateKeyPem,
+            rs256PublicKeyPem: publicKeyPem);
+        var service = new JwtTokenService(configuration);
+        var user = new BookStore.ApiService.Models.ApplicationUser
+        {
+            Id = Guid.CreateVersion7(),
+            UserName = "testuser",
+            Email = "test@example.com",
+            Roles = ["User"]
+        };
+
+        // Act
+        var token = service.GenerateAccessToken(user, "default-tenant", user.Roles);
+
+        // Assert
+        var jwtToken = new JwtSecurityTokenHandler().ReadJwtToken(token);
+        _ = await Assert.That(jwtToken.Header.Alg).IsEqualTo(SecurityAlgorithms.RsaSha256);
+    }
+
+    [Test]
+    [Category("Unit")]
+    public async Task GenerateAccessToken_WithRs256MissingPrivateKey_ShouldThrowInvalidOperationException()
+    {
+        // Arrange
+        var configuration = CreateMockConfiguration(
+            algorithm: "RS256",
+            secretKey: string.Empty,
+            rs256PrivateKeyPem: string.Empty,
+            rs256PublicKeyPem: "-----BEGIN PUBLIC KEY-----test-----END PUBLIC KEY-----");
+        var service = new JwtTokenService(configuration);
+        var claims = new List<Claim> { new(ClaimTypes.Name, "test") };
+
+        // Act + Assert
+        _ = await Assert.That(() => service.GenerateAccessToken(claims))
+            .Throws<InvalidOperationException>()
+            .WithMessage("JWT RS256:PrivateKeyPem not configured");
+    }
+
+    [Test]
+    [Category("Unit")]
     public async Task GenerateAccessToken_WithMissingExpirationMinutes_ShouldDefaultTo60Minutes()
     {
         // Arrange
@@ -506,22 +555,34 @@ public class JwtTokenServiceTests
     #region Helper Methods
 
     static IConfiguration CreateMockConfiguration(
+        string algorithm = "HS256",
         string secretKey = "super-secret-key-that-is-long-enough-for-hmacsha256-algorithm",
         string issuer = "test-issuer",
         string audience = "test-audience",
-        int expirationMinutes = 60)
+        int expirationMinutes = 60,
+        string? rs256PrivateKeyPem = null,
+        string? rs256PublicKeyPem = null)
     {
         var configDict = new Dictionary<string, string?>
         {
+            ["Jwt:Algorithm"] = algorithm,
             ["Jwt:SecretKey"] = secretKey,
             ["Jwt:Issuer"] = issuer,
             ["Jwt:Audience"] = audience,
-            ["Jwt:ExpirationMinutes"] = expirationMinutes.ToString()
+            ["Jwt:ExpirationMinutes"] = expirationMinutes.ToString(),
+            ["Jwt:RS256:PrivateKeyPem"] = rs256PrivateKeyPem,
+            ["Jwt:RS256:PublicKeyPem"] = rs256PublicKeyPem
         };
 
         return new ConfigurationBuilder()
             .AddInMemoryCollection(configDict)
             .Build();
+    }
+
+    static (string privateKeyPem, string publicKeyPem) CreateRsaPemKeyPair()
+    {
+        using var rsa = RSA.Create(2048);
+        return (rsa.ExportPkcs8PrivateKeyPem(), rsa.ExportSubjectPublicKeyInfoPem());
     }
 
     #endregion

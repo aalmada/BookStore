@@ -1,8 +1,10 @@
+using System.Security.Cryptography;
 using Marten;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 
 namespace BookStore.ApiService.Infrastructure.Extensions;
 
@@ -11,6 +13,9 @@ namespace BookStore.ApiService.Infrastructure.Extensions;
 /// </summary>
 public static class ApplicationServicesExtensions
 {
+    const string JwtAlgorithmHs256 = "HS256";
+    const string JwtAlgorithmRs256 = "RS256";
+
     /// <summary>
     /// Configures all application services including pagination, OpenAPI, versioning, localization, etc.
     /// </summary>
@@ -199,19 +204,8 @@ public static class ApplicationServicesExtensions
 
         // Add JWT Bearer authentication
         var jwtSettings = configuration.GetSection("Jwt");
-        var secretKey = jwtSettings["SecretKey"];
-
-        // SECURITY: Validate JWT secret key in production
-        if (!environment.IsDevelopment())
-        {
-            if (string.IsNullOrEmpty(secretKey) ||
-                secretKey == "your-secret-key-must-be-at-least-32-characters-long-for-hs256")
-            {
-                throw new InvalidOperationException(
-                    "Production JWT secret key must be configured via environment variables or secure key vault. " +
-                    "Set the 'Jwt:SecretKey' configuration value. Never use the default key in production.");
-            }
-        }
+        var algorithm = (jwtSettings["Algorithm"] ?? JwtAlgorithmHs256).ToUpperInvariant();
+        ValidateJwtConfiguration(jwtSettings, algorithm, environment);
 
         _ = services.AddAuthentication(options =>
             {
@@ -228,8 +222,7 @@ public static class ApplicationServicesExtensions
                     ValidateIssuerSigningKey = true,
                     ValidIssuer = jwtSettings["Issuer"],
                     ValidAudience = jwtSettings["Audience"],
-                    IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(
-                            System.Text.Encoding.UTF8.GetBytes(secretKey!)),
+                        IssuerSigningKey = CreateJwtValidationKey(jwtSettings, algorithm),
                     ClockSkew = TimeSpan.FromSeconds(30), // Allow minor client/server clock drift without relaxing security too much
                     RoleClaimType = System.Security.Claims.ClaimTypes.Role,
                     NameClaimType = System.Security.Claims.ClaimTypes.Name
@@ -350,5 +343,75 @@ public static class ApplicationServicesExtensions
         // Add authorization services
         _ = services.AddAuthorizationBuilder()
             .AddPolicy("Admin", policy => policy.RequireRole("Admin", "ADMIN"));
+    }
+
+    static void ValidateJwtConfiguration(IConfigurationSection jwtSettings, string algorithm, IWebHostEnvironment environment)
+    {
+        var issuer = jwtSettings["Issuer"];
+        var audience = jwtSettings["Audience"];
+
+        if (string.IsNullOrWhiteSpace(issuer) || string.IsNullOrWhiteSpace(audience))
+        {
+            throw new InvalidOperationException("JWT Issuer and Audience must be configured.");
+        }
+
+        if (algorithm == JwtAlgorithmRs256)
+        {
+            var privateKeyPem = jwtSettings["RS256:PrivateKeyPem"];
+            var publicKeyPem = jwtSettings["RS256:PublicKeyPem"];
+            if (string.IsNullOrWhiteSpace(privateKeyPem) || string.IsNullOrWhiteSpace(publicKeyPem))
+            {
+                throw new InvalidOperationException("RS256 requires both Jwt:RS256:PrivateKeyPem and Jwt:RS256:PublicKeyPem.");
+            }
+
+            return;
+        }
+
+        if (algorithm != JwtAlgorithmHs256)
+        {
+            throw new InvalidOperationException($"Unsupported JWT algorithm: {algorithm}");
+        }
+
+        var secretKey = jwtSettings["SecretKey"];
+
+        // SECURITY: Validate JWT secret key in production
+        if (!environment.IsDevelopment() &&
+            (string.IsNullOrEmpty(secretKey) ||
+             secretKey == "your-secret-key-must-be-at-least-32-characters-long-for-hs256"))
+        {
+            throw new InvalidOperationException(
+                "Production JWT secret key must be configured via environment variables or secure key vault. " +
+                "Set the 'Jwt:SecretKey' configuration value. Never use the default key in production.");
+        }
+    }
+
+    static SecurityKey CreateJwtValidationKey(IConfigurationSection jwtSettings, string algorithm)
+    {
+        return algorithm switch
+        {
+            JwtAlgorithmHs256 => CreateHs256ValidationKey(jwtSettings),
+            JwtAlgorithmRs256 => CreateRs256ValidationKey(jwtSettings),
+            _ => throw new InvalidOperationException($"Unsupported JWT algorithm: {algorithm}")
+        };
+    }
+
+    static SecurityKey CreateHs256ValidationKey(IConfigurationSection jwtSettings)
+    {
+        var secretKey = jwtSettings["SecretKey"]
+            ?? throw new InvalidOperationException("JWT SecretKey not configured");
+        return new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(secretKey));
+    }
+
+    static SecurityKey CreateRs256ValidationKey(IConfigurationSection jwtSettings)
+    {
+        var publicKeyPem = jwtSettings["RS256:PublicKeyPem"];
+        if (string.IsNullOrWhiteSpace(publicKeyPem))
+        {
+            throw new InvalidOperationException("JWT RS256:PublicKeyPem not configured");
+        }
+
+        var rsa = RSA.Create();
+        rsa.ImportFromPem(publicKeyPem.ToCharArray());
+        return new RsaSecurityKey(rsa);
     }
 }

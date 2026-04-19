@@ -12,6 +12,8 @@ namespace BookStore.ApiService.Services;
 public class JwtTokenService
 {
     const int DefaultAccessTokenExpirationMinutes = 60;
+    const string JwtAlgorithmHs256 = "HS256";
+    const string JwtAlgorithmRs256 = "RS256";
     readonly IConfiguration _configuration;
 
     public JwtTokenService(IConfiguration configuration) => _configuration = configuration;
@@ -56,11 +58,7 @@ public class JwtTokenService
     public string GenerateAccessToken(IEnumerable<Claim> claims)
     {
         var jwtSettings = _configuration.GetSection("Jwt");
-        var secretKey = jwtSettings["SecretKey"]
-            ?? throw new InvalidOperationException("JWT SecretKey not configured");
-
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
-        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+        var credentials = CreateSigningCredentials(jwtSettings);
 
         var expirationMinutes = GetAccessTokenExpirationMinutes();
 
@@ -73,6 +71,41 @@ public class JwtTokenService
         );
 
         return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    static SigningCredentials CreateSigningCredentials(IConfigurationSection jwtSettings)
+    {
+        var algorithm = (jwtSettings["Algorithm"] ?? JwtAlgorithmHs256).ToUpperInvariant();
+
+        return algorithm switch
+        {
+            JwtAlgorithmHs256 => CreateHs256SigningCredentials(jwtSettings),
+            JwtAlgorithmRs256 => CreateRs256SigningCredentials(jwtSettings),
+            _ => throw new InvalidOperationException($"Unsupported JWT algorithm: {algorithm}")
+        };
+    }
+
+    static SigningCredentials CreateHs256SigningCredentials(IConfigurationSection jwtSettings)
+    {
+        var secretKey = jwtSettings["SecretKey"]
+            ?? throw new InvalidOperationException("JWT SecretKey not configured");
+
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
+        return new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+    }
+
+    static SigningCredentials CreateRs256SigningCredentials(IConfigurationSection jwtSettings)
+    {
+        var privateKeyPem = jwtSettings["RS256:PrivateKeyPem"];
+        if (string.IsNullOrWhiteSpace(privateKeyPem))
+        {
+            throw new InvalidOperationException("JWT RS256:PrivateKeyPem not configured");
+        }
+
+        var rsa = RSA.Create();
+        rsa.ImportFromPem(privateKeyPem.ToCharArray());
+        var key = new RsaSecurityKey(rsa);
+        return new SigningCredentials(key, SecurityAlgorithms.RsaSha256);
     }
 
     public int GetAccessTokenExpiresInSeconds()

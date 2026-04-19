@@ -1,9 +1,11 @@
+using System.Security.Cryptography;
 using BookStore.ApiService.Infrastructure.Extensions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 
 namespace BookStore.ApiService.UnitTests.Infrastructure.Extensions;
 
@@ -36,6 +38,42 @@ public class ApplicationServicesExtensionsTests
 
         // Assert
         _ = await Assert.That(jwtOptions.TokenValidationParameters.ClockSkew).IsEqualTo(TimeSpan.FromSeconds(30));
+    }
+
+    [Test]
+    [Category("Unit")]
+    public async Task AddApplicationServices_WithRs256Algorithm_ShouldConfigureRsaValidationKey()
+    {
+        // Arrange
+        using var rsa = RSA.Create(2048);
+        var privateKeyPem = rsa.ExportPkcs8PrivateKeyPem();
+        var publicKeyPem = rsa.ExportSubjectPublicKeyInfoPem();
+
+        var services = new ServiceCollection();
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Jwt:Algorithm"] = "RS256",
+                ["Jwt:SecretKey"] = string.Empty,
+                ["Jwt:Issuer"] = "BookStore.ApiService",
+                ["Jwt:Audience"] = "BookStore.Web",
+                ["Jwt:ExpirationMinutes"] = "60",
+                ["Jwt:RS256:PrivateKeyPem"] = privateKeyPem,
+                ["Jwt:RS256:PublicKeyPem"] = publicKeyPem,
+                ["Authentication:Passkey:ServerDomain"] = "localhost"
+            })
+            .Build();
+
+        var environment = new TestWebHostEnvironment();
+
+        // Act
+        _ = services.AddApplicationServices(configuration, environment);
+        await using var provider = services.BuildServiceProvider();
+        var optionsMonitor = provider.GetRequiredService<IOptionsMonitor<JwtBearerOptions>>();
+        var jwtOptions = optionsMonitor.Get(JwtBearerDefaults.AuthenticationScheme);
+
+        // Assert
+        _ = await Assert.That(jwtOptions.TokenValidationParameters.IssuerSigningKey).IsTypeOf<RsaSecurityKey>();
     }
 
     sealed class TestWebHostEnvironment : IWebHostEnvironment

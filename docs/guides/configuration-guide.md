@@ -737,19 +737,26 @@ Required for token generation and validation.
 ```json
 {
   "Jwt": {
+    "Algorithm": "HS256",
     "SecretKey": "your-secret-key-must-be-at-least-32-characters-long-for-hs256",
     "Issuer": "BookStore.ApiService",
     "Audience": "BookStore.Web",
-    "ExpirationMinutes": 60
+    "ExpirationMinutes": 60,
+    "RS256": {
+      "PrivateKeyPem": "",
+      "PublicKeyPem": ""
+    }
   }
 }
 ```
 
 **Key Settings**:
+- **Algorithm**: `HS256` (default) or `RS256`.
 - **SecretKey**: Strong cryptographic key (min 32 chars) for signing tokens. **Must be kept secret in production.**
 - **Issuer**: The authority issuing the token (e.g., your API domain).
 - **Audience**: The intended recipient of the token (e.g., your Web App).
 - **ExpirationMinutes**: Lifetime of the Access Token.
+- **RS256.PrivateKeyPem / RS256.PublicKeyPem**: PEM-encoded key pair used only when `Algorithm` is `RS256`.
 
 ### Passkey Configuration
 

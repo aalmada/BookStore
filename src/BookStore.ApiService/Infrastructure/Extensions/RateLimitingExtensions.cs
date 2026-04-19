@@ -107,7 +107,7 @@ public static class RateLimitingExtensions
 
         context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
         context.Response.ContentType = "application/problem+json";
-        await context.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
+        await context.Response.WriteAsJsonAsync(problemDetails, options: null, contentType: "application/problem+json", cancellationToken: cancellationToken);
     }
 
     public static IApplicationBuilder UseAuthRateLimitIdentityExtraction(this IApplicationBuilder app)
