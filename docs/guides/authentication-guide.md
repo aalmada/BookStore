@@ -176,6 +176,8 @@ OnTokenValidated = async context =>
 };
 ```
 
+The entire handler body is wrapped in a `try/catch`. Any unexpected exception (e.g., transient database error, cache failure) is caught, logged at `Error` level, the `ClaimsPrincipal` is cleared, and `context.Fail("Authentication failed.")` is called. This ensures the exception is never silently swallowed or allowed to propagate as an unhandled middleware exception.
+
 The stamp is cached with a **30 s L2 / 15 s L1 TTL** (intentionally short) to avoid a database round-trip on every request. The cache is tag-invalidated immediately after any security event:
 
 Tokens missing `security_stamp` are rejected with `401 Unauthorized`.

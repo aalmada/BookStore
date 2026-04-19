@@ -218,6 +218,11 @@ public static partial class Log
         public static partial void RateLimitingDisabledInProduction(ILogger logger, string environmentName);
 
         [LoggerMessage(
+            Level = LogLevel.Error,
+            Message = "Unexpected exception during token validation. The request will be rejected.")]
+        public static partial void TokenValidationUnexpectedError(ILogger logger, Exception exception);
+
+        [LoggerMessage(
             Level = LogLevel.Information,
             Message = "Creating {NotificationType} for book {BookId}, version {Version}")]
         public static partial void CreatingBookNotification(

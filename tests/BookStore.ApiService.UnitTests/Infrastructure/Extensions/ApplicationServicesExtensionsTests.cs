@@ -1,7 +1,10 @@
+using System.Security.Claims;
 using System.Security.Cryptography;
 using BookStore.ApiService.Infrastructure.Extensions;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
@@ -164,6 +167,54 @@ public class ApplicationServicesExtensionsTests
 
         // Assert
         _ = await Assert.That(jwtOptions.TokenValidationParameters.IssuerSigningKey).IsTypeOf<SymmetricSecurityKey>();
+    }
+
+    [Test]
+    [Category("Unit")]
+    public async Task OnTokenValidated_WhenUnexpectedExceptionOccurs_ShouldFailAuthAndClearUser()
+    {
+        // Arrange – build services WITHOUT Marten so the handler throws on IDocumentSession resolution
+        var services = new ServiceCollection();
+        _ = services.AddLogging();
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Jwt:SecretKey"] = "test-secret-key-must-be-at-least-32-characters-long",
+                ["Jwt:Issuer"] = "BookStore.ApiService",
+                ["Jwt:Audience"] = "BookStore.Web",
+                ["Jwt:ExpirationMinutes"] = "60",
+                ["Authentication:Passkey:ServerDomain"] = "localhost"
+            })
+            .Build();
+
+        var environment = new TestWebHostEnvironment();
+        _ = services.AddApplicationServices(configuration, environment);
+
+        await using var provider = services.BuildServiceProvider();
+        var optionsMonitor = provider.GetRequiredService<IOptionsMonitor<JwtBearerOptions>>();
+        var jwtOptions = optionsMonitor.Get(JwtBearerDefaults.AuthenticationScheme);
+
+        await using var scope = provider.CreateAsyncScope();
+        var httpContext = new DefaultHttpContext { RequestServices = scope.ServiceProvider };
+        var scheme = new AuthenticationScheme(
+            JwtBearerDefaults.AuthenticationScheme,
+            displayName: null,
+            typeof(JwtBearerHandler));
+        var principal = new ClaimsPrincipal(
+            new ClaimsIdentity(
+                [new Claim(System.Security.Claims.ClaimTypes.NameIdentifier, Guid.CreateVersion7().ToString())],
+                authenticationType: "Test"));
+        var tokenValidatedContext = new TokenValidatedContext(httpContext, scheme, jwtOptions)
+        {
+            Principal = principal
+        };
+
+        // Act – IDocumentSession is not registered, so the handler body throws inside the try/catch
+        await jwtOptions.Events.TokenValidated(tokenValidatedContext);
+
+        // Assert – the catch block must have called context.Fail and cleared the principal
+        _ = await Assert.That(tokenValidatedContext.Result?.Failure).IsNotNull();
+        _ = await Assert.That(httpContext.User.Identity).IsNull();
     }
 
     sealed class TestWebHostEnvironment : IWebHostEnvironment

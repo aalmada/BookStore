@@ -230,7 +230,7 @@ public static class ApplicationServicesExtensions
                     ValidateIssuerSigningKey = true,
                     ValidIssuer = jwtSettings["Issuer"],
                     ValidAudience = jwtSettings["Audience"],
-                        IssuerSigningKey = CreateJwtValidationKey(jwtSettings, algorithm),
+                    IssuerSigningKey = CreateJwtValidationKey(jwtSettings, algorithm),
                     ClockSkew = TimeSpan.FromSeconds(30), // Allow minor client/server clock drift without relaxing security too much
                     RoleClaimType = System.Security.Claims.ClaimTypes.Role,
                     NameClaimType = System.Security.Claims.ClaimTypes.Name
@@ -260,56 +260,68 @@ public static class ApplicationServicesExtensions
                     },
                     OnTokenValidated = async context =>
                     {
-                        var session = context.HttpContext.RequestServices.GetRequiredService<Marten.IDocumentSession>();
-                        var cache = context.HttpContext.RequestServices.GetRequiredService<HybridCache>();
-                        var tenantContext = context.HttpContext.RequestServices.GetRequiredService<Infrastructure.Tenant.ITenantContext>();
-                        var userId = context.Principal?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-
-                        if (!string.IsNullOrEmpty(userId) && Guid.TryParse(userId, out var userGuid))
+                        try
                         {
-                            var cacheKey = SecurityStampCache.GetCacheKey(tenantContext.TenantId, userGuid);
-                            var cacheTag = SecurityStampCache.GetCacheTag(tenantContext.TenantId, userGuid);
+                            var session = context.HttpContext.RequestServices.GetRequiredService<Marten.IDocumentSession>();
+                            var cache = context.HttpContext.RequestServices.GetRequiredService<HybridCache>();
+                            var tenantContext = context.HttpContext.RequestServices.GetRequiredService<Infrastructure.Tenant.ITenantContext>();
+                            var userId = context.Principal?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
-                            const string missingUserSentinel = "__missing__";
+                            if (!string.IsNullOrEmpty(userId) && Guid.TryParse(userId, out var userGuid))
+                            {
+                                var cacheKey = SecurityStampCache.GetCacheKey(tenantContext.TenantId, userGuid);
+                                var cacheTag = SecurityStampCache.GetCacheTag(tenantContext.TenantId, userGuid);
 
-                            var currentSecurityStamp = await cache.GetOrCreateAsync(
-                                key: cacheKey,
-                                factory: async cancellationToken =>
+                                const string missingUserSentinel = "__missing__";
+
+                                var currentSecurityStamp = await cache.GetOrCreateAsync(
+                                    key: cacheKey,
+                                    factory: async cancellationToken =>
+                                    {
+                                        // Use Query instead of Load to bypass Marten's identity map caching
+                                        var user = await session.Query<Models.ApplicationUser>()
+                                            .FirstOrDefaultAsync(u => u.Id == userGuid, cancellationToken);
+
+                                        return user?.SecurityStamp ?? missingUserSentinel;
+                                    },
+                                    options: SecurityStampCache.CreateEntryOptions(),
+                                    tags: [cacheTag],
+                                    cancellationToken: context.HttpContext.RequestAborted);
+
+                                if (currentSecurityStamp == missingUserSentinel)
                                 {
-                                    // Use Query instead of Load to bypass Marten's identity map caching
-                                    var user = await session.Query<Models.ApplicationUser>()
-                                        .FirstOrDefaultAsync(u => u.Id == userGuid, cancellationToken);
+                                    // CRITICAL: Clear the principal
+                                    context.HttpContext.User = new System.Security.Claims.ClaimsPrincipal();
+                                    context.Fail("User not found.");
+                                    return;
+                                }
 
-                                    return user?.SecurityStamp ?? missingUserSentinel;
-                                },
-                                options: SecurityStampCache.CreateEntryOptions(),
-                                tags: [cacheTag],
-                                cancellationToken: context.HttpContext.RequestAborted);
+                                // Get security stamp from token (claim is required)
+                                var tokenSecurityStamp = context.Principal?.FindFirst("security_stamp")?.Value;
 
-                            if (currentSecurityStamp == missingUserSentinel)
-                            {
-                                // CRITICAL: Clear the principal
-                                context.HttpContext.User = new System.Security.Claims.ClaimsPrincipal();
-                                context.Fail("User not found.");
-                                return;
+                                if (string.IsNullOrEmpty(tokenSecurityStamp))
+                                {
+                                    context.HttpContext.User = new System.Security.Claims.ClaimsPrincipal();
+                                    context.Fail("Token missing required security stamp claim.");
+                                    return;
+                                }
+
+                                if (string.IsNullOrEmpty(currentSecurityStamp) || tokenSecurityStamp != currentSecurityStamp)
+                                {
+                                    // CRITICAL: Clear the principal to prevent downstream middleware from seeing an authenticated user
+                                    context.HttpContext.User = new System.Security.Claims.ClaimsPrincipal();
+                                    context.Fail("Token has been revoked due to security stamp change.");
+                                }
                             }
-
-                            // Get security stamp from token (claim is required)
-                            var tokenSecurityStamp = context.Principal?.FindFirst("security_stamp")?.Value;
-
-                            if (string.IsNullOrEmpty(tokenSecurityStamp))
-                            {
-                                context.HttpContext.User = new System.Security.Claims.ClaimsPrincipal();
-                                context.Fail("Token missing required security stamp claim.");
-                                return;
-                            }
-
-                            if (string.IsNullOrEmpty(currentSecurityStamp) || tokenSecurityStamp != currentSecurityStamp)
-                            {
-                                // CRITICAL: Clear the principal to prevent downstream middleware from seeing an authenticated user
-                                context.HttpContext.User = new System.Security.Claims.ClaimsPrincipal();
-                                context.Fail("Token has been revoked due to security stamp change.");
-                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            var logger = context.HttpContext.RequestServices
+                                .GetRequiredService<ILoggerFactory>()
+                                .CreateLogger("BookStore.ApiService.TokenValidation");
+                            Logging.Log.Infrastructure.TokenValidationUnexpectedError(logger, ex);
+                            context.HttpContext.User = new System.Security.Claims.ClaimsPrincipal();
+                            context.Fail("Authentication failed.");
                         }
                     }
                 };
@@ -402,15 +414,12 @@ public static class ApplicationServicesExtensions
         }
     }
 
-    static SecurityKey CreateJwtValidationKey(IConfigurationSection jwtSettings, string algorithm)
+    static SecurityKey CreateJwtValidationKey(IConfigurationSection jwtSettings, string algorithm) => algorithm switch
     {
-        return algorithm switch
-        {
-            JwtAlgorithmHs256 => CreateHs256ValidationKey(jwtSettings),
-            JwtAlgorithmRs256 => CreateRs256ValidationKey(jwtSettings),
-            _ => throw new InvalidOperationException($"Unsupported JWT algorithm: {algorithm}")
-        };
-    }
+        JwtAlgorithmHs256 => CreateHs256ValidationKey(jwtSettings),
+        JwtAlgorithmRs256 => CreateRs256ValidationKey(jwtSettings),
+        _ => throw new InvalidOperationException($"Unsupported JWT algorithm: {algorithm}")
+    };
 
     static SecurityKey CreateHs256ValidationKey(IConfigurationSection jwtSettings)
     {
