@@ -247,6 +247,12 @@ ClockSkew = TimeSpan.FromSeconds(30)
 
 This keeps validation strict while avoiding false 401 responses from minor client/server clock drift.
 
+### Access Token Lifetime
+
+- Recommended production access token lifetime is **15-30 minutes**.
+- `JwtTokenService` defaults to **30 minutes** when `Jwt:ExpirationMinutes` is missing or invalid.
+- An explicit `Jwt:ExpirationMinutes` value still overrides the default.
+
 ### Cross-Tenant Protection
 
 `TenantSecurityMiddleware` blocks requests where the JWT's `tenant_id` differs from the `X-Tenant-ID` header:
@@ -266,7 +272,7 @@ Standard email/password login flow.
 {
   "tokenType": "Bearer",
   "accessToken": "ey...",
-  "expiresIn": 3600,
+  "expiresIn": 1800,
   "refreshToken": "..."
 }
 ```

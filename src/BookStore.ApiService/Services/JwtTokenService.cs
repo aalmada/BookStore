@@ -12,7 +12,7 @@ namespace BookStore.ApiService.Services;
 /// </summary>
 public class JwtTokenService
 {
-    const int DefaultAccessTokenExpirationMinutes = 60;
+    const int DefaultAccessTokenExpirationMinutes = 30;
     const int MinimumHs256SecretKeyBytes = 32;
     readonly IConfiguration _configuration;
 

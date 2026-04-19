@@ -133,7 +133,7 @@ public class JwtTokenServiceTests
     public async Task GenerateAccessToken_WithApplicationUser_ShouldExpireAfterConfiguredTime()
     {
         // Arrange
-        var configuration = CreateMockConfiguration(expirationMinutes: 30);
+        var configuration = CreateMockConfiguration(expirationMinutes: 45);
         var service = new JwtTokenService(configuration);
 
         var user = new BookStore.ApiService.Models.ApplicationUser
@@ -151,7 +151,7 @@ public class JwtTokenServiceTests
         var handler = new JwtSecurityTokenHandler();
         var jwtToken = handler.ReadJwtToken(token);
 
-        var expectedExpiration = DateTimeOffset.UtcNow.AddMinutes(30).UtcDateTime;
+        var expectedExpiration = DateTimeOffset.UtcNow.AddMinutes(45).UtcDateTime;
         var tolerance = TimeSpan.FromMinutes(1); // Allow 1 minute tolerance
 
         _ = await Assert.That(jwtToken.ValidTo).IsGreaterThan(expectedExpiration - tolerance);
@@ -392,7 +392,7 @@ public class JwtTokenServiceTests
 
     [Test]
     [Category("Unit")]
-    public async Task GenerateAccessToken_WithMissingExpirationMinutes_ShouldDefaultTo60Minutes()
+    public async Task GenerateAccessToken_WithMissingExpirationMinutes_ShouldDefaultTo30Minutes()
     {
         // Arrange
         var configDict = new Dictionary<string, string?>
@@ -418,7 +418,7 @@ public class JwtTokenServiceTests
         var handler = new JwtSecurityTokenHandler();
         var jwtToken = handler.ReadJwtToken(token);
 
-        var expectedExpiration = DateTimeOffset.UtcNow.AddMinutes(60).UtcDateTime;
+        var expectedExpiration = DateTimeOffset.UtcNow.AddMinutes(30).UtcDateTime;
         var tolerance = TimeSpan.FromMinutes(1);
 
         _ = await Assert.That(jwtToken.ValidTo).IsGreaterThan(expectedExpiration - tolerance);
@@ -445,7 +445,7 @@ public class JwtTokenServiceTests
 
     [Test]
     [Category("Unit")]
-    public async Task GetAccessTokenExpiresInSeconds_WithInvalidConfiguredValue_ShouldDefaultTo3600()
+    public async Task GetAccessTokenExpiresInSeconds_WithInvalidConfiguredValue_ShouldDefaultTo1800()
     {
         // Arrange
         var configDict = new Dictionary<string, string?>
@@ -466,7 +466,7 @@ public class JwtTokenServiceTests
         var expiresIn = service.GetAccessTokenExpiresInSeconds();
 
         // Assert
-        _ = await Assert.That(expiresIn).IsEqualTo(3600);
+        _ = await Assert.That(expiresIn).IsEqualTo(1800);
     }
 
     #endregion
