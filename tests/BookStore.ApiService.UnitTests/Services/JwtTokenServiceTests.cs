@@ -392,7 +392,7 @@ public class JwtTokenServiceTests
 
     [Test]
     [Category("Unit")]
-    public async Task GenerateAccessToken_WithMissingExpirationMinutes_ShouldDefaultTo30Minutes()
+    public async Task GenerateAccessToken_WithMissingExpirationMinutes_ShouldDefaultTo15Minutes()
     {
         // Arrange
         var configDict = new Dictionary<string, string?>
@@ -418,7 +418,7 @@ public class JwtTokenServiceTests
         var handler = new JwtSecurityTokenHandler();
         var jwtToken = handler.ReadJwtToken(token);
 
-        var expectedExpiration = DateTimeOffset.UtcNow.AddMinutes(30).UtcDateTime;
+        var expectedExpiration = DateTimeOffset.UtcNow.AddMinutes(15).UtcDateTime;
         var tolerance = TimeSpan.FromMinutes(1);
 
         _ = await Assert.That(jwtToken.ValidTo).IsGreaterThan(expectedExpiration - tolerance);
@@ -445,7 +445,7 @@ public class JwtTokenServiceTests
 
     [Test]
     [Category("Unit")]
-    public async Task GetAccessTokenExpiresInSeconds_WithInvalidConfiguredValue_ShouldDefaultTo1800()
+    public async Task GetAccessTokenExpiresInSeconds_WithInvalidConfiguredValue_ShouldDefaultTo900()
     {
         // Arrange
         var configDict = new Dictionary<string, string?>
@@ -466,7 +466,7 @@ public class JwtTokenServiceTests
         var expiresIn = service.GetAccessTokenExpiresInSeconds();
 
         // Assert
-        _ = await Assert.That(expiresIn).IsEqualTo(1800);
+        _ = await Assert.That(expiresIn).IsEqualTo(900);
     }
 
     #endregion
@@ -639,7 +639,7 @@ public class JwtTokenServiceTests
         string secretKey = "super-secret-key-that-is-long-enough-for-hmacsha256-algorithm",
         string issuer = "test-issuer",
         string audience = "test-audience",
-        int expirationMinutes = 60,
+        int expirationMinutes = 15,
         string? rs256PrivateKeyPem = null,
         string? rs256PublicKeyPem = null)
     {

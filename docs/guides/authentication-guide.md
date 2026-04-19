@@ -249,9 +249,10 @@ This keeps validation strict while avoiding false 401 responses from minor clien
 
 ### Access Token Lifetime
 
-- Recommended production access token lifetime is **15-30 minutes**.
-- `JwtTokenService` defaults to **30 minutes** when `Jwt:ExpirationMinutes` is missing or invalid.
+- Production access token lifetime is **15 minutes** (per OWASP recommendations for stateless JWTs).
+- `JwtTokenService` defaults to **15 minutes** when `Jwt:ExpirationMinutes` is missing or invalid.
 - An explicit `Jwt:ExpirationMinutes` value still overrides the default.
+- Refresh token rotation provides seamless session continuity despite the short access token lifetime.
 
 ### Cross-Tenant Protection
 
@@ -272,7 +273,7 @@ Standard email/password login flow.
 {
   "tokenType": "Bearer",
   "accessToken": "ey...",
-  "expiresIn": 1800,
+  "expiresIn": 900,
   "refreshToken": "..."
 }
 ```
