@@ -133,6 +133,7 @@ The application exposes the following endpoints for Passkey operations:
     *   **Request**: `RegisterPasskeyRequest { CredentialJson: string, Email: string?, UserId: string? }`
     *   **Logic**:
         *   Verifies the WebAuthn attestation.
+        *   On attestation failure, returns a generic RFC7807 `ProblemDetails` message (`Attestation failed. Please try again.`) while writing detailed diagnostics to server logs.
         *   Uses the `UserId` from the request (sent by client from options response) to create the user.
         *   If **Authenticated**: Adds passkey to existing user.
         *   If **Anonymous**: Creates a new `ApplicationUser` with the provided Email and UserId. **Logs the user in immediately.**

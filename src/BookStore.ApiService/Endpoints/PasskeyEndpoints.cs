@@ -136,7 +136,7 @@ public static class PasskeyEndpoints
                     if (!attestation.Succeeded)
                     {
                         Log.Users.PasskeyAttestationFailed(logger, user.Email, attestation.Failure?.Message);
-                        return Result.Failure(Error.Validation(ErrorCodes.Passkey.AttestationFailed, $"Attestation failed: {attestation.Failure?.Message}")).ToProblemDetails();
+                        return Result.Failure(Error.Validation(ErrorCodes.Passkey.AttestationFailed, "Attestation failed. Please try again.")).ToProblemDetails();
                     }
 
                     if (attestation.Passkey is null)
@@ -214,7 +214,8 @@ public static class PasskeyEndpoints
                     var attestationNew = await signInManager.PerformPasskeyAttestationAsync(request.CredentialJson);
                     if (!attestationNew.Succeeded)
                     {
-                        return Result.Failure(Error.Validation(ErrorCodes.Passkey.AttestationFailed, $"Attestation failed: {attestationNew.Failure?.Message}")).ToProblemDetails();
+                        Log.Users.PasskeyAttestationFailed(logger, request.Email, attestationNew.Failure?.Message);
+                        return Result.Failure(Error.Validation(ErrorCodes.Passkey.AttestationFailed, "Attestation failed. Please try again.")).ToProblemDetails();
                     }
 
                     // Capture Device Name from User-Agent

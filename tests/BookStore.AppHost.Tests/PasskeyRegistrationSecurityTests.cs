@@ -15,6 +15,7 @@ namespace BookStore.AppHost.Tests;
 public class PasskeyRegistrationSecurityTests
 {
     [Test]
+    [Category("PasskeyAttestationSanitization")]
     public async Task PasskeyRegistration_ConcurrentAttempts_OnlyOneSucceeds()
     {
         // Arrange: Create a REAL credential JSON via the virtual WebAuthn authenticator.
@@ -62,6 +63,15 @@ public class PasskeyRegistrationSecurityTests
         var successCount = results.Count(r =>
             r.Item1 is HttpStatusCode.OK or HttpStatusCode.Created or HttpStatusCode.NoContent);
         _ = await Assert.That(successCount).IsEqualTo(1);
+
+        // Security: Failed responses must not leak internal attestation details.
+        foreach (var responseBody in results
+                     .Where(r => r.Item1 is not (HttpStatusCode.OK or HttpStatusCode.Created or HttpStatusCode.NoContent))
+                     .Select(r => r.Item2))
+        {
+            _ = await Assert.That(responseBody).DoesNotContain("Attestation failed:");
+            _ = await Assert.That(responseBody).DoesNotContain("challenge has already been consumed");
+        }
 
         // Assert: Exactly ONE user was created in the database for this email.
         await using var store = await DatabaseHelpers.GetDocumentStoreAsync();
