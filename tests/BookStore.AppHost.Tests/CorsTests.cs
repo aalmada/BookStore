@@ -56,4 +56,26 @@ public class CorsTests
         var hasAllowOrigin = response.Headers.TryGetValues("Access-Control-Allow-Origin", out _);
         _ = await Assert.That(hasAllowOrigin).IsFalse();
     }
+
+    [Test]
+    public async Task OptionsRequest_WithInsecureHttpLocalhostOrigin_ShouldNotReturnCorsHeaders()
+    {
+        // Arrange
+        var app = GlobalHooks.App!;
+        var notificationService = GlobalHooks.NotificationService!;
+        var httpClient = app.CreateHttpClient("apiservice");
+
+        _ = await notificationService.WaitForResourceHealthyAsync("apiservice", CancellationToken.None).WaitAsync(TestConstants.DefaultTimeout);
+
+        // Act
+        var request = new HttpRequestMessage(HttpMethod.Options, "/api/books");
+        request.Headers.Add("Origin", "http://localhost:7260");
+        request.Headers.Add("Access-Control-Request-Method", "GET");
+
+        var response = await httpClient.SendAsync(request);
+
+        // Assert
+        var hasAllowOrigin = response.Headers.TryGetValues("Access-Control-Allow-Origin", out _);
+        _ = await Assert.That(hasAllowOrigin).IsFalse();
+    }
 }

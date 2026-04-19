@@ -66,24 +66,39 @@ sequenceDiagram
 
 Passkeys require binding to a specific domain (Origin) to prevent phishing.
 
-**appsettings.json**:
+**appsettings.json** (production-safe default):
 ```json
 {
   "Authentication": {
     "Passkey": {
       "ServerDomain": "localhost",
       "AllowedOrigins": [
-        "https://localhost:7260",
-        "http://localhost:7260"
+                "https://localhost:7260"
       ]
     }
   }
 }
 ```
 
+**appsettings.Development.json** (optional local override):
+```json
+{
+    "Authentication": {
+        "Passkey": {
+            "AllowedOrigins": [
+                "https://localhost:7260",
+                "http://localhost:7260"
+            ]
+        }
+    }
+}
+```
+
 **Key Settings**:
 - **ServerDomain**: Public domain of the API (e.g. `bookstore.com` or `localhost`).
 - **AllowedOrigins**: List of origins allowed to perform passkey operations (e.g. your Web App URL).
+    - **Production**: HTTPS origins only.
+    - **Development**: localhost HTTP/HTTPS origins can be used for local testing.
 
 ### Rate Limiting
 
@@ -94,7 +109,9 @@ Rate limiting is enforced on all passkey endpoints via the `AuthPolicy`.
 
 > [!WARNING]
 > **Production Configuration**
-> In production, you **MUST** set `ServerDomain` to your public domain (e.g., `bookstore.com`) without protocol or port. Use environment variables: `Authentication__Passkey__ServerDomain=bookstore.com`.
+> 1. In production, you **MUST** set `ServerDomain` to your public domain (e.g., `bookstore.com`) without protocol or port.
+> 2. In production, `AllowedOrigins` must contain HTTPS-only origins.
+> 3. Use environment variables: `Authentication__Passkey__ServerDomain=bookstore.com` and `Authentication__Passkey__AllowedOrigins__0=https://bookstore.com`.
 
 ## API Endpoints
 

@@ -771,10 +771,13 @@ Required for WebAuthn/FIDO2 operations.
     - **Development**: Use `localhost`.
     - **Production**: **MUST** match your public domain (e.g., `bookstore.com`). Do not include protocol or port.
 - **AllowedOrigins**: List of valid origins that can request passkey operations. Used for CORS and WebAuthn validation.
+  - **Development**: You may allow localhost origins for local testing.
+  - **Production**: **MUST** be HTTPS-only origins. Do not allow HTTP origins.
 
 > [!WARNING]
 > **Production Criticality**
-> Failing to set `ServerDomain` correctly in production will cause Passkey registration and login to fail with "Domain mismatch" or "NotAllowed" errors.
+> 1. Failing to set `ServerDomain` correctly in production will cause passkey registration and login to fail with "Domain mismatch" or "NotAllowed" errors.
+> 2. `AllowedOrigins` must only contain HTTPS origins in production.
 
 ### Email Configuration
 
