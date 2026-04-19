@@ -13,6 +13,7 @@ namespace BookStore.ApiService.Infrastructure.Extensions;
 /// </summary>
 public static class ApplicationServicesExtensions
 {
+    const int MinimumHs256SecretKeyBytes = 32;
     const string JwtAlgorithmHs256 = "HS256";
     const string JwtAlgorithmRs256 = "RS256";
 
@@ -374,10 +375,19 @@ public static class ApplicationServicesExtensions
 
         var secretKey = jwtSettings["SecretKey"];
 
+        if (string.IsNullOrWhiteSpace(secretKey))
+        {
+            throw new InvalidOperationException("HS256 requires Jwt:SecretKey to be configured.");
+        }
+
+        if (System.Text.Encoding.UTF8.GetByteCount(secretKey) < MinimumHs256SecretKeyBytes)
+        {
+            throw new InvalidOperationException("HS256 requires Jwt:SecretKey to be at least 32 bytes when UTF-8 encoded.");
+        }
+
         // SECURITY: Validate JWT secret key in production
         if (!environment.IsDevelopment() &&
-            (string.IsNullOrEmpty(secretKey) ||
-             secretKey == "your-secret-key-must-be-at-least-32-characters-long-for-hs256"))
+            secretKey == "your-secret-key-must-be-at-least-32-characters-long-for-hs256")
         {
             throw new InvalidOperationException(
                 "Production JWT secret key must be configured via environment variables or secure key vault. " +
@@ -399,6 +409,12 @@ public static class ApplicationServicesExtensions
     {
         var secretKey = jwtSettings["SecretKey"]
             ?? throw new InvalidOperationException("JWT SecretKey not configured");
+
+        if (System.Text.Encoding.UTF8.GetByteCount(secretKey) < MinimumHs256SecretKeyBytes)
+        {
+            throw new InvalidOperationException("JWT HS256 SecretKey must be at least 32 bytes when UTF-8 encoded");
+        }
+
         return new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(secretKey));
     }
 

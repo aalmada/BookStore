@@ -12,6 +12,7 @@ namespace BookStore.ApiService.Services;
 public class JwtTokenService
 {
     const int DefaultAccessTokenExpirationMinutes = 60;
+    const int MinimumHs256SecretKeyBytes = 32;
     const string JwtAlgorithmHs256 = "HS256";
     const string JwtAlgorithmRs256 = "RS256";
     readonly IConfiguration _configuration;
@@ -89,6 +90,11 @@ public class JwtTokenService
     {
         var secretKey = jwtSettings["SecretKey"]
             ?? throw new InvalidOperationException("JWT SecretKey not configured");
+
+        if (Encoding.UTF8.GetByteCount(secretKey) < MinimumHs256SecretKeyBytes)
+        {
+            throw new InvalidOperationException("JWT HS256 SecretKey must be at least 32 bytes when UTF-8 encoded");
+        }
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
         return new SigningCredentials(key, SecurityAlgorithms.HmacSha256);

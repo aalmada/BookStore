@@ -47,6 +47,30 @@ graph TB
 - **`MartenUserStore`**: Custom Identity store implementing `IUserSecurityStampStore`, `IUserLockoutStore`, and `IUserTwoFactorStore` for full Identity compatibility.
 - **Passkey Integration**: Passkey login flow (`/account/assertion/result`) also results in the issuance of standard JWTs, making the frontend agnostic to *how* the user logged in.
 
+### JWT Signing Key Requirements
+
+- **HS256 minimum secret length**: `Jwt:SecretKey` must be at least **32 bytes** when encoded as UTF-8.
+- Startup validation enforces this rule for HS256 configuration.
+- `JwtTokenService` also enforces this rule when creating signing credentials as a defense-in-depth guard.
+- In production, the development placeholder secret remains blocked even if it satisfies length requirements.
+
+### Tenant Admin Seeding Password
+
+- Tenant admin seeding now requires an explicit password outside Development/Test contexts.
+- Configure a default seed password with `Seeding:AdminPassword` (or the environment variable `Seeding__AdminPassword`) when startup seeding is enabled.
+- In Development/Test only, if no explicit password is provided, the legacy fallback `Admin123!` is still used to keep local and automated test flows deterministic.
+
+Example configuration:
+
+```json
+{
+    "Seeding": {
+        "Enabled": true,
+        "AdminPassword": "ChangeThisForYourEnvironment!"
+    }
+}
+```
+
 ## Multi-Tenancy Security
 
 Authentication is tightly integrated with multi-tenancy to prevent cross-tenant access.

@@ -265,6 +265,21 @@ public class JwtTokenServiceTests
 
     [Test]
     [Category("Unit")]
+    public async Task GenerateAccessToken_WithHs256SecretShorterThan32Bytes_ShouldThrowInvalidOperationException()
+    {
+        // Arrange
+        var configuration = CreateMockConfiguration(secretKey: "short-hs256-secret");
+        var service = new JwtTokenService(configuration);
+        var claims = new List<Claim> { new(ClaimTypes.Name, "test") };
+
+        // Act + Assert
+        _ = await Assert.That(() => service.GenerateAccessToken(claims))
+            .Throws<InvalidOperationException>()
+            .WithMessage("JWT HS256 SecretKey must be at least 32 bytes when UTF-8 encoded");
+    }
+
+    [Test]
+    [Category("Unit")]
     public async Task GenerateAccessToken_WithRs256Algorithm_ShouldGenerateTokenWithRs256Header()
     {
         // Arrange

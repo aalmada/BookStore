@@ -76,6 +76,63 @@ public class ApplicationServicesExtensionsTests
         _ = await Assert.That(jwtOptions.TokenValidationParameters.IssuerSigningKey).IsTypeOf<RsaSecurityKey>();
     }
 
+    [Test]
+    [Category("Unit")]
+    public async Task AddApplicationServices_WithHs256SecretShorterThan32Bytes_ShouldThrowInvalidOperationException()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Jwt:Algorithm"] = "HS256",
+                ["Jwt:SecretKey"] = "too-short-secret",
+                ["Jwt:Issuer"] = "BookStore.ApiService",
+                ["Jwt:Audience"] = "BookStore.Web",
+                ["Jwt:ExpirationMinutes"] = "60",
+                ["Authentication:Passkey:ServerDomain"] = "localhost"
+            })
+            .Build();
+
+        var environment = new TestWebHostEnvironment();
+
+        // Act + Assert
+        _ = await Assert.That(() => services.AddApplicationServices(configuration, environment))
+            .Throws<InvalidOperationException>()
+            .WithMessage("HS256 requires Jwt:SecretKey to be at least 32 bytes when UTF-8 encoded.");
+    }
+
+    [Test]
+    [Category("Unit")]
+    public async Task AddApplicationServices_WithHs256SecretExactly32Utf8Bytes_ShouldConfigureSymmetricValidationKey()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        var thirtyTwoByteSecret = new string('a', 32);
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Jwt:Algorithm"] = "HS256",
+                ["Jwt:SecretKey"] = thirtyTwoByteSecret,
+                ["Jwt:Issuer"] = "BookStore.ApiService",
+                ["Jwt:Audience"] = "BookStore.Web",
+                ["Jwt:ExpirationMinutes"] = "60",
+                ["Authentication:Passkey:ServerDomain"] = "localhost"
+            })
+            .Build();
+
+        var environment = new TestWebHostEnvironment();
+
+        // Act
+        _ = services.AddApplicationServices(configuration, environment);
+        await using var provider = services.BuildServiceProvider();
+        var optionsMonitor = provider.GetRequiredService<IOptionsMonitor<JwtBearerOptions>>();
+        var jwtOptions = optionsMonitor.Get(JwtBearerDefaults.AuthenticationScheme);
+
+        // Assert
+        _ = await Assert.That(jwtOptions.TokenValidationParameters.IssuerSigningKey).IsTypeOf<SymmetricSecurityKey>();
+    }
+
     sealed class TestWebHostEnvironment : IWebHostEnvironment
     {
         public string ApplicationName { get; set; } = "BookStore.ApiService.UnitTests";
