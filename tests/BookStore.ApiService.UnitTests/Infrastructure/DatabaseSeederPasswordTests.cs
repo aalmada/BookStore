@@ -49,13 +49,11 @@ public class DatabaseSeederPasswordTests
     [Test]
     [Category("Unit")]
     public async Task ResolveAdminSeedPassword_WithoutPasswords_OutsideDevelopment_ShouldThrow()
-    {
         // Act + Assert
-        _ = await Assert.That(() => DatabaseSeeder.ResolveAdminSeedPassword(
+        => _ = await Assert.That(() => DatabaseSeeder.ResolveAdminSeedPassword(
                 password: null,
                 defaultPassword: null,
                 allowInsecureDevelopmentFallback: false))
             .Throws<InvalidOperationException>()
             .WithMessage("Tenant admin seeding requires an explicit password outside Development/Test. Provide the command password or configure Seeding:AdminPassword.");
-    }
 }

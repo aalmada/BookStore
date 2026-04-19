@@ -25,7 +25,6 @@ public class DatabaseSeeder(
 {
     const string DevelopmentFallbackAdminPassword = "Admin123!";
 
-
     public async Task SeedTenantsAsync(string[] tenantIds)
     {
         // Use a session on the 'default' tenant to manage Tenant documents

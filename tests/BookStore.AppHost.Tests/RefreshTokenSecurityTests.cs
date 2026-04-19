@@ -1,5 +1,5 @@
-using System.Net;
 using System.IdentityModel.Tokens.Jwt;
+using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using BookStore.ApiService.Models;
