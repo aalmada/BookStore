@@ -43,6 +43,7 @@ graph TB
 - **`JwtTokenService`**: Central service for generating access tokens, rotating refresh tokens, and building standardized user claims (supports `HS256` by default and optional `RS256` signing).
 - **`JwtAuthenticationEndpoints`**:
     - `POST /account/login`: Exchange credentials for tokens.
+    - `POST /account/resend-verification`: Returns a generic success payload to avoid account enumeration; validation failures (for example, missing email) return RFC7807 `ProblemDetails` with a machine-readable error code.
     - `POST /account/refresh-token`: Exchange refresh token for new access token (with automatic rotation).
 - **`MartenUserStore`**: Custom Identity store implementing `IUserSecurityStampStore`, `IUserLockoutStore`, and `IUserTwoFactorStore` for full Identity compatibility.
 - **Passkey Integration**: Passkey login flow (`/account/assertion/result`) also results in the issuance of standard JWTs, making the frontend agnostic to *how* the user logged in.

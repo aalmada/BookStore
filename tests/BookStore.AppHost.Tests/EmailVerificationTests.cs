@@ -79,6 +79,23 @@ public class EmailVerificationTests
         => await _client.ResendVerificationAsync(new ResendVerificationRequest("nonexistent@example.com"));
 
     [Test]
+    public async Task ResendVerification_WithMissingEmail_ReturnsProblemDetails()
+    {
+        var exception = await Assert.That(async () =>
+            await _client.ResendVerificationAsync(new ResendVerificationRequest(string.Empty)))
+            .Throws<ApiException>();
+
+        _ = await Assert.That(exception!.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+
+        var problem = await exception.GetContentAsAsync<AuthenticationHelpers.ValidationProblemDetails>();
+        _ = await Assert.That(problem).IsNotNull();
+        _ = await Assert.That(problem!.Title).IsEqualTo("Bad Request");
+        _ = await Assert.That(problem.Status).IsEqualTo((int)HttpStatusCode.BadRequest);
+        _ = await Assert.That(problem.Detail).IsEqualTo("Email is required.");
+        _ = await Assert.That(problem.Error).IsEqualTo(ErrorCodes.Auth.InvalidRequest);
+    }
+
+    [Test]
     public async Task ResendVerification_ForAlreadyConfirmedUser_ShouldReturnGenericSuccess()
     {
         // Arrange

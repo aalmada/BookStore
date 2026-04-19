@@ -264,7 +264,7 @@ public static class JwtAuthenticationEndpoints
     {
         if (string.IsNullOrWhiteSpace(request.Email))
         {
-            return Results.BadRequest("Email is required.");
+            return Result.Failure(Error.Validation(ErrorCodes.Auth.InvalidRequest, "Email is required.")).ToProblemDetails();
         }
 
         Log.Users.ResendVerificationAttempt(logger, request.Email);
