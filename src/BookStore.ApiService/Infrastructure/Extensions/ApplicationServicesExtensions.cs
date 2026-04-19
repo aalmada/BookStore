@@ -1,6 +1,7 @@
 using Marten;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Options;
 
 namespace BookStore.ApiService.Infrastructure.Extensions;
@@ -258,37 +259,52 @@ public static class ApplicationServicesExtensions
                     },
                     OnTokenValidated = async context =>
                     {
-                        // Get user directly from Marten session to bypass identity map caching
                         var session = context.HttpContext.RequestServices.GetRequiredService<Marten.IDocumentSession>();
+                        var cache = context.HttpContext.RequestServices.GetRequiredService<HybridCache>();
+                        var tenantContext = context.HttpContext.RequestServices.GetRequiredService<Infrastructure.Tenant.ITenantContext>();
                         var userId = context.Principal?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
                         if (!string.IsNullOrEmpty(userId) && Guid.TryParse(userId, out var userGuid))
                         {
-                            // Use Query instead of Load to bypass Marten's identity map caching
-                            var user = await session.Query<Models.ApplicationUser>()
-                                .FirstOrDefaultAsync(u => u.Id == userGuid, context.HttpContext.RequestAborted);
+                            var cacheKey = SecurityStampCache.GetCacheKey(tenantContext.TenantId, userGuid);
+                            var cacheTag = SecurityStampCache.GetCacheTag(tenantContext.TenantId, userGuid);
 
-                            if (user != null)
-                            {
-                                // Get security stamp from token (null if claim doesn't exist)
-                                var tokenSecurityStamp = context.Principal?.FindFirst("security_stamp")?.Value;
+                            const string missingUserSentinel = "__missing__";
 
-                                // Only validate if token HAS a security_stamp claim and user HAS a security stamp
-                                // This allows old tokens without the claim to work (backward compatibility)
-                                if (!string.IsNullOrEmpty(tokenSecurityStamp) &&
-                                    !string.IsNullOrEmpty(user.SecurityStamp) &&
-                                    tokenSecurityStamp != user.SecurityStamp)
+                            var currentSecurityStamp = await cache.GetOrCreateAsync(
+                                key: cacheKey,
+                                factory: async cancellationToken =>
                                 {
-                                    // CRITICAL: Clear the principal to prevent downstream middleware from seeing an authenticated user
-                                    context.HttpContext.User = new System.Security.Claims.ClaimsPrincipal();
-                                    context.Fail("Token has been revoked due to security stamp change.");
-                                }
-                            }
-                            else
+                                    // Use Query instead of Load to bypass Marten's identity map caching
+                                    var user = await session.Query<Models.ApplicationUser>()
+                                        .FirstOrDefaultAsync(u => u.Id == userGuid, cancellationToken);
+
+                                    return user?.SecurityStamp ?? missingUserSentinel;
+                                },
+                                options: SecurityStampCache.CreateEntryOptions(),
+                                tags: [cacheTag],
+                                cancellationToken: context.HttpContext.RequestAborted);
+
+                            if (currentSecurityStamp == missingUserSentinel)
                             {
                                 // CRITICAL: Clear the principal
                                 context.HttpContext.User = new System.Security.Claims.ClaimsPrincipal();
                                 context.Fail("User not found.");
+                                return;
+                            }
+
+                            // Get security stamp from token (null if claim doesn't exist)
+                            var tokenSecurityStamp = context.Principal?.FindFirst("security_stamp")?.Value;
+
+                            // Only validate if token HAS a security_stamp claim and user HAS a security stamp
+                            // This allows old tokens without the claim to work (backward compatibility)
+                            if (!string.IsNullOrEmpty(tokenSecurityStamp) &&
+                                !string.IsNullOrEmpty(currentSecurityStamp) &&
+                                tokenSecurityStamp != currentSecurityStamp)
+                            {
+                                // CRITICAL: Clear the principal to prevent downstream middleware from seeing an authenticated user
+                                context.HttpContext.User = new System.Security.Claims.ClaimsPrincipal();
+                                context.Fail("Token has been revoked due to security stamp change.");
                             }
                         }
                     }

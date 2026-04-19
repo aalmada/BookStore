@@ -13,6 +13,7 @@ using BookStore.Shared.Models;
 using Marten;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Options;
 
 namespace BookStore.ApiService.Endpoints;
@@ -466,7 +467,10 @@ public static class JwtAuthenticationEndpoints
     static async Task<IResult> ChangePasswordAsync(
         [FromBody] ChangePasswordRequest request,
         UserManager<ApplicationUser> userManager,
-        ClaimsPrincipal user)
+        HybridCache cache,
+        ITenantContext tenantContext,
+        ClaimsPrincipal user,
+        CancellationToken cancellationToken)
     {
         var appUser = await userManager.GetUserAsync(user);
         if (appUser == null)
@@ -483,7 +487,8 @@ public static class JwtAuthenticationEndpoints
         if (result.Succeeded)
         {
             // ChangePasswordAsync already calls UpdateSecurityStampAsync internally,
-            // so no explicit call is needed here.
+            // so no explicit call is needed here. We still invalidate cache so revocation is immediate.
+            await SecurityStampCache.InvalidateAsync(cache, tenantContext.TenantId, appUser.Id, cancellationToken);
             return Results.Ok(new { message = "Password changed successfully." });
         }
 
@@ -493,6 +498,8 @@ public static class JwtAuthenticationEndpoints
     static async Task<IResult> RemovePasswordAsync(
         [FromBody] RemovePasswordRequest request,
         UserManager<ApplicationUser> userManager,
+        HybridCache cache,
+        ITenantContext tenantContext,
         IUserStore<ApplicationUser> userStore,
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
@@ -525,6 +532,7 @@ public static class JwtAuthenticationEndpoints
             // RemovePasswordAsync does NOT update the security stamp internally in ASP.NET Identity,
             // so we do it explicitly to invalidate all existing JWTs.
             _ = await userManager.UpdateSecurityStampAsync(appUser);
+            await SecurityStampCache.InvalidateAsync(cache, tenantContext.TenantId, appUser.Id, cancellationToken);
             return Results.Ok(new { message = "Password removed successfully." });
         }
 
@@ -534,7 +542,10 @@ public static class JwtAuthenticationEndpoints
     static async Task<IResult> AddPasswordAsync(
         [FromBody] AddPasswordRequest request,
         UserManager<ApplicationUser> userManager,
-        ClaimsPrincipal user)
+        HybridCache cache,
+        ITenantContext tenantContext,
+        ClaimsPrincipal user,
+        CancellationToken cancellationToken)
     {
         var appUser = await userManager.GetUserAsync(user);
         if (appUser == null)
@@ -548,6 +559,7 @@ public static class JwtAuthenticationEndpoints
             // AddPasswordAsync does NOT update the security stamp internally in ASP.NET Identity,
             // so we do it explicitly to invalidate all existing JWTs.
             _ = await userManager.UpdateSecurityStampAsync(appUser);
+            await SecurityStampCache.InvalidateAsync(cache, tenantContext.TenantId, appUser.Id, cancellationToken);
             return Results.Ok(new { message = "Password set successfully." });
         }
 

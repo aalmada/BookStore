@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Text.Json;
+using BookStore.ApiService.Infrastructure;
 using BookStore.ApiService.Infrastructure.Extensions;
 using BookStore.ApiService.Infrastructure.Logging;
 using BookStore.ApiService.Infrastructure.Tenant;
@@ -12,6 +13,7 @@ using Marten;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Extensions.Caching.Hybrid;
 
 namespace BookStore.ApiService.Endpoints;
 
@@ -107,6 +109,7 @@ public static class PasskeyEndpoints
             ITenantContext tenantContext,
             ITenantStore tenantStore,
             BookStore.ApiService.Services.JwtTokenService tokenService,
+            HybridCache cache,
             Wolverine.IMessageBus bus,
             ILogger<Program> logger,
             Microsoft.Extensions.Options.IOptions<Infrastructure.Email.EmailOptions> emailOptions,
@@ -154,6 +157,7 @@ public static class PasskeyEndpoints
                     }
 
                     _ = await userManager.UpdateSecurityStampAsync(user);
+                    await SecurityStampCache.InvalidateAsync(cache, tenantContext.TenantId, user.Id, cancellationToken);
 
                     Log.Users.PasskeyRegistrationSuccessful(logger, user.Email);
                     return Results.Ok(new { Message = "Passkey added." });
@@ -258,6 +262,7 @@ public static class PasskeyEndpoints
                         }
 
                         _ = await userManager.UpdateSecurityStampAsync(newUser);
+                        await SecurityStampCache.InvalidateAsync(cache, tenantContext.TenantId, newUser.Id, cancellationToken);
                     }
                     else
                     {
@@ -461,6 +466,8 @@ public static class PasskeyEndpoints
             string id,
             HttpContext context,
             UserManager<ApplicationUser> userManager,
+            HybridCache cache,
+            ITenantContext tenantContext,
             IUserStore<ApplicationUser> userStore,
             CancellationToken cancellationToken) =>
         {
@@ -490,6 +497,7 @@ public static class PasskeyEndpoints
                     // UpdateSecurityStampAsync persists the passkey removal AND rotates the
                     // security stamp, which immediately invalidates any existing JWTs.
                     _ = await userManager.UpdateSecurityStampAsync(user);
+                    await SecurityStampCache.InvalidateAsync(cache, tenantContext.TenantId, user.Id, cancellationToken);
                     return Results.Ok(new { Message = "Passkey deleted." });
                 }
 

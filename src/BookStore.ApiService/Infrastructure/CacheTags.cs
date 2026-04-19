@@ -22,8 +22,17 @@ public static class CacheTags
     public const string PublisherItemPrefix = "publisher";
     public const string PublisherList = "publishers";
 
+    // Security stamp tags
+    public const string SecurityStampPrefix = "security-stamp";
+
     /// <summary>
     /// Creates a cache tag for a specific item by ID.
     /// </summary>
     public static string ForItem(string prefix, Guid id) => $"{prefix}:{id}";
+
+    /// <summary>
+    /// Creates a cache tag for a specific user's security stamp in a tenant.
+    /// </summary>
+    public static string ForSecurityStamp(string tenantId, Guid userId)
+        => $"{SecurityStampPrefix}:{tenantId}:{userId:D}";
 }
