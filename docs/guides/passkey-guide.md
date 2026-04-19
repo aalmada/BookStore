@@ -134,6 +134,7 @@ The application exposes the following endpoints for Passkey operations:
     *   **Logic**:
         *   Verifies the WebAuthn attestation.
         *   On attestation failure, returns a generic RFC7807 `ProblemDetails` message (`Attestation failed. Please try again.`) while writing detailed diagnostics to server logs.
+        *   Derives the passkey device name from the request `User-Agent` and stores a sanitized, HTML-encoded value to prevent unsafe metadata persistence.
         *   Uses the `UserId` from the request (sent by client from options response) to create the user.
         *   If **Authenticated**: Adds passkey to existing user.
         *   If **Anonymous**: Creates a new `ApplicationUser` with the provided Email and UserId. **Logs the user in immediately.**

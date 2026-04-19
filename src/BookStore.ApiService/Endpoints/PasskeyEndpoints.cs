@@ -147,7 +147,7 @@ public static class PasskeyEndpoints
 
                     // Capture Device Name from User-Agent
                     var clientUserAgent = context.Request.Headers.UserAgent.ToString();
-                    attestation.Passkey.Name = BookStore.ApiService.Infrastructure.DeviceNameParser.Parse(clientUserAgent);
+                    attestation.Passkey.Name = BookStore.ApiService.Infrastructure.DeviceNameParser.ParseForStorage(clientUserAgent);
 
                     var addResult = await userManager.AddOrUpdatePasskeyAsync(user, attestation.Passkey);
                     if (!addResult.Succeeded)
@@ -222,7 +222,7 @@ public static class PasskeyEndpoints
                     var registrationUserAgent = context.Request.Headers.UserAgent.ToString();
                     if (attestationNew.Passkey != null)
                     {
-                        attestationNew.Passkey.Name = BookStore.ApiService.Infrastructure.DeviceNameParser.Parse(registrationUserAgent);
+                        attestationNew.Passkey.Name = BookStore.ApiService.Infrastructure.DeviceNameParser.ParseForStorage(registrationUserAgent);
                     }
 
                     Log.Users.PasskeyCreatingNewUser(logger, newUserGuid, userIdSource);

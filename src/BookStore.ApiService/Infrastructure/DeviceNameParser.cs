@@ -1,3 +1,6 @@
+using System.Text;
+using System.Text.Encodings.Web;
+
 namespace BookStore.ApiService.Infrastructure;
 
 public static class DeviceNameParser
@@ -76,5 +79,39 @@ public static class DeviceNameParser
 
         // Fallback: truncate UA if too long
         return ua.Length > 30 ? ua[..27] + "..." : ua;
+    }
+
+    /// <summary>
+    /// Parses the User-Agent and returns a storage-safe device name for passkey metadata.
+    /// </summary>
+    public static string ParseForStorage(string userAgent)
+    {
+        var parsedDeviceName = Parse(userAgent);
+        return EncodeAndSanitize(parsedDeviceName);
+    }
+
+    static string EncodeAndSanitize(string deviceName)
+    {
+        if (string.IsNullOrWhiteSpace(deviceName))
+        {
+            return "Unknown Device";
+        }
+
+        var builder = new StringBuilder(deviceName.Length);
+        foreach (var ch in deviceName)
+        {
+            if (!char.IsControl(ch))
+            {
+                _ = builder.Append(ch);
+            }
+        }
+
+        var normalized = builder.ToString().Trim();
+        if (normalized.Length == 0)
+        {
+            return "Unknown Device";
+        }
+
+        return HtmlEncoder.Default.Encode(normalized);
     }
 }

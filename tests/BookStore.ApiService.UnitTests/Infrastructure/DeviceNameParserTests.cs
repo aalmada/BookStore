@@ -64,4 +64,24 @@ public class DeviceNameParserTests
         _ = await Assert.That(result).StartsWith("MyCustomApp/1.0 (Some long ");
         _ = await Assert.That(result).EndsWith("...");
     }
+
+    [Test]
+    public async Task ParseForStorage_WithNormalBrowserUserAgent_ReturnsExpectedDeviceName()
+    {
+        var userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:122.0) Gecko/20100101 Firefox/122.0";
+
+        var result = DeviceNameParser.ParseForStorage(userAgent);
+
+        _ = await Assert.That(result).IsEqualTo("Firefox on Windows");
+    }
+
+    [Test]
+    public async Task ParseForStorage_WithMaliciousUserAgent_EncodesStoredValue()
+    {
+        var userAgent = "<script>alert('xss')</script>";
+
+        var result = DeviceNameParser.ParseForStorage(userAgent);
+
+        _ = await Assert.That(result).IsEqualTo("&lt;script&gt;alert(&#x27;xss&#x27;)&lt;/script&gt;");
+    }
 }
