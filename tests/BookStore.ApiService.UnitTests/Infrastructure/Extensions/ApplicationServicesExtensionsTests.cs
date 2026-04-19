@@ -215,7 +215,7 @@ public class ApplicationServicesExtensionsTests
     {
         // Arrange
         var services = new ServiceCollection();
-        var thirtyTwoByteSecret = new string('a', 32);
+        var thirtyTwoByteSecret = "Ab1!Ab1!Ab1!Ab1!Ab1!Ab1!Ab1!Ab1!";
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
@@ -229,6 +229,126 @@ public class ApplicationServicesExtensionsTests
             .Build();
 
         var environment = new TestWebHostEnvironment();
+
+        // Act
+        _ = services.AddApplicationServices(configuration, environment);
+        await using var provider = services.BuildServiceProvider();
+        var optionsMonitor = provider.GetRequiredService<IOptionsMonitor<JwtBearerOptions>>();
+        var jwtOptions = optionsMonitor.Get(JwtBearerDefaults.AuthenticationScheme);
+
+        // Assert
+        _ = await Assert.That(jwtOptions.TokenValidationParameters.IssuerSigningKey).IsTypeOf<SymmetricSecurityKey>();
+    }
+
+    [Test]
+    [Category("Unit")]
+    public async Task AddApplicationServices_WithHs256RepeatedCharacterSecretInProduction_ShouldThrowInvalidOperationException()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Jwt:Algorithm"] = "HS256",
+                ["Jwt:SecretKey"] = new string('z', 32),
+                ["Jwt:Issuer"] = "BookStore.ApiService",
+                ["Jwt:Audience"] = "BookStore.Web",
+                ["Jwt:ExpirationMinutes"] = "60",
+                ["Authentication:Passkey:ServerDomain"] = "localhost"
+            })
+            .Build();
+
+        var environment = new TestWebHostEnvironment
+        {
+            EnvironmentName = "Production"
+        };
+
+        // Act + Assert
+        _ = await Assert.That(() => services.AddApplicationServices(configuration, environment))
+            .Throws<InvalidOperationException>()
+            .WithMessage("HS256 Jwt:SecretKey is too weak for non-development environments: the key cannot be made of a single repeated character. Provide a high-entropy secret from a secure secret store, or prefer RS256 for production deployments.");
+    }
+
+    [Test]
+    [Category("Unit")]
+    public async Task AddApplicationServices_WithHs256LowVarietySecretInProduction_ShouldThrowInvalidOperationException()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Jwt:Algorithm"] = "HS256",
+                ["Jwt:SecretKey"] = "aaabbbccaaabbbccaaabbbccaaabbbcc",
+                ["Jwt:Issuer"] = "BookStore.ApiService",
+                ["Jwt:Audience"] = "BookStore.Web",
+                ["Jwt:ExpirationMinutes"] = "60",
+                ["Authentication:Passkey:ServerDomain"] = "localhost"
+            })
+            .Build();
+
+        var environment = new TestWebHostEnvironment
+        {
+            EnvironmentName = "Production"
+        };
+
+        // Act + Assert
+        _ = await Assert.That(() => services.AddApplicationServices(configuration, environment))
+            .Throws<InvalidOperationException>()
+            .WithMessage("HS256 Jwt:SecretKey is too weak for non-development environments: the key must contain at least 4 distinct characters. Provide a high-entropy secret from a secure secret store, or prefer RS256 for production deployments.");
+    }
+
+    [Test]
+    [Category("Unit")]
+    public async Task AddApplicationServices_WithHs256PlaceholderLikeSecretInProduction_ShouldThrowInvalidOperationException()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Jwt:Algorithm"] = "HS256",
+                ["Jwt:SecretKey"] = "YOUR SECRET KEY MUST BE AT LEAST 32 CHARACTERS LONG FOR HS256",
+                ["Jwt:Issuer"] = "BookStore.ApiService",
+                ["Jwt:Audience"] = "BookStore.Web",
+                ["Jwt:ExpirationMinutes"] = "60",
+                ["Authentication:Passkey:ServerDomain"] = "localhost"
+            })
+            .Build();
+
+        var environment = new TestWebHostEnvironment
+        {
+            EnvironmentName = "Production"
+        };
+
+        // Act + Assert
+        _ = await Assert.That(() => services.AddApplicationServices(configuration, environment))
+            .Throws<InvalidOperationException>()
+            .WithMessage("HS256 Jwt:SecretKey is too weak for non-development environments: the key matches a known placeholder/default value. Provide a high-entropy secret from a secure secret store, or prefer RS256 for production deployments.");
+    }
+
+    [Test]
+    [Category("Unit")]
+    public async Task AddApplicationServices_WithHs256PlaceholderLikeSecretInDevelopment_ShouldConfigureSymmetricValidationKey()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Jwt:Algorithm"] = "HS256",
+                ["Jwt:SecretKey"] = "your-secret-key-must-be-at-least-32-characters-long-for-hs256",
+                ["Jwt:Issuer"] = "BookStore.ApiService",
+                ["Jwt:Audience"] = "BookStore.Web",
+                ["Jwt:ExpirationMinutes"] = "60",
+                ["Authentication:Passkey:ServerDomain"] = "localhost"
+            })
+            .Build();
+
+        var environment = new TestWebHostEnvironment
+        {
+            EnvironmentName = "Development"
+        };
 
         // Act
         _ = services.AddApplicationServices(configuration, environment);

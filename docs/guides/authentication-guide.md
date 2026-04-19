@@ -55,9 +55,12 @@ graph TB
 
 - **HS256 minimum secret length**: `Jwt:SecretKey` must be at least **32 bytes** when encoded as UTF-8.
 - Startup validation enforces this rule for HS256 configuration.
+- In **non-development environments**, HS256 secrets must also pass baseline strength checks:
+    - Not all-identical characters (for example, `aaaaaaaa...`).
+    - At least **4 distinct characters**.
+    - Must not match known placeholder/default-like values, including normalized variants of the legacy default key (case and separator differences are treated as equivalent).
 - `JwtTokenService` also enforces this rule when creating signing credentials as a defense-in-depth guard.
-- In production, the development placeholder secret remains blocked even if it satisfies length requirements.
-- **Production recommendation**: Use `RS256` with a managed asymmetric key pair (for example, Azure Key Vault-backed key material). `HS256` is still supported for compatibility, but startup now emits a warning when a non-development environment resolves to `HS256`.
+- **Production recommendation**: Prefer `RS256` with a managed asymmetric key pair (for example, Azure Key Vault-backed key material). `HS256` remains supported for compatibility, but startup emits a warning when a non-development environment resolves to `HS256`.
 
 Algorithm resolution order (used by both token issuance and token validation):
 

@@ -15,6 +15,19 @@ namespace BookStore.ApiService.Infrastructure.Extensions;
 public static class ApplicationServicesExtensions
 {
     const int MinimumHs256SecretKeyBytes = 32;
+    const int MinimumHs256DistinctCharacters = 4;
+    const string DefaultHs256SecretKey = "your-secret-key-must-be-at-least-32-characters-long-for-hs256";
+
+    static readonly HashSet<string> KnownPlaceholderHs256SecretNormalizations = new(StringComparer.Ordinal)
+    {
+        NormalizeJwtSecretForComparison(DefaultHs256SecretKey),
+        NormalizeJwtSecretForComparison("change-me"),
+        NormalizeJwtSecretForComparison("changeme"),
+        NormalizeJwtSecretForComparison("default-secret"),
+        NormalizeJwtSecretForComparison("jwt-secret"),
+        NormalizeJwtSecretForComparison("secret-key"),
+        NormalizeJwtSecretForComparison("replace-with-secure-key")
+    };
 
     /// <summary>
     /// Configures all application services including pagination, OpenAPI, versioning, localization, etc.
@@ -407,14 +420,83 @@ public static class ApplicationServicesExtensions
             throw new InvalidOperationException("HS256 requires Jwt:SecretKey to be at least 32 bytes when UTF-8 encoded.");
         }
 
-        // SECURITY: Validate JWT secret key in production
-        if (!environment.IsDevelopment() &&
-            secretKey == "your-secret-key-must-be-at-least-32-characters-long-for-hs256")
+        if (!environment.IsDevelopment())
         {
-            throw new InvalidOperationException(
-                "Production JWT secret key must be configured via environment variables or secure key vault. " +
-                "Set the 'Jwt:SecretKey' configuration value. Never use the default key in production.");
+            var weakSecretError = GetNonDevelopmentHs256SecretValidationError(secretKey);
+            if (!string.IsNullOrWhiteSpace(weakSecretError))
+            {
+                throw new InvalidOperationException(
+                    $"HS256 Jwt:SecretKey is too weak for non-development environments: {weakSecretError}. " +
+                    "Provide a high-entropy secret from a secure secret store, or prefer RS256 for production deployments.");
+            }
         }
+    }
+
+    internal static string? GetNonDevelopmentHs256SecretValidationError(string secretKey)
+    {
+        if (IsAllIdenticalCharacters(secretKey))
+        {
+            return "the key cannot be made of a single repeated character";
+        }
+
+        if (CountDistinctCharacters(secretKey) < MinimumHs256DistinctCharacters)
+        {
+            return $"the key must contain at least {MinimumHs256DistinctCharacters} distinct characters";
+        }
+
+        if (IsKnownPlaceholderHs256Secret(secretKey))
+        {
+            return "the key matches a known placeholder/default value";
+        }
+
+        return null;
+    }
+
+    internal static bool IsAllIdenticalCharacters(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return false;
+        }
+
+        var firstCharacter = value[0];
+        for (var index = 1; index < value.Length; index++)
+        {
+            if (value[index] != firstCharacter)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    internal static int CountDistinctCharacters(string value)
+    {
+        var distinctCharacters = new HashSet<char>();
+        foreach (var character in value)
+        {
+            _ = distinctCharacters.Add(character);
+        }
+
+        return distinctCharacters.Count;
+    }
+
+    internal static bool IsKnownPlaceholderHs256Secret(string secretKey)
+        => KnownPlaceholderHs256SecretNormalizations.Contains(NormalizeJwtSecretForComparison(secretKey));
+
+    internal static string NormalizeJwtSecretForComparison(string secretKey)
+    {
+        var normalized = new System.Text.StringBuilder(secretKey.Length);
+        foreach (var character in secretKey)
+        {
+            if (char.IsLetterOrDigit(character))
+            {
+                _ = normalized.Append(char.ToLowerInvariant(character));
+            }
+        }
+
+        return normalized.ToString();
     }
 
     static SecurityKey CreateJwtValidationKey(IConfigurationSection jwtSettings, string algorithm) => algorithm switch
