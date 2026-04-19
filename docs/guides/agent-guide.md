@@ -463,7 +463,7 @@ Scans `.cs` and `.razor` files for OWASP Top 10 patterns:
 
 - Hardcoded credentials (`password =`, `apikey =`, connection strings with literals)
 - String-interpolated SQL (`$"SELECT ... {userInput}"`)
-- Unsafe `[AllowAnonymous]` (allowed only when preceded by `// safe:` comment)
+- Unsafe `[AllowAnonymous]` or `.AllowAnonymous()` (allowed only when preceded by `// safe:` comment)
 - `MarkupString` raw HTML injection in `.razor` (allowed only with `// safe:` comment)
 
 ### Memory Protocol Hook (`check_memory_protocol.py`)

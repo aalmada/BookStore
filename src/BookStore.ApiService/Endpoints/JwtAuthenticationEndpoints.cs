@@ -46,6 +46,7 @@ public static class JwtAuthenticationEndpoints
             .WithSummary("Logout and invalidate refresh token")
             .RequireAuthorization();
 
+        // safe: endpoint intentionally allows anonymous calls and returns generic responses to prevent account enumeration.
         _ = group.MapPost("/resend-verification", ResendVerificationAsync)
             .WithName("ResendVerification")
             .WithSummary("Resend the email verification link")

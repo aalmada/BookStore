@@ -10,11 +10,7 @@ public static class NotificationEndpoints
 {
     public static RouteGroupBuilder MapNotificationEndpoints(this RouteGroupBuilder group)
     {
-        // Anonymous access is intentional: the stream delivers public domain event metadata
-        // (entity IDs + event types only) to power real-time UI updates for the public catalog.
-        // Tenant isolation is enforced by TenantSecurityMiddleware (anonymous users are
-        // restricted to the default tenant). .AllowAnonymous() is explicit so a future
-        // global RequireAuthorization() policy cannot accidentally lock out anonymous viewers.
+        // safe: stream contains only public catalog metadata and tenant middleware restricts anonymous access to the default tenant.
         _ = group.MapGet("/stream", GetNotificationStream)
             .WithName("GetNotificationStream")
             .WithSummary("Subscribe to real-time notifications via SSE")

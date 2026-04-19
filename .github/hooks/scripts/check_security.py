@@ -48,6 +48,10 @@ EXEMPTABLE_RULES: list[tuple[str, str]] = [
         r"\[AllowAnonymous\]",
         "OWASP A01 (Broken Access Control): [AllowAnonymous] requires a '// safe: <reason>' comment on the preceding line",
     ),
+    (
+        r"\.AllowAnonymous\(\)",
+        "OWASP A01 (Broken Access Control): .AllowAnonymous() requires a '// safe: <reason>' comment on the preceding line",
+    ),
 ]
 
 # Razor-only exemptable rules

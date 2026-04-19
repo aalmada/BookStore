@@ -9,9 +9,10 @@ public static class BookCoverEndpoints
 {
     public static RouteGroupBuilder MapBookCoverEndpoints(this RouteGroupBuilder group)
     {
+        // safe: book cover images are public catalog assets and contain no sensitive data.
         _ = group.MapGet("/{id:guid}/cover", GetBookCover)
             .WithName("GetBookCover")
-            .AllowAnonymous(); // Public access covers
+            .AllowAnonymous();
 
         return group;
     }
