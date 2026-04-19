@@ -1,4 +1,5 @@
 using System.Net.ServerSentEvents;
+using BookStore.ApiService.Infrastructure.Extensions;
 using BookStore.ApiService.Infrastructure.Logging;
 using BookStore.ApiService.Infrastructure.Notifications;
 using BookStore.Shared.Notifications;
@@ -15,6 +16,7 @@ public static class NotificationEndpoints
             .WithName("GetNotificationStream")
             .WithSummary("Subscribe to real-time notifications via SSE")
             .Produces(StatusCodes.Status200OK, contentType: "text/event-stream")
+            .RequireRateLimiting(RateLimitingExtensions.NotificationSsePolicyName)
             .AllowAnonymous();
 
         _ = group.MapPost("/test-notification", async (string type, Guid id, INotificationService service, IWebHostEnvironment env) =>

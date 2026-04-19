@@ -45,6 +45,7 @@ graph TB
     - `POST /account/login`: Exchange credentials for tokens.
     - `POST /account/resend-verification`: Returns a generic success payload to avoid account enumeration; validation failures (for example, missing email) return RFC7807 `ProblemDetails` with a machine-readable error code.
     - `POST /account/refresh-token`: Exchange refresh token for new access token (with automatic rotation).
+- **Notification SSE endpoint**: `GET /api/notifications/stream` remains anonymous for public read-model updates, but it is protected by a dedicated `NotificationSsePolicy` rate limiter (tenant+client IP partitioning) to reduce connection-exhaustion abuse.
 - **`MartenUserStore`**: Custom Identity store implementing `IUserSecurityStampStore`, `IUserLockoutStore`, and `IUserTwoFactorStore` for full Identity compatibility.
 - **Passkey Integration**: Passkey login flow (`/account/assertion/result`) also results in the issuance of standard JWTs, making the frontend agnostic to *how* the user logged in.
     Passkey registration flow (`/account/attestation/result`) returns generic attestation failure messages to clients and keeps detailed failure diagnostics in server logs.

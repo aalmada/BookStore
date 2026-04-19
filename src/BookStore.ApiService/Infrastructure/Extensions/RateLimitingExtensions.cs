@@ -15,6 +15,8 @@ namespace BookStore.ApiService.Infrastructure.Extensions;
 
 public static class RateLimitingExtensions
 {
+    public const string NotificationSsePolicyName = "NotificationSsePolicy";
+
     public static IServiceCollection AddCustomRateLimiting(
         this IServiceCollection services,
         IConfiguration configuration,
@@ -87,6 +89,28 @@ public static class RateLimitingExtensions
                     });
             });
 
+            // Dedicated limiter for anonymous SSE stream connections.
+            _ = options.AddPolicy(NotificationSsePolicyName, httpContext =>
+            {
+                if (disableRateLimiting)
+                {
+                    return RateLimitPartition.GetNoLimiter("disabled");
+                }
+
+                var partitionKey = BuildNotificationSsePolicyPartitionKey(httpContext);
+
+                return RateLimitPartition.GetTokenBucketLimiter(partitionKey, _ =>
+                    new TokenBucketRateLimiterOptions
+                    {
+                        TokenLimit = rateLimitOptions.NotificationSseTokenLimit,
+                        TokensPerPeriod = rateLimitOptions.NotificationSseTokensPerPeriod,
+                        ReplenishmentPeriod = TimeSpan.FromSeconds(rateLimitOptions.NotificationSseReplenishmentPeriodSeconds),
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                        QueueLimit = rateLimitOptions.NotificationSseQueueLimit,
+                        AutoReplenishment = true
+                    });
+            });
+
             options.OnRejected = async (context, cancellationToken) =>
             {
                 double? retryAfterSeconds = null;
@@ -128,6 +152,12 @@ public static class RateLimitingExtensions
     }
 
     internal static string BuildAuthPolicyPartitionKey(HttpContext context)
+        => BuildTenantAndIpPartitionKey(context);
+
+    internal static string BuildNotificationSsePolicyPartitionKey(HttpContext context)
+        => BuildTenantAndIpPartitionKey(context);
+
+    static string BuildTenantAndIpPartitionKey(HttpContext context)
     {
         var tenantId = context.Items["TenantId"]?.ToString()
             ?? JasperFx.StorageConstants.DefaultTenantId;

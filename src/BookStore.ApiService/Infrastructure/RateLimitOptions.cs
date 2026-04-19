@@ -21,4 +21,15 @@ public class RateLimitOptions
     public int AuthWindowSeconds { get; set; } = 60;
 
     public int AuthQueueLimit { get; set; } = 2;
+
+    [Range(1, int.MaxValue)]
+    public int NotificationSseTokenLimit { get; set; } = 20;
+
+    [Range(1, int.MaxValue)]
+    public int NotificationSseTokensPerPeriod { get; set; } = 2;
+
+    [Range(1, int.MaxValue)]
+    public int NotificationSseReplenishmentPeriodSeconds { get; set; } = 1;
+
+    public int NotificationSseQueueLimit { get; set; } = 0;
 }

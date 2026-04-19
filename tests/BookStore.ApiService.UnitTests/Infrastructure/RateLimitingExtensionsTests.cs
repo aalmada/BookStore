@@ -88,6 +88,36 @@ public class RateLimitingExtensionsTests
 
     [Test]
     [Category("Unit")]
+    public async Task BuildNotificationSsePolicyPartitionKey_WithTenantAndIp_ShouldIncludeBothParts()
+    {
+        // Arrange
+        var context = new DefaultHttpContext();
+        context.Items["TenantId"] = "tenant-a";
+        context.Connection.RemoteIpAddress = IPAddress.Parse("203.0.113.10");
+
+        // Act
+        var key = RateLimitingExtensions.BuildNotificationSsePolicyPartitionKey(context);
+
+        // Assert
+        _ = await Assert.That(key).IsEqualTo("tenant-a:203.0.113.10");
+    }
+
+    [Test]
+    [Category("Unit")]
+    public async Task BuildNotificationSsePolicyPartitionKey_WithoutTenantOrIp_ShouldUseSafeDefaults()
+    {
+        // Arrange
+        var context = new DefaultHttpContext();
+
+        // Act
+        var key = RateLimitingExtensions.BuildNotificationSsePolicyPartitionKey(context);
+
+        // Assert
+        _ = await Assert.That(key).IsEqualTo($"{JasperFx.StorageConstants.DefaultTenantId}:unknown");
+    }
+
+    [Test]
+    [Category("Unit")]
     public async Task AuthPartitioning_SameTenantAndIp_WithDifferentEmails_ShouldShareThrottleBucket()
     {
         // Arrange
