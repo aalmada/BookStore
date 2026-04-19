@@ -11,6 +11,11 @@ public static class PasswordValidator
     public const int MinLength = 8;
 
     /// <summary>
+    /// Maximum allowed password length
+    /// </summary>
+    public const int MaxLength = 128;
+
+    /// <summary>
     /// Validates a password against security requirements
     /// </summary>
     /// <param name="password">The password to validate</param>
@@ -28,6 +33,11 @@ public static class PasswordValidator
         if (password.Length < MinLength)
         {
             errors.Add($"At least {MinLength} characters");
+        }
+
+        if (password.Length > MaxLength)
+        {
+            errors.Add($"At most {MaxLength} characters");
         }
 
         if (!password.Any(char.IsUpper))

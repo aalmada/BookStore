@@ -225,7 +225,12 @@ Standard email/password login flow.
   "refreshToken": "..."
 }
 ```
-```
+
+Password validation limits:
+- **Maximum length**: 128 characters.
+- **Reason**: Mitigates oversized-input DoS risk while still allowing long passphrases.
+- **Boundary behavior**: 128 characters is valid; 129 characters is invalid.
+- **Validation message**: "At most 128 characters".
 
 ### 2. Passkey Authentication (Passwordless)
 

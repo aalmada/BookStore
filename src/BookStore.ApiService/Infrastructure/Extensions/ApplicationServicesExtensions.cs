@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using BookStore.Shared.Validation;
 using Marten;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
@@ -145,7 +146,7 @@ public static class ApplicationServicesExtensions
                 options.Password.RequireLowercase = true;
                 options.Password.RequireUppercase = true;
                 options.Password.RequireNonAlphanumeric = true;
-                options.Password.RequiredLength = 8;
+                options.Password.RequiredLength = PasswordValidator.MinLength;
 
                 // Require email confirmation for login
                 options.SignIn.RequireConfirmedEmail = true;
@@ -157,6 +158,7 @@ public static class ApplicationServicesExtensions
 
             })
             .AddUserStore<Identity.MartenUserStore>()
+            .AddPasswordValidator<Infrastructure.Identity.MaximumLengthPasswordValidator<Models.ApplicationUser>>()
             .AddSignInManager() // This registers SignInManager and IPasskeyHandler
             .AddDefaultTokenProviders();
 

@@ -1,10 +1,13 @@
 using System.Security.Claims;
 using System.Security.Cryptography;
 using BookStore.ApiService.Infrastructure.Extensions;
+using BookStore.ApiService.Infrastructure.Identity;
+using BookStore.ApiService.Models;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
@@ -215,6 +218,33 @@ public class ApplicationServicesExtensionsTests
         // Assert – the catch block must have called context.Fail and cleared the principal
         _ = await Assert.That(tokenValidatedContext.Result?.Failure).IsNotNull();
         _ = await Assert.That(httpContext.User.Identity).IsNull();
+    }
+
+    [Test]
+    [Category("Unit")]
+    public async Task AddApplicationServices_ShouldRegisterMaximumLengthPasswordValidator()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Jwt:SecretKey"] = "test-secret-key-must-be-at-least-32-characters-long",
+                ["Jwt:Issuer"] = "BookStore.ApiService",
+                ["Jwt:Audience"] = "BookStore.Web",
+                ["Jwt:ExpirationMinutes"] = "60",
+                ["Authentication:Passkey:ServerDomain"] = "localhost"
+            })
+            .Build();
+        var environment = new TestWebHostEnvironment();
+
+        // Act
+        _ = services.AddApplicationServices(configuration, environment);
+        await using var provider = services.BuildServiceProvider();
+        var validators = provider.GetServices<IPasswordValidator<ApplicationUser>>();
+
+        // Assert
+        _ = await Assert.That(validators.Any(v => v is MaximumLengthPasswordValidator<ApplicationUser>)).IsTrue();
     }
 
     sealed class TestWebHostEnvironment : IWebHostEnvironment
