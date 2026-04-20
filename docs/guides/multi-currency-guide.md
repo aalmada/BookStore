@@ -83,11 +83,14 @@ Book search supports currency-aware filtering:
 - If `MinPrice` and/or `MaxPrice` are provided with `Currency`, filtering is applied to matching entries in `CurrentPrices`.
 - Without a `Currency`, price range filtering applies across any `CurrentPrices` entry.
 
-## Seeding Behavior
+## Test Data Behavior
 
-Database seeding currently generates USD, EUR, and GBP prices per book using category-based ranges and fixed multipliers plus charm endings (`.49`, `.95`, `.99`).
+Integration test fake data helpers currently generate GBP-only price dictionaries by default.
 
-This seeding logic is only for initial/sample data generation and is not used for runtime conversion.
+- `GenerateFakeBookRequest(...)` seeds `Prices = { "GBP": <value> }`
+- Multi-currency tests provide explicit dictionaries when needed
+
+This is test-only behavior and does not imply runtime conversion.
 
 ## Not Implemented (Important)
 
