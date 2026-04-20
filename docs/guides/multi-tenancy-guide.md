@@ -51,7 +51,7 @@ options.Policies.AllDocumentsAreMultiTenanted();
 ```
 
 - Every document includes a `tenant_id` column
-- All sessions are scoped to a specific tenant
+- Sessions are tenant-scoped when created with `store.LightweightSession(tenantId)`
 - Queries automatically filter by tenant ID
 
 **Exception**: `Tenant` documents use `[DoNotPartition]` attribute to be globally accessible:
@@ -74,6 +74,8 @@ public class Tenant
 3. Sets `ITenantContext` for request scope
 4. Logs tenant access for audit trail
 5. Returns `400 Bad Request` if invalid
+
+If the header is omitted, the request uses the shared default tenant (`*DEFAULT*`). The lowercase alias `default` is also accepted in tests and helper flows.
 
 ### 4. Cache Isolation
 
@@ -153,15 +155,7 @@ For optimal multi-tenancy performance in production, proper database indexing is
 
 ### Quick Reference
 
-```sql
--- Core tenant indexes (verify these exist)
-CREATE INDEX IF NOT EXISTS idx_book_tenant_id ON mt_doc_book(tenant_id);
-CREATE INDEX IF NOT EXISTS idx_author_tenant_id ON mt_doc_author(tenant_id);
-CREATE INDEX IF NOT EXISTS idx_user_tenant_id ON mt_doc_user(tenant_id);
-
--- Event store indexes
-CREATE INDEX idx_events_tenant_stream ON mt_events(tenant_id, stream_id);
-```
+Indexes are declared in Marten configuration (`ConfigureIndexes`) and managed through Marten schema workflows, not hand-written SQL in feature code.
 
 ### Expected Performance
 
@@ -221,7 +215,9 @@ group.WithMetadata(new AllowAnonymousTenantAttribute());
 ### Rate Limiting
 
 - **Global**: 1000 req/min per tenant
-- **Auth**: 10 req/min (stricter)
+- **Auth policy**: per `tenantId:ip` partition using configured `AuthPermitLimit` and `AuthWindowSeconds`
+    - default config: 20 req / 60s
+    - development config: 200 req / 60s
 - **Response**: `429 Too Many Requests` with `retryAfter` seconds
 
 ---
