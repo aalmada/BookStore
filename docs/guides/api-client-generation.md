@@ -176,6 +176,16 @@ For SSE real-time events:
 builder.Services.AddBookStoreEvents(new Uri(apiServiceUrl));
 ```
 
+> [!NOTE]
+> `AddBookStoreEvents` requires `ClientContextService` to be registered first in non-Blazor apps:
+>
+> ```csharp
+> builder.Services.AddScoped<ClientContextService>();
+> builder.Services.AddBookStoreEvents(new Uri(apiServiceUrl));
+> ```
+>
+> `BookStore.Web` already registers `ClientContextService` in `Program.cs`.
+
 ### Blazor Web (Scoped)
 
 The `BookStore.Web` project uses scoped registrations to share `TokenService`, `TenantService`, and `ClientContextService` within the same Blazor circuit. Clients are created via `RestService.For<T>` with a manually composed handler chain:
