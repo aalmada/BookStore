@@ -34,12 +34,11 @@ The Book Store API implements **causation** and **correlation** IDs for distribu
 
 ### Response Headers
 
-`MartenMetadataMiddleware` automatically echoes the correlation ID in every response. `EventMetadataService.SetResponseHeaders()` additionally emits `X-Event-ID` when an endpoint explicitly creates event metadata.
+`MartenMetadataMiddleware` automatically echoes the correlation ID in every response.
 
 | Header | Description | Example |
 |--------|-------------|---------|
 | `X-Correlation-ID` | Echo of the request correlation ID (or generated) | `019541ab-1234-7000-a000-000000000001` |
-| `X-Event-ID` | ID of the event appended during this request | `019541ab-9abc-7000-c000-000000000003` |
 
 ## Event Metadata Structure
 
@@ -86,7 +85,6 @@ curl -X POST http://localhost:5000/api/admin/books \
 **Response Headers**:
 ```
 X-Correlation-ID: 019541ab-1234-7000-a000-000000000001
-X-Event-ID: 019541ab-9abc-7000-c000-000000000003
 ```
 
 **Event Stored**:
@@ -112,8 +110,6 @@ curl -X POST http://localhost:5000/api/admin/books \
   -d '{"title": "Domain-Driven Design", ...}'
 ```
 
-Response: `X-Event-ID: 019541ab-bbbb-7000-a000-000000000001`
-
 **Step 2: Update Book (using previous event as causation)**
 ```bash
 curl -X PUT http://localhost:5000/api/admin/books/019541ab-0004-7000-a000-000000000001 \
@@ -122,8 +118,6 @@ curl -X PUT http://localhost:5000/api/admin/books/019541ab-0004-7000-a000-000000
   -H "Content-Type: application/json" \
   -d '{"title": "Domain-Driven Design (Revised)", ...}'
 ```
-
-Response: `X-Event-ID: 019541ab-cccc-7000-a000-000000000001`
 
 **Event Chain**:
 ```mermaid
@@ -145,24 +139,18 @@ Imagine a workflow where creating a book triggers multiple operations:
 POST /api/admin/publishers
 X-Correlation-ID: 019541ab-1111-7000-a000-000000000001
 ```
-Response: `X-Event-ID: 019541ab-2222-7000-a000-000000000001`
-
 **2. Create Author**
 ```bash
 POST /api/admin/authors
 X-Correlation-ID: 019541ab-1111-7000-a000-000000000001
 X-Causation-ID: 019541ab-2222-7000-a000-000000000001
 ```
-Response: `X-Event-ID: 019541ab-3333-7000-a000-000000000001`
-
 **3. Create Category**
 ```bash
 POST /api/admin/categories
 X-Correlation-ID: 019541ab-1111-7000-a000-000000000001
 X-Causation-ID: 019541ab-3333-7000-a000-000000000001
 ```
-Response: `X-Event-ID: 019541ab-4444-7000-a000-000000000001`
-
 **4. Create Book**
 ```bash
 POST /api/admin/books
@@ -174,8 +162,6 @@ X-Causation-ID: 019541ab-4444-7000-a000-000000000001
   "categoryIds": ["..."]
 }
 ```
-Response: `X-Event-ID: 019541ab-5555-7000-a000-000000000001`
-
 **Complete Event Chain**:
 ```mermaid
 graph TD
@@ -228,13 +214,13 @@ curl -H "X-Correlation-ID: $CORRELATION_ID" ...
 ### 2. Use Event IDs as Causation IDs
 When one operation triggers another, use the previous event ID as the causation ID:
 ```bash
-# First call
+# First call (capture created entity/event details from response body or stream)
 RESPONSE=$(curl -i -X POST ... -H "X-Correlation-ID: $CORRELATION_ID")
-EVENT_ID=$(echo "$RESPONSE" | grep "X-Event-ID:" | tr -d '\r' | awk '{print $2}')
+# Note: the API does not currently return X-Event-ID response headers.
 
 # Second call caused by first
 curl -H "X-Correlation-ID: $CORRELATION_ID" \
-     -H "X-Causation-ID: $EVENT_ID" \
+   -H "X-Causation-ID: <previous-event-id>" \
      ...
 ```
 
@@ -302,9 +288,9 @@ _logger.LogInformation("Processing {EventType}. CorrelationId: {CorrelationId}",
    - Reads `CorrelationId`/`CausationId` preferring `HttpContext.Items` (set by `MartenMetadataMiddleware`) then falls back to headers and `Activity`.
 
 4. **`EventMetadataService`** (`Infrastructure/EventMetadataService.cs`):
-   - Not a middleware — a scoped service used by endpoint handlers.
+   - Not a middleware — a scoped service available for endpoint/handler use.
    - `CreateMetadata()` builds an `EventMetadata` record containing a fresh `Guid.CreateVersion7()` event ID plus `CorrelationId`, `CausationId`, and `UserId` read from `IHttpContextAccessor`.
-   - `SetResponseHeaders()` writes `X-Correlation-ID` and `X-Event-ID` to the response — endpoints call this explicitly after appending events.
+   - `SetResponseHeaders()` exists, but endpoints do not currently call it; `X-Event-ID` is not emitted in API responses.
 
 ### Blazor Frontend Implementation
 
@@ -322,7 +308,7 @@ The Blazor frontend automatically manages and propagates these IDs using a dedic
    - Injects `X-Correlation-ID` and `X-Causation-ID` headers from `ClientContextService` on every outgoing API request.
    - Attaches the JWT Bearer token.
    - Forwards the original browser's `User-Agent` and `X-Forwarded-For` IP from `IHttpContextAccessor`.
-   - After each response: reads `X-Event-ID` from the response headers and calls `ClientContextService.UpdateCausationId(eventId)`, automatically advancing the causation chain.
+   - After each response: attempts to read `X-Event-ID` and update `ClientContextService` when present.
    - On HTTP 401: clears stored tokens.
 
 3. **`BookStoreHeaderHandler`** (`src/BookStore.Client/Infrastructure/BookStoreHeaderHandler.cs`):
@@ -339,11 +325,23 @@ The Blazor frontend automatically manages and propagates these IDs using a dedic
 ResilienceHandler → AuthorizationMessageHandler → TenantHeaderHandler → BookStoreHeaderHandler → HttpClientHandler
 ```
 
+### Blazor Web Frontend Logging
+
+The Blazor frontend enriches logs with correlation and causation identifiers in both HTTP and SignalR flows:
+
+1. **`LogEnrichmentMiddleware`** (`src/BookStore.Web/Infrastructure/LogEnrichmentMiddleware.cs`):
+   - Registered via `app.UseMiddleware<LogEnrichmentMiddleware>()` in `Program.cs`.
+   - Adds a structured scope with `CorrelationId`, `CausationId`, `TenantId`, and browser metadata.
+
+2. **`LoggingHubFilter`** (`src/BookStore.Web/Infrastructure/LoggingHubFilter.cs`):
+   - Registered as `IHubFilter` for Blazor Server SignalR hub invocations.
+   - Adds the same tracing scope for component-triggered real-time operations.
+
 ## Summary
 
 - **Correlation ID**: Tracks the entire business workflow
 - **Causation ID**: Tracks immediate event causes
 - **Event ID**: Unique identifier for each event
-- **Headers**: `X-Correlation-ID`, `X-Causation-ID`, `X-Event-ID`
+- **Headers**: `X-Correlation-ID`, `X-Causation-ID`
 - **Automatic**: System generates `Guid.CreateVersion7()` IDs if not provided
-- **Propagation**: `X-Correlation-ID` always returned in response headers; `X-Event-ID` returned when an endpoint appends an event
+- **Propagation**: `X-Correlation-ID` is echoed in responses; causation chaining can use upstream IDs and SSE event identifiers
