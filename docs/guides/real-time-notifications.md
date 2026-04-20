@@ -7,9 +7,9 @@ The application automatically sends **Server-Sent Events (SSE)** notifications w
 1. **Mutation occurs** - Control flow starts when a client creates, updates, or deletes an entity.
 2. **Event stored** - The corresponding domain event (e.g., `BookAdded`) is appended to the Marten event store.
 3. **Projection updates** - The **Async Daemon** processes the event and updates the relevant read model (projection).
-4. **Notification sent** - A `ProjectionCommitListener` detects the projection change and triggers an SSE notification.
+4. **Notification sent** - `MartenCommitListener` detects projection changes and triggers notification fan-out.
 5. **Causation ID Propagation** - The SSE message includes the `EventId` of the original domain event, which the client uses as the `CausationId` for subsequent requests, ensuring a complete async trace.
-6. **Clients receive** - All connected clients receive the update in real-time.
+6. **Clients receive** - Connected clients receive updates in real-time (in-process or Redis-backed fan-out).
 
 ## Data Flow
 
@@ -19,7 +19,7 @@ sequenceDiagram
     participant API as API Endpoint
     participant Marten as Event Store
     participant Daemon as Async Daemon
-    participant Listener as ProjectionCommitListener
+    participant Listener as MartenCommitListener
     participant SSE as SSE Stream
     
     Client->>API: 1. POST /api/admin/books (Create with Client-ID)
@@ -52,8 +52,8 @@ The system currently broadcasts notifications for the following entity lifecycle
 The notification logic is centralized in a Marten **Document Session Listener**. This ensures notifications are reliable and tied directly to the success of the data projection, rather than the API request.
 
 ```csharp
-// ProjectionCommitListener.cs
-public class ProjectionCommitListener : IDocumentSessionListener
+// MartenCommitListener.cs
+public class MartenCommitListener : IDocumentSessionListener
 {
     public async Task AfterCommitAsync(IDocumentSession _, IChangeSet commit, CancellationToken token)
     {
@@ -113,7 +113,7 @@ eventSource.addEventListener('BookUpdated', (event) => {
 
 ### Blazor (C#)
 
-In the Blazor frontend, we use `BookStoreEventsService` which leverages the native .NET 10 `SseParser` for robust, high-performance stream processing.
+In the shared client layer, `BookStoreEventsService` leverages .NET `SseParser` for robust stream processing and is consumed by the Blazor frontend.
 
 ```csharp
 // BookStoreEventsService.cs
@@ -138,7 +138,7 @@ The client automatically extracts the `EventId` from the notification and update
 ```csharp
 if (notification.EventId != Guid.Empty)
 {
-    _clientContext.UpdateCausationId(notification.EventId.ToString());
+    _clientContextService.UpdateCausationId(notification.EventId.ToString());
 }
 ```
 
