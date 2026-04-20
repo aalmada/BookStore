@@ -11,8 +11,9 @@ The Book Store API implements **ETags (Entity Tags)** for:
 ETags are generated from Marten's event-stream versions, so they directly reflect the number of events applied to that aggregate.
 
 > [!IMPORTANT]
-> **ETags are mandatory** for all state-changing operations (PUT, DELETE, POST restore/sales).
+> **ETags are mandatory** for admin state-changing operations (PUT, DELETE, POST restore).
 > A missing `If-Match` header returns `428 Precondition Required`.
+> Public operations like book sales support optional ETags but are not enforced by middleware.
 
 ---
 
@@ -90,6 +91,18 @@ The following endpoints are **excluded** from the `If-Match` requirement:
 - `POST /api/books/{id}/favorites` — add to favorites
 - `DELETE /api/books/{id}/favorites` — remove from favorites
 - `POST|DELETE /api/cart/**` — shopping cart operations
+
+### ETag Enforcement by Operation
+
+| Operation | Endpoint | If-Match Required | Handler ETag Validation |
+|---|---|---|---|
+| Update book | `PUT /api/admin/books/{id}` | ✅ Yes (428 if missing) | ✅ Returns 412 on mismatch |
+| Soft delete book | `DELETE /api/admin/books/{id}` | ✅ Yes (428 if missing) | ✅ Returns 412 on mismatch |
+| Restore book | `POST /api/admin/books/{id}/restore` | ✅ Yes (428 if missing) | ✅ Returns 412 on mismatch |
+| Schedule sale | `POST /api/books/{id}/sales` | ❌ Optional | ✅ Validates if provided |
+| Cancel sale | `DELETE /api/books/{id}/sales` | ❌ Optional | ✅ Validates if provided |
+| Rate / Favorite | `POST /api/books/{id}/rating|favorites` | ❌ No | N/A |
+| Cart operations | `POST|DELETE /api/cart/**` | ❌ No | N/A |
 
 ---
 
@@ -198,6 +211,17 @@ If-Match: "5"
 ```
 
 The same pattern applies to authors (`/api/admin/authors/{id}`), publishers (`/api/admin/publishers/{id}`), and categories (`/api/admin/categories/{id}`).
+
+### Optional ETag Operations
+
+Some public operations accept `If-Match` but do not require it at middleware level. Sales endpoints are the primary example.
+
+```http
+POST /api/books/{id}/sales
+If-Match: "5"
+```
+
+When provided, handlers validate the ETag and return `412 Precondition Failed` on mismatch. Without `If-Match`, these operations can still proceed if business rules allow.
 
 ---
 
