@@ -72,6 +72,8 @@ To prevent attackers from discovering valid email addresses, the system employs 
 #### Rate Limiting
 - **Resend Verification:** Limits requests to one per 60 seconds per account to prevent abuse.
 
+Implementation detail: cooldown is tracked per user via `ApplicationUser.LastVerificationEmailSent` and enforced server-side before issuing a new verification email command.
+
 ### Architecture
 
 The verification process follows an asynchronous, event-driven flow:
@@ -86,7 +88,7 @@ The verification process follows an asynchronous, event-driven flow:
     -   Uses `EmailTemplateService` to create the email body.
     -   Sends the email via `IEmailService` (SMTP or Logging).
 5.  **User Verification:** User clicks the link.
-6.  **Confirmation:** Frontend calls `POST /identity/confirmEmail` with the token.
+6.  **Confirmation:** Frontend calls `POST /identity/confirm-email` with the token.
 7.  **Notification:** Backend verifies the token and publishes a `UserVerifiedNotification` domain event.
 8.  **Real-time Update:** SSE stream broadcasts the notification to the client, redirecting the user to login automatically.
 9.  **Resend Verification:** If the user loses the email, they can request a new one via the Login page (`POST /account/resend-verification`).
@@ -113,7 +115,7 @@ sequenceDiagram
     EmailService-->>User: Send Verification Email
     
     User->>Frontend: Click Link (/verify-email)
-    Frontend->>API: POST /confirmEmail
+    Frontend->>API: POST /confirm-email
     API->>API: Verify Token
     API->>SSE: Publish UserVerifiedNotification
     API-->>Frontend: 200 OK
@@ -127,7 +129,7 @@ sequenceDiagram
 
 The system provides a mechanism for users to request a new verification email if the original is lost or expired:
 
-1.  **Detection**: When a user attempts to log in with an unconfirmed email, the API returns a `401 Unauthorized` with a specific error: `Requires verification`.
+1.  **Detection**: When a user attempts to log in with an unconfirmed email, the API returns a `401 Unauthorized` with error code `ErrorCodes.Auth.EmailUnconfirmed` and message `Please confirm your email address.`.
 2.  **UI Feedback**: The Login page detects this error and displays a "Resend verification email" link.
 3.  **Request**: Clicking the link calls `POST /account/resend-verification`.
 4.  **Security**: The endpoint enforces a **60-second cooldown** and always returns `200 OK` with a generic message to prevent email enumeration and timing attacks.
@@ -164,7 +166,7 @@ Email settings are configured in `appsettings.json` under the `Email` section.
 | Setting | Type | Description | Default |
 | :--- | :--- | :--- | :--- |
 | `DeliveryMethod` | string | `None`, `Logging`, or `Smtp` | `None` |
-| `BaseUrl` | string | Base URL of the frontend application | `https://localhost:7260` |
+| `BaseUrl` | string | Base URL of the frontend application | `https://localhost:7100` |
 | `FromEmail` | string | Sender email address | `noreply@bookstore.com` |
 | `FromName` | string | Sender display name | `BookStore` |
 | `SmtpHost` | string | SMTP server hostname | - |
@@ -179,7 +181,7 @@ For local development, use the `Logging` method to see emails in the console out
 ```json
 "Email": {
   "DeliveryMethod": "Logging",
-  "BaseUrl": "https://localhost:7260"
+    "BaseUrl": "https://localhost:7100"
 }
 ```
 
