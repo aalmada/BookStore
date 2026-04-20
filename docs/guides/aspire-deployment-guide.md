@@ -14,6 +14,7 @@ The BookStore application uses Aspire to orchestrate:
 - **Web Frontend** - Blazor application
 - **PostgreSQL** - Database with event store and projections
 - **Azure Blob Storage** - File storage (Azurite emulator locally)
+- **Redis** - Distributed cache for HybridCache (L2 layer)
 
 ## Trusted Proxy Configuration
 
@@ -108,6 +109,7 @@ Review and customize `azure.yaml` if needed. The default configuration creates:
 - **Log Analytics Workspace** - Centralized logging
 - **Managed PostgreSQL** - Production database
 - **Azure Storage Account** - Blob storage
+- **Azure Cache for Redis** - Distributed cache backing HybridCache
 
 > [!IMPORTANT]
 > The BookStore application requires PostgreSQL with `pg_trgm` and `unaccent` extensions. Ensure your Azure PostgreSQL Flexible Server has these extensions enabled.
@@ -209,6 +211,9 @@ Azure Container Apps uses consumption-based pricing. To minimize costs:
 ## Deployment to Kubernetes
 
 Kubernetes deployment provides maximum flexibility and portability across cloud providers and on-premises infrastructure.
+
+> [!NOTE]
+> Kubernetes deployment is an optional future path. `Aspire.Hosting.Kubernetes` is **not** currently a dependency of `BookStore.AppHost.csproj`. Add it first before proceeding.
 
 ### Step 1: Add Kubernetes Hosting Integration
 
@@ -543,8 +548,11 @@ This starts:
 - Aspire Dashboard
 - All services with hot reload
 - Azurite (Azure Storage emulator)
-- PostgreSQL container
-- PgAdmin
+- PostgreSQL container with PgAdmin
+- Redis container
+
+> [!NOTE]
+> PostgreSQL `WithDataVolume()` is commented out in `AppHost.cs` by default, so the database is ephemeral between runs. Uncomment it for a persistent local setup.
 
 ### Staging/Production Environments
 
@@ -704,7 +712,19 @@ kubectl get events -n bookstore --sort-by='.lastTimestamp'
 
 ## CI/CD Integration
 
-### GitHub Actions (Azure)
+The repository includes the following GitHub Actions workflows in `.github/workflows/`:
+
+| Workflow | Trigger | Purpose |
+|---|---|---|
+| `ci.yml` | Push / PR to `main`, `develop` | Build, unit tests, analyzer tests |
+| `nightly-integration.yml` | Nightly schedule | Full integration tests (AppHost.Tests) |
+| `docs.yml` | Push to `main` | Build and deploy DocFX site to GitHub Pages |
+| `codeql.yml` | Push / PR / schedule | CodeQL security analysis |
+
+> [!NOTE]
+> There is currently **no automated deployment workflow**. Deployments to Azure are performed manually using `azd up` (see steps above). To add CD, follow the examples below.
+
+### GitHub Actions (Azure — example)
 
 ```yaml
 # .github/workflows/deploy-azure.yml
@@ -739,7 +759,7 @@ jobs:
           AZURE_ENV_NAME: production
 ```
 
-### GitHub Actions (Kubernetes)
+### GitHub Actions (Kubernetes — example)
 
 ```yaml
 # .github/workflows/deploy-k8s.yml
