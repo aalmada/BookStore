@@ -73,7 +73,7 @@ Triggers on pushes and pull requests to `main` and `develop`.
 
 Triggers on a schedule (2 AM UTC daily) and can be triggered manually.
 
-Runs Aspire-based integration tests against a fully started application stack (PostgreSQL, Azurite, Redis). Uploads TRX test results as artifacts.
+Runs Aspire-based integration tests from `tests/BookStore.AppHost.Tests/` against a fully started application stack (PostgreSQL, Azurite, Redis). All tests tagged `Category=Integration` are executed, and TRX test results are uploaded as artifacts.
 
 ### `docs.yml` — Documentation Site Deployment
 
@@ -92,6 +92,6 @@ After configuration, each push to `main` rebuilds and redeploys the docs site. D
 
 ## Production Deployment
 
-Production deployment has **not yet been implemented**. No `azure.yaml`, Kubernetes manifests, or production deploy workflow exist in the repository.
+Production infrastructure has **not yet been deployed**. The repository includes deployment guidance and Aspire-compatible tooling, but there is no committed `azure.yaml` or production deploy workflow yet.
 
-The intended production target is **Azure Container Apps**, leveraging the Aspire `aspire publish` / `aspire deploy` workflow. See the [Aspire Deployment Guide](aspire-deployment-guide.md) for detailed instructions on how to provision and deploy to Azure when ready.
+The intended production target is **Azure Container Apps**, leveraging the Aspire `aspire publish` / `aspire deploy` workflow. See the [Aspire Deployment Guide](aspire-deployment-guide.md) for detailed provisioning and deployment steps when you are ready to roll out.
