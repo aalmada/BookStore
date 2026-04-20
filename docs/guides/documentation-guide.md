@@ -45,11 +45,14 @@ The site will be available at `http://localhost:8080`.
 > [!TIP]
 > Use `--serve` to run a local web server that hosts the generated site. DocFX will watch for file changes and rebuild automatically.
 
+> [!NOTE]
+> DocFX requires a .NET 9 SDK. If you only have .NET 10 installed and DocFX fails, install the .NET 9 SDK alongside it.
+
 ## Configuration
 
 The build is configured in `docs/docfx.json`:
 
-- **metadata**: Scans the source code (`src/**/*.csproj`) to generate API reference documentation.
+- **metadata**: Scans the source code (`src/**/*.csproj`) to generate API reference documentation. `BookStore.Web` and `BookStore.AppHost` are excluded from API docs because they are application entry-points rather than reusable libraries.
 - **build**:
   - **content**: Includes markdown files, `toc.yml`, and images.
   - **resource**: Copies static resources.
@@ -59,10 +62,14 @@ The build is configured in `docs/docfx.json`:
 
 ### Custom Template
 
-The `docs/template` directory contains overrides for the standard DocFX template. We use this to:
-- Inject custom meta tags (Open Graph, Bing validation).
-- Customize the layout or footer.
-- Add custom scripts or styles.
+The `docs/template` directory contains overrides for the standard DocFX `modern` template:
+
+| File | Purpose |
+|------|---------|
+| `layout/_master.tmpl` | Overrides the master page layout (meta tags, Open Graph, footer). |
+| `public/main.js` | Adds custom client-side scripts. |
+
+DocFX merges templates in order: `default` → `modern` → `template` (custom). Only files present in `template/` override the upstream defaults.
 
 ## GitHub Actions Workflow
 
@@ -74,11 +81,12 @@ The documentation is built and deployed automatically by the `.github/workflows/
 
 ### Process
 1. **Checkout**: Clones the repository.
-2. **Setup .NET**: Installs the .NET SDK.
+2. **Setup .NET**: Installs the .NET **9** SDK. DocFX currently requires .NET 9, even though the project targets .NET 10.
 3. **Install DocFX**: Installs the `docfx` global tool.
-4. **Build**: Runs `docfx docs/docfx.json` to generate the static site in `_site/`.
-5. **Upload Artifact**: Uploads the `_site/` directory as a GitHub Actions artifact.
-6. **Deploy**: Deploys the artifact to GitHub Pages.
+4. **Build**: Runs `docfx docs/docfx.json` to generate the static site in `docs/_site/`.
+5. **Fix README images**: Copies `docs/images/` into `docs/_site/docs/images/` so that image references in `README.md` resolve correctly when rendered from the docs root.
+6. **Upload Artifact**: Uploads the `docs/_site/` directory as a GitHub Actions artifact.
+7. **Deploy**: Deploys the artifact to GitHub Pages at `https://aalmada.github.io/BookStore/`.
 
 ## Contributing to Documentation
 
