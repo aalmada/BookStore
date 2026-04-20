@@ -222,6 +222,9 @@ public class BookAggregate : ISoftDeleted
 2. **Generate** events
 3. **Apply** events to update state
 
+> [!NOTE]
+> In this codebase, `Apply(...)` methods intentionally use no explicit access modifier (package-private style) and should only mutate state. Validation and side effects stay in command/factory methods.
+
 See [Marten Guide - Aggregates](marten-guide.md#aggregates) for implementation patterns.
 
 ### 4. Projections
@@ -249,6 +252,8 @@ graph LR
 - **Inline**: Updated immediately (slower writes, consistent reads)
 - **Async**: Updated asynchronously (faster writes, eventual consistency)
 - **Live**: Real-time updates via WebSockets
+
+BookStore primarily uses async projections managed by Wolverine's projection runtime.
 
 See [Marten Guide - Projections](marten-guide.md#projections) for projection patterns.
 
@@ -326,6 +331,36 @@ await daemon.RebuildProjectionAsync<BookSearchProjection>(CancellationToken.None
 - Machine learning and recommendation engines (e.g., training models on granular user behavior)
 
 See [Marten Guide - Event Sourcing for Analytics](marten-guide.md#event-sourcing-for-analytics) for analytics patterns.
+
+## BookStore Implementation Patterns
+
+### Pattern 1: Wolverine-managed transactions
+
+Handlers append events and return results; Wolverine coordinates transaction boundaries. Avoid manual transaction orchestration in handlers unless explicitly required.
+
+### Pattern 2: Record and class aggregates
+
+Both `class` and `record` aggregates are used. For example, `BookAggregate` is class-based while sales workflows are modeled with `SaleAggregate` records. Both follow the same event-generation and `Apply(...)` state-rebuild semantics.
+
+### Pattern 3: Lazy stream initialization
+
+For user-scoped streams (for example `UserProfile`), handlers can load the aggregate and start a new stream when missing, then append subsequent events.
+
+### Pattern 4: Multi-stream projection grouping
+
+Some projections consume events from multiple aggregate streams and use custom grouping logic (`IAggregateGrouper`) to keep read models synchronized.
+
+### Pattern 5: Denormalized read models
+
+Read projections such as search projections denormalize related entity data (author/publisher/category names) for fast query responses, then refresh these fields from related events.
+
+### Pattern 6: Optimistic concurrency with ETags
+
+Write operations use stream-version ETags. Middleware enforces `If-Match` on protected routes, and handlers validate version matches, returning `412` conflicts on stale writes.
+
+### Pattern 7: Cache invalidation after writes
+
+After successful mutations, handlers invalidate HybridCache tags (list + item tags) so projection-backed reads don't serve stale data.
 
 ### 4. Natural Fit for Distributed Systems
 
