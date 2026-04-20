@@ -16,11 +16,10 @@ Together, these components ensure agents work consistently with established patt
 
 **System Overview**:
 - **12 AGENTS.md files** providing context-aware guidance
-- **19 skills** covering the complete development lifecycle
-- **7 GitHub Copilot agents** covering the full feature lifecycle (Orchestrator → Planner → Backend/UiUxDesigner/Frontend → Tests → Review)
+- **35 skills** covering the complete development lifecycle
+- **7 GitHub Copilot agents** covering the full feature lifecycle (Orchestrator → Planner → Backend/Frontend → Tests → Review + SquadEval)
 - **9 lifecycle hook scripts** enforcing code rules, security, and build correctness automatically
 - **Fully cross-referenced** - all skills link to related workflows
-- **~85 cross-reference links** creating an interconnected skill graph
 - **Standards compliant** with GitHub Copilot and agents.md specifications
 
 ---
@@ -97,99 +96,90 @@ Agents automatically reference AGENTS.md files when:
 
 ---
 
-## How Claude Skills Work
+## How GitHub Copilot Skills Work
 
 ### The Concept
 
-Skills are **executable workflows** that guide agents through multi-step processes. Instead of remembering every step to scaffold a feature, agents invoke a skill that provides a checklist.
+Skills are **reference guides and executable workflows** that the VS Code Copilot agent loads automatically when a user request matches the skill's trigger description. Instead of remembering every API shape or step to scaffold a feature, the agent reads the relevant skill file and follows its instructions.
 
-Skills live in `.claude/skills/{skill-name}/SKILL.md` and contain:
-- YAML frontmatter (`name`, `description`, `license`)
-- Numbered step-by-step instructions
-- Optional templates for code generation
+Skills live in `.github/skills/{skill-name}/SKILL.md` and contain:
+- YAML frontmatter (`name`, `description`)
+- Step-by-step instructions and reference tables
+- Code templates and examples
 - Cross-references to related skills
-- Turbo annotations for safe auto-execution
 
-### Invoking Skills
+### How Skills Are Triggered
 
-Users or agents invoke skills using slash commands:
+Skills are loaded automatically: the Copilot agent matches the user's request against each skill's `description` field and reads matching SKILL.md files before responding. Skills can also be attached manually as context in VS Code.
 
-```
-/wolverine__guide                 # Add a new mutation/command endpoint
-/marten__guide                    # Create event-sourced aggregate
-/test__verify_feature             # Run build, format check, and tests
-/frontend__debug_sse              # Troubleshoot SSE issues
-/deploy__rollback                 # Rollback a failed deployment
-```
+Skill names use lowercase hyphenated identifiers (e.g., `jasperfx-marten`, `aspnet-sse`, `csharp-logger-message`).
 
-The agent then follows the skill's instructions step-by-step.
+### Complete Skill Catalog (35 Skills)
 
-### Complete Skill Catalog (19 Skills)
+#### Critter Stack (2)
+- **`jasperfx-marten`** — Marten document DB and event store: aggregates, projections (single-stream, multi-stream, composite), multi-tenancy, async daemon, commit listeners, natural keys.
+- **`jasperfx-wolverine`** — Wolverine command/handler, messaging, async jobs, sagas, stateful workflows, Marten integration, optimistic concurrency.
 
-#### Aspire Runbooks (2)
-- **`/aspire__start_solution`** - Launch the Aspire-hosted stack locally.
-- **`/aspire__setup_mcp`** - Configure the Aspire MCP bridge for observability.
+#### Aspire & Cloud Infrastructure (4)
+- **`aspire`** — Aspire orchestration, AppHost, Aspire CLI, MCP server, distributed app workflows.
+- **`aspire-azure-storage`** — Azure Blob/Queue/Table Storage in Aspire (AddAzureStorage, RunAsEmulator, WaitFor).
+- **`aspire-postgres`** — PostgreSQL in Aspire (AddPostgres, AddDatabase, WaitFor, WithPgAdmin).
+- **`aspire-redis`** — Redis in Aspire (AddRedis, WaitFor, AddRedisDistributedCache).
 
-#### Wolverine Skills (1)
-- **`/wolverine__guide`** — All write operations: CREATE (POST/start-stream), UPDATE (PUT/PATCH/append-event), DELETE (soft-delete/tombstone). Load `operations.md` for the relevant section.
+#### ASP.NET Core (5)
+- **`aspnet-hybrid-cache`** — HybridCache two-level caching: GetOrCreateAsync, RemoveByTagAsync, tag-based invalidation, CacheTags constants, tenant/culture key scoping.
+- **`aspnet-minimal-apis`** — Minimal API routing, MapGroup, parameter binding, endpoint metadata, filters.
+- **`aspnet-openapi`** — Built-in OpenAPI (no Swashbuckle): TypedResults, Results<>, transformers, metadata.
+- **`aspnet-sse`** — Server-Sent Events: TypedResults.ServerSentEvents, Channel pub/sub, multi-instance Redis scaling, SseParser client.
+- **`aspnet-typed-results`** — TypedResults for strongly-typed Minimal API return types, OpenAPI inference, unit-testable handlers.
 
-#### Marten Skills (1)
-- **`/marten__guide`** — All modeling and queries: aggregates, projections (single-stream, multi-stream, composite, event), and query endpoints (get-by-id, paged list). Load the relevant sub-file (`aggregate.md`, `projections.md`, `queries.md`).
+#### Blazor & UI (2)
+- **`blazor`** — Blazor Server components: render modes, lifecycle, ReactiveQuery, MudBlazor, tenant-aware services, AuthorizeView.
+- **`blazor-mudblazor`** — MudBlazor components: setup, layout, MudTable with server data, MudForm, MudDialog, MudAutocomplete, theming.
 
-#### Frontend & Realtime (2)
-- **`/frontend__feature_scaffold`** - Blazor features with ReactiveQuery + optimistic updates.
-- **`/frontend__debug_sse`** - Troubleshoot SSE + cache invalidation.
+#### C# Language (8)
+- **`csharp-async`** — Task, ValueTask, CancellationToken, IAsyncEnumerable, ConfigureAwait, deadlock prevention.
+- **`csharp-generic-math`** — System.Numerics generic math interfaces for type-parameter-agnostic arithmetic.
+- **`csharp-http-resilience`** — HTTP resilience with Microsoft.Extensions.Http.Resilience (Polly v8): retry, circuit breaker, timeout, hedging.
+- **`csharp-logger-message`** — `[LoggerMessage]` source generator for zero-allocation, compile-time-safe logging.
+- **`csharp-record`** — C# records for immutable data types, value equality, `with` expressions.
+- **`csharp-regex`** — `[GeneratedRegex]` source generator for AOT-safe, compile-time regex.
+- **`csharp-simd`** — SIMD vectorized loops with Vector, Vector128/256/512, TensorPrimitives.
+- **`csharp-span`** — Span<T>/Memory<T> for zero-allocation slicing, parsing, and buffer reuse.
 
-#### Testing & Verification (4)
-- **`/test__unit_suite`** - Analyzer/API unit suites.
-- **`/test__integration_suite`** - Aspire integration suite.
-- **`/test__verify_feature`** - Definition-of-done pipeline (build/format/tests).
-- **`/test__integration_scaffold`** - Author integration tests with SSE guards.
+#### Testing (4)
+- **`tunit`** — TUnit tests: async-first API, assertions, data-driven tests, lifecycle hooks, Bogus, NSubstitute.
+- **`bogus`** — Bogus library for realistic fake data: test data, seeding, randomized object creation.
+- **`nsubstitute`** — NSubstitute mocks/stubs/spies: Substitute.For, Returns, Received, Arg matchers, async stubbing.
+- **`bunit`** — bUnit for Blazor component unit tests: rendering, interaction, DI, JSInterop.
 
-#### Deployment (1)
-- **`/deploy__rollback`** - Roll back safely after failed releases.
+#### HTTP Clients (1)
+- **`refit`** — Refit typed REST clients: interface definition, AddRefitClient, DelegatingHandler, IApiResponse, error handling.
 
-#### Operations & Cache (3)
-- **`/ops__doctor_check`** - Environment readiness (dotnet, Docker, azd, kubectl).
-- **`/ops__rebuild_clean`** - Full rebuild to clear flaky artifacts.
-- **`/cache__debug_cache`** - HybridCache/Redis troubleshooting.
+#### .NET Tooling (2)
+- **`dotnet-scaffold`** — .NET solution scaffolding: project layout, Directory.Build.props, Central Package Management, .editorconfig.
+- **`etag`** — HTTP ETags, conditional requests, optimistic concurrency: If-Match, If-None-Match, 304/412.
 
-#### Documentation & Language Patterns (4)
-- **`/meta__cheat_sheet`** - Quick reference to stack rules + commands.
-- **`/lang__docfx_guide`** - Produce DocFX-friendly guides.
-- **`/csharp-logger-message`** - Add high-performance logging with LoggerMessage source generator.
-- **`/lang__problem_details`** - Add RFC 7807 ProblemDetails error responses.
+#### Email (1)
+- **`mailkit`** — MailKit/MimeKit: MimeMessage, SmtpClient, ImapClient, attachments, OAuth2, IDLE.
 
-### Skill Cross-Referencing System
-
-All 19 skills include "Related Skills" sections that reference each other, creating an interconnected ecosystem:
-
-**Example**: `/test__integration_scaffold` references:
-- **Prerequisites**: `/wolverine__guide`, `/marten__guide`, `/frontend__feature_scaffold`
-- **Next Steps**: `/test__verify_feature`
-- **See Also**: Links to test runner skills for execution
-
-**Coverage**:
-- All 19 skills have "Related Skills" sections
-- ~85 cross-reference links between skills
-- 4 end-to-end workflow paths documented
-- Common commands centralized (test runners, environment checks)
-
-**Benefits**:
-- Skills guide to the next logical step
-- Related skills are discoverable through cross-references
-- Workflows are documented with clear navigation
-- Single source of truth for common commands
+#### Agent Tooling (6)
+- **`agents-md`** — Create and maintain AGENTS.md files and AI coding context.
+- **`copilot-custom-agent`** — GitHub Copilot custom agent files (.agent.md) in VS Code.
+- **`copilot-hooks`** — Copilot hook configurations: PreToolUse/PostToolUse, session hooks, audit logging.
+- **`copilot-sdk`** — GitHub Copilot SDK: sessions, prompts, streaming, tool definitions, hooks.
+- **`copilot-skill-creator`** — Create and optimize VS Code Copilot skills.
+- **`copilot-squad`** — Multi-agent squad design: orchestration, handoffs, specialist roles.
 
 ### Creating New Skills
 
-Create a new directory under `.claude/skills/<prefix>__<slug>/` with a `SKILL.md` file. Follow the naming conventions in `.claude/skills/NAMING-CONVENTIONS.md` and the structure in `.claude/skills/README.md`.
+Create a new directory under `.github/skills/<skill-name>/` with a `SKILL.md` file.
 
 All skills follow these standards:
 - ✅ YAML frontmatter with `name` and `description`
-- ✅ Clear step-by-step instructions
-- ✅ Related Skills section (where applicable)
+- ✅ Clear step-by-step instructions or reference tables
 - ✅ Examples and troubleshooting guidance
+- ✅ Cross-references to related skills (where applicable)
 
 ---
 
@@ -200,10 +190,10 @@ All skills follow these standards:
 When working with an AI agent on this project:
 
 1. **Let the agent read AGENTS.md** - They provide context the agent needs
-2. **Use skills for common tasks** - Don't write manual steps when a skill exists
-3. **Follow skill workflows** - Use cross-references to navigate (e.g., `/marten__guide` → `/wolverine__guide` → `/test__verify_feature`)
+2. **Skills load automatically** - Copilot matches your request against skill descriptions and loads the relevant SKILL.md
+3. **Follow skill workflows** - Skills link to related skills, guiding through multi-step processes
 4. **Trust the analyzers** - Build warnings (BS1xxx-BS4xxx) indicate pattern violations
-5. **Verify with `/test__verify_feature`** - Ensures build, format, and tests pass
+5. **Run `dotnet test` to verify** - Ensures build, format, and tests pass
 
 ### For Developers Adding to the System
 
@@ -221,47 +211,29 @@ When extending the agent configuration:
 
 ### Complete Feature Development Path
 
-```
-/marten__guide (aggregate.md)
-  → /marten__guide (projections.md)
-    → /wolverine__guide (operations.md — Create section)
-      → /marten__guide (queries.md)
-        → /frontend__feature_scaffold
-          → /test__integration_scaffold
-            → /test__verify_feature ✅
-```
+A typical full-stack event-sourced feature follows this path:
 
-This workflow creates a complete Event Sourced feature from aggregate to UI in ~30-60 minutes.
+1. **Aggregate** — define events and apply methods (`jasperfx-marten` skill)
+2. **Projections** — build read models from events (`jasperfx-marten` skill)
+3. **Handlers** — write Wolverine command handlers (`jasperfx-wolverine` skill)
+4. **Endpoints** — expose Minimal API routes (`aspnet-minimal-apis`, `aspnet-typed-results`, `aspnet-openapi` skills)
+5. **Frontend** — add Blazor page with ReactiveQuery + MudBlazor (`blazor`, `blazor-mudblazor` skills)
+6. **Tests** — TUnit unit + integration tests (`tunit`, `nsubstitute`, `bogus` skills)
+7. **Verify** — `dotnet test && dotnet format --verify-no-changes`
 
 ### Debugging Workflow
 
-```
-Issue Detected
-  → /test__verify_feature (basic checks first)
-    → /frontend__debug_sse OR /cache__debug_cache (specific debugging)
-      → Fix applied
-        → /test__integration_scaffold (add regression test)
-          → /test__verify_feature ✅
-```
-
-### Deployment Workflow
-
-```
-/ops__doctor_check (check environment)
-  → deploy via `azd up` (Azure) or `kubectl apply` (Kubernetes)
-    → /test__verify_feature (test deployment)
-      → If issues: /deploy__rollback
-```
+1. Check analyzer errors (BS1xxx-BS4xxx) first
+2. For SSE issues: refer to `aspnet-sse` skill
+3. For cache issues: refer to `aspnet-hybrid-cache` skill
+4. Add a regression test once fixed
+5. Run `dotnet test` to confirm
 
 ### Testing Workflow
 
-```
-Feature Implemented
-  → /test__integration_scaffold (create tests)
-    → /test__unit_suite (quick verification)
-      → /test__integration_suite (full verification)
-        → /test__verify_feature ✅
-```
+1. Unit tests for aggregates and handlers: `tunit` + `nsubstitute` + `bogus` skills
+2. Integration tests for endpoints and projections: `tunit` + Aspire test host
+3. Run `dotnet test` to verify all pass
 
 ---
 
@@ -269,19 +241,19 @@ Feature Implemented
 
 The agent system complements (but doesn't replace) comprehensive documentation:
 
-| System | Purpose | Lines of Content |
-|--------|---------|------------------|
-| **AGENTS.md** | Quick reference for agents to work correctly | ~1,030 lines |
-| **Skills** | Step-by-step workflows for common tasks | ~2,355 lines |
-| **docs/** guides | Deep dives for humans learning the architecture | ~10,000+ lines |
-| **Analyzer Rules** | Compile-time enforcement of patterns | N/A (code) |
+| System | Purpose |
+|--------|------|
+| **AGENTS.md** | Quick reference for agents to work correctly |
+| **Skills** | Reference guides and workflows auto-loaded by VS Code Copilot |
+| **docs/** guides | Deep dives for humans learning the architecture |
+| **Analyzer Rules** | Compile-time enforcement of patterns |
 
 **Example**:
 - **Event Sourcing Guide** (docs/) explains *why* and *how* Event Sourcing works (for humans)
 - **ApiService AGENTS.md** reminds agents to use `DateTimeOffset` and past-tense event names
 - **BS1xxx analyzers** enforce events as records with immutable properties (compile-time)
-- **`/wolverine__guide` skill** provides the exact steps to implement new commands (create, update, delete)
-- **`/marten__guide` skill** shows how to create event-sourced aggregates, projections, and query endpoints
+- **`jasperfx-wolverine` skill** provides patterns for implementing commands (create, update, delete)
+- **`jasperfx-marten` skill** shows how to create event-sourced aggregates, projections, and query endpoints
 
 ---
 
@@ -295,13 +267,13 @@ Agents live in `.github/agents/` as `.agent.md` files. Each file is a self-conta
 
 | Agent | Role | Model | Writes to memory |
 |---|---|---|---|
-| **Orchestrator** | Routes tasks to specialists; never writes code | GPT-4o | `task-brief.md` |
+| **Orchestrator** | Routes tasks to specialists; never writes code | Claude Sonnet 4.6 | `task-brief.md`, `status.md` |
 | **Planner** | Researches codebase; produces implementation plan | Claude Sonnet 4.6 | `plan.md` |
-| **BackendDeveloper** | Wolverine handlers, Marten aggregates, API endpoints | GPT-5.3-Codex | `backend-output.md` |
-| **UiUxDesigner** | Blazor component hierarchy, component choices, interaction flows, design specs; no code edits | Claude Sonnet 4.6 | `design-output.md` |
-| **FrontendDeveloper** | Blazor pages/components, SSE subscriptions, HybridCache | Claude Sonnet 4.5 | `frontend-output.md` |
-| **TestEngineer** | TUnit unit tests, Aspire integration tests, Playwright E2E | Claude Sonnet 4.5 | `test-output.md` |
+| **BackendDeveloper** | Wolverine handlers, Marten aggregates, API endpoints | GPT-5.3-Codex | `backend-developer-output.md` |
+| **FrontendDeveloper** | Blazor pages/components, SSE subscriptions, HybridCache | GPT-5.3-Codex | `frontend-developer-output.md` |
+| **TestEngineer** | TUnit unit tests, Aspire integration tests | GPT-5.3-Codex | `test-output.md` |
 | **CodeReviewer** | Security (OWASP Top 10), pattern & convention review; no edits | GPT-5.4 | `review.md` |
+| **Squad Eval** | Run squad benchmark evals and visualize results | (not set) | — |
 
 ### Orchestrator Design
 
@@ -313,6 +285,8 @@ The Orchestrator has `disable-model-invocation: true` — it **cannot** reason a
 4. Read the final `review.md` and report to the user
 
 This ensures the Orchestrator acts as a pure coordinator and never contaminates the specialist agents' technical judgment.
+
+> **Note**: `disable-model-invocation: true` is set on **all** specialist agents (Planner, BackendDeveloper, FrontendDeveloper, TestEngineer, CodeReviewer) as well, ensuring each agent focuses solely on its designated task.
 
 ### 401 Escalation Policy
 
@@ -330,9 +304,8 @@ When the Orchestrator receives a 401 escalation, it must pause the workflow, not
 User request
   → Orchestrator (clarify → write task-brief.md)
     → Planner (research → write plan.md)
-      → BackendDeveloper  ┐ (parallel if full-stack)
-      → UiUxDesigner      ┘ (parallel with BackendDeveloper for UI features)
-        → FrontendDeveloper (reads plan.md + design-output.md → write frontend-output.md)
+      → BackendDeveloper   ┌ (parallel if full-stack)
+      → FrontendDeveloper  ┘
           → TestEngineer (run tests → write test-output.md)
             → CodeReviewer (review → write review.md)
               → Orchestrator (report to user)
@@ -342,17 +315,17 @@ Each agent-to-agent transition is performed via **handoff buttons** rendered by 
 
 ### Memory Handoff Protocol
 
-Agents communicate via six designated files under `/memories/session/`:
+Agents communicate via designated files under `/memories/session/`:
 
 | File | Written by | Read by |
 |---|---|---|
 | `task-brief.md` | Orchestrator | Planner |
 | `plan.md` | Planner | All coding agents + CodeReviewer |
-| `design-output.md` | UiUxDesigner | FrontendDeveloper, CodeReviewer |
-| `backend-output.md` | BackendDeveloper | TestEngineer, CodeReviewer |
-| `frontend-output.md` | FrontendDeveloper | TestEngineer, CodeReviewer |
+| `backend-developer-output.md` | BackendDeveloper | TestEngineer, CodeReviewer |
+| `frontend-developer-output.md` | FrontendDeveloper | TestEngineer, CodeReviewer |
 | `test-output.md` | TestEngineer | CodeReviewer |
 | `review.md` | CodeReviewer | Orchestrator |
+| `status.md` | Orchestrator + all agents | Orchestrator (progress tracking) |
 
 The **memory-protocol hook** (see [Lifecycle Hooks](#lifecycle-hooks)) enforces that agents only write to their designated files, blocking accidental cross-agent writes.
 
@@ -370,7 +343,7 @@ You can also invoke individual agents directly for partial tasks:
 
 ```
 @Planner Research how to add ISBN validation to the Book aggregate.
-@CodeReviewer Review all changes in /memories/session/backend-output.md
+@CodeReviewer Review all changes in /memories/session/backend-developer-output.md
 @TestEngineer Write integration tests for the Publisher CREATE endpoint.
 ```
 
@@ -398,7 +371,8 @@ Key fields:
 - **`target: vscode`** — marks it as a VS Code Copilot agent
 - **`model`** — the LLM to use; chosen per role (reasoning vs. coding vs. review)
 - **`tools`** — tool permissions; CodeReviewer has no `edit` tool by design
-- **`disable-model-invocation: true`** — Orchestrator only; prevents reasoning about implementation
+- **`disable-model-invocation: true`** — set on **all** agents (Orchestrator, Planner, all specialists); prevents reasoning about details outside the agent's designated role
+- **`user-invocable: true`** — only set on Orchestrator; other agents are invoked by the squad
 - **`handoffs`** — one-click buttons to route to the next agent with a pre-written prompt
 
 ---
@@ -468,15 +442,16 @@ Scans `.cs` and `.razor` files for OWASP Top 10 patterns:
 
 ### Memory Protocol Hook (`check_memory_protocol.py`)
 
-Guards the `vscode/memory` tool. A write is **allowed** only if the target is one of the six designated session files:
+Guards the `vscode/memory` tool. A write is **allowed** only if the target is one of the designated session files:
 
 ```
 /memories/session/task-brief.md
 /memories/session/plan.md
-/memories/session/backend-output.md
-/memories/session/frontend-output.md
+/memories/session/backend-developer-output.md
+/memories/session/frontend-developer-output.md
 /memories/session/test-output.md
 /memories/session/review.md
+/memories/session/status.md
 ```
 
 Any write to `/memories/` (user scope) or an unknown session filename is blocked, preventing agents from polluting persistent memory.
@@ -593,13 +568,13 @@ The root AGENTS.md documents common agent errors:
 
 This reduces iteration time by preventing common mistakes upfront.
 
-### Skill Ecosystem *(new)*
+### Skill Ecosystem
 
-Skills are now interconnected:
-- **Prerequisites**: Skills can require other skills to run first (e.g., `/deploy__rollback` requires a prior deployment)
-- **Alternatives**: Skills can suggest alternative approaches (e.g., `/cache__debug_cache` or `/frontend__debug_sse` for production issues)
-- **Next Steps**: Skills guide to logical next step (e.g., `/test__integration_scaffold` → `/test__verify_feature`)
-- **Recovery**: Skills document failure recovery (e.g., `/deploy__rollback` for failed deployments)
+Skills are interconnected through cross-references in their content:
+- **Prerequisites**: Skills document what to read first (e.g., `jasperfx-marten` before `jasperfx-wolverine`)
+- **Alternatives**: Skills suggest alternative approaches for production issues
+- **Next Steps**: Skills link to the logical next skill in a workflow
+- **Recovery**: Skills document failure recovery patterns
 
 This creates a self-documenting workflow system where agents discover related skills naturally.
 
@@ -609,13 +584,9 @@ This creates a self-documenting workflow system where agents discover related sk
 
 ### System Coverage
 - **AGENTS.md Coverage**: 12/12 files
-- **Skills**: 19 covering complete development lifecycle
-- **Cross-Reference Coverage**: 19/19 skills
-- **Cross-Reference Links**: ~85 total
-- **Skill Lines**: ~2,355 lines
-- **AGENTS.md Lines**: ~1,030 lines
-- **GitHub Copilot Agents**: 7 (Orchestrator, Planner, BackendDeveloper, UiUxDesigner, FrontendDeveloper, TestEngineer, CodeReviewer)
-- **Lifecycle Hook Scripts**: 9 covering all 8 VS Code hook events
+- **Skills**: 35 covering complete development lifecycle
+- **GitHub Copilot Agents**: 7 (Orchestrator, Planner, BackendDeveloper, FrontendDeveloper, TestEngineer, CodeReviewer, SquadEval)
+- **Lifecycle Hook Scripts**: 9 covering all VS Code hook events
 - **Standards Compliance**: GitHub Copilot + agents.md specifications
 
 ### Developer Productivity
@@ -636,8 +607,8 @@ This creates a self-documenting workflow system where agents discover related sk
 The BookStore agent system is **100% compliant** with industry standards:
 
 ### GitHub Copilot Agent Skills
-- ✅ Skills in `.claude/skills/` directory
-- ✅ YAML frontmatter with `name`, `description`, `license`
+- ✅ Skills in `.github/skills/` directory
+- ✅ YAML frontmatter with `name` and `description`
 - ✅ Markdown instructions
 - ✅ Lowercase, hyphenated skill names
 
@@ -669,13 +640,12 @@ The BookStore project follows these standards to ensure agent compatibility and 
 - [Aspire Deployment Guide](aspire-deployment-guide.md) - Azure and Kubernetes deployment
 
 ### Skills Reference
-- **Skills**: [.claude/skills/README.md](../../.claude/skills/README.md) - Complete skill catalog
-- **Skills Directory**: [.claude/skills/](../../.claude/skills/) - Browse all 19 skills
+- **Skills Directory**: [.github/skills/](../../.github/skills/) - Browse all 35 skills
 
 ### Agent Team Reference
-- **Agent Files**: [.github/agents/](../../.github/agents/) - Browse all 6 agent definitions
-- **Orchestrator**: [.github/agents/orchestrator.agent.md](../../.github/agents/orchestrator.agent.md)
-- **Planner**: [.github/agents/planner.agent.md](../../.github/agents/planner.agent.md)
+- **Agent Files**: [.github/agents/](../../.github/agents/) - Browse all 7 agent definitions
+- **Orchestrator**: [.github/agents/Orchestrator.agent.md](../../.github/agents/Orchestrator.agent.md)
+- **Planner**: [.github/agents/Planner.agent.md](../../.github/agents/Planner.agent.md)
 
 ### Lifecycle Hooks Reference
 - **Hook Configs**: [.github/hooks/](../../.github/hooks/) - The 6 JSON hook config files
