@@ -1,8 +1,56 @@
 # Email Verification Guide
 
+This guide covers two distinct aspects of email handling in BookStore:
+
+1. **Email format validation** — ensuring the supplied string is a well-formed email address, applied on both the frontend and the backend.
+2. **Email verification** — confirming that the user actually owns the address, via a token sent to their inbox.
+
+---
+
+## Email Format Validation
+
+### `EmailValidator` utility class
+
+All format-level validation is centralised in `src/BookStore.Shared/Validation/EmailValidator.cs`:
+
+```csharp
+public static class EmailValidator
+{
+    static readonly EmailAddressAttribute EmailAttribute = new();
+
+    /// <returns>true if the email is non-null, non-whitespace, and passes EmailAddressAttribute.</returns>
+    public static bool IsValid(string? email) { ... }
+
+    /// <returns>null when valid; "Email is required" or "Invalid email format" otherwise.</returns>
+    public static string? GetError(string? email) { ... }
+}
+```
+
+The class wraps `System.ComponentModel.DataAnnotations.EmailAddressAttribute` and lives in `BookStore.Shared` so both the API and the Blazor frontend can share the same logic without duplication.
+
+### Where format validation is applied
+
+| Location | How |
+| :--- | :--- |
+| `Register.razor` (frontend) | `Validation="@(new Func<string, string?>(ValidateEmail))"` → `EmailValidator.GetError(email)` on the `MudTextField` |
+| `Login.razor` (frontend) | Same pattern; applied both strictly (`GetError`) and leniently (skip empty) on the email field |
+| `TenantManagement.razor` (admin, frontend) | `EmailValidator.GetError(email)` inside the admin tenant-creation form |
+| `TenantEndpoints.cs` (API) | `BookStore.Shared.Validation.EmailValidator.IsValid(request.AdminEmail)` before provisioning a new tenant's admin user; returns `ERR_TENANT_ADMIN_EMAIL_INVALID` / 400 on failure |
+| User registration (API) | ASP.NET Core Identity's `UserManager.CreateAsync()` validates the email format internally via its own `UserValidator`. Invalid emails surface as `InvalidEmail` in `result.Errors` and are returned as a `400 Validation` ProblemDetails response. |
+
+### Error codes
+
+| Code | Constant | Scenario |
+| :--- | :--- | :--- |
+| `ERR_TENANT_ADMIN_EMAIL_INVALID` | `ErrorCodes.Tenancy.InvalidAdminEmail` | Invalid `AdminEmail` in `POST /admin/tenants` |
+
+---
+
+## Email Verification
+
 This guide details the implementation of the email verification feature in the BookStore application.
 
-## Overview
+### Overview
 
 The email verification system ensures that users provide valid email addresses during registration. It supports:
 - **Conditional Validation:** Enabled/Disabled via configuration.
@@ -13,18 +61,18 @@ The email verification system ensures that users provide valid email addresses d
 - **Enhanced Login Feedback:** Distinguishes between invalid credentials and unconfirmed accounts (when secure to do so).
 - **Security:** Protects against User Enumeration attacks.
 
-## Security & Privacy
+### Security & Privacy
 
-### User Enumeration Protection
+#### User Enumeration Protection
 To prevent attackers from discovering valid email addresses, the system employs **response masking**:
 - **Registration:** Attempting to register with an existing email returns a generic success message ("Registration successful. Please check your email..."), mimicking a successful registration.
 - **Passkey Registration:** Similarly, duplicate account errors are masked during passkey enrollment.
 - **Resend Verification:** Always returns success even if the email does not exist.
 
-### Rate Limiting
+#### Rate Limiting
 - **Resend Verification:** Limits requests to one per 60 seconds per account to prevent abuse.
 
-## Architecture
+### Architecture
 
 The verification process follows an asynchronous, event-driven flow:
 
@@ -43,7 +91,7 @@ The verification process follows an asynchronous, event-driven flow:
 8.  **Real-time Update:** SSE stream broadcasts the notification to the client, redirecting the user to login automatically.
 9.  **Resend Verification:** If the user loses the email, they can request a new one via the Login page (`POST /account/resend-verification`).
 
-### Component Diagram
+#### Component Diagram
 
 ```mermaid
 sequenceDiagram
@@ -75,7 +123,7 @@ sequenceDiagram
     Frontend-->>User: Auto-redirect to Login
 ```
 
-## Resend Verification Flow
+### Resend Verification Flow
 
 The system provides a mechanism for users to request a new verification email if the original is lost or expired:
 
@@ -107,11 +155,11 @@ sequenceDiagram
     Email-->>User: Send New Verification Email
 ```
 
-## Configuration
+### Configuration
 
 Email settings are configured in `appsettings.json` under the `Email` section.
 
-### Options
+#### Options
 
 | Setting | Type | Description | Default |
 | :--- | :--- | :--- | :--- |
@@ -124,7 +172,7 @@ Email settings are configured in `appsettings.json` under the `Email` section.
 | `SmtpUsername` | string | SMTP username | - |
 | `SmtpPassword` | string | SMTP password | - |
 
-### Development Setup (Logging)
+#### Development Setup (Logging)
 
 For local development, use the `Logging` method to see emails in the console output without sending actual emails.
 
@@ -135,7 +183,7 @@ For local development, use the `Logging` method to see emails in the console out
 }
 ```
 
-### Production Setup (SMTP)
+#### Production Setup (SMTP)
 
 For production, configure your SMTP provider details.
 
@@ -151,11 +199,11 @@ For production, configure your SMTP provider details.
 }
 ```
 
-## Unverified Account Cleanup
+### Unverified Account Cleanup
 
 To prevent the accumulation of unverified accounts, the system includes an automatic cleanup job. This job runs periodically and deletes accounts that have not verified their email within a specified timeframe.
 
-### Configuration
+#### Configuration
 
 The cleanup job is configured under the `Account:Cleanup` section in `appsettings.json`.
 
@@ -165,21 +213,21 @@ The cleanup job is configured under the `Account:Cleanup` section in `appsetting
 | `UnverifiedAccountExpirationHours` | int | Hours after which an unverified account expires. | `24` |
 | `CleanupIntervalHours` | int | Frequency (in hours) of the cleanup job. | `1` |
 
-### Implementation details
+#### Implementation details
 
 - **Wolverine Recurring Job**: The cleanup is registered as a recurring job in Wolverine, ensuring it runs reliably in the background.
 - **Marten Query**: The job performs a bulk deletion of accounts across **all tenants** using the `.AnyTenant()` Marten extension. Matching criteria: `EmailConfirmed == false` and `CreatedAt < SnapshotTime - Expiration`.
 - **Structured Logging**: All cleanup activities are logged under the `Log.Maintenance` category.
 
-## Implementation Details
+### Implementation Details
 
-### Services
+#### Services
 
 -   **`EmailTemplateService`**: A lightweight service using string replacement for templates. Avoids Razor overhead for simple emails.
 -   **`SmtpEmailService`**: Uses `MailKit` for robust SMTP handling. It creates a new `SmtpClient` per request to ensure thread safety and low memory footprint.
 -   **`LoggingEmailService`**: Writes email content to `ILogger` for debugging.
 
-### Extensibility
+#### Extensibility
 
 To add a new delivery method (e.g., SendGrid API):
 1.  Implement `IEmailService`.
