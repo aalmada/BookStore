@@ -12,9 +12,9 @@ The BookStore application uses the **Options pattern** for strongly-typed config
 
 ## Configuration Files
 
-### appsettings.json
+### BookStore.ApiService — appsettings.json
 
-Main configuration file for the application:
+Main configuration file for the API service:
 
 ```json
 {
@@ -22,8 +22,12 @@ Main configuration file for the application:
     "LogLevel": {
       "Default": "Information",
       "Microsoft.AspNetCore": "Warning",
-      "Marten": "Information",
-      "Wolverine": "Information",
+      "Microsoft.AspNetCore.Hosting": "Information",
+      "Microsoft.AspNetCore.Routing": "Warning",
+      "System.Net.Http.HttpClient": "Warning",
+      "Marten": "Warning",
+      "Npgsql": "Warning",
+      "Wolverine": "Warning",
       "BookStore": "Information"
     },
     "Console": {
@@ -45,23 +49,122 @@ Main configuration file for the application:
   },
   "Localization": {
     "DefaultCulture": "en",
-    "SupportedCultures": ["pt", "en", "fr", "de", "es"]
+    "SupportedCultures": ["pt", "pt-PT", "en", "fr", "de", "es"]
+  },
+  "Currency": {
+    "DefaultCurrency": "GBP",
+    "SupportedCurrencies": ["USD", "EUR", "GBP"]
+  },
+  "Authentication": {
+    "Passkey": {
+      "ServerDomain": "localhost",
+      "AllowedOrigins": ["https://localhost:7260"]
+    }
+  },
+  "Email": {
+    "DeliveryMethod": "Logging",
+    "BaseUrl": "https://localhost:7260"
+  },
+  "Jwt": {
+    "Algorithm": "HS256",
+    "SecretKey": "",
+    "Issuer": "BookStore.ApiService",
+    "Audience": "BookStore.Web",
+    "ExpirationMinutes": 15
+  },
+  "RateLimit": {
+    "PermitLimit": 1000,
+    "WindowInMinutes": 1,
+    "QueueLimit": 100,
+    "AuthPermitLimit": 20,
+    "AuthWindowSeconds": 60,
+    "AuthQueueLimit": 5,
+    "NotificationSseTokenLimit": 20,
+    "NotificationSseTokensPerPeriod": 2,
+    "NotificationSseReplenishmentPeriodSeconds": 1,
+    "NotificationSseQueueLimit": 0
+  },
+  "Account": {
+    "Cleanup": {
+      "UnverifiedAccountExpirationHours": 24,
+      "CleanupIntervalHours": 1,
+      "Enabled": true
+    }
   }
 }
 ```
 
-### appsettings.Development.json
+### BookStore.ApiService — appsettings.Development.json
 
-Development-specific overrides:
+Development-specific overrides. Note that the console formatter switches to `"simple"` for human-readable local output:
 
 ```json
 {
   "Logging": {
     "LogLevel": {
       "Default": "Debug",
-      "Microsoft.AspNetCore": "Information"
+      "Microsoft.AspNetCore": "Information",
+      "Microsoft.AspNetCore.Hosting": "Information",
+      "Microsoft.AspNetCore.Routing": "Debug",
+      "Microsoft.AspNetCore.Identity": "Debug",
+      "System.Net.Http.HttpClient": "Information",
+      "Marten": "Debug",
+      "Wolverine": "Information",
+      "BookStore": "Debug"
+    },
+    "Console": {
+      "FormatterName": "simple",
+      "FormatterOptions": {
+        "IncludeScopes": true,
+        "SingleLine": false,
+        "TimestampFormat": "yyyy-MM-dd HH:mm:ss ",
+        "UseUtcTimestamp": true
+      }
     }
+  },
+  "Authentication": {
+    "Passkey": {
+      "AllowedOrigins": ["https://localhost:7260"]
+    }
+  },
+  "Jwt": {
+    "Algorithm": "HS256",
+    "SecretKey": "your-secret-key-must-be-at-least-32-characters-long-for-hs256"
+  },
+  "RateLimit": {
+    "PermitLimit": 2000,
+    "AuthPermitLimit": 200,
+    "AuthWindowSeconds": 60,
+    "AuthQueueLimit": 10,
+    "NotificationSseTokenLimit": 60,
+    "NotificationSseTokensPerPeriod": 5,
+    "NotificationSseReplenishmentPeriodSeconds": 1,
+    "NotificationSseQueueLimit": 0
+  },
+  "Localization": {
+    "DefaultCulture": "en",
+    "SupportedCultures": ["pt", "pt-PT", "en", "fr", "de", "es"]
+  },
+  "Currency": {
+    "DefaultCurrency": "GBP",
+    "SupportedCurrencies": ["USD", "EUR", "GBP"]
   }
+}
+```
+
+### BookStore.Web — appsettings.json
+
+The Web frontend has a minimal configuration. The API service URL and all infrastructure connection strings are injected by Aspire at runtime — there is nothing to configure manually here:
+
+```json
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*"
 }
 ```
 
@@ -76,6 +179,31 @@ Configuration files are loaded in order:
 
 ---
 
+## Aspire-Injected Configuration
+
+The AppHost (`src/BookStore.AppHost/AppHost.cs`) wires up infrastructure resources and injects their connection details as environment variables into consuming services. You do **not** configure these in `appsettings.json`; they are set automatically at runtime by Aspire.
+
+| Resource | Injected into | Aspire resource name |
+|----------|--------------|----------------------|
+| PostgreSQL database | ApiService | `bookstoredb` |
+| Redis cache | ApiService | `cache` |
+| Azure Blob Storage | ApiService | `blobs` |
+| ApiService HTTP endpoint | Web | `apiservice` |
+
+In development, Blob Storage runs via the **Azurite** emulator container — no Azure account is needed.
+
+### AppHost-Forwarded Environment Flags
+
+The AppHost also conditionally reads certain flags from its own configuration and forwards them to the API service as environment variables. These are **not** stored in `appsettings.json` and are intended for use by the test runner or CI pipeline (e.g., via `aspire.config.json` passed to `aspire run`):
+
+| AppHost configuration key | Forwarded to ApiService as | Purpose |
+|--------------------------|---------------------------|---------|
+| `RateLimit:Disabled` | `RateLimit__Disabled` | Disable rate limiting during integration tests |
+| `Seeding:Enabled` | `Seeding__Enabled` | Enable or disable database seeding at startup |
+| `Email:DeliveryMethod` | `Email__DeliveryMethod` | Override email delivery mode in test environments |
+
+---
+
 ## Options Pattern
 
 ### Creating an Options Class
@@ -87,7 +215,7 @@ Options classes are strongly-typed representations of configuration sections.
 ```csharp
 using System.ComponentModel.DataAnnotations;
 
-namespace BookStore.ApiService.Models;
+namespace BookStore.ApiService.Infrastructure;
 
 /// <summary>
 /// Configuration options for pagination
@@ -213,16 +341,19 @@ Register options in `Program.cs` or extension methods:
 
 ```csharp
 services.AddOptions<PaginationOptions>()
-    .Bind(configuration.GetSection(PaginationOptions.SectionName))
+  .BindConfiguration(PaginationOptions.SectionName)
     .ValidateDataAnnotations()
     .ValidateOnStart();
 ```
 
 **Explanation**:
 - **`AddOptions<T>()`** - Registers the options type
-- **`Bind()`** - Binds configuration section to the options class
+- **`BindConfiguration(sectionName)`** - Binds `configuration.GetSection(sectionName)` to the options class
 - **`ValidateDataAnnotations()`** - Enables data annotation validation
 - **`ValidateOnStart()`** - Validates configuration at application startup (fails fast)
+
+> [!NOTE]
+> A few components (for example rate limiting) bind configuration manually in specialized extension methods instead of using `AddOptions<T>()`.
 
 ---
 
@@ -238,12 +369,12 @@ public sealed record LocalizationOptions : IValidatableObject
     [Required(ErrorMessage = "DefaultCulture is required")]
     [MinLength(2, ErrorMessage = "DefaultCulture must be at least 2 characters")]
     [ValidCulture]
-    public string DefaultCulture { get; init; } = "en-US";
+    public string DefaultCulture { get; init; } = "en";
 
     [Required(ErrorMessage = "SupportedCultures is required")]
     [MinLength(1, ErrorMessage = "At least one supported culture must be specified")]
     [ValidCulture]
-    public string[] SupportedCultures { get; init; } = ["en-US"];
+    public required string[] SupportedCultures { get; init; }
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
@@ -334,10 +465,10 @@ public sealed class ValidCultureAttribute : ValidationAttribute
 **Usage**:
 ```csharp
 [ValidCulture]
-public string DefaultCulture { get; set; } = "en-US";
+public string DefaultCulture { get; init; } = "en";
 
 [ValidCulture]
-public string[] SupportedCultures { get; set; } = ["en-US"];
+public required string[] SupportedCultures { get; init; }
 ```
 
 ### IValidatableObject
@@ -583,7 +714,7 @@ public int DefaultPageSize { get; set; } = 20;  // ❌ Mutable
 ```
 
 ```csharp
-public sealed class PaginationOptions : IValidatableObject
+public sealed record PaginationOptions : IValidatableObject
 {
     public const string SectionName = "Pagination";
 
@@ -611,25 +742,25 @@ public sealed class PaginationOptions : IValidatableObject
 {
   "Localization": {
     "DefaultCulture": "en",
-    "SupportedCultures": ["pt", "en", "fr", "de", "es"]
+    "SupportedCultures": ["pt", "pt-PT", "en", "fr", "de", "es"]
   }
 }
 ```
 
 ```csharp
-public class LocalizationOptions : IValidatableObject
+public sealed record LocalizationOptions : IValidatableObject
 {
     public const string SectionName = "Localization";
 
     [Required]
     [MinLength(2)]
     [ValidCulture]
-    public string DefaultCulture { get; set; } = "en-US";
+    public string DefaultCulture { get; init; } = "en";
 
     [Required]
     [MinLength(1)]
     [ValidCulture]
-    public string[] SupportedCultures { get; set; } = ["en-US"];
+    public required string[] SupportedCultures { get; init; }
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
@@ -643,6 +774,38 @@ public class LocalizationOptions : IValidatableObject
 }
 ```
 
+### Currency Configuration
+
+```json
+{
+  "Currency": {
+    "DefaultCurrency": "GBP",
+    "SupportedCurrencies": ["USD", "EUR", "GBP"]
+  }
+}
+```
+
+```csharp
+public sealed record CurrencyOptions : IValidatableObject
+{
+    public const string SectionName = "Currency";
+
+    [Required]
+    [Length(3, 3, ErrorMessage = "DefaultCurrency must be a 3-character ISO 4217 code")]
+    public string DefaultCurrency { get; init; } = "USD";
+
+    [Required]
+    [MinLength(1)]
+    public required string[] SupportedCurrencies { get; init; }
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (!SupportedCurrencies.Contains(DefaultCurrency, StringComparer.OrdinalIgnoreCase))
+        {
+            yield return new ValidationResult(
+                $"DefaultCurrency must be included in SupportedCurrencies",
+                [nameof(DefaultCurrency), nameof(SupportedCurrencies)]);
+        }
     }
 }
 ```
@@ -652,23 +815,28 @@ public class LocalizationOptions : IValidatableObject
 ```json
 {
   "RateLimit": {
-    "PermitLimit": 10,
+    "PermitLimit": 1000,
     "WindowInMinutes": 1,
-    "QueueLimit": 0,
-    "AuthPermitLimit": 10,
+    "QueueLimit": 100,
+    "AuthPermitLimit": 20,
     "AuthWindowSeconds": 60,
-    "AuthQueueLimit": 2
+    "AuthQueueLimit": 5,
+    "NotificationSseTokenLimit": 20,
+    "NotificationSseTokensPerPeriod": 2,
+    "NotificationSseReplenishmentPeriodSeconds": 1,
+    "NotificationSseQueueLimit": 0
   }
 }
 ```
 
-> **`RateLimit:Disabled`**: Setting `RateLimit:Disabled=true` bypasses all rate limiting. This flag is intended **only** for automated testing. If it is set to `true` in any non-development, non-test environment, a **Critical** log warning is emitted at startup. Never set this flag in production.
+> **`RateLimit:Disabled`**: Setting `RateLimit:Disabled=true` bypasses all rate limiting. This flag is intended **only** for automated integration tests. If it is set to `true` in any non-development, non-test environment, a **Critical** log warning is emitted at startup. Never set this flag in production. This flag is **not** a property on `RateLimitOptions`; it is read directly from configuration by the rate-limiting setup code.
 
 ```csharp
 public class RateLimitOptions
 {
     public const string SectionName = "RateLimit";
 
+    // General API rate limiting
     [Range(1, int.MaxValue)]
     public int PermitLimit { get; set; } = 10;
 
@@ -677,6 +845,7 @@ public class RateLimitOptions
 
     public int QueueLimit { get; set; } = 0;
 
+    // Auth endpoint rate limiting
     [Range(1, int.MaxValue)]
     public int AuthPermitLimit { get; set; } = 10;
 
@@ -684,6 +853,58 @@ public class RateLimitOptions
     public int AuthWindowSeconds { get; set; } = 60;
 
     public int AuthQueueLimit { get; set; } = 2;
+
+    // SSE notification endpoint rate limiting (token bucket)
+    [Range(1, int.MaxValue)]
+    public int NotificationSseTokenLimit { get; set; } = 20;
+
+    [Range(1, int.MaxValue)]
+    public int NotificationSseTokensPerPeriod { get; set; } = 2;
+
+    [Range(1, int.MaxValue)]
+    public int NotificationSseReplenishmentPeriodSeconds { get; set; } = 1;
+
+    public int NotificationSseQueueLimit { get; set; } = 0;
+}
+```
+
+### Account Cleanup Configuration
+
+Controls the background job that removes unverified accounts after they expire:
+
+```json
+{
+  "Account": {
+    "Cleanup": {
+      "UnverifiedAccountExpirationHours": 24,
+      "CleanupIntervalHours": 1,
+      "Enabled": true
+    }
+  }
+}
+```
+
+```csharp
+public sealed class AccountCleanupOptions
+{
+    public const string SectionName = "Account:Cleanup";
+
+    /// <summary>
+    /// Hours after which an unverified account is considered expired. Default: 24.
+    /// </summary>
+    [Range(1, 8760)] // 1 hour to 1 year
+    public int UnverifiedAccountExpirationHours { get; set; } = 24;
+
+    /// <summary>
+    /// How often the cleanup job runs. Default: every 1 hour.
+    /// </summary>
+    [Range(1, 720)] // 1 hour to 30 days
+    public int CleanupIntervalHours { get; set; } = 1;
+
+    /// <summary>
+    /// Whether the cleanup job is enabled. Default: true.
+    /// </summary>
+    public bool Enabled { get; set; } = true;
 }
 ```
 
@@ -693,7 +914,7 @@ public class RateLimitOptions
 
 ### Structured Logging
 
-The BookStore application uses structured JSON logging:
+The BookStore API service uses structured JSON logging in production and a human-readable simple formatter in development:
 
 ```json
 {
@@ -701,8 +922,12 @@ The BookStore application uses structured JSON logging:
     "LogLevel": {
       "Default": "Information",
       "Microsoft.AspNetCore": "Warning",
-      "Marten": "Information",
-      "Wolverine": "Information",
+      "Microsoft.AspNetCore.Hosting": "Information",
+      "Microsoft.AspNetCore.Routing": "Warning",
+      "System.Net.Http.HttpClient": "Warning",
+      "Marten": "Warning",
+      "Npgsql": "Warning",
+      "Wolverine": "Warning",
       "BookStore": "Information"
     },
     "Console": {
@@ -721,7 +946,7 @@ The BookStore application uses structured JSON logging:
 ```
 
 **Key Settings**:
-- **FormatterName**: `"json"` for structured logging
+- **FormatterName**: `"json"` for structured logging (production); `"simple"` in Development for human-readable output
 - **TimestampFormat**: ISO 8601 format with milliseconds
 - **UseUtcTimestamp**: Always use UTC (consistent with time standards)
 - **IncludeScopes**: Include logging scopes for correlation
@@ -730,11 +955,14 @@ The BookStore application uses structured JSON logging:
 
 ## Authentication Configuration
 
-The BookStore uses a **Token-based authentication model** with JWT and Passkeys.
+The BookStore uses **custom JWT authentication** backed by **ASP.NET Core Identity** (with Marten as the user store). The API issues its own JWT access tokens; the Web frontend stores them in cookies and attaches them to API requests via a `DelegatingHandler`.
+
+> [!NOTE]
+> There is no Keycloak or external identity provider. Authentication is handled entirely by the BookStore API using `JwtTokenService` for token issuance and JWT Bearer authentication for validation.
 
 ### JWT Configuration
 
-Required for token generation and validation.
+Required for token signing and validation.
 
 ```json
 {
@@ -743,7 +971,7 @@ Required for token generation and validation.
     "SecretKey": "your-secret-key-must-be-at-least-32-characters-long-for-hs256",
     "Issuer": "BookStore.ApiService",
     "Audience": "BookStore.Web",
-    "ExpirationMinutes": 60,
+    "ExpirationMinutes": 15,
     "RS256": {
       "PrivateKeyPem": "",
       "PublicKeyPem": ""
@@ -754,19 +982,20 @@ Required for token generation and validation.
 
 **Key Settings**:
 - **Algorithm**: `HS256` (default) or `RS256`.
-- **SecretKey**: Strong cryptographic key (min 32 chars) for signing tokens. **Must be kept secret in production.**
-- **Issuer**: The authority issuing the token (e.g., your API domain).
-- **Audience**: The intended recipient of the token (e.g., your Web App).
-- **ExpirationMinutes**: Lifetime of the Access Token.
+- **SecretKey**: Strong cryptographic key (min 32 UTF-8 bytes) for HMAC signing. **Must be kept secret in production.** Only used when `Algorithm` is `HS256`.
+- **Issuer**: The authority issuing the token — must match `BookStore.ApiService`.
+- **Audience**: The intended recipient — must match `BookStore.Web`.
+- **ExpirationMinutes**: Lifetime of the access token. Default is **15 minutes**.
 - **RS256.PrivateKeyPem / RS256.PublicKeyPem**: PEM-encoded key pair used only when `Algorithm` is `RS256`.
 
 > [!WARNING]
-> For production deployments, prefer `RS256` over the default `HS256`.
-> `HS256` remains supported, but the API logs a startup warning in non-development environments when `Jwt:Algorithm` is `HS256`.
+> For production deployments, prefer `RS256` over `HS256`.
+> When `Jwt:Algorithm` is `HS256` outside Development, the secret key is validated for sufficient entropy (minimum distinct characters, no repeated-character patterns).
+> When `Jwt:Algorithm` is `RS256`, both `RS256:PrivateKeyPem` and `RS256:PublicKeyPem` must be non-empty or the application will fail to start.
 
 ### Passkey Configuration
 
-Required for WebAuthn/FIDO2 operations.
+Required for WebAuthn/FIDO2 passkey operations.
 
 ```json
 {
@@ -780,27 +1009,28 @@ Required for WebAuthn/FIDO2 operations.
 ```
 
 **Key Settings**:
-- **ServerDomain**: The domain where the passkey is valid (the Origin).
+- **ServerDomain**: The relying party domain for passkey registration/authentication.
     - **Development**: Use `localhost`.
     - **Production**: **MUST** match your public domain (e.g., `bookstore.com`). Do not include protocol or port.
-- **AllowedOrigins**: List of valid origins that can request passkey operations. Used for CORS and WebAuthn validation.
-  - **Development**: You may allow localhost origins for local testing.
-  - **Production**: **MUST** be HTTPS-only origins. Do not allow HTTP origins.
+- **AllowedOrigins**: Origins permitted to make cross-origin passkey requests (typically the Web frontend origin).
+  - **Development**: `http://localhost` is permitted.
+  - **Production**: **MUST** be HTTPS-only origins. HTTP origins are rejected outside Development.
+  - Outside Development, an empty list causes startup validation to fail.
 
 > [!WARNING]
 > **Production Criticality**
-> 1. Failing to set `ServerDomain` correctly in production will cause passkey registration and login to fail with "Domain mismatch" or "NotAllowed" errors.
+> 1. Setting `ServerDomain` incorrectly causes passkey registration and login to fail with "Domain mismatch" or "NotAllowed" errors.
 > 2. `AllowedOrigins` must only contain HTTPS origins in production.
 
 ### Email Configuration
 
-Required for email verification.
+Required for email-based account verification.
 
 ```json
 {
   "Email": {
-    "DeliveryMethod": "Smtp", // None, Logging, or Smtp
-    "BaseUrl": "https://localhost:7260",
+    "DeliveryMethod": "Smtp",
+    "BaseUrl": "https://bookstore.com",
     "FromEmail": "noreply@bookstore.com",
     "FromName": "BookStore",
     "SmtpHost": "smtp.example.com",
@@ -813,16 +1043,30 @@ Required for email verification.
 
 **Key Settings**:
 - **DeliveryMethod**:
-  - `None`: Disables email sending. **Users are auto-verified.** Allowed only in Development.
-  - `Logging`: Logs email content to console (Development).
+  - `None`: Disables email sending — users are auto-verified. **Allowed only in Development.**
+  - `Logging`: Logs email content to the console (Development / staging diagnostics).
   - `Smtp`: Sends actual emails via SMTP (Production).
-- **BaseUrl**: The base URL of the frontend application (used for verification links).
-- **FromEmail/FromName**: Sender details.
-- **Smtp***: SMTP server credentials (required if method is `Smtp`).
+- **BaseUrl**: Base URL of the frontend application, used to build verification links in emails.
+- **FromEmail / FromName**: Sender details.
+- **Smtp***: SMTP server credentials (required when `DeliveryMethod` is `Smtp`).
 
 > [!WARNING]
-> Startup validation now fails fast outside Development when `Email:DeliveryMethod` is set to `None`.
+> Startup validation fails outside Development when `Email:DeliveryMethod` is `None`.
 > For Test, Staging, and Production environments, use `Logging` (non-delivery diagnostics) or `Smtp` (real delivery).
+
+---
+
+## Seeding Configuration
+
+Database seeding is controlled by configuration values that are **not** in `appsettings.json`. They are injected by AppHost or set via user secrets / environment variables:
+
+| Key | Type | Default | Purpose |
+|-----|------|---------|---------|
+| `Seeding:Enabled` | `bool` | `true` | Enable or disable the background seeding job at startup |
+| `Seeding:AdminPassword` | `string` | _(none)_ | Password for the seeded admin user. Required outside Development/Test. |
+
+> [!NOTE]
+> In Development, if `Seeding:AdminPassword` is not set, the seeder uses a hardcoded fallback password. Outside Development/Test, an explicit password must be provided or the seeder will throw.
 
 ---
 
@@ -854,8 +1098,11 @@ Store sensitive configuration in user secrets during development:
 # Initialize user secrets
 dotnet user-secrets init --project src/BookStore.ApiService
 
-# Set a secret
-dotnet user-secrets set "ConnectionStrings:bookstore" "Host=localhost;Database=bookstore;Username=postgres;Password=secret"
+# Set the JWT signing key
+dotnet user-secrets set "Jwt:SecretKey" "your-secret-key-must-be-at-least-32-characters-long-for-hs256"
+
+# Set seeding admin password
+dotnet user-secrets set "Seeding:AdminPassword" "Admin@123!"
 
 # List secrets
 dotnet user-secrets list --project src/BookStore.ApiService
@@ -897,7 +1144,7 @@ Fix in `appsettings.json`:
 ```json
 {
   "Pagination": {
-    "DefaultPageSize": 20,  // ✅ Fixed - less than MaxPageSize
+    "DefaultPageSize": 20,
     "MaxPageSize": 100
   }
 }
