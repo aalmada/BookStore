@@ -96,6 +96,8 @@ The integration tests leverage **[Aspire.Hosting.Testing](https://learn.microsof
 
 `GlobalSetup.cs` uses `DistributedApplicationTestingBuilder` to create and start the entire stack defined in `src/BookStore.AppHost/`:
 
+`GlobalSetup` is decorated with `[Before(TestSession)]`, so the full Aspire stack starts once before any test executes.
+
 ```csharp
 // GlobalSetup.cs — Before(TestSession)
 var builder = await DistributedApplicationTestingBuilder.CreateAsync<Projects.BookStore_AppHost>([
@@ -233,6 +235,8 @@ A typed Refit overload is also available:
 var client = await AuthenticationHelpers.CreateUserAndGetClientAsync<IBooksClient>(tenantId);
 ```
 
+The `tenantId` parameter is optional; if omitted, helpers use the default tenant.
+
 ## HTTP Client Helpers
 
 All HTTP client creation goes through `HttpClientHelpers` (`Helpers/HttpClientHelpers.cs`):
@@ -368,6 +372,8 @@ var result = await SseEventHelpers.ExecuteAndWaitForEventWithVersionAsync(
 );
 
 _ = await Assert.That(result.Success).IsTrue();
+
+
 ```
 
 #### WaitForConditionAsync
@@ -385,11 +391,17 @@ await SseEventHelpers.WaitForConditionAsync(async () =>
 > [!IMPORTANT]
 > Never use `Task.Delay` or `Thread.Sleep` to wait for eventual consistency. Always use `SseEventHelpers.WaitForConditionAsync` or the entity helpers that already wrap `ExecuteAndWaitForEventAsync`.
 
+> [!WARNING]
+> `SseEventHelpers.WaitForEventAsync` is obsolete and can miss events due to subscription timing. Prefer `ExecuteAndWaitForEventAsync`.
+
 ### SSE Stream Endpoint
 
 The notifications stream is at `GET /api/notifications/stream` and requires:
 - `Authorization: Bearer <token>`
 - `X-Tenant-ID: <tenantId>`
+
+> [!NOTE]
+> For non-default tenant SSE tests, build authenticated clients with the target tenant header before subscribing.
 
 The SSE `HttpClient.Timeout` is set to `TestConstants.DefaultStreamTimeout` (5 minutes) to prevent Aspire's default short timeout from prematurely closing the stream.
 
@@ -499,6 +511,7 @@ All timeouts and retry counts live in `TestConstants.cs`:
 | `DefaultPollingInterval` | 50 ms | `WaitForConditionAsync` poll interval |
 | `DefaultRetryDelay` | 100 ms | Delay between retries |
 | `DefaultMaxRetries` | 10 | Max polling retries |
+| `DefaultProjectionDelay` | 500 ms | Delay used for async projection catch-up |
 | `ShortRetryCount` | 5 | Quick operations |
 | `LongRetryCount` | 20 | Slow operations |
 
