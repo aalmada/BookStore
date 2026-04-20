@@ -2,7 +2,247 @@
 
 ## Overview
 
-The BookStore API follows strict standards for time handling and JSON serialization to ensure consistency, interoperability, and maintainability.
+The BookStore API follows strict standards for time handling, JSON serialization, endpoint organization, and error handling to ensure consistency, interoperability, and maintainability.
+
+---
+
+## Endpoint Organization
+
+### Static Class + RouteGroupBuilder Extension Pattern
+
+**Rule**: Each feature area is a `static` class with a single extension method on `RouteGroupBuilder`. Handler methods are `private static` (or `internal static`) named methods below the registration method.
+
+```csharp
+public static class BookEndpoints
+{
+    public static RouteGroupBuilder MapBookEndpoints(this RouteGroupBuilder group)
+    {
+        _ = group.MapGet("/", SearchBooks)
+            .WithName("GetBooks")
+            .WithSummary("Get all books");
+
+        _ = group.MapGet("/{id:guid}", GetBook)
+            .WithName("GetBook")
+            .WithSummary("Get book by ID");
+
+        return group;
+    }
+
+    // Handler methods: named, static
+    static async Task<Ok<PagedListDto<BookDto>>> SearchBooks(...) { ... }
+    static async Task<IResult> GetBook(Guid id, ...) { ... }
+}
+```
+
+### Route Structure
+
+- **Public API**: `/api/{resource}` — e.g., `/api/books`, `/api/authors`
+- **Admin API**: `/api/admin/{resource}` — e.g., `/api/admin/books`, `/api/admin/authors`
+
+Both tiers are wired up in `EndpointMappingExtensions.MapApiEndpoints()`:
+
+```csharp
+// Public endpoints
+publicApi.MapGroup("/books")
+    .WithMetadata(new AllowAnonymousTenantAttribute())
+    .MapBookEndpoints()
+    .WithTags("Books");
+
+// Admin endpoints (authorization applied inside MapAdminBookEndpoints)
+adminApi.MapGroup("/books")
+    .MapAdminBookEndpoints()
+    .WithTags("Admin - Books");
+```
+
+### OpenAPI Metadata Conventions
+
+- `.WithName("...")` — unique operation name, on **every** endpoint
+- `.WithSummary("...")` — short description, on **every** endpoint
+- `.WithTags("...")` — applied at the **group level** in `EndpointMappingExtensions`, not per endpoint
+- `.RequireAuthorization()` — on individual endpoints or entire groups
+- `.RequireAuthorization("Admin")` — applied to the admin group as a whole (via `return group.RequireAuthorization("Admin")`)
+- `.WithMetadata(new AllowAnonymousTenantAttribute())` — applied to public groups to allow access without requiring a resolved tenant (public read endpoints only)
+- `.DisableAntiforgery().Accepts<IFormFile>("multipart/form-data")` — for file upload endpoints
+
+```csharp
+_ = group.MapPost("/{id:guid}/cover", UploadCover)
+    .WithName("UploadBookCover")
+    .WithSummary("Upload book cover image")
+    .DisableAntiforgery()
+    .Accepts<IFormFile>("multipart/form-data");
+```
+
+### API Versioning Setup
+
+Groups are associated with an `ApiVersionSet` built in `MapApiEndpoints`:
+
+```csharp
+var apiVersionSet = app.NewApiVersionSet()
+    .HasApiVersion(new Asp.Versioning.ApiVersion(1))
+    .ReportApiVersions()
+    .Build();
+
+var publicApi = app.MapGroup("/api")
+    .WithApiVersionSet(apiVersionSet);
+```
+
+---
+
+## Parameter Binding
+
+### Binding Sources
+
+| Source | Attribute | Example |
+|--------|-----------|---------|
+| Route segment | implicit (or `[FromRoute]`) | `Guid id` from `/{id:guid}` |
+| Query string object | `[AsParameters]` | `[AsParameters] BookSearchRequest request` |
+| Request body (JSON) | `[FromBody]` | `[FromBody] CreateBookRequest request` |
+| DI services | `[FromServices]` | `[FromServices] IQuerySession session` |
+| Query string single param | `[FromQuery]` | `[FromQuery] string? tenantId` |
+| Raw HTTP context | *(direct parameter)* | `HttpContext context` |
+| Cancellation | *(direct parameter)* | `CancellationToken cancellationToken` |
+
+### Example: Read Endpoint
+
+```csharp
+static async Task<Ok<PagedListDto<BookDto>>> SearchBooks(
+    [FromServices] IQuerySession session,
+    [FromServices] HybridCache cache,
+    [FromServices] ITenantContext tenantContext,
+    [AsParameters] BookSearchRequest request,  // query string object
+    HttpContext context,
+    CancellationToken cancellationToken)
+{
+    // ...
+    return TypedResults.Ok(pagedResult);
+}
+```
+
+### Example: Write Endpoint
+
+```csharp
+static Task<IResult> CreateBook(
+    [FromBody] CreateBookRequest request,   // JSON body
+    [FromServices] IMessageBus bus,
+    [FromServices] ITenantContext tenantContext,
+    CancellationToken cancellationToken)
+{
+    var command = new CreateBook(...);
+    return bus.InvokeAsync<IResult>(command,
+        new DeliveryOptions { TenantId = tenantContext.TenantId },
+        cancellationToken);
+}
+```
+
+### ETag from Headers
+
+For write operations that require optimistic concurrency, extract the `If-Match` header directly from `HttpContext`:
+
+```csharp
+static Task<IResult> UpdateBook(
+    Guid id,
+    [FromBody] UpdateBookRequest request,
+    [FromServices] IMessageBus bus,
+    [FromServices] ITenantContext tenantContext,
+    HttpContext context,
+    CancellationToken cancellationToken)
+{
+    var etag = context.Request.Headers["If-Match"].FirstOrDefault();
+    var command = new UpdateBook(id, ...) { ETag = etag };
+    return bus.InvokeAsync<IResult>(command, ...);
+}
+```
+
+---
+
+## TypedResults and Return Types
+
+### When to Use `Task<Ok<T>>` vs `Task<IResult>`
+
+| Scenario | Return Type |
+|----------|-------------|
+| Read endpoint with one success response | `Task<Ok<PagedListDto<T>>>` or `Task<Ok<T>>` |
+| Read endpoint that may return NotFound | `Task<IResult>` |
+| Write endpoint (delegates to Wolverine) | `Task<IResult>` |
+| Handler returning error via Result pattern | `IResult` |
+
+**Rule (endpoint handlers)**: Always use `TypedResults.*` (not `Results.*`) in endpoint handler methods — even when the declared return type is `Task<IResult>` — so TypedResults benefits apply where possible.
+
+**Rule (Wolverine handlers)**: Wolverine command handlers return `Task<IResult>` and use `Results.*` for success responses (e.g., `Results.Created`) and `Result.Failure(...).ToProblemDetails()` for all error responses.
+
+### Read Endpoints (single return type)
+
+Use the concrete typed form for single-return-type handlers — this gives automatic OpenAPI schema generation:
+
+```csharp
+static async Task<Ok<PagedListDto<AuthorDto>>> GetAuthors(...)
+{
+    // ...
+    return TypedResults.Ok(pagedResult);
+}
+```
+
+### Read Endpoints (may return NotFound)
+
+Use `Task<IResult>` when the handler may return `NotFound` or needs to attach an `ETag` header. Internally still use `TypedResults.*` for the actual return values. Use the `WithETag()` extension to attach the `ETag` response header:
+
+```csharp
+static async Task<IResult> GetAuthor(Guid id, ...)
+{
+    var author = await LoadAuthorAsync(id, ...);
+    if (author is null)
+    {
+        return TypedResults.NotFound();
+    }
+    return TypedResults.Ok(author).WithETag(author.ETag!); // WithETag wraps to IResult
+}
+```
+
+`ETagHelper.PreconditionFailed()` is used in Wolverine handlers when an optimistic concurrency version check fails:
+
+```csharp
+var expectedVersion = ETagHelper.ParseETag(command.ETag);
+if (expectedVersion.HasValue && aggregate.Version != expectedVersion.Value)
+{
+    return ETagHelper.PreconditionFailed(); // 412 PreconditionFailed
+}
+```
+
+### Write Endpoints (Wolverine)
+
+Write endpoints dispatch commands to Wolverine handlers, which return `IResult` directly:
+
+```csharp
+// Endpoint: thin dispatch layer
+static Task<IResult> CreateBook(
+    [FromBody] CreateBookRequest request,
+    [FromServices] IMessageBus bus,
+    [FromServices] ITenantContext tenantContext,
+    CancellationToken cancellationToken)
+{
+    var command = new CreateBook(...);
+    return bus.InvokeAsync<IResult>(command,
+        new DeliveryOptions { TenantId = tenantContext.TenantId },
+        cancellationToken);
+}
+
+// Handler: owns the response
+public static async Task<IResult> Handle(
+    CreateBook command,
+    IDocumentSession session, ...)
+{
+    if (invalid)
+    {
+        return Result.Failure(Error.Validation(ErrorCodes.Books.LanguageInvalid, "Invalid language code"))
+            .ToProblemDetails();
+    }
+
+    // ... persist event ...
+    return Results.Created($"/api/admin/books/{command.Id}", new { id = command.Id });
+}
+```
+
+---
 
 ## Time Standards
 
@@ -542,12 +782,14 @@ public BookAdded CreateEvent(...)
 
 **Rule**: All error responses use the Problem Details format (RFC 7807), mapped from `Result` errors.
 
-Use `result.ToProblemDetails()` extension method in endpoints/handlers to automatically map errors:
+Use `result.ToProblemDetails()` extension method (defined in `ResultExtensions`) in handlers to automatically map errors to `IResult`:
 
 - `ErrorType.Validation` → `400 Bad Request`
 - `ErrorType.NotFound` → `404 Not Found`
 - `ErrorType.Conflict` → `409 Conflict`
-- `ErrorType.Failure` → `500 Internal Server Error`
+- `ErrorType.Unauthorized` → `401 Unauthorized`
+- `ErrorType.Forbidden` → `403 Forbidden`
+- `ErrorType.InternalServerError` / `ErrorType.Failure` → `500 Internal Server Error`
 
 Rate-limit rejections use the same RFC 7807 structure with `429 Too Many Requests`:
 
@@ -570,11 +812,12 @@ Rate-limit rejections use the same RFC 7807 structure with `429 Too Many Request
   "title": "Bad Request",
   "status": 400,
   "detail": "The language code 'xx' is not valid.",
-  "extensions": {
-    "error": "ERR_BOOK_LANGUAGE_INVALID"
-  }
+  "error": "ERR_BOOK_LANGUAGE_INVALID"
 }
 ```
+
+> [!NOTE]
+> The `error` field is a top-level extension member of the RFC 7807 document (not nested under an `extensions` object). This is how `Results.Problem(extensions: ...)` serializes the dictionary entries.
 
 ### Global Exception Handler
 
@@ -750,34 +993,34 @@ public record BookDto(
 Test JSON serialization format:
 
 ```csharp
-[Fact]
-public void DateTimeOffset_Should_Serialize_As_ISO8601()
+[Test]
+public async Task DateTimeOffset_Should_Serialize_As_ISO8601()
 {
     var obj = new { timestamp = DateTimeOffset.UtcNow };
     var json = JsonSerializer.Serialize(obj);
     
     // Should match ISO 8601 format: "2025-12-26T17:16:09.123Z"
-    Assert.Matches(@"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z", json);
+    await Assert.That(json).Matches(@"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z");
 }
 
-[Fact]
-public void Enum_Should_Serialize_As_String()
+[Test]
+public async Task Enum_Should_Serialize_As_String()
 {
     var obj = new { status = Status.Active };
     var json = JsonSerializer.Serialize(obj);
     
-    Assert.Contains("\"Active\"", json);
-    Assert.DoesNotContain("0", json);
+    await Assert.That(json).Contains("\"Active\"");
+    await Assert.That(json).DoesNotContain("0");
 }
 
-[Fact]
-public void Guid_Should_Be_Version7()
+[Test]
+public async Task Guid_Should_Be_Version7()
 {
     var id = Guid.CreateVersion7();
     var bytes = id.ToByteArray();
     
     // Version 7 has version bits set to 0111
-    Assert.Equal(7, (bytes[7] & 0xF0) >> 4);
+    await Assert.That((bytes[7] & 0xF0) >> 4).IsEqualTo(7);
 }
 ```
 
