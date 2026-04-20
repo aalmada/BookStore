@@ -16,63 +16,144 @@ Aspire serves as the glue that binds these components together, handling:
 
 ## AppHost: The Orchestrator
 
-The `BookStore.AppHost` project is the entry point for the distributed application. It defines the architectural blueprint of the system in C#.
+The `BookStore.AppHost` project is the entry point for the distributed application. It defines the architectural blueprint of the system in C# inside `AppHost.cs`.
+
+### Resource Names Constants
+
+All resource names are defined as constants in `ResourceNames` (in `BookStore.ServiceDefaults`) to avoid magic strings and ensure consistency between the AppHost and consuming services:
+
+```csharp
+public static class ResourceNames
+{
+    public const string Postgres = "postgres";
+    public const string BookStoreDb = "bookstore";
+    public const string Storage = "storage";
+    public const string Blobs = "blobs";
+    public const string Cache = "cache";
+    public const string ApiService = "apiservice";
+    public const string WebFrontend = "webfrontend";
+
+    public const string HealthCheckEndpoint = "/health";
+    public const string ApiReferenceText = "API Reference";
+    public const string ApiReferenceUrl = "/api-reference";
+}
+```
+
+Always use these constants when referencing resources — never hardcode strings.
 
 ### Defined Resources
 
-The AppHost defines the following resources in `Program.cs`:
+The AppHost defines the following resources in `AppHost.cs`:
 
 #### 1. Databases & Storage
--   **PostgreSQL**: A containerized PostgreSQL instance.
+-   **PostgreSQL**: A containerized PostgreSQL instance with PgAdmin.
     ```csharp
-    var postgres = builder.AddPostgres("postgres")
-        .WithPgAdmin(); // Adds PgAdmin for database management
-    var bookStoreDb = postgres.AddDatabase("bookstore");
+    var postgres = builder.AddPostgres(ResourceNames.Postgres)
+        .WithPgAdmin();
+    var bookStoreDb = postgres.AddDatabase(ResourceNames.BookStoreDb);
     ```
--   **Redis**: Distributed cache for the API and hybrid caching.
+-   **Redis**: Distributed cache for hybrid caching.
     ```csharp
-    var cache = builder.AddRedis("cache");
+    var cache = builder.AddRedis(ResourceNames.Cache);
     ```
 -   **Azure Storage**: Uses the **Azurite** emulator for local development, providing Blob storage compatible with Azure.
     ```csharp
-    var storage = builder.AddAzureStorage("storage").RunAsEmulator();
-    var blobs = storage.AddBlobs("blobs");
+    var storage = builder.AddAzureStorage(ResourceNames.Storage)
+        .RunAsEmulator();
+    var blobs = storage.AddBlobs(ResourceNames.Blobs);
     ```
 
 #### 2. Services
--   **API Service** (`Projects.BookStore_ApiService`): The backend API. It declares dependencies on the database, blob storage, and cache.
+-   **API Service** (`Projects.BookStore_ApiService`): The backend API. Waits for both PostgreSQL and Redis before starting, exposes external HTTP endpoints, and registers a health check.
     ```csharp
-    var apiService = builder.AddProject<Projects.BookStore_ApiService>("apiservice")
+    var apiService = builder.AddProject<Projects.BookStore_ApiService>(ResourceNames.ApiService)
         .WithReference(bookStoreDb)
         .WithReference(blobs)
         .WithReference(cache)
-        .WaitFor(postgres); // Startup dependency
+        .WaitFor(cache)
+        .WaitFor(postgres)
+        .WithHttpHealthCheck(ResourceNames.HealthCheckEndpoint)
+        .WithExternalHttpEndpoints()
+        .WithUrlForEndpoint("http", url =>
+        {
+            url.DisplayText = ResourceNames.ApiReferenceText;
+            url.Url += ResourceNames.ApiReferenceUrl;
+        })
+        .WithUrlForEndpoint("https", url =>
+        {
+            url.DisplayText = ResourceNames.ApiReferenceText;
+            url.Url += ResourceNames.ApiReferenceUrl;
+        });
     ```
--   **Web Frontend** (`Projects.BookStore_Web`): The Blazor app. It depends on the API service to fetch data.
+-   **Web Frontend** (`Projects.BookStore_Web`): The Blazor app. Waits for the API service before starting.
     ```csharp
-    builder.AddProject<Projects.BookStore_Web>("webfrontend")
+    builder.AddProject<Projects.BookStore_Web>(ResourceNames.WebFrontend)
+        .WithExternalHttpEndpoints()
+        .WithHttpHealthCheck(ResourceNames.HealthCheckEndpoint)
         .WithReference(apiService)
         .WaitFor(apiService);
     ```
 
+### Environment Variable Forwarding
+
+The AppHost conditionally forwards configuration to the API service. These are typically set in `appsettings.Development.json` or via environment variables when running tests:
+
+```csharp
+// Disable rate limiting (used in integration tests)
+var disableRateLimit = builder.Configuration["RateLimit:Disabled"];
+if (!string.IsNullOrEmpty(disableRateLimit))
+    apiService.WithEnvironment("RateLimit__Disabled", disableRateLimit);
+
+// Enable database seeding
+var seedingEnabled = builder.Configuration["Seeding:Enabled"];
+if (!string.IsNullOrEmpty(seedingEnabled))
+    apiService.WithEnvironment("Seeding__Enabled", seedingEnabled);
+
+// Email delivery method (e.g. "Smtp", "None")
+var emailDeliveryMethod = builder.Configuration["Email:DeliveryMethod"];
+if (!string.IsNullOrEmpty(emailDeliveryMethod))
+    apiService.WithEnvironment("Email__DeliveryMethod", emailDeliveryMethod);
+```
+
 ### Service Discovery
 
 Aspire automates connection management using the resource names defined in the AppHost.
--   **Databases**: The API service receives the connection string for "bookstore" automatically.
--   **HTTP Services**: The frontend receives the base URL for "apiservice" via the service discovery mechanism, allowing `HttpClient` to simply use `http://apiservice`.
+-   **Databases**: The API service receives the connection string for `"bookstore"` automatically via `WithReference(bookStoreDb)`.
+-   **HTTP Services**: The frontend receives the base URL for `"apiservice"` via service discovery, allowing `HttpClient` to use `http://apiservice` as the base address.
 
 ## Service Defaults: Shared Concerns
 
 The `BookStore.ServiceDefaults` project encapsulates cross-cutting concerns that every service needs. Both the API and Web projects reference this library and call `builder.AddServiceDefaults()` in their startup.
 
 ### Features
--   **OpenTelemetry**: Automatically configures logging, tracing, and metrics export to the Aspire Dashboard.
--   **Health Checks**: Adds standard `/health` and `/alive` endpoints.
--   **Service Discovery**: Configures `Microsoft.Extensions.ServiceDiscovery` to resolve Aspire resource names.
+
+-   **OpenTelemetry**: Configures logging, tracing, and metrics export to the Aspire Dashboard.
+    -   ASP.NET Core and HTTP client instrumentation
+    -   Wolverine message-bus metrics and traces (`AddMeter("Wolverine")`, `AddSource("Wolverine")`)
+    -   Custom `BookStore.ApiService` meter
+    -   Health check requests are excluded from traces
+    -   OTLP export when `OTEL_EXPORTER_OTLP_ENDPOINT` is set
+-   **Console Logging Formatters**:
+    -   Development: human-readable `SimpleConsole` formatter with timestamps and scopes
+    -   Production: structured `JsonConsole` formatter with UTC ISO-8601 timestamps
+-   **Health Checks**: Adds `/health` (readiness) and `/alive` (liveness) endpoints. Both endpoints are decorated with `AllowAnonymousTenantAttribute` so they bypass tenant-aware middleware.
+-   **HTTP Client Defaults**: All `HttpClient` instances automatically get:
+    -   `AddStandardResilienceHandler()` — retry, circuit breaker, and timeout policies
+    -   `AddServiceDiscovery()` — resolves Aspire resource names to endpoints
 
 ## Local Development Experience
 
-To start the entire solution, simply run the AppHost project:
+The root `aspire.config.json` points to the AppHost project, allowing `aspire run` to work from any directory in the repository:
+
+```json
+{
+  "appHost": {
+    "path": "src/BookStore.AppHost/BookStore.AppHost.csproj"
+  }
+}
+```
+
+To start the entire solution:
 
 ```bash
 aspire run
@@ -80,12 +161,14 @@ aspire run
 dotnet run --project src/BookStore.AppHost/BookStore.AppHost.csproj
 ```
 
+> **Prerequisite**: Docker Desktop must be running — PostgreSQL, Redis, and Azurite are all containerised.
+
 ### The Aspire Dashboard
 
 When the application starts, the **Aspire Dashboard** launches automatically. It provides a centralized view of:
 -   **Resources**: Status and endpoints of all running services and containers.
 -   **Console Logs**: Real-time stdout/stderr from all projects.
--   **Structured Logs**: searchable table of log entries.
+-   **Structured Logs**: Searchable table of log entries.
 -   **Traces**: Distributed traces showing the flow of requests between frontend, API, and database.
 -   **Metrics**: Real-time graphs for CPU, memory, and custom metrics.
 
