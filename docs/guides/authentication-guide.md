@@ -31,13 +31,14 @@ graph TB
 
 #### Frontend (Blazor Server)
 - **`AuthenticationService`**: High-level service for Login, Register, and Logout operations.
-- **`TokenService`**: Stores Access and Refresh tokens in **Scoped Memory** (per user session).
+- **`TokenService`**: Stores Access and Refresh tokens in **Scoped Memory** (per user session), keyed by tenant ID.
+    - Tokens are stored as `Dictionary<string, (AccessToken, RefreshToken)>` — one entry per tenant — supporting multi-tenant sessions within the same Blazor circuit.
     - *Security Note*: Tokens are **NOT** stored in LocalStorage or Cookies to prevent XSS attacks.
     - Tokens persist only for the lifetime of the user's session (browser tab).
 - **`JwtAuthenticationStateProvider`**: Custom provider that:
-    - Reads tokens from `TokenService`.
+    - Reads tokens from `TokenService` for the **current tenant** (subscribes to `TenantService.OnChange` to re-evaluate state on tenant switch).
     - Parses JWT claims to set the user's `AuthenticationState`.
-    - Automatically handles **Silent Refresh** when the access token is close to expiry.
+    - Automatically handles **Silent Refresh** 5 minutes before token expiry (background) or immediately on request if the token has already expired.
 
 #### Backend (API)
 - **`JwtTokenService`**: Central service for generating access tokens, rotating refresh tokens, and building standardized user claims. Signing algorithm resolution is shared with API validation: explicit `Jwt:Algorithm` wins, otherwise `RS256` is auto-selected when both RS256 keys are configured, else it falls back to `HS256`.
@@ -285,9 +286,16 @@ This keeps validation strict while avoiding false 401 responses from minor clien
 
 ### Cross-Tenant Protection
 
-`TenantSecurityMiddleware` blocks requests where the JWT's `tenant_id` differs from the `X-Tenant-ID` header:
-- **Mismatch detected**: Returns `403 Forbidden`
-- **Refresh endpoint**: Validates stored token's tenant matches request tenant
+`TenantSecurityMiddleware` enforces tenant isolation for every request:
+
+| Scenario | Result |
+|---|---|
+| Authenticated: JWT `tenant_id` missing | `403 Forbidden` |
+| Authenticated: JWT `tenant_id` ≠ request tenant | `403 Forbidden` (cross-tenant access denied) |
+| Anonymous: request targets a non-default tenant | `403 Forbidden` (anonymous access to tenant data denied) |
+| Authenticated or anonymous: tenant matches | Pass-through |
+
+Endpoints can opt out of this check by declaring `[AllowAnonymousTenant]` metadata (used by public endpoints such as `/account/login`, `/api/configuration`, and SSE notifications).
 
 ## Authentication Methods
 
@@ -363,16 +371,27 @@ We store tokens in a Scoped service (`TokenService`). This means:
 This is the intentional, final design for Blazor Server. Because all code (including `TokenService`) executes server-side, tokens are never serialised to the browser — not even as HttpOnly cookies. Refreshing the page requires re-login, which is an acceptable trade-off for high-security applications.
 
 ### Authorization Headers
-All outgoing HTTP requests to the API are intercepted by `AuthorizationMessageHandler`, which attaches the Bearer token:
+All outgoing HTTP requests to the API are intercepted by `AuthorizationMessageHandler`, which attaches the Bearer token for the **current tenant** and forwards additional request metadata:
 
 ```csharp
-protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+protected override async Task<HttpResponseMessage> SendAsync(
+    HttpRequestMessage request, CancellationToken cancellationToken)
 {
-    var token = await _tokenService.GetAccessTokenAsync();
+    // Propagate distributed tracing identifiers
+    request.Headers.Add("X-Correlation-ID", _clientContextService.CorrelationId);
+    request.Headers.Add("X-Causation-ID", _clientContextService.CausationId);
+
+    // Attach the access token for the active tenant
+    var token = _tokenService.GetAccessToken(_tenantService.CurrentTenantId);
     if (!string.IsNullOrEmpty(token))
     {
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
     }
+
+    // Forward the original browser User-Agent and client IP
+    // (used for passkey device naming and rate-limit partitioning)
+    ...
+
     return await base.SendAsync(request, cancellationToken);
 }
 ```
@@ -384,6 +403,22 @@ Role-based authorization is enforced via standard ASP.NET Core policies.
 ### Roles
 - **Admin**: Full access to management endpoints.
 - **User**: Standard access (can manage own profile/orders).
+
+### Policies
+
+#### API (`BookStore.ApiService`)
+
+| Policy | Requirement |
+|---|---|
+| `Admin` | Role `Admin` **or** `ADMIN` (case-insensitive alias) |
+
+#### Web (`BookStore.Web`)
+
+| Policy | Requirement |
+|---|---|
+| `SystemAdmin` | Role `Admin` **and** `tenant_id` == default tenant |
+
+The `SystemAdmin` policy is used in the Blazor frontend to gate cross-tenant administration UI that is only available to admins of the default tenant.
 
 ### Backend Enforcement
 Endpoints are protected using the `[Authorize]` attribute or `.RequireAuthorization()` extension method.
