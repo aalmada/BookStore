@@ -103,9 +103,11 @@ Passkeys require binding to a specific domain (Origin) to prevent phishing.
 ### Rate Limiting
 
 Rate limiting is enforced on all passkey endpoints via the `AuthPolicy`.
-- **Limit**: 10 requests per minute per IP.
+- **Partition**: `tenantId:ip`
+- **Limit**: configured via `RateLimit:AuthPermitLimit` and `RateLimit:AuthWindowSeconds`
+    - default: 20 requests / 60 seconds
+    - development: 200 requests / 60 seconds
 - **Violation**: Returns `429 Too Many Requests`.
-```
 
 > [!WARNING]
 > **Production Configuration**
@@ -137,7 +139,9 @@ The application exposes the following endpoints for Passkey operations:
         *   Derives the passkey device name from the request `User-Agent` and stores a sanitized, HTML-encoded value to prevent unsafe metadata persistence.
         *   Uses the `UserId` from the request (sent by client from options response) to create the user.
         *   If **Authenticated**: Adds passkey to existing user.
-        *   If **Anonymous**: Creates a new `ApplicationUser` with the provided Email and UserId. **Logs the user in immediately.**
+        *   If **Anonymous**: Creates a new `ApplicationUser` with the provided Email and UserId.
+            - If email verification is required, sends verification email and does **not** auto-login.
+            - If verification is not required, returns JWT access/refresh tokens.
     *   **Critical**: The `UserId` parameter ensures the passkey's embedded user ID matches the database user ID, enabling successful login.
 
 ### Assertion (Login)
@@ -154,8 +158,9 @@ The application exposes the following endpoints for Passkey operations:
         *   Verifies the WebAuthn signature.
         *   Retrieves the user via `IUserPasskeyStore.FindByPasskeyIdAsync`.
         *   Enforces tenant isolation by requiring the Marten session tenant to match the current request tenant context before accepting the passkey lookup result.
+        *   Detects signature-counter mismatch scenarios (possible cloned authenticator) and locks the account when detected.
         *   On successful assertion, resets `AccessFailedCount` so prior password failures do not cause an unexpected lockout after passkey sign-in.
-        *   Uses centralized `JwtTokenService` to generate access tokens and rotate refresh tokens.
+        *   Clears prior refresh tokens, then uses centralized `JwtTokenService` to issue new access/refresh tokens.
         *   Returns a standard `LoginResponse`.
 
 ### Passkey Management (Authenticated)
