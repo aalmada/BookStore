@@ -1,57 +1,220 @@
-# API Client Generation
+# API Client
 
 ## Overview
 
-The BookStore API client is provided as a reusable library (`BookStore.Client`) that can be used by any .NET project. The client uses **Refit** for type-safe HTTP calls and is **manually maintained** to ensure clean, predictable interfaces.
-
-## Manual Refit Approach
-
-Instead of automated code generation, we manually create Refit interfaces. This approach provides:
-
-✅ **Full Control** - Exact interface design  
-✅ **No Build Dependencies** - No code generation tools required  
-✅ **Clean Interfaces** - Hand-crafted, readable code  
-✅ **Shared DTOs** - Models in `BookStore.Shared` for API/Client reuse  
-✅ **Type Safety** - Compile-time checking with Refit  
-
-### Architecture
+The BookStore API client lives in `BookStore.Client` and exposes type-safe HTTP calls through **hand-crafted Refit interfaces** per resource. DTO contracts used only by the client (i.e., not shared with the API layer) live in `Contracts.cs`, which is **NSwag-generated** from the OpenAPI spec.
 
 ```
-BookStore.Shared/Models/
-├── BookDto.cs              # Shared DTOs
-├── AuthorDto.cs
-├── CategoryDto.cs
-├── PublisherDto.cs
-├── IdentityModels.cs       # Authentication DTOs
-└── ...
-
 BookStore.Client/
-├── IGetBooksEndpoint.cs    # Query endpoints
-├── IGetBookEndpoint.cs
-├── ICreateBookEndpoint.cs  # Command endpoints
-├── IIdentityEndpoints.cs   # Authentication endpoints
-└── BookStoreClientExtensions.cs  # DI registration
+├── I*Client.cs                    # Hand-crafted Refit interfaces (one per resource)
+├── Contracts.cs                   # NSwag-generated DTO contracts
+├── BookStoreClientExtensions.cs   # DI registration (AddBookStoreClient, AddBookStoreEvents)
+├── BookStoreEventsService.cs      # SSE event listener
+├── ETagHelper.cs                  # ETag parsing and formatting
+├── UpdateBookRequestExtensions.cs # Helper extensions for request mapping
+├── Infrastructure/
+│   ├── BookStoreHeaderHandler.cs  # Auto-injects api-version, Accept-Language, correlation/causation IDs
+│   └── BookStoreErrorHandler.cs   # Logs non-success responses
+└── Services/
+    └── ClientContextService.cs    # Scoped correlation/causation ID context
 ```
 
-## Creating New Endpoints
+DTOs shared between the API service and the client live in `BookStore.Shared/Models/`.
 
-### 1. Define Shared DTOs (if needed)
+## Packages
 
-If the endpoint uses new models, add them to `BookStore.Shared/Models/`:
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `Refit.HttpClientFactory` | 9.0.2 | Refit DI integration |
+| `Microsoft.Extensions.Http.Resilience` | (central) | Standard resilience handler |
+| `Microsoft.Extensions.DependencyInjection.Abstractions` | (central) | DI abstractions |
+
+## Client Interfaces
+
+Each resource has a dedicated Refit interface following the `I{Resource}Client` naming convention:
+
+| Interface | Resource |
+|-----------|---------|
+| `IBooksClient` | Books (CRUD, favorites, rating, sales) |
+| `IAuthorsClient` | Authors |
+| `ICategoriesClient` | Categories |
+| `IPublishersClient` | Publishers |
+| `IShoppingCartClient` | Shopping cart |
+| `ISalesClient` | Sales |
+| `IUsersClient` | Users |
+| `ITenantsClient` | Tenants |
+| `IPasskeyClient` | Passkey / WebAuthn |
+| `IIdentityClient` | Identity / authentication |
+| `ISystemClient` | System / health |
+| `IConfigurationClient` | Public configuration |
+
+### Example: `IBooksClient`
 
 ```csharp
-namespace BookStore.Shared.Models;
+public interface IBooksClient
+{
+    [Headers("Accept: application/json")]
+    [Get("/api/books")]
+    Task<PagedListDto<BookDto>> GetBooksAsync(
+        [Query] BookSearchRequest request,
+        CancellationToken cancellationToken = default);
 
-public record MyNewDto(
-    Guid Id,
-    string Name,
-    // ... other properties
-);
+    [Get("/api/books/{id}")]
+    Task<IApiResponse<BookDto>> GetBookWithResponseAsync(
+        Guid id,
+        CancellationToken cancellationToken = default);
+
+    [Headers("Content-Type: application/json")]
+    [Post("/api/admin/books")]
+    Task<IApiResponse<BookDto>> CreateBookWithResponseAsync(
+        [Body] CreateBookRequest body,
+        CancellationToken cancellationToken = default);
+
+    [Headers("Content-Type: application/json")]
+    [Put("/api/admin/books/{id}")]
+    Task<IApiResponse> UpdateBookWithResponseAsync(
+        Guid id,
+        [Body] UpdateBookRequest body,
+        [Header("If-Match")] string? etag = null,
+        CancellationToken cancellationToken = default);
+
+    [Delete("/api/admin/books/{id}")]
+    Task SoftDeleteBookAsync(
+        Guid id,
+        [Header("If-Match")] string? etag = null,
+        CancellationToken cancellationToken = default);
+}
 ```
 
-### 2. Create Refit Interface
+Key patterns:
+- **Queries** return `Task<T>` or `Task<PagedListDto<T>>`.
+- **Commands** return `Task<IApiResponse>` or `Task<IApiResponse<T>>` to suppress `ApiException` on non-2xx.
+- **Mutating operations** accept an optional `[Header("If-Match")] string? etag` for optimistic concurrency.
+- All methods include `CancellationToken cancellationToken = default` as the last parameter.
 
-Add a new interface in `BookStore.Client/`:
+## DTO Contracts
+
+`Contracts.cs` is auto-generated by **NSwag v14.6.3** from the running API's OpenAPI document. Do **not** hand-edit this file.
+
+### Regenerating Contracts.cs
+
+1. Start the API service (via Aspire or directly).
+2. Obtain the OpenAPI spec URL, typically `https://localhost:{port}/openapi/v1.json`.
+3. Run NSwag CLI to regenerate:
+
+```bash
+# Install NSwag CLI (once)
+dotnet tool install --global NSwag.ConsoleCore
+
+# Regenerate Contracts.cs
+nswag openapi2csclient \
+  /input:https://localhost:{port}/openapi/v1.json \
+  /namespace:BookStore.Client \
+  /output:src/BookStore.Client/Contracts.cs \
+  /classStyle:POCO \
+  /generateDataAnnotations:true \
+  /generateUpdateableProperties:false
+```
+
+Only types **not already in `BookStore.Shared/Models/`** should end up in `Contracts.cs`. Remove any generated duplicates manually.
+
+> Prefer placing new DTOs in `BookStore.Shared/Models/` (as `record` types) so both the API and the client share the same type without generation.
+
+## Infrastructure
+
+### BookStoreHeaderHandler
+
+Automatically injects standard headers on every outgoing request. **You do not need to pass these manually on Refit methods:**
+
+| Header | Source |
+|--------|--------|
+| `api-version` | Defaults to `"1.0"` if absent |
+| `Accept-Language` | `CultureInfo.CurrentUICulture.Name` if absent |
+| `X-Correlation-ID` | `Activity.Current.TraceId` if absent |
+| `X-Causation-ID` | `Activity.Current.ParentId` if absent |
+
+### BookStoreErrorHandler
+
+Logs a structured warning for every non-2xx response. No action needed in the caller unless you need to inspect the error body — in that case use `IApiResponse<T>`.
+
+### ClientContextService (Scoped)
+
+Tracks the correlation and causation IDs for the current Blazor circuit or request scope. `BookStoreEventsService` updates `CausationId` as SSE events arrive, linking subsequent requests causally to incoming events.
+
+### BookStoreEventsService
+
+Connects to `/api/notifications/stream` via SSE and dispatches `IDomainEventNotification` events. Registered via `AddBookStoreEvents` (see below).
+
+### ETagHelper
+
+Utility for reading and writing ETag values used in `If-Match` headers:
+
+```csharp
+// Format a version number as an ETag
+string etag = ETagHelper.GenerateETag(version);   // → "\"42\""
+
+// Parse an ETag from a response header
+long? version = ETagHelper.ParseETag(response.Headers.ETag?.Tag);
+```
+
+## Registration
+
+### Simple (non-Blazor)
+
+```csharp
+builder.Services.AddBookStoreClient(new Uri(apiServiceUrl));
+```
+
+This registers all `I*Client` interfaces with:
+- `BookStoreHeaderHandler` (auto-headers)
+- `BookStoreErrorHandler` (error logging)
+- `AddStandardResilienceHandler` (Polly resilience)
+
+For SSE real-time events:
+
+```csharp
+builder.Services.AddBookStoreEvents(new Uri(apiServiceUrl));
+```
+
+### Blazor Web (Scoped)
+
+The `BookStore.Web` project uses scoped registrations to share `TokenService`, `TenantService`, and `ClientContextService` within the same Blazor circuit. Clients are created via `RestService.For<T>` with a manually composed handler chain:
+
+```
+ResilienceHandler → AuthorizationMessageHandler → TenantHeaderHandler → BookStoreHeaderHandler → HttpClientHandler
+```
+
+This wiring lives in `RegisterScopedRefitClients` in `src/BookStore.Web/Program.cs`. Use `AddBookStoreClient` for non-Blazor consumers (console apps, integration tests, etc.).
+
+### Aspire service discovery
+
+The API base URL is resolved from Aspire service discovery:
+
+```csharp
+var apiServiceUrl =
+    builder.Configuration[$"services:{ResourceNames.ApiService}:https:0"]
+    ?? builder.Configuration[$"services:{ResourceNames.ApiService}:http:0"]
+    ?? "http://localhost:5000";
+
+builder.Services.AddBookStoreClient(new Uri(apiServiceUrl));
+```
+
+## Adding a New Endpoint
+
+### 1. Add the DTO (if needed)
+
+Prefer `BookStore.Shared/Models/` so the API and client share the same type:
+
+```csharp
+// BookStore.Shared/Models/MyResourceDto.cs
+namespace BookStore.Shared.Models;
+
+public record MyResourceDto(Guid Id, string Name);
+```
+
+### 2. Add or extend the Refit interface
+
+Create `src/BookStore.Client/IMyResourceClient.cs` or extend an existing `I*Client.cs`:
 
 ```csharp
 using BookStore.Shared.Models;
@@ -59,267 +222,111 @@ using Refit;
 
 namespace BookStore.Client;
 
-public interface IMyNewEndpoint
+public interface IMyResourceClient
 {
-    [Get("/api/my-resource/{id}")]
-    Task<MyNewDto> Execute(
+    [Headers("Accept: application/json")]
+    [Get("/api/my-resources/{id}")]
+    Task<MyResourceDto> GetMyResourceAsync(
         Guid id,
-        [Header("api-version")] string api_version,
-        [Header("Accept-Language")] string accept_Language,
-        [Header("X-Correlation-ID")] string x_Correlation_ID,
-        [Header("X-Causation-ID")] string x_Causation_ID,
+        CancellationToken cancellationToken = default);
+
+    [Headers("Content-Type: application/json")]
+    [Post("/api/admin/my-resources")]
+    Task<IApiResponse<MyResourceDto>> CreateMyResourceAsync(
+        [Body] CreateMyResourceRequest body,
         CancellationToken cancellationToken = default);
 }
 ```
 
 ### 3. Register in DI
 
-Add to `BookStoreClientExtensions.cs`:
+Add to `AddBookStoreClient` in `BookStoreClientExtensions.cs`:
 
 ```csharp
-_ = services.AddRefitClient<IMyNewEndpoint>()
-    .ConfigureHttpClient(c => c.BaseAddress = baseAddress);
-```
-
-## Common Patterns
-
-### Query Endpoints (GET)
-
-```csharp
-public interface IGetBooksEndpoint
-{
-    [Get("/api/books")]
-    Task<PagedListDto<BookDto>> Execute(
-        [Query] int pageNumber,
-        [Query] int pageSize,
-        [Header("api-version")] string api_version,
-        [Header("Accept-Language")] string accept_Language,
-        [Header("X-Correlation-ID")] string x_Correlation_ID,
-        [Header("X-Causation-ID")] string x_Causation_ID,
-        CancellationToken cancellationToken = default);
-}
-```
-
-### Command Endpoints (POST/PUT)
-
-```csharp
-public interface ICreateBookEndpoint
-{
-    [Post("/api/admin/books")]
-    Task<IApiResponse> Execute(
-        [Body] CreateBookRequest request,
-        [Header("api-version")] string api_version,
-        [Header("X-Correlation-ID")] string x_Correlation_ID,
-        [Header("X-Causation-ID")] string x_Causation_ID,
-        CancellationToken cancellationToken = default);
-}
-```
-
-### Authentication Endpoints
-
-```csharp
-public interface IIdentityLoginEndpoint
-{
-    [Post("/identity/login")]
-    Task<LoginResponse> Execute(
-        [Body] LoginRequest request,
-        [AliasAs("useCookies")] bool? useCookies = null,
-        [AliasAs("useSessionCookies")] bool? useSessionCookies = null,
-        CancellationToken cancellationToken = default);
-}
+_ = services.AddClient<IMyResourceClient>(baseAddress, configureClient);
 ```
 
 ## Using the Client
 
-### Registration
+Inject the interface directly:
 
 ```csharp
-// In Program.cs
-var apiServiceUrl = builder.Configuration["services:apiservice:https:0"]
-    ?? "http://localhost:5000";
-
-builder.Services.AddBookStoreClient(new Uri(apiServiceUrl));
-```
-
-### Injection and Usage
-
-```csharp
-public class MyService(IGetBooksEndpoint booksEndpoint)
+public class MyService(IBooksClient booksClient)
 {
-    public async Task<PagedListDto<BookDto>> GetBooksAsync()
-    {
-        return await booksEndpoint.Execute(
-            pageNumber: 1,
-            pageSize: 20,
-            api_version: "1.0",
-            accept_Language: "en",
-            x_Correlation_ID: Guid.NewGuid().ToString(),
-            x_Causation_ID: string.Empty);
-    }
+    public async Task<PagedListDto<BookDto>> GetBooksAsync(CancellationToken ct)
+        => await booksClient.GetBooksAsync(new BookSearchRequest(), ct);
 }
 ```
 
-## Benefits of Manual Approach
-
-### vs. Automated Generation
-
-| Aspect | Manual Refit | Automated (Refitter/NSwag) |
-|--------|--------------|----------------------------|
-| **Control** | ✅ Full control | ⚠️ Generated code |
-| **Dependencies** | ✅ None | ❌ Build-time tools |
-| **Readability** | ✅ Hand-crafted | ⚠️ Generated |
-| **Maintenance** | ⚠️ Manual updates | ✅ Auto-sync |
-| **Customization** | ✅ Easy | ❌ Limited |
-| **Build Speed** | ✅ Fast | ⚠️ Slower |
-| **Type Conflicts** | ✅ Avoided | ❌ Common issue |
-
-### When to Use Manual Approach
-
-✅ **Small to medium APIs** - Manageable number of endpoints  
-✅ **Stable APIs** - Infrequent changes  
-✅ **Custom requirements** - Need specific interface design  
-✅ **Shared models** - DTOs used by both API and client  
-✅ **Clean architecture** - Want predictable, readable code  
-
-## Authentication Integration
-
-The BookStore uses **hybrid authentication**:
-
-### Cookie Authentication (Blazor Frontend)
-
-For the Blazor frontend, authentication cookies are sent automatically by the browser. No manual token injection is needed:
+For operations that need the response metadata (status code, ETag, etc.):
 
 ```csharp
-// Cookies are sent automatically with every request
-var books = await booksEndpoint.Execute(
-    pageNumber: 1,
-    pageSize: 20,
-    api_version: "1.0",
-    accept_Language: "en",
-    x_Correlation_ID: Guid.NewGuid().ToString(),
-    x_Causation_ID: string.Empty);
-```
-
-### JWT Bearer Tokens (External Apps)
-
-For external applications (mobile apps, third-party integrations), use JWT bearer tokens:
-
-```csharp
-// Add JWT token to Authorization header
-builder.Services.ConfigureHttpClientDefaults(http =>
+var response = await booksClient.GetBookWithResponseAsync(id, ct);
+if (!response.IsSuccessStatusCode)
 {
-    http.ConfigureHttpClient(client =>
-    {
-        client.DefaultRequestHeaders.Authorization = 
-            new AuthenticationHeaderValue("Bearer", accessToken);
-    });
-});
+    // handle error
+}
+var etag = response.Headers.ETag?.Tag;
+var book = response.Content;
 ```
 
-See [Authentication Guide](authentication-guide.md) for details on cookie vs JWT authentication.
+> **Direct `HttpClient` calls are forbidden.** Always use the injected `I*Client` interface.
 
-## Best Practices
+## Authentication
 
-### 1. Use Shared DTOs
+Authentication is handled by `AuthorizationMessageHandler` in `BookStore.Web`, which reads the current user's access token from `TokenService` and attaches it as `Bearer` to every request. The client interfaces themselves are auth-agnostic — they rely on the handler pipeline configured at registration time.
 
-Place DTOs in `BookStore.Shared/Models/` to avoid duplication:
-
-```csharp
-// ✅ Good - Shared DTO
-namespace BookStore.Shared.Models;
-public record BookDto(...);
-
-// ❌ Bad - Duplicate in Client
-namespace BookStore.Client;
-public record BookDto(...);
-```
-
-### 2. Consistent Naming
-
-Follow the pattern `I{Action}{Resource}Endpoint`:
-
-```csharp
-IGetBooksEndpoint
-IGetBookEndpoint
-ICreateBookEndpoint
-IUpdateBookEndpoint
-IDeleteBookEndpoint
-```
-
-### 3. Include Standard Headers
-
-Always include API version, correlation ID, and causation ID:
-
-```csharp
-[Header("api-version")] string api_version,
-[Header("X-Correlation-ID")] string x_Correlation_ID,
-[Header("X-Causation-ID")] string x_Causation_ID
-```
-
-### 4. Use CancellationToken
-
-Support cancellation for all async operations:
-
-```csharp
-Task<T> Execute(..., CancellationToken cancellationToken = default);
-```
-
-### 5. Return Appropriate Types
-
-- **Queries**: Return `Task<TDto>` or `Task<PagedListDto<TDto>>`
-- **Commands**: Return `Task<IApiResponse>` or `Task`
-- **Authentication**: Return specific response types
+See [Authentication Guide](authentication-guide.md) for details on Keycloak OIDC / JWT integration.
 
 ## Testing
 
-### Unit Testing
-
-Mock Refit interfaces for testing:
+Mock Refit interfaces with NSubstitute:
 
 ```csharp
-var mockEndpoint = Substitute.For<IGetBooksEndpoint>();
-mockEndpoint.Execute(Arg.Any<int>(), ...)
-    .Returns(new PagedListDto<BookDto>(...));
+var booksClient = Substitute.For<IBooksClient>();
+booksClient.GetBooksAsync(Arg.Any<BookSearchRequest>(), Arg.Any<CancellationToken>())
+    .Returns(new PagedListDto<BookDto> { Items = [...], TotalCount = 1 });
 
-var service = new MyService(mockEndpoint);
-var result = await service.GetBooksAsync();
+var service = new MyService(booksClient);
+var result = await service.GetBooksAsync(CancellationToken.None);
+
+await booksClient.Received(1).GetBooksAsync(Arg.Any<BookSearchRequest>(), Arg.Any<CancellationToken>());
 ```
 
-### Integration Testing
+For integration tests against the running API, resolve the client from the DI container registered in `BookStore.AppHost.Tests`.
 
-Use `WebApplicationFactory` to test against real API:
+## Best Practices
 
-```csharp
-var client = factory.Services.GetRequiredService<IGetBooksEndpoint>();
-var books = await client.Execute(1, 20, ...);
-Assert.NotEmpty(books.Items);
-```
+| ✅ Do | ❌ Don't |
+|------|---------|
+| Name interfaces `I{Resource}Client` | Use `I{Action}{Resource}Endpoint` |
+| Place shared DTOs in `BookStore.Shared/Models/` | Duplicate DTOs in `BookStore.Client` |
+| Use `IApiResponse<T>` for commands | Use raw `Task<T>` for operations that may fail |
+| Include `[Header("If-Match")]` on mutations | Perform blind writes without ETags |
+| Use `ETagHelper` to format/parse ETags | Hand-format ETag strings |
+| Register via `AddBookStoreClient` | Instantiate Refit clients manually outside DI |
 
 ## Troubleshooting
 
-### "Could not resolve type"
+### "No service for type `I*Client`"
 
-Ensure the DTO is in `BookStore.Shared` and referenced:
+Ensure `AddBookStoreClient` is called in `Program.cs` and the interface is registered inside `AddBookStoreClient` in `BookStoreClientExtensions.cs`.
 
-```csharp
-using BookStore.Shared.Models;
-```
+### "412 Precondition Failed"
 
-### "No service for type"
-
-Register the endpoint in `BookStoreClientExtensions.cs`:
-
-```csharp
-_ = services.AddRefitClient<IMyEndpoint>()
-    .ConfigureHttpClient(c => c.BaseAddress = baseAddress);
-```
+The `If-Match` ETag is stale. Fetch the resource again to get the latest ETag before retrying the mutation.
 
 ### "401 Unauthorized"
 
-Ensure `AuthorizingHttpMessageHandler` is configured and user is logged in.
+The `AuthorizationMessageHandler` (Blazor Web) or Bearer token configuration is missing. Check that the user is authenticated and `TokenService` can return a valid token.
+
+### "DTO type not found"
+
+Check whether the DTO lives in `BookStore.Shared/Models/` (for shared types) or `Contracts.cs` (for client-only generated types). Regenerate `Contracts.cs` if the API schema changed.
 
 ## Related Documentation
 
 - [Refit Documentation](https://github.com/reactiveui/refit)
+- [API Conventions Guide](api-conventions-guide.md)
 - [Authentication Guide](authentication-guide.md)
-- [API Conventions](api-conventions-guide.md)
+- [Real-Time Notifications Guide](real-time-notifications.md)
