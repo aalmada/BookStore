@@ -8,7 +8,7 @@ The API service is configured with optimal garbage collection settings for serve
 
 ### Configuration
 
-See [BookStore.ApiService.csproj](file:///Users/antaoalmada/Projects/BookStore/src/ApiService/BookStore.ApiService/BookStore.ApiService.csproj):
+See `src/BookStore.ApiService/BookStore.ApiService.csproj`:
 
 ```xml
 <PropertyGroup>
@@ -130,6 +130,34 @@ See [BookStore.ApiService.csproj](file:///Users/antaoalmada/Projects/BookStore/s
 - Inlines hot methods
 - Devirtualizes interface/virtual calls when possible
 - Optimizes branch predictions
+
+## Application-Level Performance Patterns
+
+In addition to runtime/GC tuning, BookStore relies on application-level performance patterns:
+
+### HybridCache for Read Paths
+
+- L1/L2 caching with tag invalidation reduces repeated projection reads
+- Tenant/culture-aware keys prevent cross-tenant and localization cache bleed
+- Mutation handlers invalidate list/item tags after successful writes
+
+See `docs/guides/caching-guide.md`.
+
+### Projection-Centric Querying
+
+- Read endpoints query projection documents rather than rebuilding aggregates
+- Search endpoints use denormalized projection fields and index-backed filtering
+- Async projection processing keeps write latency lower under load
+
+See `docs/guides/marten-guide.md` and `docs/guides/database-indexes-guide.md`.
+
+### Correlated Tracing and Metrics
+
+- OpenTelemetry metrics/traces are enabled via `BookStore.ServiceDefaults`
+- Correlation and causation IDs are propagated through request and message flows
+- Health endpoints (`/health`, `/alive`) support probe-based scaling decisions
+
+See `docs/guides/observability-guide.md` and `docs/guides/correlation-causation-guide.md`.
 
 ## Performance Monitoring
 
