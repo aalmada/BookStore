@@ -32,12 +32,12 @@ In traditional applications, we store the **current state** of entities:
 Instead, we store **all changes as events**:
 
 ```csharp
-// Event Store: mt_events table
-| id | stream_id | type           | data                    | timestamp  |
-|----|-----------|----------------|-------------------------|------------|
-| 1  | book-123  | BookAdded      | {title: "Clean Code"}   | 2025-01-01 |
-| 2  | book-123  | PriceChanged   | {price: 45.00}          | 2025-01-02 |
-| 3  | book-123  | BookPublished  | {status: "published"}   | 2025-01-03 |
+// Event Store: mt_events table (stream_id is a Guid, e.g. Guid.CreateVersion7())
+| id | stream_id                            | type             | data                       | timestamp  |
+|----|--------------------------------------|------------------|----------------------------|------------|
+| 1  | 0193f4e6-3b5a-7000-b234-...          | book_added       | {title: "Clean Code", ...} | 2025-01-01 |
+| 2  | 0193f4e6-3b5a-7000-b234-...          | book_updated     | {title: "Clean Code 2e"}   | 2025-01-02 |
+| 3  | 0193f4e6-3b5a-7000-b234-...          | book_soft_deleted| {timestamp: ...}           | 2025-01-03 |
 ```
 
 **Benefits**:
@@ -63,11 +63,13 @@ public record BookAdded(
     Guid Id,
     string Title,
     string? Isbn,
-    string? Description,
-    DateOnly? PublicationDate,
+    string Language,
+    Dictionary<string, BookTranslation> Translations,
+    PartialDate? PublicationDate,
     Guid? PublisherId,
     List<Guid> AuthorIds,
-    List<Guid> CategoryIds);
+    List<Guid> CategoryIds,
+    Dictionary<string, decimal> Prices);
 ```
 
 **Event Naming**:
@@ -89,11 +91,11 @@ A **stream** is a sequence of events for a single aggregate instance.
 
 ```mermaid
 graph TD
-    Stream[Stream: book-123]
+    Stream["Stream: 0193f4e6-3b5a-7000-b234-..."]
     V1[Version 1: BookAdded]
     V2[Version 2: BookUpdated]
-    V3[Version 3: PriceChanged]
-    V4[Version 4: BookPublished]
+    V3[Version 3: BookCoverUpdated]
+    V4[Version 4: BookSoftDeleted]
     
     Stream --> V1
     V1 --> V2
@@ -102,10 +104,11 @@ graph TD
 ```
 
 **Stream Properties**:
-- Each stream has a unique ID (typically the aggregate ID)
+- Each stream has a unique ID — always a `Guid` (the aggregate's ID, created with `Guid.CreateVersion7()`)
+- Streams are typed: `session.Events.StartStream<BookAggregate>(id, firstEvent)` binds the stream to the aggregate type
 - Events are ordered by version number
 - Streams are append-only (events never deleted)
-- Stream version increments with each new event
+- Stream version increments with each new event and is exposed on the aggregate as `public long Version { get; private set; }`
 
 See [Marten Guide - Working with Streams](marten-guide.md#working-with-streams) for stream operations.
 
@@ -117,44 +120,99 @@ An **aggregate** is a domain object that:
 - Generates new events from commands
 
 ```csharp
-public class BookAggregate
+using Marten.Metadata;
+
+// Aggregates implement ISoftDeleted to support Marten's soft-delete conventions
+public class BookAggregate : ISoftDeleted
 {
-    // Current state (built from events)
-    public Guid Id { get; set; }
-    public string Title { get; set; } = string.Empty;
-    public decimal Price { get; set; }
-    public bool IsPublished { get; set; }
-    
-    // Apply methods: Rebuild state from events
+    // All properties use private setters (analyzer rule BS3005)
+    public Guid Id { get; private set; }
+    public string Title { get; private set; } = string.Empty;
+    public string Language { get; private set; } = string.Empty;
+    public Dictionary<string, BookTranslation> Translations { get; private set; } = [];
+    public Dictionary<string, decimal> Prices { get; private set; } = [];
+
+    // Marten sets Version automatically; used for ETag-based optimistic concurrency
+    public long Version { get; private set; }
+
+    // ISoftDeleted requires public setters; suppressed via pragma (Marten requirement)
+#pragma warning disable BS3005
+    public bool Deleted { get; set; }
+    public DateTimeOffset? DeletedAt { get; set; }
+#pragma warning restore BS3005
+
+    // Apply methods: rebuild state only — NO validation or side effects here
     void Apply(BookAdded @event)
     {
         Id = @event.Id;
         Title = @event.Title;
-        IsPublished = false;
+        Language = @event.Language;
+        Translations = @event.Translations;
+        Prices = @event.Prices;
+        Deleted = false;
     }
-    
-    void Apply(PriceChanged @event)
+
+    void Apply(BookUpdated @event)
     {
-        Price = @event.NewPrice;
+        Title = @event.Title;
+        Language = @event.Language;
+        Translations = @event.Translations;
+        Prices = @event.Prices;
     }
-    
-    void Apply(BookPublished @event)
+
+    void Apply(BookSoftDeleted _)
     {
-        IsPublished = true;
+        Deleted = true;
+        DeletedAt = DateTimeOffset.UtcNow;
     }
-    
-    // Command methods: Generate new events
-    public PriceChanged ChangePrice(decimal newPrice)
+
+    void Apply(BookRestored _)
     {
-        // Business rule: Can't change price of unpublished book
-        if (!IsPublished)
-            throw new InvalidOperationException("Cannot change price of unpublished book");
-        
-        // Business rule: Price must be positive
-        if (newPrice <= 0)
-            throw new ArgumentException("Price must be positive");
-        
-        return new PriceChanged(Id, Price, newPrice);
+        Deleted = false;
+        DeletedAt = null;
+    }
+
+    // Static factory: generates the creation event for a new stream.
+    // Returns Result<TEvent> — business errors flow through Result, never thrown.
+    public static Result<BookAdded> CreateEvent(
+        Guid id, string title, string? isbn, string language,
+        Dictionary<string, BookTranslation> translations,
+        PartialDate? publicationDate, Guid? publisherId,
+        List<Guid> authorIds, List<Guid> categoryIds,
+        Dictionary<string, decimal> prices)
+    {
+        if (id == Guid.Empty)
+            return Result.Failure<BookAdded>(Error.Validation(ErrorCodes.Books.IdRequired, "Book ID is required"));
+
+        // ... additional validation
+
+        return new BookAdded(id, title, isbn, language, translations,
+            publicationDate, publisherId, authorIds, categoryIds, prices);
+    }
+
+    // Instance command: generates an update event from an existing aggregate.
+    public Result<BookUpdated> UpdateEvent(string title, ...)
+    {
+        if (Deleted)
+            return Result.Failure<BookUpdated>(Error.Conflict(ErrorCodes.Books.AlreadyDeleted, "Cannot update a deleted book"));
+
+        return new BookUpdated(Id, title, ...);
+    }
+
+    public Result<BookSoftDeleted> SoftDeleteEvent()
+    {
+        if (Deleted)
+            return Result.Failure<BookSoftDeleted>(Error.Conflict(ErrorCodes.Books.AlreadyDeleted, "Book is already deleted"));
+
+        return new BookSoftDeleted(Id, DateTimeOffset.UtcNow);
+    }
+
+    public Result<BookRestored> RestoreEvent()
+    {
+        if (!Deleted)
+            return Result.Failure<BookRestored>(Error.Conflict(ErrorCodes.Books.NotDeleted, "Book is not deleted"));
+
+        return new BookRestored(Id, DateTimeOffset.UtcNow);
     }
 }
 ```
@@ -234,7 +292,7 @@ var currentBook = await session.Events
 
 // Get state as of specific date
 var pastBook = await session.Events
-    .AggregateStreamAsync<BookAggregate>(bookId, timestamp: DateTime.Parse("2025-01-15"));
+    .AggregateStreamAsync<BookAggregate>(bookId, timestamp: DateTimeOffset.Parse("2025-01-15T00:00:00Z"));
 
 // Get state at specific version
 var versionBook = await session.Events
@@ -335,36 +393,42 @@ foreach (var evt in errorContext)
 
 **Example**:
 ```csharp
-// 1. Command
-public record ChangeBookPrice(Guid BookId, decimal NewPrice);
+// 1. Command (imperative record — only events use past tense)
+public record UpdateBook(Guid Id, string Title, ...);
 
-// 2. Handler validates and generates event
+// 2. Wolverine handler — IDocumentSession is auto-committed by Wolverine
 public static async Task<IResult> Handle(
-    ChangeBookPrice command,
+    UpdateBook command,
     IDocumentSession session)
 {
-    var book = await session.Events
-        .AggregateStreamAsync<BookAggregate>(command.BookId);
-    
-    // 3. Aggregate validates and returns event
-    var @event = book.ChangePrice(command.NewPrice);
-    
-    // 4. Store event
-    session.Events.Append(command.BookId, @event);
-    
+    // Rehydrate aggregate by replaying its event stream
+    var aggregate = await session.Events
+        .AggregateStreamAsync<BookAggregate>(command.Id);
+
+    if (aggregate is null)
+        return Results.NotFound();
+
+    // 3. Aggregate validates business rules and returns Result<TEvent>
+    var eventResult = aggregate.UpdateEvent(command.Title, ...);
+    if (eventResult.IsFailure)
+        return eventResult.ToProblemDetails();  // maps to ProblemDetails response
+
+    // 4. Append event to stream (Wolverine commits the session after handler returns)
+    _ = session.Events.Append(command.Id, eventResult.Value);
+
     return Results.NoContent();
 }
 
-// 5. Event is applied automatically by Marten
-void Apply(PriceChanged @event)
+// 5. Event is applied automatically by Marten during stream rehydration
+void Apply(BookUpdated @event)
 {
-    Price = @event.NewPrice;
+    Title = @event.Title;
 }
 
-// 6. Projection updates asynchronously
-public void Apply(PriceChanged @event, BookSearchProjection projection)
+// 6. Async projection updates the read model (via Marten async daemon)
+void Apply(BookUpdated @event, BookSearchProjection projection)
 {
-    projection.Price = @event.NewPrice;
+    projection.Title = @event.Title;
 }
 ```
 
@@ -467,13 +531,17 @@ public class OrderFulfillmentSaga
 
 ```csharp
 // Return immediately after command
-public static IResult Handle(CreateBook command, IDocumentSession session)
+public static async Task<IResult> Handle(CreateBook command, IDocumentSession session)
 {
-    var @event = BookAggregate.Create(...);
-    session.Events.StartStream(command.Id, @event);
-    
-    // Don't wait for projection - return immediately
-    return Results.Created($"/api/books/{command.Id}", new { id = command.Id });
+    var eventResult = BookAggregate.CreateEvent(command.Id, command.Title, ...);
+    if (eventResult.IsFailure)
+        return eventResult.ToProblemDetails();
+
+    // StartStream is typed — binds stream to the aggregate type
+    _ = session.Events.StartStream<BookAggregate>(command.Id, eventResult.Value);
+
+    // Don't wait for projection — return immediately
+    return Results.Created($"/api/admin/books/{command.Id}", new { id = command.Id });
 }
 ```
 
@@ -558,15 +626,21 @@ public async Task AnonymizeUserData(Guid userId)
 - ✅ Make events immutable (`record` types)
 - ✅ Add XML documentation explaining business meaning
 - ✅ Design for evolution (optional fields, metadata)
+- ✅ Use `DateTimeOffset.UtcNow` for timestamps — never `DateTime.Now`
 - ❌ Don't include computed values (calculate in projections)
 - ❌ Don't reference other aggregates (use IDs only)
 
 ### 2. Aggregate Design
 
 - ✅ Keep aggregates focused (single responsibility)
+- ✅ All properties use `private set` (analyzer rule BS3005)
+- ✅ Implement `ISoftDeleted` for aggregates that support soft-delete
+- ✅ Expose `public long Version { get; private set; }` for ETag concurrency
 - ✅ Validate in command methods, not Apply methods
-- ✅ Apply methods should only update state
-- ✅ Use static factory methods for creation
+- ✅ Apply methods should only update state — no validation, no I/O
+- ✅ Command methods return `Result<TEvent>` — never throw for business errors
+- ✅ Use static factory (`CreateEvent`) for creation, instance methods for mutations
+- ✅ Use `Guid.CreateVersion7()` — never `Guid.NewGuid()`
 - ✅ Keep streams small (< 1000 events per aggregate)
 - ❌ Don't load other aggregates in command methods
 - ❌ Don't perform I/O in Apply methods
@@ -575,7 +649,8 @@ public async Task AnonymizeUserData(Guid userId)
 
 - ✅ Create separate projections for different queries
 - ✅ Denormalize data for query performance
-- ✅ Use async projections for scalability
+- ✅ Use `SnapshotLifecycle.Async` for simple single-stream snapshots
+- ✅ Use `ProjectionLifecycle.Async` + custom `MultiStreamProjection` for cross-stream projections
 - ✅ Keep projections simple (no business logic)
 - ✅ Make projections idempotent (can replay safely)
 - ❌ Don't share projections across bounded contexts
@@ -584,37 +659,42 @@ public async Task AnonymizeUserData(Guid userId)
 ### 4. Testing
 
 ```csharp
-// Test aggregates with events
-[Fact]
-public void ChangePrice_WhenPublished_ShouldGenerateEvent()
-{
-    // Arrange: Build aggregate from events
-    var book = new BookAggregate();
-    book.Apply(new BookAdded(Guid.NewGuid(), "Clean Code", ...));
-    book.Apply(new BookPublished(book.Id));
-    
-    // Act: Execute command
-    var @event = book.ChangePrice(49.99m);
-    
-    // Assert: Verify event
-    Assert.Equal(49.99m, @event.NewPrice);
-}
-
-// Test projections with events
-[Fact]
-public async Task Apply_BookAdded_ShouldCreateProjection()
+// Tests use TUnit ([Test] not [Fact]) and await Assert.That(...)
+// Apply methods are package-private on classes; test through command methods instead
+[Test]
+public async Task ScheduleSale_Valid_ShouldSucceed()
 {
     // Arrange
-    var builder = new BookSearchProjectionBuilder();
-    var @event = new BookAdded(Guid.NewGuid(), "Clean Code", ...);
-    
+    var aggregate = new SaleAggregate();
+    var start = DateTimeOffset.UtcNow.AddHours(1);
+    var end = DateTimeOffset.UtcNow.AddHours(2);
+
+    // Act — command method returns Result<TEvent>, not raw event
+    var result = aggregate.ScheduleSale(20m, start, end);
+
+    // Assert — TUnit async assertions
+    _ = await Assert.That(result.IsSuccess).IsTrue();
+    _ = await Assert.That(result.Value.Sale.Percentage).IsEqualTo(20m);
+}
+
+[Test]
+public async Task SoftDeleteEvent_WhenAlreadyDeleted_ShouldFail()
+{
+    // Arrange: build state by applying events manually (Apply is internal)
+    // For classes with internal Apply, integration tests via handlers are preferred
+    // For record aggregates (SaleAggregate) direct construction is possible
+    var aggregate = new SaleAggregate { Id = Guid.CreateVersion7() };
+
     // Act
-    var projection = await builder.Create(@event, session);
-    
+    var result = aggregate.CancelSale(DateTimeOffset.UtcNow); // no sale exists
+
     // Assert
-    Assert.Equal("Clean Code", projection.Title);
+    _ = await Assert.That(result.IsFailure).IsTrue();
 }
 ```
+
+> [!NOTE]
+> The project uses **TUnit** for all tests (`[Test]`, `await Assert.That(...)`). Never use `[Fact]` (xUnit) or `Assert.Equal` (xUnit) — use the TUnit assertion API instead.
 
 ## Integration with Marten
 
