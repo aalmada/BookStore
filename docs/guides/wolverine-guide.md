@@ -55,7 +55,6 @@ public static IResult Handle(CreateBook command, IDocumentSession session)
 
 ### Command Flow
 
-```
 ```mermaid
 sequenceDiagram
     participant Client
@@ -71,7 +70,6 @@ sequenceDiagram
     Handler->>Marten: 5. Store Events
     Bus->>Marten: 6. Auto-commit Transaction
     Endpoint->>Client: 7. Return Result
-```
 ```
 
 ### Project Structure
@@ -464,66 +462,25 @@ public static class AdminBookEndpoints
 
 ## Testing Handlers
 
-Handlers are pure functions - easy to test!
+Handlers are tested with **TUnit** + **NSubstitute** in `tests/BookStore.ApiService.UnitTests/`.
 
 ```csharp
+using TUnit;
 using NSubstitute;
-using Xunit;
 
-public class BookHandlerTests
+public class BookHandlerTests : HandlerTestBase
 {
-    [Fact]
-    public void CreateBookHandler_ShouldStartStreamWithBookAddedEvent()
+    [Test]
+    public async Task CreateBookHandler_ShouldStartStreamWithBookAddedEvent()
     {
-        // Arrange
-        var command = new CreateBook(
-            "Clean Code",
-            "978-0132350884",
-            "A Handbook of Agile Software Craftsmanship",
-            new DateOnly(2008, 8, 1),
-            Guid.CreateVersion7(),
-            [Guid.CreateVersion7()],
-            [Guid.CreateVersion7()]);
-        
-        var session = Substitute.For<IDocumentSession>();
-        session.CorrelationId.Returns("test-correlation-id");
-        
-        // Act
-        var result = BookHandlers.Handle(command, session);
-        
-        // Assert
-        Assert.NotNull(result);
-        session.Events.Received(1).StartStream<BookAggregate>(
+        var command = new CreateBook(...);
+
+        var result = BookHandlers.Handle(command, Session, LocalizationOptions, CurrencyOptions, Logger);
+
+        _ = await Assert.That(result).IsNotNull();
+        Session.Events.Received(1).StartStream<BookAggregate>(
             command.Id,
-            Arg.Is<Events.BookAdded>(e => 
-                e.Title == "Clean Code" && 
-                e.Isbn == "978-0132350884"));
-    }
-    
-    [Fact]
-    public async Task UpdateBookHandler_WithWrongETag_ShouldReturn412()
-    {
-        // Arrange
-        var bookId = Guid.CreateVersion7();
-        var command = new UpdateBook(bookId, "Updated Title", ...) 
-        { 
-            ETag = "\"999\"" 
-        };
-        
-        var session = Substitute.For<IDocumentSession>();
-        var context = new DefaultHttpContext();
-        context.Request.Headers["If-Match"] = "\"999\"";
-        
-        var streamState = new Marten.Events.StreamState(bookId, 5);
-        session.Events.FetchStreamStateAsync(bookId)
-            .Returns(Task.FromResult<Marten.Events.StreamState?>(streamState));
-        
-        // Act
-        var result = await BookHandlers.Handle(command, session, context);
-        
-        // Assert
-        var problemResult = Assert.IsType<ProblemHttpResult>(result);
-        Assert.Equal(412, problemResult.StatusCode);
+            Arg.Any<BookAdded>());
     }
 }
 ```
@@ -540,32 +497,19 @@ public class BookHandlerTests
 ### Program.cs Setup
 
 ```csharp
-using Wolverine;
-using Wolverine.Marten;
-
-// Configure Marten first
-builder.Services.AddMarten(options =>
-{
-    options.Connection(connectionString);
-    // ... Marten configuration
-}).IntegrateWithWolverine(); // Important: Integrate with Wolverine
-
-// Add Wolverine
-builder.Services.AddWolverine(opts =>
-{
-    // Auto-discover handlers in this assembly
-    opts.Discovery.IncludeAssembly(typeof(Program).Assembly);
-    
-    // Policies for automatic behavior
-    opts.Policies.AutoApplyTransactions();
-});
+builder.Services.AddWolverineMessaging();
 ```
 
 ### Key Configuration Points
 
-1. **`IntegrateWithWolverine()`**: Connects Marten to Wolverine
-2. **`IncludeAssembly()`**: Tells Wolverine where to find handlers
-3. **`AutoApplyTransactions()`**: Enables automatic transaction management
+`AddWolverineMessaging()` configures:
+
+1. `AutoApplyTransactions()` for handler transaction behavior
+2. Middleware policies:
+   - `WolverineCorrelationMiddleware`
+   - `WolverineETagMiddleware`
+3. Explicit handler inclusion for static and class-based handlers (`IncludeType(...)`)
+4. Durability settings (inbox/outbox stale times, unknown-message dead lettering)
 
 ## Advanced Patterns
 
@@ -710,7 +654,7 @@ public static async Task<IResult> Handle(
 
 **Solution**:
 - Ensure handler method is named `Handle`
-- Verify handler is in assembly specified in `opts.Discovery.IncludeAssembly()`
+- Verify handler type is included in Wolverine discovery (assembly + explicit `IncludeType(...)` registrations)
 - Check handler is `public static`
 
 ### Transaction Not Committing
