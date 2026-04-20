@@ -4,7 +4,7 @@ The BookStore.ApiService.Analyzers project enforces architectural patterns for E
 
 ## Overview
 
-The analyzer provides **15 rules across 5 categories** to ensure consistent architecture:
+The analyzer provides **17 rules across 5 categories** to ensure consistent architecture:
 
 - **Event Sourcing Rules** (BS1xxx): Enforce event immutability and proper structure
 - **Best Practices** (BS1xxx): Enforce modern C# features and performance improvements
@@ -91,6 +91,39 @@ public record BookAdded(Guid Id);
 ---
 
 ### Best Practices Rules (BS1xxx)
+
+#### BS1006: Use Guid.CreateVersion7() instead of Guid.NewGuid()
+- **Severity**: Warning
+- **Category**: BestPractices
+
+Use `Guid.CreateVersion7()` (time-ordered UUID v7) instead of `Guid.NewGuid()` (random UUID v4). Version 7 GUIDs are monotonically increasing, which improves database index performance and provides natural time-based sorting.
+
+**❌ Bad:**
+```csharp
+var id = Guid.NewGuid();
+```
+
+**✅ Good:**
+```csharp
+var id = Guid.CreateVersion7();
+```
+
+#### BS1007: Use DateTimeOffset.UtcNow instead of DateTime.Now or DateTime.UtcNow
+- **Severity**: Warning
+- **Category**: BestPractices
+
+Use `DateTimeOffset.UtcNow` for timezone-aware timestamps. `DateTime.Now` is timezone-local and error-prone in distributed systems; `DateTime.UtcNow` loses timezone offset information. Both are flagged.
+
+**❌ Bad:**
+```csharp
+var timestamp = DateTime.Now;
+var utc = DateTime.UtcNow;
+```
+
+**✅ Good:**
+```csharp
+var timestamp = DateTimeOffset.UtcNow;
+```
 
 #### BS1008: Use generic math
 - **Severity**: Warning
@@ -319,7 +352,7 @@ public class BookAggregate
 ```csharp
 public class BookAggregate
 {
-    public Guid Id { get; set; }  // Marten needs this for rehydration
+    public Guid Id { get; init; }
     public string Title { get; private set; } = string.Empty;
     
     void Apply(BookTitleUpdated @event)
@@ -462,7 +495,7 @@ The analyzer includes comprehensive unit tests using actual C# files (not string
 
 Run tests:
 ```bash
-dotnet test --project src/BookStore.ApiService.Analyzers.Tests/BookStore.ApiService.Analyzers.Tests.csproj
+dotnet test tests/BookStore.ApiService.Analyzers.UnitTests/BookStore.ApiService.Analyzers.UnitTests.csproj
 ```
 
 ---
