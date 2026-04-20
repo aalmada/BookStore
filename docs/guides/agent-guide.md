@@ -15,7 +15,7 @@ The BookStore project uses a structured approach to help AI coding assistants (a
 Together, these components ensure agents work consistently with established patterns without needing to ask basic questions or make architectural mistakes.
 
 **System Overview**:
-- **12 AGENTS.md files** providing context-aware guidance
+- **10 AGENTS.md files** providing context-aware guidance
 - **35 skills** covering the complete development lifecycle
 - **7 GitHub Copilot agents** covering the full feature lifecycle (Orchestrator → Planner → Backend/Frontend → Tests → Review + SquadEval)
 - **9 lifecycle hook scripts** enforcing code rules, security, and build correctness automatically
@@ -60,12 +60,6 @@ BookStore/
     │   └── AGENTS.md                            # Integration testing (TUnit, SSE)
     ├── BookStore.ApiService.UnitTests/
     │   └── AGENTS.md                            # API unit tests
-    ├── BookStore.ApiService.Analyzers.UnitTests/
-    │   └── AGENTS.md                            # Analyzer tests
-    ├── BookStore.Shared.UnitTests/
-    │   └── AGENTS.md                            # Shared library tests
-    └── BookStore.Web.Tests/
-        └── AGENTS.md                            # Frontend tests
 ```
 
 **Philosophy**: An agent modifying `src/BookStore.ApiService/` only needs to know ApiService conventions, not frontend patterns. This reduces cognitive load and keeps guidance focused.
@@ -277,7 +271,7 @@ Agents live in `.github/agents/` as `.agent.md` files. Each file is a self-conta
 
 ### Orchestrator Design
 
-The Orchestrator has `disable-model-invocation: true` — it **cannot** reason about implementation details, suggest code, or influence technical choices. Its sole function is to:
+The Orchestrator acts as a pure coordinator. Its sole function is to:
 
 1. Clarify the task with `vscode/askQuestions`
 2. Write `/memories/session/task-brief.md`
@@ -286,7 +280,7 @@ The Orchestrator has `disable-model-invocation: true` — it **cannot** reason a
 
 This ensures the Orchestrator acts as a pure coordinator and never contaminates the specialist agents' technical judgment.
 
-> **Note**: `disable-model-invocation: true` is set on **all** specialist agents (Planner, BackendDeveloper, FrontendDeveloper, TestEngineer, CodeReviewer) as well, ensuring each agent focuses solely on its designated task.
+> **Note**: `disable-model-invocation: true` is set on specialist agents (Planner, BackendDeveloper, FrontendDeveloper, TestEngineer, CodeReviewer), ensuring each agent focuses solely on its designated task.
 
 ### 401 Escalation Policy
 
@@ -371,7 +365,7 @@ Key fields:
 - **`target: vscode`** — marks it as a VS Code Copilot agent
 - **`model`** — the LLM to use; chosen per role (reasoning vs. coding vs. review)
 - **`tools`** — tool permissions; CodeReviewer has no `edit` tool by design
-- **`disable-model-invocation: true`** — set on **all** agents (Orchestrator, Planner, all specialists); prevents reasoning about details outside the agent's designated role
+- **`disable-model-invocation: true`** — set on specialist agents (Planner, BackendDeveloper, FrontendDeveloper, TestEngineer, CodeReviewer); prevents reasoning about details outside each agent's designated role
 - **`user-invocable: true`** — only set on Orchestrator; other agents are invoked by the squad
 - **`handoffs`** — one-click buttons to route to the next agent with a pre-written prompt
 
@@ -583,7 +577,7 @@ This creates a self-documenting workflow system where agents discover related sk
 ## Metrics & Performance
 
 ### System Coverage
-- **AGENTS.md Coverage**: 12/12 files
+- **AGENTS.md Coverage**: 10/10 files
 - **Skills**: 35 covering complete development lifecycle
 - **GitHub Copilot Agents**: 7 (Orchestrator, Planner, BackendDeveloper, FrontendDeveloper, TestEngineer, CodeReviewer, SquadEval)
 - **Lifecycle Hook Scripts**: 9 covering all VS Code hook events
