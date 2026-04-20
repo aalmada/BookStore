@@ -134,6 +134,19 @@ static Task<IResult> CreateBook(
 }
 ```
 
+### Command Dispatch Convention (Wolverine)
+
+**Rule**: Write endpoints are thin dispatch layers that resolve `IMessageBus` and dispatch commands with `bus.InvokeAsync(...)`. They do not contain business logic.
+
+**Rule**: Tenant-aware command dispatch must always set `DeliveryOptions.TenantId` from `ITenantContext`:
+
+```csharp
+return bus.InvokeAsync<IResult>(
+    command,
+    new DeliveryOptions { TenantId = tenantContext.TenantId },
+    cancellationToken);
+```
+
 ### ETag from Headers
 
 For write operations that require optimistic concurrency, extract the `If-Match` header directly from `HttpContext`:
@@ -151,6 +164,22 @@ static Task<IResult> UpdateBook(
     var command = new UpdateBook(id, ...) { ETag = etag };
     return bus.InvokeAsync<IResult>(command, ...);
 }
+```
+
+### Soft Delete / Restore Pattern
+
+Admin resources follow a consistent soft-delete pattern:
+
+- `DELETE /api/admin/{resource}/{id}` for soft delete
+- `POST /api/admin/{resource}/{id}/restore` for restore
+- Both operations propagate `If-Match` from `HttpContext` into command `ETag` before dispatching with `IMessageBus`
+
+```csharp
+var etag = context.Request.Headers["If-Match"].FirstOrDefault();
+var command = new RestoreBook(id) { ETag = etag };
+return bus.InvokeAsync<IResult>(command,
+    new DeliveryOptions { TenantId = tenantContext.TenantId },
+    cancellationToken);
 ```
 
 ---
@@ -535,6 +564,10 @@ public record PagedListDto<T>(
 }
 ```
 
+### `PagedListAdapter<T>` Usage
+
+Most endpoints return `PagedListDto<T>`. When a query uses Marten's `IPagedList<T>` and needs a serialization-friendly wrapper directly from that source, use `PagedListAdapter<T>` (currently used in publisher listing endpoints). The JSON shape remains the same pagination contract (`items`, `pageNumber`, `pageSize`, `totalItemCount`, `pageCount`, `hasPreviousPage`, `hasNextPage`).
+
 **JSON Response**:
 ```json
 {
@@ -617,7 +650,15 @@ The API uses the following standard headers:
 | `If-None-Match` | No | ETag for conditional requests (caching) | `"5"` |
 | `If-Match` | **Yes*** | ETag for optimistic concurrency control | `"5"` |
 
-*\* Mandatory for all write operations (PUT, DELETE, Restore). Missing header results in 428 Precondition Required.*
+\* Enforced by `ETagValidationMiddleware` on protected write routes (for example: admin `PUT`, admin soft-delete `DELETE`, and restore `POST` actions). Missing `If-Match` returns `428 Precondition Required`. Specific high-concurrency/idempotent routes are excluded (book `rating`, `favorites`, and cart routes).
+
+### ETag Enforcement Middleware
+
+`ETagValidationMiddleware` runs in the API pipeline and performs header-presence enforcement before handlers execute:
+
+- Validates `If-Match` presence for configured write routes
+- Returns `428 Precondition Required` when header is missing
+- Leaves version match validation to handler/aggregate logic (which can still return `412 Precondition Failed`)
 
 #### Response Headers
 
@@ -855,6 +896,32 @@ public static async Task<IResult> GetBooks(
     var tenantId = tenant.TenantId;
     // ...
 }
+```
+
+For command endpoints, tenant context is also propagated into Wolverine dispatch via `DeliveryOptions.TenantId`, ensuring command handling executes under the resolved tenant.
+
+```csharp
+return bus.InvokeAsync<IResult>(command,
+    new DeliveryOptions { TenantId = tenantContext.TenantId },
+    cancellationToken);
+```
+
+---
+
+## Caching Conventions
+
+### HybridCache Invalidation on Mutations
+
+**Rule**: Mutating handlers invalidate HybridCache entries with tag-based invalidation immediately after appending events.
+
+- Use list tags for collection queries (for example `CacheTags.BookList`)
+- Use item tags for entity queries (for example `CacheTags.ForItem(CacheTags.BookItemPrefix, id)`)
+- Combine both tags on updates/deletes/restores to prevent stale list and item reads
+
+```csharp
+await cache.RemoveByTagAsync(
+    [CacheTags.BookList, CacheTags.ForItem(CacheTags.BookItemPrefix, command.Id)],
+    default);
 ```
 
 ---
