@@ -105,6 +105,30 @@ options.Schema.For<ApplicationUser>()
 | `CreatedAt` | B-tree | Sorting users by registration date |
 | `CreatedAt` (partial, `EmailConfirmed = false`) | B-tree | Efficiently query unverified accounts for cleanup/alerting |
 
+### Projections Without Explicit Indexes
+
+The following projections are persisted but do not define explicit indexes in `ConfigureIndexes`. They are primarily accessed by document ID (primary key), so additional indexes are not currently required.
+
+#### `UserProfile`
+- Access pattern: direct lookup by `userId`
+- Why no explicit index: shopping cart/favorites data is loaded by ID, not searched
+
+#### `BookStatistics`
+- Access pattern: direct lookup by `bookId`
+- Why no explicit index: statistics are loaded per book detail view
+
+#### `AuthorStatistics`
+- Access pattern: direct lookup by `authorId`
+- Why no explicit index: aggregate counters are loaded by ID only
+
+#### `CategoryStatistics`
+- Access pattern: direct lookup by `categoryId`
+- Why no explicit index: aggregate counters are loaded by ID only
+
+#### `PublisherStatistics`
+- Access pattern: direct lookup by `publisherId`
+- Why no explicit index: aggregate counters are loaded by ID only
+
 ## Index Types Used
 
 | Type | Marten API | When to use |
