@@ -1,10 +1,10 @@
 # Structured Logging Guide
 
-This guide explains the high-performance structured logging system used in the Book Store API, built with C#'s source-generated `LoggerMessage` attribute.
+This guide explains the high-performance structured logging system used in the BookStore API, built with C#'s source-generated `LoggerMessage` attribute.
 
 ## Overview
 
-The Book Store API uses **source-generated logging** for zero-allocation, high-performance structured logging. All log messages are defined using the `[LoggerMessage]` attribute, which generates optimized code at compile time.
+The BookStore API uses **source-generated logging** for zero-allocation, high-performance structured logging. All log messages are defined using the `[LoggerMessage]` attribute, which generates optimized code at compile time.
 
 ### Key Benefits
 
@@ -14,27 +14,36 @@ The Book Store API uses **source-generated logging** for zero-allocation, high-p
 - ✅ **High performance** - Optimized code generation
 - ✅ **Easy maintenance** - Centralized log definitions
 
+> **Mandatory rule:** `_logger.LogInformation(...)`, `_logger.LogWarning(...)`, and similar extension methods are **never** used directly. Always use `[LoggerMessage]` source-generated methods. Analyzer rule **CA1848** enforces this.
+
 ## Architecture
 
 ### Organization Structure
 
-All logging is organized in the [Infrastructure/Logging](file:///Users/antaoalmada/Projects/BookStore/src/ApiService/BookStore.ApiService/Infrastructure/Logging) directory:
+All logging is organized in [src/BookStore.ApiService/Infrastructure/Logging/](../../src/BookStore.ApiService/Infrastructure/Logging/):
 
 ```
 Infrastructure/Logging/
-├── Log.cs                    # Base partial class
+├── Log.cs                    # Base partial class — declares all nested class stubs
 ├── Log.Books.cs             # Book-related operations
 ├── Log.Authors.cs           # Author-related operations
 ├── Log.Categories.cs        # Category-related operations
 ├── Log.Publishers.cs        # Publisher-related operations
-└── Log.Infrastructure.cs    # Middleware & startup
+├── Log.Infrastructure.cs    # Middleware, startup, projections, Marten metadata
+├── Log.Email.cs             # Email delivery operations
+├── Log.Maintenance.cs       # Background maintenance jobs
+├── Log.Notifications.cs     # SSE notification service
+├── Log.Seeding.cs           # Database seeding
+├── Log.Tenants.cs           # Multi-tenancy access control
+└── Log.Users.cs             # User authentication/registration
 ```
 
 ### Partial Class Design
 
-The logging system uses a central `Log` static partial class with nested partial classes for each feature area:
+`Log.cs` declares the central `Log` static partial class and all nested class stubs. Each feature-area file extends one nested class with its `[LoggerMessage]` methods:
 
 ```csharp
+// Log.cs — declares stubs
 public static partial class Log
 {
     public static partial class Books { }
@@ -42,24 +51,40 @@ public static partial class Log
     public static partial class Categories { }
     public static partial class Publishers { }
     public static partial class Infrastructure { }
+    public static partial class Email { }
+    public static partial class Users { }
+    public static partial class Tenants { }
+}
+```
+
+Additional feature areas (`Notifications`, `Maintenance`, `Seeding`) are extended directly in their own files without a stub in `Log.cs` — the C# compiler merges them automatically:
+
+```csharp
+// Log.Notifications.cs — extends Log without a stub in Log.cs
+public static partial class Log
+{
+    public static partial class Notifications
+    {
+        [LoggerMessage(EventId = 6002, Level = LogLevel.Information,
+            Message = "Client {SubscriberId} subscribed. Total subscribers: {Count}")]
+        public static partial void ClientSubscribed(ILogger logger, Guid subscriberId, int count);
+    }
 }
 ```
 
 **Why this design?**
 - 📁 **Organized by feature** - Easy to find related log messages
-- 🔍 **Easy discovery** - All logs in one namespace
+- 🔍 **Easy discovery** - All logs under `Log.*`
 - 🛠️ **Maintainable** - Each file focuses on one domain area
-- 📦 **Scalable** - Add new feature areas without conflicts
+- 📦 **Scalable** - Add new feature areas without touching existing files
 
 ## Usage Examples
 
 ### Handler Logging
 
-All command handlers include comprehensive logging for operations, validation, and errors.
+All command handlers receive `ILogger` as a parameter and call the appropriate `Log.*` method.
 
 #### Book Creation
-
-See [BookHandlers.cs:29-106](file:///Users/antaoalmada/Projects/BookStore/src/ApiService/BookStore.ApiService/Handlers/Books/BookHandlers.cs#L29-L106):
 
 ```csharp
 public static (IResult, BookCreatedNotification) Handle(
@@ -82,7 +107,7 @@ public static (IResult, BookCreatedNotification) Handle(
 
     // Log successful completion
     Log.Books.BookCreated(logger, command.Id, command.Title);
-    
+
     return (Results.Created(/* ... */), notification);
 }
 ```
@@ -120,20 +145,19 @@ if (translation.Description.Length > BookAggregate.MaxDescriptionLength)
 
 #### Marten Metadata
 
-See [MartenMetadataMiddleware.cs:50](file:///Users/antaoalmada/Projects/BookStore/src/ApiService/BookStore.ApiService/Infrastructure/MartenMetadataMiddleware.cs#L50):
-
 ```csharp
 // Log the Marten metadata setup
-Log.Infrastructure.MartenMetadataSet(
+Log.Infrastructure.MartenMetadataApplied(
     _logger,
+    method,
+    path,
     correlationId,
     causationId,
-    userId ?? "anonymous");
+    userId,
+    remoteIp);
 ```
 
 #### Request Tracking
-
-See [LoggingEnricher.cs](file:///Users/antaoalmada/Projects/BookStore/src/ApiService/BookStore.ApiService/Infrastructure/LoggingEnricher.cs):
 
 The `LoggingEnricherMiddleware` automatically enriches the log scope for every HTTP request with:
 - `CorrelationId` (captured from headers or generated)
@@ -143,18 +167,10 @@ The `LoggingEnricherMiddleware` automatically enriches the log scope for every H
 
 ```csharp
 // Log the request start with enriched metadata
-Log.Infrastructure.RequestStarted(
-    _logger,
-    requestMethod,
-    requestPath ?? "/",
-    remoteIp ?? "unknown");
+Log.Infrastructure.RequestStarted(logger, method, path, remoteIp);
 ```
 
 ### Startup Logging
-
-#### Projection Initialization
-
-See [Program.cs:46-71](file:///Users/antaoalmada/Projects/BookStore/src/ApiService/BookStore.ApiService/Program.cs#L46-L71):
 
 ```csharp
 static async Task WaitForProjectionsAsync(IDocumentStore store, ILogger logger)
@@ -174,8 +190,6 @@ static async Task WaitForProjectionsAsync(IDocumentStore store, ILogger logger)
         return;
     }
 
-    // ... timeout handling ...
-    
     Log.Infrastructure.ProjectionTimeout(logger, timeout.TotalSeconds);
 }
 ```
@@ -186,10 +200,11 @@ The system uses appropriate log levels for different scenarios:
 
 | Level | Usage | Examples |
 |-------|-------|----------|
-| **Debug** | Detailed diagnostic information | Request details, projection status checks |
-| **Information** | Normal operations | Entity created, updated, deleted, restored |
-| **Warning** | Validation failures, not found | Invalid language code, ETag mismatch, entity not found |
-| **Error** | Unexpected failures | Database errors, seeding failures |
+| **Debug** | Detailed diagnostic information | Request details, projection status checks, cache invalidations |
+| **Information** | Normal operations | Entity created, updated, deleted, restored, seeding completed |
+| **Warning** | Validation failures, configuration advisories | Invalid language code, ETag mismatch, entity not found, HS256 in non-dev |
+| **Error** | Unexpected failures | Database errors, email delivery failures, projection commit errors |
+| **Critical** | Fatal conditions requiring immediate attention | Failed Marten event registration, rate limiting disabled in production |
 
 ### Level Guidelines
 
@@ -211,18 +226,30 @@ The system uses appropriate log levels for different scenarios:
 **Error:**
 - Use for unexpected failures
 - System errors, exceptions
-- Examples: Database connection failure, unhandled exceptions
+- Examples: Database connection failure, email delivery failure, unhandled exceptions
+
+**Critical:**
+- Use for fatal conditions that compromise system integrity
+- Examples: Failed Marten event registration, rate limiting disabled in non-development
 
 ## Defining New Log Messages
 
 ### Step 1: Choose the Right File
 
-Add log messages to the appropriate partial class:
+Add log messages to the appropriate partial class file:
 - **Books** → `Log.Books.cs`
 - **Authors** → `Log.Authors.cs`
 - **Categories** → `Log.Categories.cs`
 - **Publishers** → `Log.Publishers.cs`
-- **Infrastructure** → `Log.Infrastructure.cs`
+- **Infrastructure** → `Log.Infrastructure.cs` (middleware, startup, projections)
+- **Email** → `Log.Email.cs`
+- **Maintenance** → `Log.Maintenance.cs`
+- **Notifications** → `Log.Notifications.cs`
+- **Seeding** → `Log.Seeding.cs`
+- **Tenants** → `Log.Tenants.cs`
+- **Users** → `Log.Users.cs`
+
+If none fits, create a new `Log.<Area>.cs` file following the same pattern.
 
 ### Step 2: Define the Log Message
 
@@ -238,10 +265,12 @@ public static partial void BookPublished(
 ```
 
 **Key points:**
-- Use descriptive method names (e.g., `BookPublished`, not `LogBookPublish`)
-- Include relevant structured properties in the message template
-- Use appropriate log level
-- Make the method `static partial void`
+- Return type must be `void`
+- Method must be `static partial`
+- Declaring class must be `partial`
+- Use **PascalCase** placeholders: `{BookId}`, not `{bookId}`
+- `Exception` must be the **first** positional parameter after `ILogger` (treated specially by the runtime)
+- Do **not** use string interpolation in `Message` — placeholders only
 
 ### Step 3: Use in Your Code
 
@@ -249,9 +278,9 @@ public static partial void BookPublished(
 public static IResult Handle(PublishBook command, IDocumentSession session, ILogger logger)
 {
     // ... business logic ...
-    
+
     Log.Books.BookPublished(logger, command.Id, book.Title, command.PublishDate);
-    
+
     return Results.Ok();
 }
 ```
@@ -281,8 +310,36 @@ Include these properties for better observability:
 **Requests:**
 - `RequestPath` - HTTP path
 - `RequestMethod` - HTTP method
-- `UserId` - Authenticated user
+- `UserId` - Authenticated user (GUID only — see PII section)
 - `RemoteIp` - Client IP address
+
+## Log Level Configuration
+
+### appsettings.json
+
+The API service configures log levels in `src/BookStore.ApiService/appsettings.json`:
+
+```json
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning",
+      "Microsoft.AspNetCore.Hosting": "Information",
+      "Microsoft.AspNetCore.Routing": "Warning",
+      "System.Net.Http.HttpClient": "Warning",
+      "Marten": "Warning",
+      "Npgsql": "Warning",
+      "Wolverine": "Warning",
+      "BookStore": "Information"
+    }
+  }
+}
+```
+
+- `BookStore.*` namespaces log at `Information` and above
+- Third-party libraries (`Marten`, `Npgsql`, `Wolverine`) are set to `Warning` to reduce noise
+- Override individual categories in `appsettings.Development.json` for local debugging
 
 ## Querying Logs
 
@@ -313,11 +370,7 @@ BookId = "550e8400-e29b-41d4-a716-446655440000"
 
 **Find all validation failures:**
 ```
-Level = "Warning" AND (
-    Message LIKE "%Invalid%" OR 
-    Message LIKE "%too long%" OR 
-    Message LIKE "%mismatch%"
-)
+Level = "Warning"
 ```
 
 **Track a request flow:**
@@ -336,32 +389,23 @@ Message LIKE "%projection%" AND Level IN ("Warning", "Error")
 
 Source-generated logging avoids common allocation sources:
 
-**Traditional logging:**
+**Traditional logging — avoid:**
 ```csharp
 // ❌ Allocates: string interpolation, boxing, params array
 logger.LogInformation($"Book created: {bookId}, {title}");
 ```
 
-**Source-generated logging:**
+**Source-generated logging — correct:**
 ```csharp
 // ✅ Zero allocations: optimized at compile time
 Log.Books.BookCreated(logger, bookId, title);
 ```
 
-### Benchmarks
-
-Compared to traditional logging:
-- **~3x faster** for simple messages
-- **~10x faster** for messages with multiple parameters
-- **Zero allocations** in most scenarios
-- **Compile-time validation** prevents runtime errors
-
 ### When Allocations Occur
 
-Allocations may still occur for:
-- **String concatenation** in message templates
-- **Collection formatting** (e.g., `string.Join`)
+Minor allocations may still occur for:
 - **Exception logging** (exception objects)
+- **Collection formatting** (e.g., `string.Join` in message parameters)
 
 These are typically unavoidable and acceptable trade-offs.
 
@@ -378,7 +422,8 @@ These are typically unavoidable and acceptable trade-offs.
 
 ### ❌ Don't
 
-- **Don't log sensitive data** (passwords, tokens, PII)
+- **Don't call `_logger.Log*()` extension methods directly** — always use `[LoggerMessage]`
+- **Don't log sensitive data** (passwords, tokens, cryptographic keys)
 - **Don't log in tight loops** (use sampling or aggregation)
 - **Don't use string interpolation** in log messages
 - **Don't log redundant information** already in structured properties
@@ -388,35 +433,58 @@ These are typically unavoidable and acceptable trade-offs.
 
 To comply with privacy regulations (like GDPR) and maintain a clean audit trail, the application follows a strict **No PII in Logs/Metadata** policy:
 
-1. **User Identification**: Always use the User's **GUID ID** (from `ClaimTypes.NameIdentifier`) instead of Email or UserName. This ensures that even if logs are leaked, users cannot be directly identified without access to the primary database.
-2. **Metadata Capture**: When capturing technical metadata for events (IP, User-Agent), ensure these reflect the original client while avoiding the storage of any personally identifiable information in the JSON headers column.
+1. **User Identification**: Always use the user's **GUID ID** (from `ClaimTypes.NameIdentifier`) instead of email or username where possible. This ensures that even if logs are leaked, users cannot be directly identified without access to the primary database.
+2. **Metadata Capture**: When capturing technical metadata for events (IP, User-Agent), ensure these reflect the original client while avoiding storage of PII in log fields.
 3. **Sensitive Data**: Never log passwords, reset tokens, or cryptographic keys.
 
-### Example: Good vs Bad
+## OpenTelemetry Integration
 
-**❌ Bad:**
+### Configuration (ServiceDefaults)
+
+`BookStore.ServiceDefaults` configures logging and telemetry for all services via `AddServiceDefaults()` → `ConfigureOpenTelemetry()`:
+
 ```csharp
-logger.LogInformation($"Book {bookId} was created with title {title}");
-// Problems: string interpolation, no structured properties, verbose
+// Structured log export to OTel
+builder.Logging.AddOpenTelemetry(logging =>
+{
+    logging.IncludeFormattedMessage = true;
+    logging.IncludeScopes = true;
+});
+
+// Development: human-readable simple console
+// Production: JSON console (machine-parseable)
+builder.Logging.AddConsole(options =>
+    options.FormatterName = builder.Environment.IsDevelopment() ? "simple" : "json");
 ```
 
-**✅ Good:**
+**Development output** (`simple` formatter):
+- Single-line human-readable entries
+- UTC timestamps
+- Scopes included
+
+**Production output** (`json` formatter):
+- JSON structured output
+- UTC ISO-8601 timestamps (`yyyy-MM-ddTHH:mm:ss.fffZ`)
+- Scopes included for correlation
+
+### OTLP Exporter
+
+When `OTEL_EXPORTER_OTLP_ENDPOINT` is set (automatic with Aspire), all logs/traces/metrics are exported via OTLP to the Aspire Dashboard or an external collector:
+
 ```csharp
-Log.Books.BookCreated(logger, bookId, title);
-// Benefits: zero allocations, structured properties, concise
+if (!string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]))
+{
+    builder.Services.AddOpenTelemetry().UseOtlpExporter();
+}
 ```
 
-## Integration with Observability
+### Metrics and Tracing Sources
 
-### OpenTelemetry
+The telemetry pipeline includes:
+- **Metrics:** ASP.NET Core, HttpClient, Runtime, `Wolverine`, `BookStore.ApiService`
+- **Tracing:** ASP.NET Core (health-check paths excluded), HttpClient, `Wolverine`
 
-The logging system integrates with OpenTelemetry for distributed tracing:
-
-- **Correlation IDs** link logs across services
-- **Trace IDs** connect logs to distributed traces
-- **Span IDs** associate logs with specific operations
-
-See [correlation-causation-guide.md](file:///Users/antaoalmada/Projects/BookStore/docs/correlation-causation-guide.md) for more details.
+Health check paths (`/health`, `/alive`) are excluded from tracing to reduce noise.
 
 ### Aspire Dashboard
 
@@ -427,6 +495,14 @@ All structured logs are automatically sent to the Aspire Dashboard:
 - **Correlation ID tracking**
 - **Log level filtering**
 - **Full-text search**
+
+### Correlation IDs
+
+The logging system integrates with OpenTelemetry for distributed tracing:
+
+- **Correlation IDs** link logs across services and requests
+- **Trace IDs** connect logs to distributed traces
+- **Span IDs** associate logs with specific operations
 
 ## Troubleshooting
 
@@ -457,23 +533,22 @@ All structured logs are automatically sent to the Aspire Dashboard:
 **Solutions:**
 1. **Check log level** - Disable Debug logging in production
 2. **Review logging frequency** - Don't log in tight loops
-3. **Use sampling** - Log only a percentage of high-frequency events
-4. **Verify source generation** - Ensure you're using `[LoggerMessage]` attribute
+3. **Verify source generation** - Ensure you're using `[LoggerMessage]` attribute, not extension methods
 
 ## Related Documentation
 
-- [Performance Guide](file:///Users/antaoalmada/Projects/BookStore/docs/performance-guide.md) - GC optimization, tiered compilation
-- [Correlation & Causation Guide](file:///Users/antaoalmada/Projects/BookStore/docs/correlation-causation-guide.md) - Distributed tracing
-- [Microsoft Docs: LoggerMessage](https://learn.microsoft.com/en-us/dotnet/core/extensions/logger-message-generator) - Official documentation
+- [Correlation & Causation Guide](correlation-causation-guide.md) - Distributed tracing
+- [Microsoft Docs: LoggerMessage source generator](https://learn.microsoft.com/en-us/dotnet/core/extensions/logger-message-generator) - Official documentation
+- [OpenTelemetry .NET](https://opentelemetry.io/docs/languages/dotnet/) - OTel SDK documentation
 
 ## Summary
 
-The Book Store API's structured logging system provides:
+The BookStore API's structured logging system provides:
 
-- ✅ **High performance** - Zero-allocation logging via source generation
-- ✅ **Strong typing** - Compile-time validation of log messages
-- ✅ **Easy maintenance** - Centralized, organized log definitions
-- ✅ **Great observability** - Structured properties for powerful querying
-- ✅ **Production-ready** - Integrated with OpenTelemetry and Aspire
+- ✅ **High performance** — Zero-allocation logging via source generation
+- ✅ **Strong typing** — Compile-time validation of log messages
+- ✅ **Easy maintenance** — Centralized, organized log definitions across 12 feature-area files
+- ✅ **Great observability** — Structured properties for powerful querying
+- ✅ **Production-ready** — Integrated with OpenTelemetry, Aspire Dashboard, and OTLP export
 
 By following the patterns and best practices in this guide, you can add effective, performant logging to any part of the application.
