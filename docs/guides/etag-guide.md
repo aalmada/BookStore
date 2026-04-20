@@ -3,441 +3,397 @@
 ## Overview
 
 The Book Store API implements **ETags (Entity Tags)** for:
-1. **Optimistic Concurrency Control** (Mandatory for writes)
-2. **HTTP Caching** (Reduced bandwidth)
 
-ETags are generated from Marten's event stream versions, ensuring they accurately reflect the current state of resources.
+1. **Optimistic Concurrency Control** — mandatory `If-Match` header for all write operations
+2. **HTTP Caching** — `If-None-Match` / `304 Not Modified` for conditional GET requests
+3. **DTO versioning** — every resource DTO carries an `ETag` field so clients always have the current version
+
+ETags are generated from Marten's event-stream versions, so they directly reflect the number of events applied to that aggregate.
 
 > [!IMPORTANT]
-> **ETags are mandatory** for all state-changing operations (PUT, DELETE, POST restore). If the `If-Match` header is missing, the server will return a `428 Precondition Required` error.
+> **ETags are mandatory** for all state-changing operations (PUT, DELETE, POST restore/sales).
+> A missing `If-Match` header returns `428 Precondition Required`.
 
-## How ETags Work
+---
 
-### ETag Generation
+## Architecture
+
+The ETag implementation spans four components:
+
+| Component | Location | Purpose |
+|---|---|---|
+| `ETagValidationMiddleware` | `src/BookStore.ApiService/Infrastructure/ETagValidationMiddleware.cs` | Enforces `If-Match` presence on writes; returns 428 when missing |
+| `WolverineETagMiddleware` | `src/BookStore.ApiService/Infrastructure/WolverineETagMiddleware.cs` | Propagates `If-Match` header value into Wolverine commands implementing `IHaveETag` |
+| `ETagHelper` (server) | `src/BookStore.ApiService/Infrastructure/ETagHelper.cs` | Generates, parses, and validates ETags; `WithETag()` extension for responses |
+| `ETagHelper` (client) | `src/BookStore.Client/ETagHelper.cs` | Same generation / parsing utilities for use in the Refit client layer |
+
+### ETag Format
+
 ```
-ETag = "stream_version"
-Example: "5" (indicates this is version 5 of the resource)
+ETag = "<stream_version>"
+Example: "5"  (Marten event stream version 5)
 ```
 
-Every time a resource is modified (updated, deleted, restored), the stream version increments, and the ETag changes.
+`"*"` is accepted in `If-Match` as a wildcard (matches any version).
+
+### Middleware Pipeline
+
+```
+Request → ETagValidationMiddleware → (enforce If-Match present)
+        → WolverineETagMiddleware  → (copy If-Match → command.ETag)
+        → Handler                  → (compare command.ETag with aggregate.Version)
+```
+
+1. **`ETagValidationMiddleware`** rejects write requests that lack `If-Match` with `428 Precondition Required`.
+2. **`WolverineETagMiddleware`** reads `If-Match` and sets it on any command that implements `IHaveETag`.
+3. **Handlers** call `ETagHelper.ParseETag(command.ETag)` and compare with the loaded aggregate's version; a mismatch returns `ETagHelper.PreconditionFailed()` (412).
+
+### `IHaveETag` Interface
+
+Any command that requires ETag protection implements:
+
+```csharp
+public interface IHaveETag
+{
+    string? ETag { get; set; }
+}
+```
+
+`WolverineETagMiddleware` automatically populates `ETag` on these commands from the `If-Match` request header.
+
+### `WithETag()` Response Extension
+
+Single-resource GET endpoints attach the ETag as a response header using:
+
+```csharp
+return TypedResults.Ok(dto).WithETag(dto.ETag!);
+```
+
+This is defined in `ETagResultExtensions` and sets `response.Headers.ETag`.
+
+---
+
+## ETag Coverage by Resource
+
+| Resource | GET list includes ETag | GET single sets ETag header | GET single supports 304 | Writes require If-Match |
+|---|---|---|---|---|
+| **Books** | ✅ (in DTO) | ✅ (`If-None-Match` / 304) | ✅ (checks stream state) | ✅ |
+| **Authors** | ✅ (in DTO) | ✅ (`WithETag`) | ❌ | ✅ |
+| **Publishers** | ✅ (in DTO) | ✅ (`WithETag`) | ❌ | ✅ |
+| **Categories** | ✅ (in DTO) | ✅ (`WithETag`) | ❌ | ✅ |
+
+### Middleware Exclusions
+
+The following endpoints are **excluded** from the `If-Match` requirement:
+
+- `POST /api/books/{id}/rating` — high-concurrency rating endpoint
+- `POST /api/books/{id}/favorites` — add to favorites
+- `DELETE /api/books/{id}/favorites` — remove from favorites
+- `POST|DELETE /api/cart/**` — shopping cart operations
+
+---
+
+## ETag in DTOs
+
+Every resource DTO carries an `ETag` field alongside the data:
+
+```csharp
+record BookDto(..., string? ETag = null);
+record AuthorDto(..., string? ETag = null);
+record PublisherDto(..., string? ETag = null);
+record CategoryDto(..., string? ETag = null);
+record AdminBookDto(..., string? ETag = null);
+```
+
+This means clients can read the current version from the deserialized object body rather than having to parse the response header, but the header is also set for single-resource GETs.
+
+---
 
 ## Read Operations (GET)
 
-### Get Book by ID
+### GET single book — with `If-None-Match` / 304 support
 
-**Request**:
-```bash
-GET /api/books/{id}
-```
+`GET /api/books/{id}` performs an explicit stream-state check **before** loading from cache, enabling proper 304 responses:
 
-**Response** (First Request):
+**First request:**
 ```http
-HTTP/1.1 200 OK
+GET /api/books/{id}
+→ 200 OK
 ETag: "3"
-Content-Type: application/json
-
-{
-  "id": "book-123",
-  "title": "Clean Code",
-  ...
-}
 ```
 
-**Conditional Request** (Subsequent):
-```bash
+**Conditional request:**
+```http
 GET /api/books/{id}
 If-None-Match: "3"
+→ 304 Not Modified   (no body, saves bandwidth)
 ```
 
-**Response** (Not Modified):
+**After the book is updated:**
 ```http
-HTTP/1.1 304 Not Modified
-ETag: "3"
-```
-
-**Response** (Modified):
-```http
-HTTP/1.1 200 OK
-ETag: "4"
-Content-Type: application/json
-
-{
-  "id": "book-123",
-  "title": "Clean Code (Updated)",
-  ...
-}
-```
-
-### Benefits
-- ✅ **Bandwidth savings**: No body sent with 304 responses
-- ✅ **Reduced server load**: Cached responses when content unchanged
-- ✅ **Automatic**: Browsers and HTTP clients handle this automatically
-
-## Write Operations (PUT/DELETE)
-
-### Update Book
-
-**Step 1: Get Current Version**
-```bash
 GET /api/books/{id}
+If-None-Match: "3"
+→ 200 OK
+ETag: "4"
+{...full body...}
 ```
 
-Response includes `ETag: "3"`
+### GET single author / publisher / category
 
-**Step 2: Update with If-Match**
-```bash
+These endpoints return `ETag` in both the DTO body and as the `ETag` response header (via `WithETag`), but do **not** perform conditional-request checking — they always return 200 with the full body.
+
+```http
+GET /api/authors/{id}
+→ 200 OK
+ETag: "2"
+{ "id": "...", "name": "...", "etag": "\"2\"" }
+```
+
+### GET list responses
+
+List endpoints embed the ETag for each item inside the DTO. This allows the UI to display detail pages and immediately know the ETag for subsequent writes without an extra GET.
+
+---
+
+## Write Operations (PUT / DELETE / POST)
+
+### General flow
+
+```
+1. Client reads a resource  →  saves the ETag value (e.g. "5")
+2. Client submits mutation with If-Match: "5"
+3. If aggregate.Version == 5  →  mutation applied, response ETag = "6"
+4. If aggregate.Version != 5  →  412 Precondition Failed
+5. If If-Match header missing →  428 Precondition Required
+```
+
+### Update
+
+```http
 PUT /api/admin/books/{id}
 If-Match: "3"
 Content-Type: application/json
 
-{
-  "title": "Clean Code (Updated)",
-  ...
-}
+{ "title": "Clean Code (Updated)", ... }
+
+→ 204 No Content
 ```
 
-**Success Response**:
+### Soft Delete
+
 ```http
-HTTP/1.1 204 No Content
-ETag: "4"
-```
-
-**Conflict Response** (Someone else updated it):
-```http
-HTTP/1.1 412 Precondition Failed
-Content-Type: application/problem+json
-
-{
-  "title": "Precondition Failed",
-  "detail": "The resource has been modified since you last retrieved it. Please refresh and try again.",
-  "status": 412
-}
-```
-
-### Soft Delete Book
-
-```bash
 DELETE /api/admin/books/{id}
 If-Match: "4"
+
+→ 204 No Content
 ```
 
-**Success**:
+### Restore
+
 ```http
-HTTP/1.1 204 No Content
-ETag: "5"
-```
-
-### Restore Book
-
-```bash
 POST /api/admin/books/{id}/restore
 If-Match: "5"
+
+→ 204 No Content
 ```
 
-**Success**:
-```http
-HTTP/1.1 204 No Content
-ETag: "6"
-```
+The same pattern applies to authors (`/api/admin/authors/{id}`), publishers (`/api/admin/publishers/{id}`), and categories (`/api/admin/categories/{id}`).
 
-## Error Handling
+---
 
-### 412 Precondition Failed
-
-**Cause**: The `If-Match` ETag doesn't match the current resource version. This happens when someone else has modified the resource since you last fetched it.
-
-**Client Action**:
-1. Notify user that the resource was modified.
-2. Fetch the latest version.
-3. Ask user to review changes and resubmit.
+## Error Responses
 
 ### 428 Precondition Required
 
-**Cause**: The `If-Match` header is missing from a state-changing request (PUT, DELETE, etc.).
+`If-Match` header is missing from a write request.
 
-**Client Action**: Ensure the `If-Match` header is included with the correct ETag obtained from a previous GET request.
-
-## Client Implementation Examples
-
-### JavaScript/TypeScript
-
-```typescript
-class BookApiClient {
-  private baseUrl = 'http://localhost:5000/api';
-  
-  async getBook(id: string): Promise<{ book: Book; etag: string }> {
-    const response = await fetch(`${this.baseUrl}/books/${id}`);
-    const etag = response.headers.get('ETag') || '';
-    const book = await response.json();
-    return { book, etag };
-  }
-  
-  async updateBook(id: string, book: UpdateBookRequest, etag: string): Promise<void> {
-    const response = await fetch(`${this.baseUrl}/admin/books/${id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'If-Match': etag
-      },
-      body: JSON.stringify(book)
-    });
-    
-    if (response.status === 412) {
-      throw new Error('Book was modified by another user. Please refresh and try again.');
-    }
-    
-    if (!response.ok) {
-      throw new Error(`Update failed: ${response.statusText}`);
-    }
-  }
-  
-  async getBookWithCache(id: string, cachedETag?: string): Promise<Book | null> {
-    const headers: HeadersInit = {};
-    if (cachedETag) {
-      headers['If-None-Match'] = cachedETag;
-    }
-    
-    const response = await fetch(`${this.baseUrl}/books/${id}`, { headers });
-    
-    if (response.status === 304) {
-      return null; // Use cached version
-    }
-    
-    return await response.json();
-  }
+```json
+{
+  "title": "Precondition Required",
+  "status": 428,
+  "detail": "The If-Match header is required for PUT /api/admin/books/{id}."
 }
 ```
 
-### C# HttpClient
+**Client action:** Fetch the current version and include `If-Match` with the value from `ETag`.
+
+### 412 Precondition Failed
+
+The `If-Match` ETag does not match the aggregate's current version (a concurrent modification occurred).
+
+```json
+{
+  "title": "Precondition Failed",
+  "status": 412,
+  "detail": "The resource has been modified since you last retrieved it. Please refresh and try again."
+}
+```
+
+**Client action:**
+1. Notify the user that a conflict occurred.
+2. Fetch the latest version.
+3. Ask the user to review changes and resubmit.
+
+---
+
+## Refit Client Usage
+
+The `BookStore.Client` Refit interfaces expose ETag headers as optional parameters.
+
+### Reading ETags
 
 ```csharp
-public class BookApiClient
+// Single resource — ETag in both DTO body and response header
+IApiResponse<PublisherDto> response = await publishers.GetPublisherWithResponseAsync(id);
+string etag = response.Content!.ETag!;   // from DTO body — always available
+// or: response.Headers.ETag?.ToString()  — from HTTP header on single-resource GETs
+
+// List response — each item has its own ETag
+PagedListDto<AuthorDto> authors = await authorsClient.GetAuthorsAsync(page: 1, pageSize: 20);
+string authorEtag = authors.Items[0].ETag!;
+```
+
+### Writing with If-Match
+
+```csharp
+// Update (PUT)
+await publishers.UpdatePublisherAsync(id, request, etag: dto.ETag);
+
+// Delete
+await publishers.SoftDeletePublisherAsync(id, etag: dto.ETag);
+
+// Restore (POST)
+await books.RestoreBookAsync(id, etag: dto.ETag);
+```
+
+### Handling 412 in the client
+
+```csharp
+IApiResponse response = await publishers.UpdatePublisherWithResponseAsync(id, request, etag: dto.ETag);
+
+if (response.StatusCode == HttpStatusCode.PreconditionFailed)
 {
-    private readonly HttpClient _httpClient;
-    
-    public async Task<(Book Book, string ETag)> GetBookAsync(Guid id)
-    {
-        var response = await _httpClient.GetAsync($"/api/books/{id}");
-        response.EnsureSuccessStatusCode();
-        
-        var etag = response.Headers.ETag?.Tag ?? "";
-        var book = await response.Content.ReadFromJsonAsync<Book>();
-        
-        return (book!, etag);
-    }
-    
-    public async Task UpdateBookAsync(Guid id, UpdateBookRequest request, string etag)
-    {
-        var requestMessage = new HttpRequestMessage(HttpMethod.Put, $"/api/admin/books/{id}")
-        {
-            Content = JsonContent.Create(request)
-        };
-        requestMessage.Headers.IfMatch.Add(new EntityTagHeaderValue(etag));
-        
-        var response = await _httpClient.SendAsync(requestMessage);
-        
-        if (response.StatusCode == HttpStatusCode.PreconditionFailed)
-        {
-            throw new InvalidOperationException(
-                "Book was modified by another user. Please refresh and try again.");
-        }
-        
-        response.EnsureSuccessStatusCode();
-    }
+    // Concurrent modification: refresh and re-present to user
+    var latest = await publishers.GetPublisherAsync(id);
+    // ... show conflict resolution UI
 }
 ```
 
-### Python Requests
+### Client-side `ETagHelper`
 
-```python
-import requests
+`BookStore.Client.ETagHelper` provides the same generation and parsing utilities:
 
-class BookApiClient:
-    def __init__(self, base_url='http://localhost:5000/api'):
-        self.base_url = base_url
-    
-    def get_book(self, book_id):
-        response = requests.get(f'{self.base_url}/books/{book_id}')
-        response.raise_for_status()
-        return {
-            'book': response.json(),
-            'etag': response.headers.get('ETag', '')
-        }
-    
-    def update_book(self, book_id, book_data, etag):
-        response = requests.put(
-            f'{self.base_url}/admin/books/{book_id}',
-            json=book_data,
-            headers={'If-Match': etag}
-        )
-        
-        if response.status_code == 412:
-            raise ValueError('Book was modified by another user. Please refresh.')
-        
-        response.raise_for_status()
-        return response.headers.get('ETag', '')
+```csharp
+// Generate (used internally by DTO mapping)
+string etag = ETagHelper.GenerateETag(version);  // → "\"5\""
+
+// Parse
+long? version = ETagHelper.ParseETag(dto.ETag);
+
+// Try-parse
+if (ETagHelper.TryParseETag(dto.ETag, out long ver))
+{
+    // use ver
+}
 ```
+
+---
 
 ## Workflow Examples
 
-### Example 1: Safe Update Workflow
+### Example 1: Safe Update
 
 ```bash
-# 1. Get current book
-GET /api/books/123
-# Response: ETag: "5"
+# 1. Get current resource
+GET /api/publishers/123
+# Response: 200 OK, ETag: "5", body includes etag: "\"5\""
 
-# 2. User edits book in UI
-
-# 3. Submit update with ETag
-PUT /api/admin/books/123
+# 2. Submit update with ETag
+PUT /api/admin/publishers/123
 If-Match: "5"
-{
-  "title": "Updated Title",
-  ...
-}
-
-# Success: ETag: "6"
+{ "name": "Updated Name" }
+# Response: 204 No Content
 ```
 
 ### Example 2: Concurrent Update Detection
 
 ```bash
-# User A gets book
-GET /api/books/123
-# Response: ETag: "5"
+# User A fetches publisher
+GET /api/publishers/123   → ETag: "5"
 
-# User B gets book
-GET /api/books/123
-# Response: ETag: "5"
+# User B fetches publisher
+GET /api/publishers/123   → ETag: "5"
 
 # User B updates first
-PUT /api/admin/books/123
-If-Match: "5"
-# Success: ETag: "6"
+PUT /api/admin/publishers/123
+If-Match: "5"            → 204 No Content (ETag now "6")
 
-# User A tries to update
-PUT /api/admin/books/123
-If-Match: "5"
-# Error: 412 Precondition Failed (ETag mismatch)
+# User A tries to update with stale ETag
+PUT /api/admin/publishers/123
+If-Match: "5"            → 412 Precondition Failed
 
-# User A refreshes and gets new version
-GET /api/books/123
-# Response: ETag: "6"
-
-# User A updates with new ETag
-PUT /api/admin/books/123
-If-Match: "6"
-# Success: ETag: "7"
+# User A refreshes and retries
+GET /api/publishers/123   → ETag: "6"
+PUT /api/admin/publishers/123
+If-Match: "6"            → 204 No Content
 ```
 
-### Example 3: Efficient Caching
+### Example 3: Conditional GET (Books only)
 
 ```bash
 # First request
-GET /api/books/123
-# Response: 200 OK, ETag: "5", Full body
+GET /api/books/123        → 200 OK, ETag: "5"
 
-# Subsequent request (within cache period)
+# Subsequent request with cached ETag
 GET /api/books/123
-If-None-Match: "5"
-# Response: 304 Not Modified (no body, saves bandwidth)
+If-None-Match: "5"        → 304 Not Modified (no body)
 
-# After someone updates the book
+# After book is updated
 GET /api/books/123
-If-None-Match: "5"
-# Response: 200 OK, ETag: "6", Full body (content changed)
+If-None-Match: "5"        → 200 OK, ETag: "6"
 ```
 
-## Summary
+---
 
-### For Clients
-
-1. **Always store ETags** when fetching resources
-2. **Always send If-Match** for PUT/DELETE operations
-3. **Handle 412 gracefully** - don't just retry
-4. **Use If-None-Match** for GET requests to leverage caching
-5. **Don't ignore ETags** - they prevent data loss
-
-### For UI Applications
-
-```typescript
-// Good: Store ETag with resource
-interface BookState {
-  book: Book;
-  etag: string;
-  lastFetched: Date;
-}
-
-// Good: Validate before update
-async function saveBook(state: BookState, changes: Partial<Book>) {
-  try {
-    await api.updateBook(state.book.id, changes, state.etag);
-  } catch (error) {
-    if (error.status === 412) {
-      // Refresh and ask user to review
-      const latest = await api.getBook(state.book.id);
-      showConflictResolution(state.book, latest.book, changes);
-    }
-  }
-}
-```
-
-### For Batch Operations
-
-```typescript
-// Process updates sequentially to handle conflicts
-async function batchUpdate(books: Array<{id: string, data: any, etag: string}>) {
-  const results = [];
-  
-  for (const book of books) {
-    try {
-      await api.updateBook(book.id, book.data, book.etag);
-      results.push({ id: book.id, success: true });
-    } catch (error) {
-      if (error.status === 412) {
-        results.push({ id: book.id, success: false, reason: 'conflict' });
-      } else {
-        results.push({ id: book.id, success: false, reason: 'error' });
-      }
-    }
-  }
-  
-  return results;
-}
-```
-
-## Testing ETags
-
-### Manual Testing with curl
+## Testing ETags with curl
 
 ```bash
-# Get book and extract ETag
-curl -i http://localhost:5000/api/books/123
-# Note the ETag header
+# GET book and inspect ETag
+curl -i http://localhost:5000/api/books/{id}
 
-# Update with correct ETag (should succeed)
-curl -X PUT http://localhost:5000/api/admin/books/123 \
-  -H "If-Match: \"5\"" \
-  -H "Content-Type: application/json" \
-  -d '{"title": "Updated"}'
+# Conditional GET (304 if unchanged)
+curl -i http://localhost:5000/api/books/{id} \
+  -H 'If-None-Match: "5"'
 
-# Update with wrong ETag (should fail with 412)
-curl -X PUT http://localhost:5000/api/admin/books/123 \
-  -H "If-Match: \"999\"" \
-  -H "Content-Type: application/json" \
-  -d '{"title": "Updated"}'
+# Update with correct ETag (204)
+curl -X PUT http://localhost:5000/api/admin/books/{id} \
+  -H 'If-Match: "5"' \
+  -H 'Content-Type: application/json' \
+  -d '{"title":"Updated",...}'
 
-# Test caching with If-None-Match
-curl -i http://localhost:5000/api/books/123 \
-  -H "If-None-Match: \"5\""
-# Should return 304 if not modified
+# Update with wrong ETag (412)
+curl -X PUT http://localhost:5000/api/admin/books/{id} \
+  -H 'If-Match: "999"' \
+  -H 'Content-Type: application/json' \
+  -d '{"title":"Updated",...}'
+
+# Update without ETag (428)
+curl -X PUT http://localhost:5000/api/admin/books/{id} \
+  -H 'Content-Type: application/json' \
+  -d '{"title":"Updated",...}'
 ```
+
+---
 
 ## Summary
 
-- **Read Operations**: Use `If-None-Match` for efficient caching (304 responses)
-- **Write Operations**: Use `If-Match` for optimistic concurrency (prevent conflicts)
-- **ETags**: Generated from Marten stream versions (auto-incremented)
-- **Error Handling**: 412 Precondition Failed when version mismatch
-- **Client Responsibility**: Store ETags, handle conflicts gracefully
+| Concern | Mechanism |
+|---|---|
+| **ETag value** | Quoted Marten stream version: `"5"` |
+| **ETag on reads** | Embedded in DTO body; also set as `ETag` response header on single-resource GETs |
+| **Conditional GET** | `If-None-Match` → `304 Not Modified` for `GET /api/books/{id}` only |
+| **Write enforcement** | `ETagValidationMiddleware` → `428` if `If-Match` missing |
+| **Write validation** | Handler compares `ETag` with `aggregate.Version` → `412` if mismatch |
+| **Command propagation** | `WolverineETagMiddleware` copies `If-Match` → `command.ETag` for `IHaveETag` commands |
+| **Refit client** | `[Header("If-Match")]` / `[Header("If-None-Match")]` parameters on write/read methods |
+| **Exclusions** | `/rating`, `/favorites`, `/api/cart` do not require `If-Match` |
