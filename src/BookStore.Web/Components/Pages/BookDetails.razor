@@ -5,6 +5,7 @@
 @using BookStore.Shared.Models
 @using Microsoft.AspNetCore.Components.Authorization
 @using BookStore.Web.Components.Catalog
+@using BookStore.Web.Components.Pages.Admin
 @inject IBooksClient BooksClient
 @inject IShoppingCartClient CartClient
 @inject NavigationManager Navigation
@@ -53,6 +54,28 @@
         <MudBreadcrumbs Items="_breadcrumbItems" Class="mb-4"/>
 
         <MudPaper Elevation="2" Class="pa-6" Style="border-radius: 12px;">
+            <MudStack Row="true" Justify="Justify.FlexEnd" Class="mb-2">
+                <AuthorizeView Roles="Admin, ADMIN">
+                    <Authorized>
+                        <MudMenu Icon="@Icons.Material.Filled.MoreVert"
+                                 AnchorOrigin="Origin.BottomRight"
+                                 TransformOrigin="Origin.TopRight"
+                                 Dense="true"
+                                 aria-label="Book actions">
+                            @if (book!.IsDeleted)
+                            {
+                                <MudMenuItem Icon="@Icons.Material.Filled.Restore" OnClick="RestoreBookAsync">Restore</MudMenuItem>
+                            }
+                            else
+                            {
+                                <MudMenuItem Icon="@Icons.Material.Filled.Edit" OnClick="EditBookAsync">Edit</MudMenuItem>
+                                <MudMenuItem Icon="@Icons.Material.Filled.Delete" OnClick="DeleteBookAsync">Delete</MudMenuItem>
+                            }
+                        </MudMenu>
+                    </Authorized>
+                </AuthorizeView>
+            </MudStack>
+
             <MudGrid>
                 @* Book Cover *@
                 <MudItem xs="12" md="4">
@@ -287,22 +310,6 @@
             <MudButton Href="/" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.ArrowBack">
                 Back to Catalog
             </MudButton>
-            <AuthorizeView Roles="Admin, ADMIN">
-                <Authorized>
-                    @if (book.IsDeleted)
-                    {
-                        <MudButton Variant="Variant.Filled" Color="Color.Success" StartIcon="@Icons.Material.Filled.Restore" OnClick="RestoreBookAsync" Class="ml-2">
-                            Restore Book
-                        </MudButton>
-                    }
-                    else
-                    {
-                        <MudButton Variant="Variant.Filled" Color="Color.Error" StartIcon="@Icons.Material.Filled.Delete" OnClick="DeleteBookAsync" Class="ml-2">
-                            Delete Book
-                        </MudButton>
-                    }
-                </Authorized>
-            </AuthorizeView>
         </MudStack>
     }
 </MudContainer>
@@ -560,6 +567,58 @@
         {
             Logger.LogError(ex, "Failed to restore book {BookId}", currentBook.Id);
             Snackbar.Add($"Failed to restore book: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task EditBookAsync()
+    {
+        var currentBook = book;
+        if (currentBook == null)
+        {
+            return;
+        }
+
+        try
+        {
+            var adminBook = await BooksClient.GetBookAdminAsync(currentBook.Id, _cts.Token);
+
+            var parameters = new DialogParameters<AddBookDialog>
+            {
+                {
+                    x => x.Model, new CreateBookRequest
+                    {
+                        Title = adminBook.Title,
+                        Isbn = adminBook.Isbn,
+                        Language = adminBook.Language,
+                        Translations = adminBook.Translations.ToDictionary(
+                            kvp => kvp.Key,
+                            kvp => new BookTranslationDto(kvp.Value.Description)),
+                        Prices = adminBook.Prices.ToDictionary(kvp => kvp.Key, kvp => kvp.Value),
+                        PublicationDate = adminBook.PublicationDate ?? new PartialDate(DateTimeOffset.UtcNow.Year),
+                        PublisherId = adminBook.Publisher?.Id,
+                        AuthorIds = adminBook.Authors.Select(a => a.Id).ToList(),
+                        CategoryIds = adminBook.Categories.Select(c => c.Id).ToList()
+                    }
+                },
+                { x => x.IsEdit, true },
+                { x => x.BookId, adminBook.Id },
+                { x => x.ETag, adminBook.ETag },
+                { x => x.InitialAuthors, adminBook.Authors.ToList() },
+                { x => x.InitialCategories, adminBook.Categories.ToList() },
+                { x => x.InitialPublisher, adminBook.Publisher }
+            };
+
+            var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+            var dialog = await DialogService.ShowAsync<AddBookDialog>("Edit Book", parameters, options);
+            var result = await dialog.Result;
+            if (result != null && !result.Canceled && bookQuery != null)
+            {
+                await bookQuery.LoadAsync(cancellationToken: _cts.Token);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load book details for editing: {ex.Message}", Severity.Error);
         }
     }
 
