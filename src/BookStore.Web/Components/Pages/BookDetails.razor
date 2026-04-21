@@ -541,7 +541,7 @@
 
         try
         {
-            await BooksClient.SoftDeleteBookAsync(currentBook.Id, cancellationToken: _cts.Token);
+            await BooksClient.SoftDeleteBookAsync(currentBook.Id, currentBook.ETag, _cts.Token);
             Snackbar.Add("Book deleted", Severity.Success);
             if (bookQuery != null) await bookQuery.LoadAsync(cancellationToken: _cts.Token);
         }
@@ -559,7 +559,7 @@
 
         try
         {
-            await BooksClient.RestoreBookAsync(currentBook.Id, cancellationToken: _cts.Token);
+            await BooksClient.RestoreBookAsync(currentBook.Id, etag: currentBook.ETag, cancellationToken: _cts.Token);
             Snackbar.Add("Book restored", Severity.Success);
             if (bookQuery != null) await bookQuery.LoadAsync(cancellationToken: _cts.Token);
         }

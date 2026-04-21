@@ -147,7 +147,7 @@ public sealed class BookDetailsMenuTests : BunitTestContext
 
         // Assert
         cut.WaitForAssertion(() =>
-            _ = _booksClient.Received(1).SoftDeleteBookAsync(_book.Id, Arg.Any<string?>(), Arg.Any<CancellationToken>()));
+            _ = _booksClient.Received(1).SoftDeleteBookAsync(_book.Id, _book.ETag, Arg.Any<CancellationToken>()));
     }
 
     [Test]
@@ -167,7 +167,7 @@ public sealed class BookDetailsMenuTests : BunitTestContext
 
         // Assert
         cut.WaitForAssertion(() =>
-            _ = _booksClient.Received(1).RestoreBookAsync(_book.Id, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()));
+            _ = _booksClient.Received(1).RestoreBookAsync(_book.Id, Arg.Any<string>(), _book.ETag, Arg.Any<CancellationToken>()));
     }
 
     [Test]
