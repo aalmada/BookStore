@@ -6,6 +6,7 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using BookStore.Web.Components.Catalog
 @using BookStore.Web.Components.Pages.Admin
+@using BookStore.Web.Logging
 @inject IBooksClient BooksClient
 @inject IShoppingCartClient CartClient
 @inject NavigationManager Navigation
@@ -53,7 +54,14 @@
         @* Breadcrumbs *@
         <MudBreadcrumbs Items="_breadcrumbItems" Class="mb-4"/>
 
-        <MudPaper Elevation="2" Class="pa-6" Style="border-radius: 12px;">
+        <MudPaper Elevation="2" Class="@($"pa-6 {(book.IsDeleted ? "deleted-book" : "")}")" Style="border-radius: 12px;">
+            @if (book.IsDeleted)
+            {
+                <MudAlert Severity="Severity.Error" Dense="true" Class="mb-4" Icon="@Icons.Material.Filled.Delete">
+                    This book has been deleted.
+                </MudAlert>
+            }
+
             <MudStack Row="true" Justify="Justify.FlexEnd" Class="mb-2">
                 <AuthorizeView Roles="Admin, ADMIN">
                     <Authorized>
@@ -469,62 +477,23 @@
 
     private async Task ToggleFavorite(BookDto bookToToggle)
     {
-        await CatalogService.ToggleFavoriteAsync(bookToToggle,
-            setOptimistic: (newState) => bookQuery?.MutateData(current => current == null
-                ? null
-                : current with
-                {
-                    IsFavorite = newState,
-                    LikeCount = newState ? current.LikeCount + 1 : current.LikeCount - 1
-                }),
-            setRollback: (oldState) => bookQuery?.MutateData(current => current == null
-                ? null
-                : current with
-                {
-                    IsFavorite = oldState,
-                    LikeCount = oldState ? current.LikeCount + 1 : current.LikeCount - 1
-                }),
-            cancellationToken: _cts.Token);
+        if (bookQuery == null) return;
+
+        await CatalogService.ToggleFavoriteAsync(bookToToggle, bookQuery, _cts.Token);
     }
 
     private async Task RateBookAsync(int rating)
     {
-        if (book == null) return;
+        if (book == null || bookQuery == null) return;
 
-        await CatalogService.RateBookAsync(book, rating,
-            setOptimistic: (newRating) => bookQuery?.MutateData(current => current == null
-                ? null
-                : current with
-                {
-                    UserRating = newRating
-                }),
-            setRollback: (oldRating) => bookQuery?.MutateData(current => current == null
-                ? null
-                : current with
-                {
-                    UserRating = oldRating
-                }),
-            cancellationToken: _cts.Token);
+        await CatalogService.RateBookAsync(book, rating, bookQuery, _cts.Token);
     }
 
     private async Task RemoveRatingAsync()
     {
-        if (book == null) return;
+        if (book == null || bookQuery == null) return;
 
-        await CatalogService.RemoveRatingAsync(book,
-            setOptimistic: () => bookQuery?.MutateData(current => current == null
-                ? null
-                : current with
-                {
-                    UserRating = 0
-                }),
-            setRollback: (oldRating) => bookQuery?.MutateData(current => current == null
-                ? null
-                : current with
-                {
-                    UserRating = oldRating
-                }),
-            cancellationToken: _cts.Token);
+        await CatalogService.RemoveRatingAsync(book, bookQuery, _cts.Token);
     }
 
     private async Task DeleteBookAsync()
@@ -539,17 +508,9 @@
 
         if (result != true) return;
 
-        try
-        {
-            await BooksClient.SoftDeleteBookAsync(currentBook.Id, currentBook.ETag, _cts.Token);
-            Snackbar.Add("Book deleted", Severity.Success);
-            if (bookQuery != null) await bookQuery.LoadAsync(cancellationToken: _cts.Token);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Failed to delete book {BookId}", currentBook.Id);
-            Snackbar.Add($"Failed to delete book: {ex.Message}", Severity.Error);
-        }
+        if (bookQuery == null) return;
+
+        await CatalogService.SoftDeleteBookAsync(currentBook, bookQuery, _cts.Token);
     }
 
     private async Task RestoreBookAsync()
@@ -557,17 +518,9 @@
         var currentBook = book;
         if (currentBook == null) return;
 
-        try
-        {
-            await BooksClient.RestoreBookAsync(currentBook.Id, etag: currentBook.ETag, cancellationToken: _cts.Token);
-            Snackbar.Add("Book restored", Severity.Success);
-            if (bookQuery != null) await bookQuery.LoadAsync(cancellationToken: _cts.Token);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Failed to restore book {BookId}", currentBook.Id);
-            Snackbar.Add($"Failed to restore book: {ex.Message}", Severity.Error);
-        }
+        if (bookQuery == null) return;
+
+        await CatalogService.RestoreBookAsync(currentBook, bookQuery, _cts.Token);
     }
 
     private async Task EditBookAsync()

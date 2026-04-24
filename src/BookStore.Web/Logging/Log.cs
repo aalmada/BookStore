@@ -90,6 +90,16 @@ public static partial class Log
         Message = "Failed to remove rating for book {BookId}")]
     public static partial void RatingRemovalFailed(ILogger logger, Guid bookId, Exception ex);
 
+    [LoggerMessage(
+        Level = LogLevel.Error,
+        Message = "Failed to delete book {BookId}")]
+    public static partial void BookDeleteFailed(ILogger logger, Guid bookId, Exception ex);
+
+    [LoggerMessage(
+        Level = LogLevel.Error,
+        Message = "Failed to restore book {BookId}")]
+    public static partial void BookRestoreFailed(ILogger logger, Guid bookId, Exception ex);
+
     // JwtAuthenticationStateProvider
     [LoggerMessage(
         Level = LogLevel.Warning,

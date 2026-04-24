@@ -42,6 +42,8 @@
       href: guides/database-indexes-guide.md
     - name: Caching
       href: guides/caching-guide.md
+    - name: Optimistic Mutations
+      href: guides/optimistic-mutations-guide.md
     - name: ETag
       href: guides/etag-guide.md
     - name: Performance

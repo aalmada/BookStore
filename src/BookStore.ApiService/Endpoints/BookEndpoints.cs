@@ -124,6 +124,7 @@ public static class BookEndpoints
         var isAdmin = context.User.Claims.Any(c =>
             (c.Type == System.Security.Claims.ClaimTypes.Role || c.Type == "role") &&
             string.Equals(c.Value, "Admin", StringComparison.OrdinalIgnoreCase));
+        var includeDeleted = isAdmin && request.IncludeDeleted == true;
 
         // Fix binding if Currency is null but present in query (workaround for potential AsParameters binding issue)
         if (string.IsNullOrWhiteSpace(request.Currency) && context.Request.Query.TryGetValue("currency", out var currencyQuery))
@@ -135,7 +136,7 @@ public static class BookEndpoints
         var normalizedSortBy = request.SortBy?.ToLowerInvariant();
 
         // Create cache key including all search parameters
-        var cacheKey = $"books:search={request.Search}:author={request.AuthorId}:category={request.CategoryId}:publisher={request.PublisherId}:onSale={request.OnSale}:minPrice={request.MinPrice}:maxPrice={request.MaxPrice}:currency={request.Currency}:page={paging.Page}:size={paging.PageSize}:sort={normalizedSortBy}:{normalizedSortOrder}:admin={isAdmin}:tenant={tenantContext.TenantId}";
+        var cacheKey = $"books:search={request.Search}:author={request.AuthorId}:category={request.CategoryId}:publisher={request.PublisherId}:onSale={request.OnSale}:minPrice={request.MinPrice}:maxPrice={request.MaxPrice}:currency={request.Currency}:includeDeleted={includeDeleted}:page={paging.Page}:size={paging.PageSize}:sort={normalizedSortBy}:{normalizedSortOrder}:tenant={tenantContext.TenantId}";
 
         var response = await cache.GetOrCreateLocalizedAsync(
             cacheKey,
@@ -159,7 +160,7 @@ public static class BookEndpoints
                     .Include(authors).On(x => x.AuthorIds)!
                     .Include(categories).On(x => x.CategoryIds)!;
 
-                if (!isAdmin)
+                if (!includeDeleted)
                 {
                     query = query.Where(b => !b.Deleted);
                 }

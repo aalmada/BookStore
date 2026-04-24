@@ -197,9 +197,6 @@ builder.Services.AddAuthorizationCore(options => options.AddSystemAdminPolicy())
 //     _ = http.AddPolicyHandler(circuitBreakerPolicy);
 // });
 
-// Register optimistic update service for eventual consistency
-builder.Services.AddSingleton<OptimisticUpdateService>();
-
 // Register query invalidation service
 builder.Services.AddSingleton<QueryInvalidationService>();
 

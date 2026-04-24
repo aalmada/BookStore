@@ -2,12 +2,50 @@ using System.Net;
 using BookStore.AppHost.Tests.Helpers;
 using BookStore.Client;
 using BookStore.Shared.Models;
+using JasperFx;
 using Refit;
+using TUnit;
 
 namespace BookStore.AppHost.Tests;
 
 public class BookSoftDeleteTests
 {
+    static string _nonDefaultTenantId = string.Empty;
+    static string _nonDefaultAdminEmail = string.Empty;
+    static string _nonDefaultAdminPassword = string.Empty;
+
+    [Before(Class)]
+    public static async Task ClassSetup()
+    {
+        if (GlobalHooks.App == null)
+        {
+            throw new InvalidOperationException("App is not initialized");
+        }
+
+        _nonDefaultTenantId = $"soft-delete-{Guid.CreateVersion7():N}";
+        _nonDefaultAdminEmail = $"admin@{_nonDefaultTenantId}.com";
+        _nonDefaultAdminPassword = FakeDataGenerators.GenerateFakePassword();
+
+        var tenantsClient = RestService.For<ITenantsClient>(
+            HttpClientHelpers.GetAuthenticatedClient(GlobalHooks.AdminAccessToken!));
+
+        try
+        {
+            await tenantsClient.CreateTenantAsync(new CreateTenantCommand(
+                Id: _nonDefaultTenantId,
+                Name: "Soft Delete Test Tenant",
+                Tagline: null,
+                ThemePrimaryColor: null,
+                IsEnabled: true,
+                AdminEmail: _nonDefaultAdminEmail,
+                AdminPassword: _nonDefaultAdminPassword));
+        }
+        catch (ApiException ex) when (ex.StatusCode is HttpStatusCode.Conflict)
+        {
+            // Idempotent setup for reruns.
+        }
+    }
+
     [Test]
     public async Task SoftDeleteFlow_FullLifecycle_ShouldWorkCorrectly()
     {
@@ -56,52 +94,119 @@ public class BookSoftDeleteTests
     }
 
     [Test]
-    public async Task SoftDeletedBook_ShouldBeVisibleToAdmin_ButNotPublic()
+    [Arguments(true)]
+    [Arguments(false)]
+    public async Task AdminWithIncludeDeletedFalse_ShouldNotSeeDeletedBook(bool sourceIsDefaultTenant)
     {
-        // Arrange
-        var adminClient = await HttpClientHelpers.GetAuthenticatedClientAsync<IBooksClient>();
-        // var rawAdminClient = await HttpClientHelpers.GetAuthenticatedClientAsync(); // For ETag
-        var publicClient = Refit.RestService.For<IBooksClient>(HttpClientHelpers.GetUnauthenticatedClient());
+        var sourceTenant = sourceIsDefaultTenant ? StorageConstants.DefaultTenantId : _nonDefaultTenantId;
+        var isolationTenant = sourceIsDefaultTenant ? _nonDefaultTenantId : StorageConstants.DefaultTenantId;
 
+        // Arrange
+        var adminClient = await CreateAdminClientForTenantAsync(sourceTenant);
+        var isolationAdminClient = await CreateAdminClientForTenantAsync(isolationTenant);
         var createdBook = await BookHelpers.CreateBookAsync(adminClient);
         var bookId = createdBook!.Id;
 
-        // Soft Delete
-        var deletedBook = await BookHelpers.DeleteBookAsync(adminClient, createdBook);
+        _ = await BookHelpers.DeleteBookAsync(adminClient, createdBook);
 
-        // Act & Assert
+        // Act + Assert in source tenant
+        var finalSearch = await adminClient.GetBooksAsync(new BookSearchRequest
+        { Search = createdBook.Title, IncludeDeleted = false });
+        _ = await Assert.That(finalSearch!.Items.Any(b => b.Id == bookId)).IsFalse();
 
-        // 1. Single Book Endpoint
+        // Explicit tenant isolation assertion
+        var isolationSearch = await isolationAdminClient.GetBooksAsync(new BookSearchRequest
+        { Search = createdBook.Title, IncludeDeleted = true });
+        _ = await Assert.That(isolationSearch!.Items.Any(b => b.Id == bookId)).IsFalse();
+    }
 
-        // Public -> 404
-        try
-        {
-            _ = await publicClient.GetBookAsync(bookId);
-            Assert.Fail("Book should be not found");
-        }
-        catch (ApiException ex)
-        {
-            _ = await Assert.That(ex.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
-        }
+    [Test]
+    [Arguments(true)]
+    [Arguments(false)]
+    public async Task AdminWithIncludeDeletedTrue_ShouldSeeDeletedBook_WithIsDeletedTrue(bool sourceIsDefaultTenant)
+    {
+        var sourceTenant = sourceIsDefaultTenant ? StorageConstants.DefaultTenantId : _nonDefaultTenantId;
+        var isolationTenant = sourceIsDefaultTenant ? _nonDefaultTenantId : StorageConstants.DefaultTenantId;
 
-        // Admin should see the book (Get)
-        var book = await adminClient.GetBookAdminAsync(bookId);
-        _ = await Assert.That(book).IsNotNull();
-        _ = await Assert.That(book!.Id).IsEqualTo(bookId);
-        _ = await Assert.That(book.IsDeleted).IsTrue();
+        // Arrange
+        var adminClient = await CreateAdminClientForTenantAsync(sourceTenant);
+        var isolationAdminClient = await CreateAdminClientForTenantAsync(isolationTenant);
+        var createdBook = await BookHelpers.CreateBookAsync(adminClient);
+        var bookId = createdBook!.Id;
 
-        // 2. Search/List Endpoint
+        _ = await BookHelpers.DeleteBookAsync(adminClient, createdBook);
 
-        // Public -> Should NOT contain the book
-        var publicSearch = await publicClient.GetBooksAsync(new BookSearchRequest { Search = createdBook.Title });
-        _ = await Assert.That(publicSearch!.Items.Any(b => b.Id == bookId)).IsFalse();
-
-        // Admin -> Should contain the book with IsDeleted=true
-        var adminSearch = await adminClient.GetBooksAsync(new BookSearchRequest { Search = createdBook.Title });
-
-        var foundBook = adminSearch!.Items.FirstOrDefault(b => b.Id == bookId);
-
+        // Act + Assert in source tenant
+        var finalSearch = await adminClient.GetBooksAsync(new BookSearchRequest
+        { Search = createdBook.Title, IncludeDeleted = true });
+        var foundBook = finalSearch!.Items.FirstOrDefault(b => b.Id == bookId);
         _ = await Assert.That(foundBook).IsNotNull();
         _ = await Assert.That(foundBook!.IsDeleted).IsTrue();
+
+        // Explicit tenant isolation assertion
+        var isolationSearch = await isolationAdminClient.GetBooksAsync(new BookSearchRequest
+        { Search = createdBook.Title, IncludeDeleted = true });
+        _ = await Assert.That(isolationSearch!.Items.Any(b => b.Id == bookId)).IsFalse();
+    }
+
+    [Test]
+    [Arguments(true)]
+    [Arguments(false)]
+    public async Task NonAdminWithIncludeDeletedTrue_ShouldNotSeeDeletedBook(bool sourceIsDefaultTenant)
+    {
+        var sourceTenant = sourceIsDefaultTenant ? StorageConstants.DefaultTenantId : _nonDefaultTenantId;
+        var isolationTenant = sourceIsDefaultTenant ? _nonDefaultTenantId : StorageConstants.DefaultTenantId;
+
+        // Arrange
+        var adminClient = await CreateAdminClientForTenantAsync(sourceTenant);
+        var isolationAdminClient = await CreateAdminClientForTenantAsync(isolationTenant);
+        var nonAdminClient = await AuthenticationHelpers.CreateUserAndGetClientAsync<IBooksClient>(sourceTenant);
+        var createdBook = await BookHelpers.CreateBookAsync(adminClient);
+        var bookId = createdBook!.Id;
+
+        _ = await BookHelpers.DeleteBookAsync(adminClient, createdBook);
+
+        // Act + Assert in source tenant
+        var finalSearch = await nonAdminClient.GetBooksAsync(new BookSearchRequest
+        { Search = createdBook.Title, IncludeDeleted = true });
+        _ = await Assert.That(finalSearch!.Items.Any(b => b.Id == bookId)).IsFalse();
+
+        // Explicit tenant isolation assertion
+        var isolationSearch = await isolationAdminClient.GetBooksAsync(new BookSearchRequest
+        { Search = createdBook.Title, IncludeDeleted = true });
+        _ = await Assert.That(isolationSearch!.Items.Any(b => b.Id == bookId)).IsFalse();
+    }
+
+    static async Task<IBooksClient> CreateAdminClientForTenantAsync(string tenantId)
+    {
+        if (StorageConstants.DefaultTenantId.Equals(tenantId, StringComparison.OrdinalIgnoreCase))
+        {
+            return await HttpClientHelpers.GetAuthenticatedClientAsync<IBooksClient>();
+        }
+
+        LoginResponse? loginResult = null;
+        await SseEventHelpers.WaitForConditionAsync(
+            async () =>
+            {
+                var identityClient = RestService.For<IIdentityClient>(
+                    HttpClientHelpers.GetUnauthenticatedClient(tenantId));
+
+                try
+                {
+                    loginResult = await identityClient.LoginAsync(new LoginRequest(
+                        _nonDefaultAdminEmail,
+                        _nonDefaultAdminPassword));
+                    return !string.IsNullOrWhiteSpace(loginResult?.AccessToken);
+                }
+                catch (ApiException)
+                {
+                    return false;
+                }
+            },
+            TestConstants.DefaultTimeout,
+            $"Failed to login tenant admin for '{tenantId}'.");
+
+        return RestService.For<IBooksClient>(
+            HttpClientHelpers.GetAuthenticatedClient(loginResult!.AccessToken, tenantId));
     }
 }

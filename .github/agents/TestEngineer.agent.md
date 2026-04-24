@@ -8,7 +8,7 @@ target: vscode
 user-invocable: false
 disable-model-invocation: true
 model: GPT-5.3-Codex (copilot)
-tools: ['search', 'read', 'edit', 'execute/runInTerminal', 'execute/testFailure', 'vscode/memory', 'agent', 'vscode/askQuestions']
+tools: [vscode/memory, vscode/askQuestions, execute/testFailure, execute/runInTerminal, read, agent, edit, search, browser, azure-mcp/search, djextensions.lsp-for-copilot/definition, djextensions.lsp-for-copilot/references, djextensions.lsp-for-copilot/hover, djextensions.lsp-for-copilot/symbols, djextensions.lsp-for-copilot/wsSymbols, djextensions.lsp-for-copilot/callHierarchy, djextensions.lsp-for-copilot/typeHierarchy, djextensions.lsp-for-copilot/typeDef, djextensions.lsp-for-copilot/impl, djextensions.lsp-for-copilot/findSym, djextensions.lsp-for-copilot/declaration, djextensions.lsp-for-copilot/diagnostics, djextensions.lsp-for-copilot/inlayHints]
 agents: ['*']
 ---
 

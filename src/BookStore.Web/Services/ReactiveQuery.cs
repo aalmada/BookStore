@@ -5,7 +5,7 @@ using BookStore.Web.Logging;
 namespace BookStore.Web.Services;
 
 /// <summary>
-/// A reactive query wrapper that manages data fetching, caching, and automatic invalidation 
+/// A reactive query wrapper that manages data fetching, caching, and automatic invalidation
 /// based on server-sent events. Analogous to "useQuery" in React.
 /// </summary>
 /// <typeparam name="T">The type of data being fetched.</typeparam>
@@ -172,6 +172,42 @@ public class ReactiveQuery<T> : IDisposable
         catch (Exception ex)
         {
             Log.MutationFailed(_logger, ex);
+        }
+    }
+
+    /// <summary>
+    /// Applies an optimistic mutation and rolls back automatically if the server mutation fails.
+    /// </summary>
+    /// <param name="applyOptimistic">Transforms the current data into the optimistic state.</param>
+    /// <param name="mutation">The server mutation to execute.</param>
+    /// <param name="cancellationToken">Cancellation token for the server mutation.</param>
+    public async Task MutateAsync(
+        Func<T, T> applyOptimistic,
+        Func<CancellationToken, Task> mutation,
+        CancellationToken cancellationToken = default)
+    {
+        if (_isDisposed || Data == null)
+        {
+            return;
+        }
+
+        var snapshot = Data;
+
+        try
+        {
+            Data = applyOptimistic(Data);
+            _onStateChanged();
+            await mutation(cancellationToken);
+        }
+        catch
+        {
+            if (!_isDisposed)
+            {
+                Data = snapshot;
+                _onStateChanged();
+            }
+
+            throw;
         }
     }
 

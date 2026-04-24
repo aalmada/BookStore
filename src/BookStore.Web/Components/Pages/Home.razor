@@ -7,7 +7,6 @@
 @using BookStore.Web.Components.Catalog
 @inject IBooksClient BooksClient
 @inject BookStoreEventsService EventsService
-@inject OptimisticUpdateService OptimisticService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject ISnackbar Snackbar
 @inject CatalogService CatalogService
@@ -111,6 +110,16 @@
                                                                                                                           await SearchBooks();
                                                                                                                       })"/>
 
+            @if (isAdmin)
+            {
+                <MudDivider/>
+                <MudCheckBox T="bool" Value="@showDeleted" Label="Show Deleted" Color="Color.Warning" Dense="true" ValueChanged="@(async (bool v) =>
+                                                                                                                             {
+                                                                                                                                 showDeleted = v;
+                                                                                                                                 await SearchBooks();
+                                                                                                                             })"/>
+            }
+
             <MudButton OnClick="ClearFilters" Variant="Variant.Text" Color="Color.Secondary" FullWidth="true" Class="mt-2" StartIcon="@Icons.Material.Filled.ClearAll">
                 Reset Filters
             </MudButton>
@@ -195,33 +204,6 @@
 
         @* Book Grid *@
         <MudGrid Spacing="4" Class="mb-6">
-            @* Optimistic books (being saved) *@
-            @foreach (var optimisticBook in OptimisticService.GetOptimisticBooks())
-            {
-                <MudItem xs="12" sm="6" md="4" lg="4">
-                    <MudCard Elevation="4" Class="optimistic-card" Style="height: 100%; border-radius: 12px;">
-                        <MudPaper Elevation="0" Height="200px" Style="background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); display: flex; align-items: center; justify-content: center;">
-                            <MudIcon Icon="@Icons.Material.Filled.MenuBook" Size="Size.Large" Color="Color.Secondary" Style="font-size: 4rem;"/>
-                        </MudPaper>
-                        <MudCardContent>
-                            <MudText Typo="Typo.h6" Class="mb-2">@optimisticBook.Title</MudText>
-                            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-1">
-                                <MudIcon Icon="@UIConstants.Icons.Author" Size="Size.Small" Class="mr-1"/> @optimisticBook.AuthorNames
-                            </MudText>
-                            @if (!string.IsNullOrWhiteSpace(optimisticBook.PublisherName))
-                            {
-                                <MudText Typo="Typo.body2" Color="Color.Secondary">
-                                    <MudIcon Icon="@UIConstants.Icons.Publisher" Size="Size.Small" Class="mr-1"/> @optimisticBook.PublisherName
-                                </MudText>
-                            }
-                        </MudCardContent>
-                        <MudCardActions>
-                            <MudChip T="string" Size="Size.Small" Color="Color.Info" Icon="@Icons.Material.Filled.CloudUpload">Saving...</MudChip>
-                        </MudCardActions>
-                    </MudCard>
-                </MudItem>
-            }
-
             @* Actual books from server *@
             @foreach (var book in pagedBooks.Items)
             {
@@ -382,6 +364,8 @@
     private PublisherDto? selectedPublisher;
 
     private bool onSale;
+    private bool showDeleted;
+    private bool isAdmin;
     private decimal? minPrice;
     private decimal? maxPrice;
     private string sortBy = "title";
@@ -393,7 +377,6 @@
     private List<PublisherDto> publishers = new();
 
     private System.Threading.Timer? debounceTimer;
-    private System.Threading.Timer? cleanupTimer;
 
     [Inject] private ILogger<Home> Logger { get; set; } = default!;
     [Inject] private QueryInvalidationService InvalidationService { get; set; } = default!;
@@ -408,12 +391,12 @@
         // Initialize Tenant FIRST
         await TenantService.InitializeAsync();
 
-        // Subscribe to optimistic update changes
-        OptimisticService.OnBooksChanged += HandleOptimisticBooksChanged;
+        var authState = await AuthStateTask;
+        user = authState.User;
+        isAdmin = IsAdminUser(user);
 
         // Start SSE listening
         EventsService.StartListening();
-        EventsService.OnNotificationReceived += HandleNotification;
 
         // Initialize ReactiveQuery
         bookQuery = new ReactiveQuery<PagedListDto<BookDto>>(
@@ -427,9 +410,6 @@
 
         // Initial load
         await bookQuery.LoadAsync(cancellationToken: _cts.Token);
-
-        // Start cleanup timer for stale optimistic books
-        StartCleanupTimer();
 
         // Subscribe to currency changes
         CurrencyService.OnCurrencyChanged += HandleCurrencyChanged;
@@ -490,6 +470,7 @@
         if (user == null || newUser.Identity?.Name != user.Identity?.Name || newUser.Identity?.IsAuthenticated != user.Identity?.IsAuthenticated)
         {
             user = newUser;
+            isAdmin = IsAdminUser(user);
             if (user.Identity?.IsAuthenticated == true && bookQuery != null)
             {
                 await bookQuery.LoadAsync(silent: true, cancellationToken: _cts.Token);
@@ -547,6 +528,7 @@
             CategoryId = selectedCategory?.Id,
             PublisherId = selectedPublisher?.Id,
             OnSale = onSale ? true : null,
+            IncludeDeleted = isAdmin && showDeleted ? true : null,
             MinPrice = minPrice,
             MaxPrice = maxPrice,
             Currency = CurrencyService.CurrentCurrency,
@@ -556,26 +538,6 @@
 
         return await BooksClient.GetBooksAsync(
             request, cancellationToken);
-    }
-
-    private void HandleNotification(BookStore.Shared.Notifications.IDomainEventNotification notification)
-    {
-        try
-        {
-            // Side effect: Confirm optimistic book if created
-            if (notification is BookStore.Shared.Notifications.BookCreatedNotification bookCreated)
-            {
-                OptimisticService.ConfirmBook(bookCreated.EntityId);
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            // Expected during navigation
-        }
-        catch (Exception ex)
-        {
-            Logger.LogWarning(ex, "Error processing notification in Home.");
-        }
     }
 
     private void OnSearchKeyUp(KeyboardEventArgs e)
@@ -615,11 +577,19 @@
         minPrice = null;
         maxPrice = null;
         onSale = false;
+        showDeleted = false;
         searchQuery = string.Empty;
         sortBy = "title";
         sortOrder = "asc";
 
         _ = SearchBooks();
+    }
+
+    private static bool IsAdminUser(System.Security.Claims.ClaimsPrincipal? principal)
+    {
+        return principal?.Claims.Any(c =>
+                   (c.Type == System.Security.Claims.ClaimTypes.Role || c.Type == "role") &&
+                   string.Equals(c.Value, "Admin", StringComparison.OrdinalIgnoreCase)) == true;
     }
 
     private async Task LoadPage(int page)
@@ -634,48 +604,9 @@
 
     private async Task ToggleFavorite(BookDto book)
     {
-        await CatalogService.ToggleFavoriteAsync(book,
-            setOptimistic: (newState) => bookQuery?.MutateData(currentList =>
-            {
-                var items = currentList.Items.ToList();
-                var index = items.FindIndex(b => b.Id == book.Id);
-                if (index != -1)
-                {
-                    items[index] = items[index] with
-                    {
-                        IsFavorite = newState,
-                        LikeCount = newState ? items[index].LikeCount + 1 : items[index].LikeCount - 1
-                    };
-                }
+        if (bookQuery == null) return;
 
-                return new PagedListDto<BookDto>(
-                    items,
-                    currentList.PageNumber,
-                    currentList.PageSize,
-                    currentList.TotalItemCount
-                );
-            }),
-            setRollback: (oldState) => bookQuery?.MutateData(currentList =>
-            {
-                var items = currentList.Items.ToList();
-                var index = items.FindIndex(b => b.Id == book.Id);
-                if (index != -1)
-                {
-                    items[index] = items[index] with
-                    {
-                        IsFavorite = oldState,
-                        LikeCount = oldState ? items[index].LikeCount + 1 : items[index].LikeCount - 1
-                    };
-                }
-
-                return new PagedListDto<BookDto>(
-                    items,
-                    currentList.PageNumber,
-                    currentList.PageSize,
-                    currentList.TotalItemCount
-                );
-            }),
-            cancellationToken: _cts.Token);
+        await CatalogService.ToggleFavoriteAsync(book, bookQuery, _cts.Token);
     }
 
     private async Task RetryLoad()
@@ -692,8 +623,6 @@
         if (_disposed) return;
         _disposed = true;
 
-        OptimisticService.OnBooksChanged -= HandleOptimisticBooksChanged;
-        EventsService.OnNotificationReceived -= HandleNotification;
         CurrencyService.OnCurrencyChanged -= HandleCurrencyChanged;
         TenantService.OnChange -= HandleTenantChanged;
 
@@ -702,18 +631,4 @@
         bookQuery?.Dispose();
         debounceTimer?.Dispose();
     }
-
-    private void HandleOptimisticBooksChanged()
-    {
-        // Refresh UI when optimistic books change
-        InvokeAsync(StateHasChanged);
-    }
-
-    private void StartCleanupTimer()
-    {
-        // Clean up stale optimistic books every 5 seconds
-        cleanupTimer = new System.Threading.Timer(_ => { OptimisticService.CleanupStaleBooks(); }, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
-    }
-
-
 }

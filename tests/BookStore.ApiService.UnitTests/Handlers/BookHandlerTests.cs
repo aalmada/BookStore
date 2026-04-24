@@ -1,3 +1,4 @@
+using Bogus;
 using BookStore.ApiService.Aggregates;
 using BookStore.ApiService.Commands;
 using BookStore.ApiService.Events;
@@ -17,6 +18,8 @@ namespace BookStore.ApiService.UnitTests.Handlers;
 /// </summary>
 public class BookHandlerTests : HandlerTestBase
 {
+    readonly Faker _faker = new();
+
     [Test]
     [Category("Unit")]
     public async Task CreateBookHandler_ShouldStartStreamWithBookAddedEvent()
@@ -172,6 +175,51 @@ public class BookHandlerTests : HandlerTestBase
 
         // Assert
         _ = await Assert.That(result).IsTypeOf<NotFound>();
+    }
+
+    [Test]
+    [Category("Unit")]
+    public async Task SoftDeleteBookHandler_WhenBookNotFound_ShouldReturnNotFound()
+    {
+        // Arrange
+        var command = new SoftDeleteBook(Guid.CreateVersion7())
+        {
+            ETag = _faker.Random.Bool() ? null : "\"0\""
+        };
+
+        _ = Session.Events.AggregateStreamAsync<BookAggregate>(command.Id).Returns((BookAggregate?)null);
+
+        // Act
+        var result = await BookHandlers.Handle(command, Session, Cache, Logger);
+
+        // Assert
+        _ = await Assert.That(result).IsTypeOf<NotFound>();
+    }
+
+    [Test]
+    [Category("Unit")]
+    public async Task SoftDeleteBookHandler_WhenBookAlreadyDeleted_ShouldReturnConflict()
+    {
+        // Arrange
+        var command = new SoftDeleteBook(Guid.CreateVersion7())
+        {
+            ETag = _faker.Random.Bool() ? null : "\"0\""
+        };
+
+        var deletedAggregate = new BookAggregate
+        {
+            Deleted = true
+        };
+
+        _ = Session.Events.AggregateStreamAsync<BookAggregate>(command.Id).Returns(deletedAggregate);
+
+        // Act
+        var result = await BookHandlers.Handle(command, Session, Cache, Logger);
+
+        // Assert
+        _ = await Assert.That(result).IsAssignableTo<IStatusCodeHttpResult>();
+        var statusCodeResult = (IStatusCodeHttpResult)result;
+        _ = await Assert.That(statusCodeResult.StatusCode).IsEqualTo(StatusCodes.Status409Conflict);
     }
 
     [Test]
