@@ -178,6 +178,10 @@ public static class MartenConfigurationExtensions
         _ = options.Events.AddEventType<Events.PublisherSoftDeleted>();
         _ = options.Events.AddEventType<Events.PublisherRestored>();
 
+        // Order events
+        _ = options.Events.AddEventType<Events.OrderPlaced>();
+        _ = options.Events.AddEventType<Events.PaymentSimulated>();
+
         // User events
         _ = options.Events.AddEventType<BookStore.Shared.Messages.Events.UserProfileCreated>();
         _ = options.Events.AddEventType<BookStore.Shared.Messages.Events.BookAddedToFavorites>();
@@ -200,6 +204,7 @@ public static class MartenConfigurationExtensions
         _ = options.Projections.Snapshot<BookSearchProjection>(SnapshotLifecycle.Async);
         _ = options.Projections.Snapshot<PublisherProjection>(SnapshotLifecycle.Async);
         _ = options.Projections.Snapshot<UserProfile>(SnapshotLifecycle.Async);
+        _ = options.Projections.Snapshot<OrderSummaryProjection>(SnapshotLifecycle.Async);
         options.Projections.Add<BookStatisticsProjection>(ProjectionLifecycle.Async);
         options.Projections.Add<AuthorStatisticsProjectionBuilder>(ProjectionLifecycle.Async);
         options.Projections.Add<CategoryStatisticsProjectionBuilder>(ProjectionLifecycle.Async);
@@ -235,6 +240,11 @@ public static class MartenConfigurationExtensions
             .Index(x => x.Name)         // B-tree index for sorting
             .NgramIndex(x => x.Name)    // NGram search on publisher name
             .Index(x => x.Deleted);     // Index for soft-delete filtering
+
+        // OrderSummaryProjection indexes
+        _ = options.Schema.For<OrderSummaryProjection>()
+            .Index(x => x.UserId!)
+            .Index(x => x.PlacedAt);
 
         // ApplicationUser indexes (Identity)
         _ = options.Schema.For<ApplicationUser>()

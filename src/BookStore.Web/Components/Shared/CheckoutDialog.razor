@@ -1,0 +1,350 @@
+@using System.Globalization
+@using BookStore.Client
+@using BookStore.Shared.Models
+@implements IAsyncDisposable
+@inject IOrdersClient OrdersClient
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.ShoppingCartCheckout" Class="mr-2"/>
+            Checkout
+        </MudText>
+    </TitleContent>
+
+    <DialogContent>
+        <MudForm @ref="_form">
+            @if (_currentStep == 0)
+            {
+                <MudStack Spacing="2">
+                    <MudText Typo="Typo.subtitle1">Delivery Address</MudText>
+                    <MudTextField T="string" Label="Full Name" @bind-Value="_fullName" Required="true" RequiredError="Full name is required"/>
+                    <MudTextField T="string" Label="Street" @bind-Value="_street" Required="true" RequiredError="Street is required"/>
+                    <MudTextField T="string" Label="City" @bind-Value="_city" Required="true" RequiredError="City is required"/>
+                    <MudTextField T="string" Label="Postal Code" @bind-Value="_postalCode" Required="true" RequiredError="Postal code is required"/>
+                    <MudTextField T="string" Label="Country" @bind-Value="_country" Required="true" RequiredError="Country is required"/>
+
+                    @if (!IsAuthenticated)
+                    {
+                        <MudTextField T="string"
+                                      Label="Email"
+                                      @bind-Value="_customerEmail"
+                                      Required="true"
+                                      RequiredError="Email is required"
+                                      Validation="@(new Func<string, string?>(ValidateEmail))"/>
+                    }
+                </MudStack>
+            }
+            else if (_currentStep == 1)
+            {
+                <MudStack Spacing="2">
+                    <MudText Typo="Typo.subtitle1">Payment</MudText>
+                    <MudTextField T="string" Label="Name on Card" @bind-Value="_cardHolderName" Required="true" RequiredError="Card holder name is required"/>
+                    <MudTextField T="string"
+                                  Label="Card Number"
+                                  @bind-Value="_cardNumber"
+                                  Required="true"
+                                  RequiredError="Card number is required"
+                                  Validation="@(new Func<string, string?>(ValidateCardNumber))"/>
+                    <MudGrid>
+                        <MudItem xs="6">
+                            <MudNumericField T="int"
+                                             Label="Expiry Month"
+                                             @bind-Value="_expiryMonth"
+                                             Min="1"
+                                             Max="12"
+                                             Required="true"/>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudNumericField T="int"
+                                             Label="Expiry Year"
+                                             @bind-Value="_expiryYear"
+                                             Min="@DateTime.UtcNow.Year"
+                                             Max="@(DateTime.UtcNow.Year + 20)"
+                                             Required="true"/>
+                        </MudItem>
+                    </MudGrid>
+                    <MudTextField T="string"
+                                  Label="CVV"
+                                  @bind-Value="_cvv"
+                                  InputType="InputType.Password"
+                                  Required="true"
+                                  RequiredError="CVV is required"
+                                  Validation="@(new Func<string, string?>(ValidateCvv))"/>
+                </MudStack>
+            }
+            else
+            {
+                <MudStack Spacing="2">
+                    <MudText Typo="Typo.subtitle1">Review &amp; Confirm</MudText>
+
+                    <MudPaper Class="pa-3">
+                        <MudText Typo="Typo.subtitle2">Delivery</MudText>
+                        <MudText Typo="Typo.body2">@_fullName</MudText>
+                        <MudText Typo="Typo.body2">@_street</MudText>
+                        <MudText Typo="Typo.body2">@_city, @_postalCode</MudText>
+                        <MudText Typo="Typo.body2">@_country</MudText>
+                        @if (!IsAuthenticated)
+                        {
+                            <MudText Typo="Typo.body2">@_customerEmail</MudText>
+                        }
+                    </MudPaper>
+
+                    <MudPaper Class="pa-3">
+                        <MudText Typo="Typo.subtitle2">Payment</MudText>
+                        <MudText Typo="Typo.body2">@_cardHolderName</MudText>
+                        <MudText Typo="Typo.body2">Card: @MaskedCardNumber</MudText>
+                        <MudText Typo="Typo.body2">Expiry: @_expiryMonth/@_expiryYear</MudText>
+                    </MudPaper>
+
+                    <MudPaper Class="pa-3">
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">Items</MudText>
+                        @foreach (var item in CartItems)
+                        {
+                            <MudText Typo="Typo.body2">@item.Title x @item.Quantity</MudText>
+                        }
+
+                        <MudDivider Class="my-2"/>
+                        <MudText Typo="Typo.h6">Total: @GetTotalAmount().ToString("C", CultureInfo.CurrentCulture)</MudText>
+                    </MudPaper>
+                </MudStack>
+            }
+        </MudForm>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="Cancel" Disabled="_isSubmitting">
+            Cancel
+        </MudButton>
+
+        @if (_currentStep > 0)
+        {
+            <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="BackStep" Disabled="_isSubmitting">
+                Back
+            </MudButton>
+        }
+
+        @if (_currentStep < 2)
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="NextStepAsync" Disabled="_isSubmitting">
+                Next
+            </MudButton>
+        }
+        else
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="PlaceOrderAsync" Disabled="_isSubmitting">
+                @(_isSubmitting ? "Placing Order..." : "Place Order")
+            </MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public List<ShoppingCartItemResponse> CartItems { get; set; } = [];
+    [Parameter] public bool IsAuthenticated { get; set; }
+    [Parameter] public EventCallback<Guid> OnOrderPlaced { get; set; }
+
+    private MudForm _form = null!;
+    private readonly CancellationTokenSource _cts = new();
+    private int _currentStep;
+    private bool _isSubmitting;
+
+    private string _fullName = string.Empty;
+    private string _street = string.Empty;
+    private string _city = string.Empty;
+    private string _postalCode = string.Empty;
+    private string _country = string.Empty;
+    private string _customerEmail = string.Empty;
+
+    private string _cardHolderName = string.Empty;
+    private string _cardNumber = string.Empty;
+    private string _cardNumberLast4 = string.Empty;
+    private int _expiryMonth = DateTime.UtcNow.Month;
+    private int _expiryYear = DateTime.UtcNow.Year;
+    private string _cvv = string.Empty;
+
+    private string MaskedCardNumber => string.IsNullOrWhiteSpace(_cardNumberLast4)
+        ? "**** **** **** ****"
+        : $"**** **** **** {_cardNumberLast4}";
+
+    private async Task NextStepAsync()
+    {
+        await _form.ValidateAsync();
+        if (!_form.IsValid)
+        {
+            return;
+        }
+
+        if (_currentStep == 1 && !CaptureCardNumberLast4())
+        {
+            return;
+        }
+
+        _currentStep++;
+    }
+
+    private void BackStep() => _currentStep--;
+
+    private async Task PlaceOrderAsync()
+    {
+        if (_isSubmitting)
+        {
+            return;
+        }
+
+        if (CartItems.Count == 0)
+        {
+            Snackbar.Add("Your cart is empty.", Severity.Warning);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_cardNumberLast4) && !CaptureCardNumberLast4())
+        {
+            return;
+        }
+
+        _isSubmitting = true;
+
+        try
+        {
+            var orderItems = CartItems
+                .Select(item => new OrderItemDto(
+                    item.BookId,
+                    item.Title,
+                    item.Quantity,
+                    ResolveUnitPrice(item.Prices)))
+                .ToList();
+
+            if (orderItems.Any(item => item.UnitPrice <= 0))
+            {
+                Snackbar.Add("One or more cart items are missing a valid price.", Severity.Error);
+                return;
+            }
+
+            var request = new PlaceOrderRequest(
+                CustomerEmail: IsAuthenticated ? null : _customerEmail,
+                Items: orderItems,
+                DeliveryAddress: new DeliveryAddressDto(
+                    _fullName,
+                    _street,
+                    _city,
+                    _postalCode,
+                    _country),
+                PaymentInfo: new PaymentInfoDto(
+                    _cardHolderName,
+                    _cardNumberLast4,
+                    _expiryMonth,
+                    _expiryYear));
+
+            var response = await OrdersClient.PlaceOrderAsync(request, _cts.Token);
+            if (!response.IsSuccessStatusCode || response.Content is null)
+            {
+                Snackbar.Add(response.Error?.Content ?? response.Error?.Message ?? "Failed to place order.", Severity.Error);
+                return;
+            }
+
+            await OnOrderPlaced.InvokeAsync(response.Content.OrderId);
+            MudDialog.Close(DialogResult.Ok(response.Content.OrderId));
+        }
+        catch (OperationCanceledException) when (_cts.IsCancellationRequested)
+        {
+            // no-op
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to place order: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private bool CaptureCardNumberLast4()
+    {
+        var digits = new string(_cardNumber.Where(char.IsDigit).ToArray());
+        if (digits.Length < 4)
+        {
+            Snackbar.Add("Card number must include at least 4 digits.", Severity.Error);
+            return false;
+        }
+
+        _cardNumberLast4 = digits[^4..];
+
+        // CVV and full card number are UX-only and must never be sent.
+        _cardNumber = string.Empty;
+        _cvv = string.Empty;
+
+        return true;
+    }
+
+    private decimal ResolveUnitPrice(IReadOnlyDictionary<string, decimal> prices)
+    {
+        if (prices.Count == 0)
+        {
+            return 0m;
+        }
+
+        foreach (var value in prices.Values)
+        {
+            if (value > 0)
+            {
+                return value;
+            }
+        }
+
+        return 0m;
+    }
+
+    private decimal GetTotalAmount()
+        => CartItems.Sum(item => ResolveUnitPrice(item.Prices) * item.Quantity);
+
+    private string? ValidateEmail(string email)
+    {
+        if (IsAuthenticated)
+        {
+            return null;
+        }
+
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            return "Email is required";
+        }
+
+        return email.Contains('@', StringComparison.Ordinal) ? null : "Email is invalid";
+    }
+
+    private static string? ValidateCardNumber(string cardNumber)
+    {
+        if (string.IsNullOrWhiteSpace(cardNumber))
+        {
+            return "Card number is required";
+        }
+
+        var digits = new string(cardNumber.Where(char.IsDigit).ToArray());
+        return digits.Length < 12 ? "Card number is invalid" : null;
+    }
+
+    private static string? ValidateCvv(string cvv)
+    {
+        if (string.IsNullOrWhiteSpace(cvv))
+        {
+            return "CVV is required";
+        }
+
+        var digits = new string(cvv.Where(char.IsDigit).ToArray());
+        return digits.Length is 3 or 4 ? null : "CVV is invalid";
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        _cts.Cancel();
+        _cts.Dispose();
+        return ValueTask.CompletedTask;
+    }
+}

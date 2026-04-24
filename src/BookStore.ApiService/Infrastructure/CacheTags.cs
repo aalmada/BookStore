@@ -22,6 +22,10 @@ public static class CacheTags
     public const string PublisherItemPrefix = "publisher";
     public const string PublisherList = "publishers";
 
+    // Order tags
+    public const string OrderItemPrefix = "order";
+    public const string OrderList = "orders";
+
     // Security stamp tags
     public const string SecurityStampPrefix = "security-stamp";
 

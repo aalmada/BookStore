@@ -1,0 +1,118 @@
+@page "/orders"
+@using Microsoft.AspNetCore.Authorization
+@using BookStore.Client
+@using BookStore.Shared.Models
+@attribute [Authorize]
+@implements IAsyncDisposable
+@rendermode InteractiveServer
+@inject IOrdersClient OrdersClient
+@inject BookStoreEventsService EventsService
+@inject QueryInvalidationService InvalidationService
+@inject TenantService TenantService
+
+<PageTitle>My Orders - BookStore</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-6">
+    <MudText Typo="Typo.h4" Class="mb-4">My Orders</MudText>
+
+    @if (_query == null || (_query.IsLoading && _query.Data == null))
+    {
+        <MudProgressLinear Indeterminate="true"/>
+    }
+    else if (_query.IsError)
+    {
+        <MudAlert Severity="Severity.Error">@_query.Error</MudAlert>
+    }
+    else if (_query.Data == null || _query.Data.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info">No orders placed yet.</MudAlert>
+    }
+    else
+    {
+        <MudTable Items="@_query.Data" Dense="true" Hover="true">
+            <HeaderContent>
+                <MudTh>Order ID</MudTh>
+                <MudTh>Placed At</MudTh>
+                <MudTh>Total</MudTh>
+                <MudTh>Status</MudTh>
+                <MudTh>Items</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Order ID">@context.OrderId.ToString()[..8]</MudTd>
+                <MudTd DataLabel="Placed At">@context.PlacedAt.LocalDateTime.ToString("g")</MudTd>
+                <MudTd DataLabel="Total">@context.TotalAmount.ToString("C")</MudTd>
+                <MudTd DataLabel="Status">@context.Status</MudTd>
+                <MudTd DataLabel="Items">@context.Items.Count</MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</MudContainer>
+
+@code {
+    private ReactiveQuery<IReadOnlyList<OrderSummaryDto>>? _query;
+    private readonly CancellationTokenSource _cts = new();
+    private bool _disposed;
+
+    [Inject] private ILogger<Orders> Logger { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await TenantService.InitializeAsync(_cts.Token);
+        TenantService.OnChange += HandleTenantChanged;
+
+        EventsService.StartListening();
+
+        _query = new ReactiveQuery<IReadOnlyList<OrderSummaryDto>>(
+            queryFn: LoadOrdersAsync,
+            eventsService: EventsService,
+            invalidationService: InvalidationService,
+            queryKeys: ["Orders"],
+            onStateChanged: () => InvokeAsync(StateHasChanged),
+            logger: Logger);
+
+        await _query.LoadAsync(cancellationToken: _cts.Token);
+    }
+
+    private async Task<IReadOnlyList<OrderSummaryDto>> LoadOrdersAsync(CancellationToken cancellationToken)
+    {
+        var response = await OrdersClient.GetOrdersAsync(cancellationToken);
+        if (response.IsSuccessStatusCode && response.Content is not null)
+        {
+            return response.Content;
+        }
+
+        throw new Exception(response.Error?.Content ?? response.Error?.Message ?? "Failed to load orders.");
+    }
+
+    private void HandleTenantChanged()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _ = InvokeAsync(async () =>
+        {
+            if (_query is null)
+            {
+                return;
+            }
+
+            await _query.LoadAsync(cancellationToken: _cts.Token);
+        });
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        TenantService.OnChange -= HandleTenantChanged;
+        _query?.Dispose();
+        await _cts.CancelAsync();
+        _cts.Dispose();
+    }
+}

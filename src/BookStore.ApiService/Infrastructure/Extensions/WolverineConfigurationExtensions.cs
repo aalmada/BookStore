@@ -61,5 +61,6 @@ public static class WolverineConfigurationExtensions
         _ = opts.Discovery.IncludeType(typeof(Handlers.TenantAdminHandler));
         _ = opts.Discovery.IncludeType(typeof(Handlers.Maintenance.AccountCleanupHandlers));
         _ = opts.Discovery.IncludeType(typeof(Handlers.Sales.SaleHandlers));
+        _ = opts.Discovery.IncludeType(typeof(Handlers.Orders.OrderHandlers));
     }
 }

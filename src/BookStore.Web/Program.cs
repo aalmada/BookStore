@@ -172,6 +172,7 @@ static void RegisterScopedRefitClients(
     AddScopedClient<IIdentityClient>();
     AddScopedClient<IUsersClient>();
     AddScopedClient<ISalesClient>();
+    AddScopedClient<IOrdersClient>();
 }
 
 // Add authentication services (JWT token-based)

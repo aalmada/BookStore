@@ -109,6 +109,9 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
             case PublisherProjection publisher:
                 await HandlePublisherChangeAsync(publisher, changeType, eventId, token);
                 break;
+            case OrderSummaryProjection order:
+                await HandleOrderSummaryChangeAsync(order, changeType, eventId, token);
+                break;
             case UserProfile profile:
                 await HandleUserProfileChangeAsync(profile, changeType, eventId, token);
                 break;
@@ -241,6 +244,20 @@ public class ProjectionCommitListener : IDocumentSessionListener, IChangeListene
         };
 
         await NotifyAsync("Publisher", notification, token);
+    }
+
+    async Task HandleOrderSummaryChangeAsync(OrderSummaryProjection order, ChangeType _, Guid eventId, CancellationToken token)
+    {
+        await _cache.RemoveByTagAsync([CacheTags.OrderList], token);
+
+        IDomainEventNotification notification = new OrderPlacedNotification(
+            eventId,
+            order.Id,
+            order.CustomerEmail,
+            order.PlacedAt,
+            order.Version);
+
+        await NotifyAsync("Order", notification, token);
     }
 
     async Task HandleBookStatisticsChangeAsync(BookStatistics stats, ChangeType _, Guid eventId, CancellationToken token)

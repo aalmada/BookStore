@@ -44,6 +44,7 @@ public static class BookStoreClientExtensions
         _ = services.AddClient<IUsersClient>(baseAddress, configureClient);
         _ = services.AddClient<IPasskeyClient>(baseAddress, configureClient);
         _ = services.AddClient<ISalesClient>(baseAddress, configureClient);
+        _ = services.AddClient<IOrdersClient>(baseAddress, configureClient);
         _ = services.AddClient<IConfigurationClient>(baseAddress, configureClient);
 
         return services;

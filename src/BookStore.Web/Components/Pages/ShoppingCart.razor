@@ -7,6 +7,7 @@
 @inject AnonymousCartService AnonymousCartService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject ISnackbar Snackbar
+@inject IDialogService DialogService
 @inject NavigationManager Navigation
 @implements IDisposable
 @rendermode InteractiveServer
@@ -75,6 +76,12 @@
                 <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
                     <MudButton Href="/" Variant="Variant.Text" Color="Color.Primary">
                         Continue Shopping
+                    </MudButton>
+                    <MudButton Color="Color.Primary"
+                               Variant="Variant.Filled"
+                               Disabled="@(displayCart?.Items.Count is not > 0)"
+                               OnClick="OpenCheckoutAsync">
+                        Checkout
                     </MudButton>
                     <MudButton Color="Color.Error"
                                Variant="Variant.Text"
@@ -327,6 +334,51 @@
             cartQuery?.MutateData(_ => previousCart);
             Snackbar.Add($"Failed to clear cart: {ex.Message}", Severity.Error);
         }
+    }
+
+    private async Task OpenCheckoutAsync()
+    {
+        var cart = displayCart;
+        if (cart == null || cart.Items.Count == 0)
+        {
+            return;
+        }
+
+        var parameters = new DialogParameters<CheckoutDialog>
+        {
+            { x => x.CartItems, cart.Items.ToList() },
+            { x => x.IsAuthenticated, _isAuthenticated },
+            { x => x.OnOrderPlaced, EventCallback.Factory.Create<Guid>(this, HandleOrderPlacedAsync) }
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true,
+            CloseOnEscapeKey = false
+        };
+
+        var dialog = await DialogService.ShowAsync<CheckoutDialog>("Checkout", parameters, options);
+        _ = await dialog.Result;
+    }
+
+    private async Task HandleOrderPlacedAsync(Guid orderId)
+    {
+        if (_isAuthenticated)
+        {
+            if (cartQuery != null)
+            {
+                await cartQuery.InvalidateAsync();
+            }
+
+            Snackbar.Add($"Order #{orderId.ToString()[..8]} placed successfully!", Severity.Success);
+            Navigation.NavigateTo("/orders");
+            return;
+        }
+
+        await AnonymousCartService.ClearAsync(_cts.Token);
+        await LoadAnonymousCartAsync(_cts.Token);
+        Snackbar.Add($"Order #{orderId.ToString()[..8]} placed successfully!", Severity.Success);
     }
 
     private async Task LoadAnonymousCartAsync(CancellationToken cancellationToken = default)

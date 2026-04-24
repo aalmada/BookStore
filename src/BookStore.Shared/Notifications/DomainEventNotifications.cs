@@ -29,6 +29,7 @@ namespace BookStore.Shared.Notifications;
 [JsonDerivedType(typeof(UserUpdatedNotification), "UserUpdated")]
 [JsonDerivedType(typeof(TenantCreatedNotification), "TenantCreated")]
 [JsonDerivedType(typeof(TenantUpdatedNotification), "TenantUpdated")]
+[JsonDerivedType(typeof(OrderPlacedNotification), "OrderPlaced")]
 public interface IDomainEventNotification
 {
     Guid EventId { get; }
@@ -326,4 +327,17 @@ public record PublisherStatisticsUpdateNotification(
     long Version = 0) : IDomainEventNotification
 {
     public string EventType => "PublisherStatisticsUpdate";
+}
+
+/// <summary>
+/// Notification when an order is placed
+/// </summary>
+public record OrderPlacedNotification(
+    Guid EventId,
+    Guid EntityId,
+    string CustomerEmail,
+    DateTimeOffset Timestamp,
+    long Version = 0) : IDomainEventNotification
+{
+    public string EventType => "OrderPlaced";
 }

@@ -72,6 +72,9 @@ public static class EndpointMappingExtensions
 
         // Shopping Cart endpoints
         app.MapShoppingCartEndpoints();
+
+        // Order endpoints are mapped directly to preserve endpoint-level anonymous tenant metadata.
+        app.MapOrderEndpoints();
     }
 
     static void MapAdminEndpoints(WebApplication app, Asp.Versioning.Builder.ApiVersionSet apiVersionSet)

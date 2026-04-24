@@ -108,6 +108,18 @@ public static class ErrorCodes
         public const string NothingToMerge = "ERR_CART_MERGE_NOTHING";
     }
 
+    // Order Codes
+    public static class Orders
+    {
+        public const string EmptyItems = "ERR_ORDER_EMPTY_ITEMS";
+        public const string EmailRequired = "ERR_ORDER_EMAIL_REQUIRED";
+        public const string InvalidEmail = "ERR_ORDER_INVALID_EMAIL";
+        public const string InvalidAddress = "ERR_ORDER_INVALID_ADDRESS";
+        public const string InvalidPayment = "ERR_ORDER_INVALID_PAYMENT";
+        public const string InvalidQuantity = "ERR_ORDER_INVALID_QUANTITY";
+        public const string InvalidUnitPrice = "ERR_ORDER_INVALID_UNIT_PRICE";
+    }
+
     // Admin Codes
     public static class Admin
     {

@@ -1,3 +1,4 @@
+using System;
 using BookStore.Shared.Notifications;
 
 namespace BookStore.Web.Services;
@@ -100,6 +101,11 @@ public class QueryInvalidationService
             case PublisherDeletedNotification:
             case PublisherStatisticsUpdateNotification:
                 yield return "Publishers";
+                break;
+
+            case IDomainEventNotification n when string.Equals(n.EventType, "OrderPlaced", StringComparison.Ordinal):
+                yield return "Orders";
+                yield return $"Order:{n.EntityId}";
                 break;
 
             // User specific
