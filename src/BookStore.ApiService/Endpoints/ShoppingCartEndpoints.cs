@@ -77,7 +77,7 @@ public static class ShoppingCartEndpoints
             book.Title ?? "Unknown",
             book.Isbn,
             profile.ShoppingCartItems[book.Id],
-            book.Prices.ToDictionary(p => p.Currency, p => p.Value))).ToList();
+            book.CurrentPrices.ToDictionary(p => p.Currency, p => p.Value))).ToList();
 
         var cart = new ShoppingCartDto(
             items,

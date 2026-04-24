@@ -409,7 +409,9 @@
                         book.Title,
                         book.Isbn,
                         Math.Clamp(item.Quantity, 1, MaxAnonymousQuantity),
-                        book.Prices ?? new Dictionary<string, decimal>()));
+                        book.CurrentPrices?.ToDictionary(p => p.Currency, p => p.Value)
+                            ?? book.Prices
+                            ?? new Dictionary<string, decimal>()));
                 }
                 catch (Refit.ApiException apiException) when (apiException.StatusCode == System.Net.HttpStatusCode.NotFound)
                 {
