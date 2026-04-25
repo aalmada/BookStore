@@ -20,8 +20,6 @@ jobs:
     environment:
       name: github-pages
     runs-on: ubuntu-latest
-    env:
-      INDEXNOW_KEY: ${{ secrets['INDEXNOW_KEY'] }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -37,21 +35,16 @@ jobs:
       - name: Build docs
         run: docfx docs/docfx.json
 
-      - name: Normalize IndexNow key
-        if: ${{ env.INDEXNOW_KEY != '' }}
-        run: |
-          normalized_key="$(printf '%s' "$INDEXNOW_KEY" | tr -d '\r\n[:space:]')"
-          printf 'INDEXNOW_KEY=%s\n' "$normalized_key" >> "$GITHUB_ENV"
-
       - name: Add IndexNow key file
-        if: ${{ env.INDEXNOW_KEY != '' }}
         run: |
-          printf "%s" "$INDEXNOW_KEY" > "docs/_site/${INDEXNOW_KEY}.txt"
+          key="${{ secrets.INDEXNOW_KEY }}"
 
-      - name: Log IndexNow key URL
-        if: ${{ env.INDEXNOW_KEY != '' }}
-        run: |
-          printf 'IndexNow key URL: https://aalmada.github.io/BookStore/%s.txt\n' "$INDEXNOW_KEY"
+          if [ -z "$key" ]; then
+            echo "INDEXNOW_KEY secret is not set; skipping IndexNow key file generation."
+            exit 0
+          fi
+
+          printf '%s\n' "$key" > "docs/_site/${key}.txt"
 
       - name: Fix README images
         run: |
@@ -69,67 +62,21 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     needs: build
-    env:
-      INDEXNOW_KEY: ${{ secrets['INDEXNOW_KEY'] }}
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
 
-      - name: Normalize IndexNow key
-        if: ${{ env.INDEXNOW_KEY != '' }}
-        run: |
-          normalized_key="$(printf '%s' "$INDEXNOW_KEY" | tr -d '\r\n[:space:]')"
-          printf 'INDEXNOW_KEY=%s\n' "$normalized_key" >> "$GITHUB_ENV"
-
       - name: Submit IndexNow URLs
-        if: ${{ env.INDEXNOW_KEY != '' }}
         run: |
-          key="$INDEXNOW_KEY"
-          site="https://aalmada.github.io/BookStore"
-          key_location="${site}/${key}.txt"
-          summary_file="$GITHUB_STEP_SUMMARY"
+          key="${{ secrets.INDEXNOW_KEY }}"
 
-          printf '## IndexNow\n' >> "$summary_file"
-          printf -- '- Site: `%s`\n' "$site" >> "$summary_file"
-          printf -- '- Key file: `%s`\n' "$key_location" >> "$summary_file"
-
-          key_body="$(curl -fsSL "$key_location")"
-          if [[ "$key_body" != "$key" ]]; then
-            printf 'Key file content mismatch. Expected `%s`, got `%s`.\n' "$key" "$key_body"
-            printf -- '- Submission status: skipped\n' >> "$summary_file"
-            printf -- '- Reason: key file content mismatch.\n' >> "$summary_file"
+          if [ -z "$key" ]; then
+            echo "INDEXNOW_KEY secret is not set; skipping IndexNow notification."
             exit 0
           fi
 
-          submit_url() {
-            local target_url="$1"
-            local label="$2"
-            local response_file
-            response_file="$(mktemp)"
-
-            local status
-            status="$(curl -sS -o "$response_file" -w '%{http_code}' --get \
-              --data-urlencode "url=${target_url}" \
-              --data-urlencode "key=${key}" \
-              --data-urlencode "keyLocation=${key_location}" \
-              "https://api.indexnow.org/indexnow")"
-
-            printf 'IndexNow %s status: %s\n' "$label" "$status"
-            cat "$response_file"
-
-            printf -- '- %s status: %s\n' "$label" "$status" >> "$summary_file"
-
-            local response_body
-            response_body="$(cat "$response_file")"
-            if [[ -n "$response_body" ]]; then
-              printf -- '- %s response: `%s`\n' "$label" "$response_body" >> "$summary_file"
-            fi
-
-            rm -f "$response_file"
-          }
-
-          submit_url "${site}/" "homepage"
-          submit_url "${site}/sitemap.xml" "sitemap"
-
-          printf -- '- Submission status: completed\n' >> "$summary_file"
+          site="https://aalmada.github.io/BookStore"
+          key_location="${site}/${key}.txt"
+          curl -fsS "https://api.indexnow.org/indexnow?url=${site}/&key=${key}&keyLocation=${key_location}"
+          curl -fsS "https://api.indexnow.org/indexnow?url=${site}/sitemap.xml&key=${key}&keyLocation=${key_location}"
