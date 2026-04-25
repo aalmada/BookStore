@@ -22,7 +22,7 @@ jobs:
       INDEXNOW_KEY: ${{ secrets['INDEXNOW_KEY'] }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v5
@@ -40,6 +40,29 @@ jobs:
         run: |
           printf "%s" "$INDEXNOW_KEY" > "docs/_site/${INDEXNOW_KEY}.txt"
 
+      - name: Fix README images
+        run: |
+          mkdir -p docs/_site/docs/images
+          cp -r docs/images/* docs/_site/docs/images/
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: docs/_site
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    env:
+      INDEXNOW_KEY: ${{ secrets['INDEXNOW_KEY'] }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
       - name: Submit IndexNow URLs
         if: ${{ env.INDEXNOW_KEY != '' }}
         run: |
@@ -48,15 +71,18 @@ jobs:
           import os
           import xml.etree.ElementTree as ET
           from urllib import request
+          from urllib.error import HTTPError
 
           endpoint = "https://api.indexnow.org/indexnow"
           key = os.environ["INDEXNOW_KEY"]
           key_location = f"https://aalmada.github.io/BookStore/{key}.txt"
-          sitemap_path = "docs/_site/sitemap.xml"
+          sitemap_url = "https://aalmada.github.io/BookStore/sitemap.xml"
+
+          with request.urlopen(sitemap_url, timeout=30) as resp:
+              xml_data = resp.read()
 
           ns = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
-          tree = ET.parse(sitemap_path)
-          root = tree.getroot()
+          root = ET.fromstring(xml_data)
 
           urls = []
           for loc in root.findall("sm:url/sm:loc", ns):
@@ -81,28 +107,11 @@ jobs:
               method="POST",
           )
 
-          with request.urlopen(req, timeout=30) as response:
-              print(f"IndexNow response: {response.status}")
-              print(response.read().decode("utf-8"))
+          try:
+              with request.urlopen(req, timeout=30) as response:
+                  print(f"IndexNow response: {response.status}")
+                  print(response.read().decode("utf-8"))
+          except HTTPError as e:
+              print(f"IndexNow error: {e.code} {e.reason}")
+              raise
           PY
-
-      - name: Fix README images
-        run: |
-          mkdir -p docs/_site/docs/images
-          cp -r docs/images/* docs/_site/docs/images/
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v5
-        with:
-          path: docs/_site
-
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
