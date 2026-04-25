@@ -88,6 +88,22 @@ The documentation is built and deployed automatically by the `.github/workflows/
 6. **Upload Artifact**: Uploads the `docs/_site/` directory as a GitHub Actions artifact.
 7. **Deploy**: Deploys the artifact to GitHub Pages at `https://aalmada.github.io/BookStore/`.
 
+### IndexNow Support
+
+The docs workflow supports optional IndexNow submission after each docs build.
+
+To enable it:
+
+1. Add a repository secret named `INDEXNOW_KEY` with your IndexNow key value.
+
+When `INDEXNOW_KEY` is set, the workflow will:
+
+1. Create `<key>.txt` at the docs site root during build.
+2. Parse `sitemap.xml` from `docs/_site`.
+3. Submit all sitemap URLs to `https://api.indexnow.org/indexnow`.
+
+If `INDEXNOW_KEY` is not set, IndexNow steps are skipped.
+
 ## Contributing to Documentation
 
 1. Create or edit a markdown file in `docs/guides/`.

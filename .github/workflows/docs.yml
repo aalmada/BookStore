@@ -18,6 +18,8 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      INDEXNOW_KEY: ${{ secrets['INDEXNOW_KEY'] }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -32,6 +34,57 @@ jobs:
 
       - name: Build docs
         run: docfx docs/docfx.json
+
+      - name: Add IndexNow key file
+        if: ${{ env.INDEXNOW_KEY != '' }}
+        run: |
+          printf "%s" "$INDEXNOW_KEY" > "docs/_site/${INDEXNOW_KEY}.txt"
+
+      - name: Submit IndexNow URLs
+        if: ${{ env.INDEXNOW_KEY != '' }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import xml.etree.ElementTree as ET
+          from urllib import request
+
+          endpoint = "https://api.indexnow.org/indexnow"
+          key = os.environ["INDEXNOW_KEY"]
+          key_location = f"https://aalmada.github.io/BookStore/{key}.txt"
+          sitemap_path = "docs/_site/sitemap.xml"
+
+          ns = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
+          tree = ET.parse(sitemap_path)
+          root = tree.getroot()
+
+          urls = []
+          for loc in root.findall("sm:url/sm:loc", ns):
+              if loc.text:
+                  urls.append(loc.text.strip())
+
+          if not urls:
+              raise SystemExit("No URLs found in sitemap.xml for IndexNow submission.")
+
+          payload = {
+              "host": "aalmada.github.io",
+              "key": key,
+              "keyLocation": key_location,
+              "urlList": urls,
+          }
+
+          body = json.dumps(payload).encode("utf-8")
+          req = request.Request(
+              endpoint,
+              data=body,
+              headers={"Content-Type": "application/json"},
+              method="POST",
+          )
+
+          with request.urlopen(req, timeout=30) as response:
+              print(f"IndexNow response: {response.status}")
+              print(response.read().decode("utf-8"))
+          PY
 
       - name: Fix README images
         run: |
