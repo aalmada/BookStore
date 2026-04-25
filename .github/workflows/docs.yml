@@ -35,10 +35,21 @@ jobs:
       - name: Build docs
         run: docfx docs/docfx.json
 
+      - name: Normalize IndexNow key
+        if: ${{ env.INDEXNOW_KEY != '' }}
+        run: |
+          normalized_key="$(printf '%s' "$INDEXNOW_KEY" | tr -d '\r\n[:space:]')"
+          printf 'INDEXNOW_KEY=%s\n' "$normalized_key" >> "$GITHUB_ENV"
+
       - name: Add IndexNow key file
         if: ${{ env.INDEXNOW_KEY != '' }}
         run: |
           printf "%s" "$INDEXNOW_KEY" > "docs/_site/${INDEXNOW_KEY}.txt"
+
+      - name: Log IndexNow key URL
+        if: ${{ env.INDEXNOW_KEY != '' }}
+        run: |
+          printf 'IndexNow key URL: https://aalmada.github.io/BookStore/%s.txt\n' "$INDEXNOW_KEY"
 
       - name: Fix README images
         run: |
@@ -62,6 +73,12 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Normalize IndexNow key
+        if: ${{ env.INDEXNOW_KEY != '' }}
+        run: |
+          normalized_key="$(printf '%s' "$INDEXNOW_KEY" | tr -d '\r\n[:space:]')"
+          printf 'INDEXNOW_KEY=%s\n' "$normalized_key" >> "$GITHUB_ENV"
 
       - name: Submit IndexNow URLs
         if: ${{ env.INDEXNOW_KEY != '' }}
