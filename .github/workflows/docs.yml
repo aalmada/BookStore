@@ -17,6 +17,8 @@ concurrency:
 
 jobs:
   build:
+    environment:
+      name: github-pages
     runs-on: ubuntu-latest
     env:
       INDEXNOW_KEY: ${{ secrets['INDEXNOW_KEY'] }}
