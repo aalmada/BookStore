@@ -85,85 +85,51 @@ jobs:
       - name: Submit IndexNow URLs
         if: ${{ env.INDEXNOW_KEY != '' }}
         run: |
-          python - <<'PY'
-          import json
-          import os
-          import time
-          import xml.etree.ElementTree as ET
-          from urllib import request
-          from urllib.error import HTTPError
+          key="$INDEXNOW_KEY"
+          site="https://aalmada.github.io/BookStore"
+          key_location="${site}/${key}.txt"
+          summary_file="$GITHUB_STEP_SUMMARY"
 
-          endpoint = "https://api.indexnow.org/indexnow"
-          key = os.environ["INDEXNOW_KEY"]
-          key_location = f"https://aalmada.github.io/BookStore/{key}.txt"
-          sitemap_url = "https://aalmada.github.io/BookStore/sitemap.xml"
+          printf '## IndexNow\n' >> "$summary_file"
+          printf -- '- Site: `%s`\n' "$site" >> "$summary_file"
+          printf -- '- Key file: `%s`\n' "$key_location" >> "$summary_file"
 
-          # GitHub Pages can take a short time to serve the just-deployed content.
-          # Retry key-file verification before attempting IndexNow submission.
-          max_attempts = 8
-          for attempt in range(1, max_attempts + 1):
-            try:
-              with request.urlopen(key_location, timeout=30) as resp:
-                body = resp.read().decode("utf-8").strip()
-                if body == key:
-                  print(f"IndexNow key file verified on attempt {attempt}.")
-                  break
-                raise RuntimeError(
-                  f"Key file content mismatch on attempt {attempt}. "
-                  f"Expected key value, got: {body!r}"
-                )
-            except Exception as ex:
-              if attempt == max_attempts:
-                print(
-                  "IndexNow key file is not reachable/valid after deployment. "
-                  "Skipping IndexNow submission to avoid failing docs publish."
-                )
-                print(f"Last verification error: {ex}")
-                raise SystemExit(0)
-              print(f"Waiting for key file propagation (attempt {attempt}/{max_attempts}): {ex}")
-              time.sleep(15)
+          key_body="$(curl -fsSL "$key_location")"
+          if [[ "$key_body" != "$key" ]]; then
+            printf 'Key file content mismatch. Expected `%s`, got `%s`.\n' "$key" "$key_body"
+            printf -- '- Submission status: skipped\n' >> "$summary_file"
+            printf -- '- Reason: key file content mismatch.\n' >> "$summary_file"
+            exit 0
+          fi
 
-          with request.urlopen(sitemap_url, timeout=30) as resp:
-              xml_data = resp.read()
+          submit_url() {
+            local target_url="$1"
+            local label="$2"
+            local response_file
+            response_file="$(mktemp)"
 
-          ns = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
-          root = ET.fromstring(xml_data)
+            local status
+            status="$(curl -sS -o "$response_file" -w '%{http_code}' --get \
+              --data-urlencode "url=${target_url}" \
+              --data-urlencode "key=${key}" \
+              --data-urlencode "keyLocation=${key_location}" \
+              "https://api.indexnow.org/indexnow")"
 
-          urls = []
-          for loc in root.findall("sm:url/sm:loc", ns):
-              if loc.text:
-                  urls.append(loc.text.strip())
+            printf 'IndexNow %s status: %s\n' "$label" "$status"
+            cat "$response_file"
 
-          if not urls:
-              raise SystemExit("No URLs found in sitemap.xml for IndexNow submission.")
+            printf -- '- %s status: %s\n' "$label" "$status" >> "$summary_file"
 
-          payload = {
-              "host": "aalmada.github.io",
-              "key": key,
-              "keyLocation": key_location,
-              "urlList": urls,
+            local response_body
+            response_body="$(cat "$response_file")"
+            if [[ -n "$response_body" ]]; then
+              printf -- '- %s response: `%s`\n' "$label" "$response_body" >> "$summary_file"
+            fi
+
+            rm -f "$response_file"
           }
 
-          body = json.dumps(payload).encode("utf-8")
-          req = request.Request(
-              endpoint,
-              data=body,
-              headers={"Content-Type": "application/json"},
-              method="POST",
-          )
+          submit_url "${site}/" "homepage"
+          submit_url "${site}/sitemap.xml" "sitemap"
 
-          try:
-              with request.urlopen(req, timeout=30) as response:
-                  print(f"IndexNow response: {response.status}")
-                  print(response.read().decode("utf-8"))
-          except HTTPError as e:
-              print(f"IndexNow error: {e.code} {e.reason}")
-              if e.code == 403:
-                print(
-                  "IndexNow returned 403. This usually means key validation is "
-                  "not yet visible to IndexNow or the key/keyLocation does not match. "
-                  "Skipping failure so docs deployment still succeeds."
-                )
-                raise SystemExit(0)
-              raise
-          PY
+          printf -- '- Submission status: completed\n' >> "$summary_file"
