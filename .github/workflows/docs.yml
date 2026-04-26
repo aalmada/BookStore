@@ -67,7 +67,7 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 
-      - name: Submit IndexNow URLs
+      - name: Notify IndexNow
         run: |
           key="${{ secrets.INDEXNOW_KEY }}"
 
@@ -78,5 +78,7 @@ jobs:
 
           site="https://aalmada.github.io/BookStore"
           key_location="${site}/${key}.txt"
+
+          # Notify IndexNow about the homepage and sitemap after each deployment.
           curl -fsS "https://api.indexnow.org/indexnow?url=${site}/&key=${key}&keyLocation=${key_location}"
           curl -fsS "https://api.indexnow.org/indexnow?url=${site}/sitemap.xml&key=${key}&keyLocation=${key_location}"
