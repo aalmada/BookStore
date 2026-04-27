@@ -497,6 +497,6 @@ api/
 .github/skills/copilot-squad/benchmarks/
 
 # keep graph outputs, skip heavy/local-only files
-graphify-out/cache/            # optional: commit for shared extraction speed, skip to keep repo small
-graphify-out/manifest.json     # mtime-based, invalid after git clone — always gitignore this
-graphify-out/cost.json         # local token tracking, not useful to share
+graphify-out/cache/
+graphify-out/manifest.json
+graphify-out/cost.json

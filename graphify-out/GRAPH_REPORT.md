@@ -1,148 +1,143 @@
-# Graph Report - .  (2026-04-25)
+# Graph Report - BookStore  (2026-04-25)
 
 ## Corpus Check
-- Large corpus: 457 files · ~225,781 words. Semantic extraction will be expensive (many Claude tokens). Consider running on a subfolder, or use --no-semantic to run AST-only.
+- 412 files · ~228,625 words
+- Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 3135 nodes · 5753 edges · 112 communities detected
-- Extraction: 59% EXTRACTED · 41% INFERRED · 0% AMBIGUOUS · INFERRED: 2373 edges (avg confidence: 0.8)
-- Token cost: 12,500 input · 4,800 output
+- 2723 nodes · 5270 edges · 106 communities detected
+- Extraction: 55% EXTRACTED · 45% INFERRED · 0% AMBIGUOUS · INFERRED: 2373 edges (avg confidence: 0.8)
+- Token cost: 0 input · 0 output
 
 ## Community Hubs (Navigation)
-- [[_COMMUNITY_Admin API Endpoints|Admin API Endpoints]]
-- [[_COMMUNITY_Account & Tenant Integration Tests|Account & Tenant Integration Tests]]
-- [[_COMMUNITY_Book Concurrency & CRUD Tests|Book Concurrency & CRUD Tests]]
-- [[_COMMUNITY_Author & Category CRUD Tests|Author & Category CRUD Tests]]
-- [[_COMMUNITY_Command Handlers|Command Handlers]]
-- [[_COMMUNITY_Aggregate & Event Infrastructure|Aggregate & Event Infrastructure]]
-- [[_COMMUNITY_Roslyn Analyzer Rules|Roslyn Analyzer Rules]]
-- [[_COMMUNITY_Identity Store Interfaces|Identity Store Interfaces]]
-- [[_COMMUNITY_Shopping Cart Services|Shopping Cart Services]]
-- [[_COMMUNITY_Handler Unit Tests|Handler Unit Tests]]
-- [[_COMMUNITY_Database & Middleware Extensions|Database & Middleware Extensions]]
-- [[_COMMUNITY_Device Name Parsing|Device Name Parsing]]
-- [[_COMMUNITY_Auth Broadcast  JS Interop|Auth Broadcast / JS Interop]]
-- [[_COMMUNITY_Admin Author Endpoints|Admin Author Endpoints]]
-- [[_COMMUNITY_BookStore Client Extensions|BookStore Client Extensions]]
-- [[_COMMUNITY_Documentation Guides|Documentation Guides]]
-- [[_COMMUNITY_Projection Unit Tests|Projection Unit Tests]]
-- [[_COMMUNITY_Architecture Documentation|Architecture Documentation]]
-- [[_COMMUNITY_Database Seeder|Database Seeder]]
-- [[_COMMUNITY_Blazor Component Tests|Blazor Component Tests]]
-- [[_COMMUNITY_Notification Service|Notification Service]]
-- [[_COMMUNITY_Account Cleanup & Passkey|Account Cleanup & Passkey]]
-- [[_COMMUNITY_JSON Serialization Tests|JSON Serialization Tests]]
-- [[_COMMUNITY_Analyzer Code Fix Tests|Analyzer Code Fix Tests]]
-- [[_COMMUNITY_Anonymous Cart Operations|Anonymous Cart Operations]]
-- [[_COMMUNITY_Author Statistics Projection|Author Statistics Projection]]
-- [[_COMMUNITY_Integration Test Setup Hooks|Integration Test Setup Hooks]]
-- [[_COMMUNITY_Book Details Menu Tests|Book Details Menu Tests]]
-- [[_COMMUNITY_Client Contracts  DTOs|Client Contracts / DTOs]]
-- [[_COMMUNITY_Error Localization Service|Error Localization Service]]
-- [[_COMMUNITY_Configuration Validation Tests|Configuration Validation Tests]]
-- [[_COMMUNITY_Orders Logging|Orders Logging]]
-- [[_COMMUNITY_Error Codes|Error Codes]]
-- [[_COMMUNITY_Identity Client Interface|Identity Client Interface]]
-- [[_COMMUNITY_Book Sale & Pricing|Book Sale & Pricing]]
-- [[_COMMUNITY_Parallel API Orchestrator|Parallel API Orchestrator]]
-- [[_COMMUNITY_Parallel API Calls|Parallel API Calls]]
-- [[_COMMUNITY_UCP Profile Tests|UCP Profile Tests]]
-- [[_COMMUNITY_Marten Event Store Config|Marten Event Store Config]]
-- [[_COMMUNITY_Forwarded Headers Extensions|Forwarded Headers Extensions]]
-- [[_COMMUNITY_Authorization Policy Extensions|Authorization Policy Extensions]]
-- [[_COMMUNITY_Analyzer Verifier Tests|Analyzer Verifier Tests]]
-- [[_COMMUNITY_Security Headers Tests|Security Headers Tests]]
-- [[_COMMUNITY_ETag Validation Middleware|ETag Validation Middleware]]
-- [[_COMMUNITY_Tenant Security Middleware|Tenant Security Middleware]]
-- [[_COMMUNITY_Tenant Store Interface|Tenant Store Interface]]
-- [[_COMMUNITY_Cover Image Format Extensions|Cover Image Format Extensions]]
-- [[_COMMUNITY_OpenAPI Documentation Tests|OpenAPI Documentation Tests]]
-- [[_COMMUNITY_Frontend Health Tests|Frontend Health Tests]]
-- [[_COMMUNITY_System Client Interface|System Client Interface]]
-- [[_COMMUNITY_Orders Client Interface|Orders Client Interface]]
-- [[_COMMUNITY_Passkey JS Utilities|Passkey JS Utilities]]
-- [[_COMMUNITY_SignalR Hub Filter|SignalR Hub Filter]]
-- [[_COMMUNITY_Checkout Session Aggregate|Checkout Session Aggregate]]
-- [[_COMMUNITY_Order Summary Projection|Order Summary Projection]]
-- [[_COMMUNITY_Author Projection|Author Projection]]
-- [[_COMMUNITY_Category Projection|Category Projection]]
-- [[_COMMUNITY_Security Headers Middleware|Security Headers Middleware]]
-- [[_COMMUNITY_Tenant Context|Tenant Context]]
-- [[_COMMUNITY_Wolverine Messaging Config|Wolverine Messaging Config]]
-- [[_COMMUNITY_Emailvalidator|Emailvalidator]]
-- [[_COMMUNITY_Invaliddatetimenow|Invaliddatetimenow]]
-- [[_COMMUNITY_Invaliddatetimeutcnow|Invaliddatetimeutcnow]]
-- [[_COMMUNITY_Invalidguidinmethod|Invalidguidinmethod]]
-- [[_COMMUNITY_Classevents|Classevents]]
-- [[_COMMUNITY_Securityheadersmiddlewaretests|Securityheadersmiddlewaretests]]
-- [[_COMMUNITY_Handlertestbase|Handlertestbase]]
-- [[_COMMUNITY_Infrastructuretests|Infrastructuretests]]
-- [[_COMMUNITY_Databasetests|Databasetests]]
-- [[_COMMUNITY_Isalesclient|Isalesclient]]
-- [[_COMMUNITY_Cookie|Cookie]]
-- [[_COMMUNITY_Src|Src]]
-- [[_COMMUNITY_Orderaggregate|Orderaggregate]]
-- [[_COMMUNITY_Src|Src]]
-- [[_COMMUNITY_Itenantcontext|Itenantcontext]]
-- [[_COMMUNITY_Pagedlistextensions|Pagedlistextensions]]
-- [[_COMMUNITY_Jsonconfigurationextensions|Jsonconfigurationextensions]]
-- [[_COMMUNITY_Iemailservice|Iemailservice]]
-- [[_COMMUNITY_Allowanonymoustenantattribute|Allowanonymoustenantattribute]]
-- [[_COMMUNITY_Diagnosticids|Diagnosticids]]
-- [[_COMMUNITY_Concept|Concept]]
-- [[_COMMUNITY_Invaliddatetimeinfield|Invaliddatetimeinfield]]
-- [[_COMMUNITY_Invalidguidinfield|Invalidguidinfield]]
-- [[_COMMUNITY_Invalidguidinproperty|Invalidguidinproperty]]
-- [[_COMMUNITY_Authorupdatedclass|Authorupdatedclass]]
-- [[_COMMUNITY_Bookaddedclass|Bookaddedclass]]
-- [[_COMMUNITY_Testconstants|Testconstants]]
-- [[_COMMUNITY_Src|Src]]
-- [[_COMMUNITY_Browser|Browser]]
-- [[_COMMUNITY_Src|Src]]
-- [[_COMMUNITY_Applicationuser|Applicationuser]]
-- [[_COMMUNITY_Bookstatistics|Bookstatistics]]
-- [[_COMMUNITY_Paginationoptions|Paginationoptions]]
-- [[_COMMUNITY_Localizationoptions|Localizationoptions]]
-- [[_COMMUNITY_Instrumentation|Instrumentation]]
-- [[_COMMUNITY_Ratelimitoptions|Ratelimitoptions]]
-- [[_COMMUNITY_Currencyoptions|Currencyoptions]]
-- [[_COMMUNITY_Src|Src]]
-- [[_COMMUNITY_Accountcleanupoptions|Accountcleanupoptions]]
-- [[_COMMUNITY_Src|Src]]
-- [[_COMMUNITY_Emailoptions|Emailoptions]]
-- [[_COMMUNITY_Resourcenames|Resourcenames]]
-- [[_COMMUNITY_Multitenancyconstants|Multitenancyconstants]]
-- [[_COMMUNITY_Ihaveetag|Ihaveetag]]
-- [[_COMMUNITY_Domaineventnotifications|Domaineventnotifications]]
-- [[_COMMUNITY_Concept|Concept]]
-- [[_COMMUNITY_Concept|Concept]]
-- [[_COMMUNITY_Contributing|Contributing]]
-- [[_COMMUNITY_Getting|Getting]]
-- [[_COMMUNITY_Improvements|Improvements]]
-- [[_COMMUNITY_Favicon|Favicon]]
-- [[_COMMUNITY_Hero|Hero]]
+- [[_COMMUNITY_Community 0|Community 0]]
+- [[_COMMUNITY_Community 1|Community 1]]
+- [[_COMMUNITY_Community 2|Community 2]]
+- [[_COMMUNITY_Community 3|Community 3]]
+- [[_COMMUNITY_Community 4|Community 4]]
+- [[_COMMUNITY_Community 5|Community 5]]
+- [[_COMMUNITY_Community 6|Community 6]]
+- [[_COMMUNITY_Community 7|Community 7]]
+- [[_COMMUNITY_Community 8|Community 8]]
+- [[_COMMUNITY_Community 9|Community 9]]
+- [[_COMMUNITY_Community 10|Community 10]]
+- [[_COMMUNITY_Community 11|Community 11]]
+- [[_COMMUNITY_Community 12|Community 12]]
+- [[_COMMUNITY_Community 13|Community 13]]
+- [[_COMMUNITY_Community 14|Community 14]]
+- [[_COMMUNITY_Community 15|Community 15]]
+- [[_COMMUNITY_Community 16|Community 16]]
+- [[_COMMUNITY_Community 17|Community 17]]
+- [[_COMMUNITY_Community 18|Community 18]]
+- [[_COMMUNITY_Community 19|Community 19]]
+- [[_COMMUNITY_Community 20|Community 20]]
+- [[_COMMUNITY_Community 21|Community 21]]
+- [[_COMMUNITY_Community 22|Community 22]]
+- [[_COMMUNITY_Community 23|Community 23]]
+- [[_COMMUNITY_Community 24|Community 24]]
+- [[_COMMUNITY_Community 25|Community 25]]
+- [[_COMMUNITY_Community 26|Community 26]]
+- [[_COMMUNITY_Community 27|Community 27]]
+- [[_COMMUNITY_Community 28|Community 28]]
+- [[_COMMUNITY_Community 29|Community 29]]
+- [[_COMMUNITY_Community 30|Community 30]]
+- [[_COMMUNITY_Community 31|Community 31]]
+- [[_COMMUNITY_Community 32|Community 32]]
+- [[_COMMUNITY_Community 33|Community 33]]
+- [[_COMMUNITY_Community 34|Community 34]]
+- [[_COMMUNITY_Community 35|Community 35]]
+- [[_COMMUNITY_Community 36|Community 36]]
+- [[_COMMUNITY_Community 37|Community 37]]
+- [[_COMMUNITY_Community 38|Community 38]]
+- [[_COMMUNITY_Community 39|Community 39]]
+- [[_COMMUNITY_Community 40|Community 40]]
+- [[_COMMUNITY_Community 41|Community 41]]
+- [[_COMMUNITY_Community 42|Community 42]]
+- [[_COMMUNITY_Community 43|Community 43]]
+- [[_COMMUNITY_Community 44|Community 44]]
+- [[_COMMUNITY_Community 45|Community 45]]
+- [[_COMMUNITY_Community 46|Community 46]]
+- [[_COMMUNITY_Community 47|Community 47]]
+- [[_COMMUNITY_Community 48|Community 48]]
+- [[_COMMUNITY_Community 49|Community 49]]
+- [[_COMMUNITY_Community 50|Community 50]]
+- [[_COMMUNITY_Community 52|Community 52]]
+- [[_COMMUNITY_Community 53|Community 53]]
+- [[_COMMUNITY_Community 54|Community 54]]
+- [[_COMMUNITY_Community 55|Community 55]]
+- [[_COMMUNITY_Community 56|Community 56]]
+- [[_COMMUNITY_Community 57|Community 57]]
+- [[_COMMUNITY_Community 58|Community 58]]
+- [[_COMMUNITY_Community 59|Community 59]]
+- [[_COMMUNITY_Community 60|Community 60]]
+- [[_COMMUNITY_Community 61|Community 61]]
+- [[_COMMUNITY_Community 62|Community 62]]
+- [[_COMMUNITY_Community 63|Community 63]]
+- [[_COMMUNITY_Community 64|Community 64]]
+- [[_COMMUNITY_Community 65|Community 65]]
+- [[_COMMUNITY_Community 66|Community 66]]
+- [[_COMMUNITY_Community 67|Community 67]]
+- [[_COMMUNITY_Community 68|Community 68]]
+- [[_COMMUNITY_Community 69|Community 69]]
+- [[_COMMUNITY_Community 70|Community 70]]
+- [[_COMMUNITY_Community 72|Community 72]]
+- [[_COMMUNITY_Community 73|Community 73]]
+- [[_COMMUNITY_Community 74|Community 74]]
+- [[_COMMUNITY_Community 75|Community 75]]
+- [[_COMMUNITY_Community 76|Community 76]]
+- [[_COMMUNITY_Community 77|Community 77]]
+- [[_COMMUNITY_Community 78|Community 78]]
+- [[_COMMUNITY_Community 79|Community 79]]
+- [[_COMMUNITY_Community 80|Community 80]]
+- [[_COMMUNITY_Community 81|Community 81]]
+- [[_COMMUNITY_Community 82|Community 82]]
+- [[_COMMUNITY_Community 83|Community 83]]
+- [[_COMMUNITY_Community 84|Community 84]]
+- [[_COMMUNITY_Community 85|Community 85]]
+- [[_COMMUNITY_Community 86|Community 86]]
+- [[_COMMUNITY_Community 87|Community 87]]
+- [[_COMMUNITY_Community 88|Community 88]]
+- [[_COMMUNITY_Community 90|Community 90]]
+- [[_COMMUNITY_Community 91|Community 91]]
+- [[_COMMUNITY_Community 92|Community 92]]
+- [[_COMMUNITY_Community 95|Community 95]]
+- [[_COMMUNITY_Community 96|Community 96]]
+- [[_COMMUNITY_Community 98|Community 98]]
+- [[_COMMUNITY_Community 99|Community 99]]
+- [[_COMMUNITY_Community 100|Community 100]]
+- [[_COMMUNITY_Community 101|Community 101]]
+- [[_COMMUNITY_Community 102|Community 102]]
+- [[_COMMUNITY_Community 103|Community 103]]
+- [[_COMMUNITY_Community 104|Community 104]]
+- [[_COMMUNITY_Community 105|Community 105]]
+- [[_COMMUNITY_Community 106|Community 106]]
+- [[_COMMUNITY_Community 164|Community 164]]
+- [[_COMMUNITY_Community 165|Community 165]]
+- [[_COMMUNITY_Community 166|Community 166]]
+- [[_COMMUNITY_Community 167|Community 167]]
+- [[_COMMUNITY_Community 168|Community 168]]
 
 ## God Nodes (most connected - your core abstractions)
-1. `ToString()` - 77 edges
-2. `MartenUserStore` - 56 edges
-3. `ok()` - 52 edges
-4. `Validation()` - 52 edges
-5. `Users` - 42 edges
-6. `Log` - 39 edges
-7. `Infrastructure` - 34 edges
-8. `UserCommandHandlerTests` - 32 edges
-9. `NotFound()` - 31 edges
-10. `ProjectionCommitListener` - 30 edges
+1. `ToString()` - 76 edges
+2. `MartenUserStore` - 55 edges
+3. `ok()` - 51 edges
+4. `Validation()` - 51 edges
+5. `Users` - 41 edges
+6. `Log` - 36 edges
+7. `Infrastructure` - 33 edges
+8. `UserCommandHandlerTests` - 31 edges
+9. `NotFound()` - 30 edges
+10. `ProjectionCommitListener` - 29 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `Passkey/WebAuthn Authentication` --semantically_similar_to--> `Keycloak Identity Provider`  [INFERRED] [semantically similar]
   docs/guides/passkey-guide.md → README.md
 - `Passkey Authentication Guide` --references--> `Keycloak Identity Provider`  [INFERRED]
   docs/guides/passkey-guide.md → README.md
-- `Modular Monolith Architecture` --conceptually_related_to--> `Event Sourcing Pattern`  [INFERRED]
-  README.md → docs/architecture.md
-- `Modular Monolith Architecture` --conceptually_related_to--> `CQRS Pattern`  [INFERRED]
-  README.md → docs/architecture.md
+- `Event Sourcing Pattern` --conceptually_related_to--> `Modular Monolith Architecture`  [INFERRED]
+  docs/architecture.md → README.md
+- `CQRS Pattern` --conceptually_related_to--> `Modular Monolith Architecture`  [INFERRED]
+  docs/architecture.md → README.md
 - `ETag Optimistic Concurrency` --conceptually_related_to--> `Multi-Tenancy Data Isolation`  [INFERRED]
   docs/guides/etag-guide.md → README.md
 
@@ -156,620 +151,590 @@
 
 ## Communities
 
-### Community 0 - "Admin API Endpoints"
-Cohesion: 0.02
-Nodes (42): AdminUserEndpoints, AuthenticationService, AuthorAggregate, AuthorEndpoints, BookAggregate, BookCoverEndpoints, BookCoverHandlers, BookEndpoints (+34 more)
+### Community 0 - "Community 0"
+Cohesion: 0.01
+Nodes (58): AdminBookEndpoints, BookStore.ApiService.Commands, BookStore.ApiService.Endpoints.Admin, AdminUserEndpoints, AuthenticationService, AuthorAggregate, AuthorHandlers, BookAggregate (+50 more)
 
-### Community 1 - "Account & Tenant Integration Tests"
+### Community 1 - "Community 1"
 Cohesion: 0.03
-Nodes (23): AccountIsolationTests, AccountLockoutTests, AdminTenantTests, AdminUserTests, AuthenticationHelpers, AuthTests, ConfigurationEndpointsTests, CrossTenantAuthenticationTests (+15 more)
+Nodes (25): AccountIsolationTests, AccountLockoutTests, AdminTenantTests, AdminUserTests, AuthenticationHelpers, AuthTests, ConfigurationEndpointsTests, CrossTenantAuthenticationTests (+17 more)
 
-### Community 2 - "Book Concurrency & CRUD Tests"
-Cohesion: 0.02
-Nodes (23): BookConcurrencyTests, BookCrudTests, BookFilterRegressionTests, BookRatingTests, BookSoftDeleteTests, BookValidationTests, CorrelationTests, ErrorScenarioTests (+15 more)
-
-### Community 3 - "Author & Category CRUD Tests"
-Cohesion: 0.02
-Nodes (19): AuthorCrudTests, AuthorHelpers, BookHelpers, BookHelpersTests, CategoryConcurrencyTests, CategoryCrudTests, CategoryHelpers, CategoryOrderingTests (+11 more)
-
-### Community 4 - "Command Handlers"
-Cohesion: 0.02
-Nodes (20): AuthorHandlers, BookHandlers, BookPriceHandlers, CategoryHandlers, CultureCache, CultureCacheTests, CultureValidator, Authors (+12 more)
-
-### Community 5 - "Aggregate & Event Infrastructure"
-Cohesion: 0.02
-Nodes (23): AggregateFactory, AuthenticationStateProvider, BookStoreEventsService, BookStoreEventsServiceTests, CatalogService, CatalogServiceTests, JsonConverter, JwtAuthenticationStateProvider (+15 more)
-
-### Community 6 - "Roslyn Analyzer Rules"
-Cohesion: 0.02
-Nodes (24): AggregateApplyMethodAnalyzer, AggregateRulesAnalyzer, ApplicationServicesExtensions, ApplicationServicesExtensionsTests, TestWebHostEnvironment, CacheTags, CodeFixProvider, CommandMustBeRecordAnalyzer (+16 more)
-
-### Community 7 - "Identity Store Interfaces"
-Cohesion: 0.02
-Nodes (12): IUserEmailStore, IUserLockoutStore, IUserPasswordStore, IUserRoleStore, IUserSecurityStampStore, IUserTwoFactorStore, Log, Users (+4 more)
-
-### Community 8 - "Shopping Cart Services"
+### Community 2 - "Community 2"
 Cohesion: 0.03
-Nodes (23): AnonymousCartService, BlobStorageService, BlobStorageTests, BookSearchProjection, CachedTenantStore, EventMetadata, EventMetadataService, HandlerConventionAnalyzer (+15 more)
+Nodes (26): AddBookDialogTests, BookConcurrencyTests, BookCrudTests, BookFilterRegressionTests, BookHelpers, BookRatingTests, BookSoftDeleteTests, BookValidationTests (+18 more)
 
-### Community 9 - "Handler Unit Tests"
+### Community 3 - "Community 3"
+Cohesion: 0.02
+Nodes (16): IUserEmailStore, IUserLockoutStore, IUserPasskeyStore, IUserPasswordStore, IUserRoleStore, IUserSecurityStampStore, IUserStore, IUserTwoFactorStore (+8 more)
+
+### Community 4 - "Community 4"
+Cohesion: 0.02
+Nodes (26): AggregateApplyMethodAnalyzer, AggregateRulesAnalyzer, ApplicationServicesExtensions, ApplicationServicesExtensionsTests, TestWebHostEnvironment, CacheTags, CodeFixProvider, CommandMustBeRecordAnalyzer (+18 more)
+
+### Community 5 - "Community 5"
 Cohesion: 0.03
-Nodes (11): AuthorHandlerTests, BookHandlerTests, CategoryHandlerTests, EmailHandlers, EmailHandlersTests, EmailTemplateService, HandlerTestBase, OrderHandlerTests (+3 more)
+Nodes (16): AuthorCrudTests, AuthorHelpers, CategoryConcurrencyTests, CategoryCrudTests, CategoryHelpers, CategoryOrderingTests, ConcurrencyTests, DebugRefit (+8 more)
 
-### Community 10 - "Database & Middleware Extensions"
+### Community 6 - "Community 6"
+Cohesion: 0.03
+Nodes (18): AuthBroadcast, AuthorHandlerTests, BookHandlerTests, CategoryHandlerTests, EmailHandlers, EmailHandlersTests, EmailTemplateService, HandlerTestBase (+10 more)
+
+### Community 7 - "Community 7"
+Cohesion: 0.03
+Nodes (22): AuthenticationStateProvider, BookStoreEventsService, BookStoreEventsServiceTests, BunitTestContext, CatalogService, CatalogServiceTests, IDisposable, JsonConverter (+14 more)
+
+### Community 8 - "Community 8"
+Cohesion: 0.03
+Nodes (17): AnonymousCartService, BlobStorageService, BlobStorageTests, BookSearchProjection, BookStoreClientExtensions, Iso8601DateTimeOffsetFormatter, CurrencyService, CurrencyServiceTests (+9 more)
+
+### Community 9 - "Community 9"
 Cohesion: 0.04
 Nodes (13): DatabaseExtensions, GlobalExceptionHandler, IChangeListener, IDocumentSessionListener, IExceptionHandler, Infrastructure, Log, LoggingEnricherMiddleware (+5 more)
 
-### Community 11 - "Device Name Parsing"
-Cohesion: 0.04
-Nodes (13): DeviceNameParser, DeviceNameParserTests, HttpClientDataClass, IAsyncDisposable, IAsyncInitializer, RateLimitingExtensions, RateLimitingExtensionsTests, SseEventHelpers (+5 more)
-
-### Community 12 - "Auth Broadcast / JS Interop"
+### Community 10 - "Community 10"
 Cohesion: 0.03
-Nodes (16): AuthBroadcast, AuthorizationMessageHandler, BookStoreErrorHandler, BookStoreHeaderHandler, ClientContextService, CorsTests, DefaultTenantAuthHandler, DelegatingHandler (+8 more)
+Nodes (19): AdminAuthorEndpoints, BookStore.ApiService.Commands, BookStore.ApiService.Endpoints.Admin, AdminCategoryEndpoints, BookStore.ApiService.Commands, BookStore.ApiService.Endpoints.Admin, AdminPublisherEndpoints, BookStore.ApiService.Commands (+11 more)
 
-### Community 13 - "Admin Author Endpoints"
-Cohesion: 0.03
-Nodes (17): AdminAuthorEndpoints, BookStore.ApiService.Commands, BookStore.ApiService.Endpoints.Admin, AdminBookEndpoints, BookStore.ApiService.Commands, BookStore.ApiService.Endpoints.Admin, AdminCategoryEndpoints, BookStore.ApiService.Commands (+9 more)
-
-### Community 14 - "BookStore Client Extensions"
-Cohesion: 0.04
-Nodes (12): BookStoreClientExtensions, Iso8601DateTimeOffsetFormatter, BunitTestContext, CurrencyService, CurrencyServiceTests, DefaultUrlParameterFormatter, IDisposable, ITenantsClient (+4 more)
-
-### Community 15 - "Documentation Guides"
+### Community 11 - "Community 11"
 Cohesion: 0.06
 Nodes (66): Analyzer Rules Guide, ApiService Copilot Instructions, Aspire Deployment Guide, Aspire Orchestration Guide, Authentication Guide, Caching Guide, Client Copilot Instructions, BookStore.Client README (+58 more)
 
-### Community 16 - "Projection Unit Tests"
-Cohesion: 0.05
-Nodes (9): AuthorProjectionTests, AuthorStatisticsProjectionTests, BookSearchProjectionTests, CategoryProjectionTests, CategoryStatisticsProjectionTests, IPagedList, PagedListWrapper, PublisherProjection (+1 more)
+### Community 12 - "Community 12"
+Cohesion: 0.04
+Nodes (23): addItem(), clear(), getCart(), getCount(), getItems(), normalizeQuantity(), removeItem(), setCart() (+15 more)
 
-### Community 17 - "Architecture Documentation"
+### Community 13 - "Community 13"
+Cohesion: 0.05
+Nodes (11): CachedTenantStore, DatabaseSeeder, ITenantStore, Log, Seeding, Log, Tenants, MartenTenantStore (+3 more)
+
+### Community 14 - "Community 14"
 Cohesion: 0.05
 Nodes (65): Agent Development Guide, API Client Generation Guide, API Conventions Guide, CQRS Pattern, Event Sourcing Pattern, Modular Monolith Architecture, Architecture Overview, CI/CD Pipelines (GitHub Actions) (+57 more)
 
-### Community 18 - "Database Seeder"
-Cohesion: 0.06
-Nodes (9): DatabaseSeeder, Log, Seeding, Apply(), CancelSale(), ScheduleSale(), TruncateToSeconds(), SaleAggregateTests (+1 more)
+### Community 15 - "Community 15"
+Cohesion: 0.05
+Nodes (10): DeviceNameParser, DeviceNameParserTests, HttpClientDataClass, IAsyncDisposable, IAsyncInitializer, RateLimitingExtensions, RateLimitingExtensionsTests, ValidDateTimeUsage (+2 more)
 
-### Community 19 - "Blazor Component Tests"
-Cohesion: 0.04
-Nodes (10): AddBookDialogTests, AllLanguageSelectorTests, BunitTestContext, CurrencySelectorTests, IConfigurationClient, LanguageSelectorTests, LanguageService, LanguageServiceTests (+2 more)
+### Community 16 - "Community 16"
+Cohesion: 0.05
+Nodes (12): AllLanguageSelectorTests, BookDetailsMenuTests, FailingSseHandler, BunitTestContext, CurrencySelectorTests, HttpMessageHandler, IConfigurationClient, LanguageSelectorTests (+4 more)
 
-### Community 20 - "Notification Service"
+### Community 17 - "Community 17"
 Cohesion: 0.06
+Nodes (9): AuthorProjectionTests, AuthorStatisticsProjectionTests, BookSearchProjectionTests, CategoryProjectionTests, CategoryStatisticsProjectionTests, IPagedList, PagedListWrapper, PublisherProjection (+1 more)
+
+### Community 18 - "Community 18"
+Cohesion: 0.07
 Nodes (8): INotificationService, Log, Notifications, NotificationEndpoints, NotificationEndpointsRateLimitingTests, INotificationService, NotificationService, RedisNotificationService
 
-### Community 21 - "Account Cleanup & Passkey"
-Cohesion: 0.05
-Nodes (11): AccountCleanupHandlers, BackgroundService, IUserPasskeyStore, IUserStore, Log, Maintenance, PasskeyAccountRecoveryProblemDetailsTests, StubPasskeyStore (+3 more)
-
-### Community 22 - "JSON Serialization Tests"
+### Community 19 - "Community 19"
 Cohesion: 0.09
 Nodes (4): JsonSerializationTests, TestDto, PartialDateTests, ProblemDetailsExtensionsTests
 
-### Community 23 - "Analyzer Code Fix Tests"
-Cohesion: 0.09
-Nodes (7): CSharpCodeFixTest, CSharpCodeFixVerifier, Test, EventMustBeRecordAnalyzerTests, UseCreateVersion7AnalyzerTests, UseDateTimeOffsetUtcNowAnalyzerTests, UseGenericMathAnalyzerTests
-
-### Community 24 - "Anonymous Cart Operations"
-Cohesion: 0.11
-Nodes (14): addItem(), clear(), getCart(), getCount(), getItems(), normalizeQuantity(), removeItem(), setCart() (+6 more)
-
-### Community 25 - "Author Statistics Projection"
+### Community 20 - "Community 20"
 Cohesion: 0.08
 Nodes (12): AuthorStatistics, AuthorStatisticsGrouper, AuthorStatisticsProjectionBuilder, BookStatisticsProjection, CategoryStatistics, CategoryStatisticsGrouper, CategoryStatisticsProjectionBuilder, IAggregateGrouper (+4 more)
 
-### Community 26 - "Integration Test Setup Hooks"
-Cohesion: 0.09
+### Community 21 - "Community 21"
+Cohesion: 0.12
+Nodes (7): CSharpCodeFixTest, CSharpCodeFixVerifier, Test, EventMustBeRecordAnalyzerTests, UseCreateVersion7AnalyzerTests, UseDateTimeOffsetUtcNowAnalyzerTests, UseGenericMathAnalyzerTests
+
+### Community 22 - "Community 22"
+Cohesion: 0.11
+Nodes (5): CultureCache, CultureCacheTests, CultureValidator, ValidationAttribute, ValidCultureAttribute
+
+### Community 23 - "Community 23"
+Cohesion: 0.1
+Nodes (8): AccountCleanupHandlers, BackgroundService, Log, Maintenance, PasskeyAccountRecoveryProblemDetailsTests, StubUserManager, UnverifiedAccountCleanupService, UserManager
+
+### Community 24 - "Community 24"
+Cohesion: 0.11
 Nodes (5): GlobalHooks, IHostedService, JwtAlgorithmResolver, JwtAlgorithmWarningService, WebTests
 
-### Community 27 - "Book Details Menu Tests"
-Cohesion: 0.24
-Nodes (3): BookDetailsMenuTests, FailingSseHandler, HttpMessageHandler
-
-### Community 28 - "Client Contracts / DTOs"
-Cohesion: 0.21
+### Community 25 - "Community 25"
+Cohesion: 0.12
 Nodes (16): BookStore.Client, CreateAuthorRequest, CreateBookRequest, CreateCategoryRequest, CreatePublisherRequest, PasskeyCreationOptionsResponse, PasskeyCreationRequest, PasskeyInfo (+8 more)
 
-### Community 29 - "Error Localization Service"
-Cohesion: 0.19
-Nodes (2): ErrorLocalizationService, ErrorLocalizationServiceTests
+### Community 26 - "Community 26"
+Cohesion: 0.16
+Nodes (3): AggregateFactory, QueryInvalidationService, QueryInvalidationServiceTests
 
-### Community 30 - "Configuration Validation Tests"
-Cohesion: 0.23
+### Community 27 - "Community 27"
+Cohesion: 0.25
 Nodes (1): ConfigurationValidationTests
 
-### Community 31 - "Orders Logging"
-Cohesion: 0.21
-Nodes (3): Log, Orders, OrderHandlers
+### Community 28 - "Community 28"
+Cohesion: 0.24
+Nodes (1): BookHelpersTests
 
-### Community 32 - "Error Codes"
-Cohesion: 0.26
+### Community 29 - "Community 29"
+Cohesion: 0.23
+Nodes (2): ErrorLocalizationService, ErrorLocalizationServiceTests
+
+### Community 30 - "Community 30"
+Cohesion: 0.15
 Nodes (12): Admin, Auth, Authors, Books, Cart, Categories, Checkout, ErrorCodes (+4 more)
 
-### Community 33 - "Identity Client Interface"
-Cohesion: 0.15
+### Community 31 - "Community 31"
+Cohesion: 0.17
 Nodes (1): IIdentityClient
 
-### Community 34 - "Book Sale & Pricing"
-Cohesion: 0.2
+### Community 32 - "Community 32"
+Cohesion: 0.24
+Nodes (3): Log, Orders, OrderHandlers
+
+### Community 33 - "Community 33"
+Cohesion: 0.31
+Nodes (8): ApiRequest, ApiResult, fetch(), main(), orchestrate(), print_results(), Parallel API Orchestrator Calls multiple APIs concurrently using asyncio + aioht, Fire all requests in parallel and return results in the same order.
+
+### Community 34 - "Community 34"
+Cohesion: 0.22
 Nodes (3): CalculateDiscountedPrice(), IsActive(), BookSaleTests
 
-### Community 35 - "Parallel API Orchestrator"
-Cohesion: 0.4
-Nodes (9): ApiRequest, ApiResult, fetch(), main(), ok(), orchestrate(), print_results(), Parallel API Orchestrator Calls multiple APIs concurrently using asyncio + aioht (+1 more)
-
-### Community 36 - "Parallel API Calls"
-Cohesion: 0.4
+### Community 35 - "Community 35"
+Cohesion: 0.31
 Nodes (8): ApiRequest, ApiResult, fetch(), main(), orchestrate(), print_results(), Parallel API orchestrator using asyncio + aiohttp.  Usage:     python parallel_a, Fetch all requests in parallel, bounded by a semaphore.
 
-### Community 37 - "UCP Profile Tests"
-Cohesion: 0.2
+### Community 36 - "Community 36"
+Cohesion: 0.22
 Nodes (1): UcpProfileTests
 
-### Community 38 - "Marten Event Store Config"
-Cohesion: 0.33
+### Community 37 - "Community 37"
+Cohesion: 0.39
 Nodes (1): MartenConfigurationExtensions
 
-### Community 39 - "Forwarded Headers Extensions"
-Cohesion: 0.25
-Nodes (2): ForwardedHeadersExtensions, ForwardedHeadersExtensionsTests
-
-### Community 40 - "Authorization Policy Extensions"
-Cohesion: 0.25
-Nodes (2): AuthorizationPolicyExtensions, AuthorizationPolicyExtensionsTests
-
-### Community 41 - "Analyzer Verifier Tests"
+### Community 38 - "Community 38"
 Cohesion: 0.33
 Nodes (3): CSharpAnalyzerTest, CSharpAnalyzerVerifier, Test
 
-### Community 42 - "Security Headers Tests"
+### Community 39 - "Community 39"
 Cohesion: 0.33
+Nodes (2): ForwardedHeadersExtensions, ForwardedHeadersExtensionsTests
+
+### Community 40 - "Community 40"
+Cohesion: 0.33
+Nodes (2): AuthorizationPolicyExtensions, AuthorizationPolicyExtensionsTests
+
+### Community 41 - "Community 41"
+Cohesion: 0.4
 Nodes (1): SecurityHeadersTests
 
-### Community 43 - "ETag Validation Middleware"
-Cohesion: 0.38
+### Community 42 - "Community 42"
+Cohesion: 0.4
 Nodes (2): ETagValidationMiddleware, ETagValidationMiddlewareExtensions
 
-### Community 44 - "Tenant Security Middleware"
-Cohesion: 0.38
+### Community 43 - "Community 43"
+Cohesion: 0.4
 Nodes (2): TenantSecurityMiddleware, TenantSecurityMiddlewareExtensions
 
-### Community 45 - "Tenant Store Interface"
-Cohesion: 0.33
+### Community 44 - "Community 44"
+Cohesion: 0.4
 Nodes (1): ITenantStore
 
-### Community 46 - "Cover Image Format Extensions"
-Cohesion: 0.33
+### Community 45 - "Community 45"
+Cohesion: 0.4
 Nodes (1): CoverImageFormatExtensions
 
-### Community 47 - "OpenAPI Documentation Tests"
-Cohesion: 0.4
+### Community 46 - "Community 46"
+Cohesion: 0.5
+Nodes (1): LocalizationHelperTests
+
+### Community 47 - "Community 47"
+Cohesion: 0.5
 Nodes (1): ApiDocumentationTests
 
-### Community 48 - "Frontend Health Tests"
-Cohesion: 0.4
+### Community 48 - "Community 48"
+Cohesion: 0.5
 Nodes (1): FrontendTests
 
-### Community 49 - "System Client Interface"
-Cohesion: 0.4
+### Community 49 - "Community 49"
+Cohesion: 0.5
 Nodes (1): ISystemClient
 
-### Community 50 - "Orders Client Interface"
-Cohesion: 0.4
+### Community 50 - "Community 50"
+Cohesion: 0.5
 Nodes (1): IOrdersClient
 
-### Community 51 - "Passkey JS Utilities"
-Cohesion: 0.6
-Nodes (3): base64UrlToUint8Array(), bufferToBase64Url(), normalizeKeys()
-
-### Community 52 - "SignalR Hub Filter"
-Cohesion: 0.4
+### Community 52 - "Community 52"
+Cohesion: 0.5
 Nodes (2): IHubFilter, LoggingHubFilter
 
-### Community 53 - "Checkout Session Aggregate"
+### Community 53 - "Community 53"
 Cohesion: 0.5
 Nodes (2): CheckoutSessionAggregate, CheckoutSessionStatus
 
-### Community 54 - "Order Summary Projection"
-Cohesion: 0.4
+### Community 54 - "Community 54"
+Cohesion: 0.5
 Nodes (1): OrderSummaryProjection
 
-### Community 55 - "Author Projection"
-Cohesion: 0.4
+### Community 55 - "Community 55"
+Cohesion: 0.5
 Nodes (1): AuthorProjection
 
-### Community 56 - "Category Projection"
-Cohesion: 0.4
+### Community 56 - "Community 56"
+Cohesion: 0.5
 Nodes (1): CategoryProjection
 
-### Community 57 - "Security Headers Middleware"
-Cohesion: 0.5
+### Community 57 - "Community 57"
+Cohesion: 0.67
 Nodes (1): SecurityHeadersMiddleware
 
-### Community 58 - "Tenant Context"
-Cohesion: 0.4
+### Community 58 - "Community 58"
+Cohesion: 0.5
 Nodes (2): ITenantContext, TenantContext
 
-### Community 59 - "Wolverine Messaging Config"
-Cohesion: 0.5
+### Community 59 - "Community 59"
+Cohesion: 0.67
 Nodes (1): WolverineConfigurationExtensions
 
-### Community 60 - "Emailvalidator"
-Cohesion: 0.5
+### Community 60 - "Community 60"
+Cohesion: 0.67
 Nodes (1): EmailValidator
 
-### Community 61 - "Invaliddatetimenow"
-Cohesion: 0.5
-Nodes (1): InvalidDateTimeNow
-
-### Community 62 - "Invaliddatetimeutcnow"
-Cohesion: 0.5
-Nodes (1): InvalidDateTimeUtcNow
-
-### Community 63 - "Invalidguidinmethod"
-Cohesion: 0.5
-Nodes (1): InvalidGuidInMethod
-
-### Community 64 - "Classevents"
-Cohesion: 0.67
-Nodes (2): AuthorUpdated, BookAdded
-
-### Community 65 - "Securityheadersmiddlewaretests"
-Cohesion: 0.5
-Nodes (1): SecurityHeadersMiddlewareTests
-
-### Community 66 - "Handlertestbase"
-Cohesion: 0.5
-Nodes (1): HandlerTestBase
-
-### Community 67 - "Infrastructuretests"
-Cohesion: 0.5
-Nodes (1): InfrastructureTests
-
-### Community 68 - "Databasetests"
-Cohesion: 0.5
-Nodes (1): DatabaseTests
-
-### Community 69 - "Isalesclient"
-Cohesion: 0.5
-Nodes (1): ISalesClient
-
-### Community 70 - "Cookie"
-Cohesion: 0.67
-Nodes (2): getCookie(), setCookie()
-
-### Community 71 - "Src"
-Cohesion: 0.67
-Nodes (2): Icons, UIConstants
-
-### Community 72 - "Orderaggregate"
-Cohesion: 0.5
-Nodes (1): OrderAggregate
-
-### Community 73 - "Src"
-Cohesion: 0.5
-Nodes (1): WolverineETagMiddleware
-
-### Community 74 - "Itenantcontext"
-Cohesion: 0.5
-Nodes (1): ITenantContext
-
-### Community 75 - "Pagedlistextensions"
-Cohesion: 0.5
-Nodes (1): PagedListExtensions
-
-### Community 76 - "Jsonconfigurationextensions"
-Cohesion: 0.5
-Nodes (1): JsonConfigurationExtensions
-
-### Community 77 - "Iemailservice"
-Cohesion: 0.5
-Nodes (1): IEmailService
-
-### Community 78 - "Allowanonymoustenantattribute"
-Cohesion: 0.5
-Nodes (2): AllowAnonymousTenantAttribute, Attribute
-
-### Community 79 - "Diagnosticids"
-Cohesion: 0.67
-Nodes (2): DiagnosticCategories, DiagnosticIds
-
-### Community 80 - "Concept"
+### Community 61 - "Community 61"
 Cohesion: 0.5
 Nodes (4): Bogus Test Data, NSubstitute Mocking, TUnit Test Framework, Testing Guide
 
-### Community 81 - "Invaliddatetimeinfield"
+### Community 62 - "Community 62"
 Cohesion: 0.67
-Nodes (1): InvalidDateTimeInField
+Nodes (1): InvalidDateTimeNow
 
-### Community 82 - "Invalidguidinfield"
+### Community 63 - "Community 63"
 Cohesion: 0.67
-Nodes (1): InvalidGuidInField
+Nodes (1): InvalidDateTimeUtcNow
 
-### Community 83 - "Invalidguidinproperty"
+### Community 64 - "Community 64"
 Cohesion: 0.67
-Nodes (1): InvalidGuidInProperty
+Nodes (1): InvalidGuidInMethod
 
-### Community 84 - "Authorupdatedclass"
+### Community 65 - "Community 65"
 Cohesion: 0.67
-Nodes (1): AuthorUpdated
+Nodes (2): AuthorUpdated, BookAdded
 
-### Community 85 - "Bookaddedclass"
+### Community 66 - "Community 66"
 Cohesion: 0.67
-Nodes (1): BookAdded
+Nodes (1): SecurityHeadersMiddlewareTests
 
-### Community 86 - "Testconstants"
+### Community 67 - "Community 67"
 Cohesion: 0.67
-Nodes (1): TestConstants
+Nodes (1): HandlerTestBase
 
-### Community 87 - "Src"
+### Community 68 - "Community 68"
 Cohesion: 0.67
-Nodes (1): UpdateBookRequest
+Nodes (1): InfrastructureTests
 
-### Community 88 - "Browser"
+### Community 69 - "Community 69"
 Cohesion: 0.67
-Nodes (1): getBrowserInfo()
+Nodes (1): DatabaseTests
 
-### Community 89 - "Src"
+### Community 70 - "Community 70"
 Cohesion: 0.67
-Nodes (1): Tenant
+Nodes (1): ISalesClient
 
-### Community 90 - "Applicationuser"
+### Community 72 - "Community 72"
 Cohesion: 0.67
-Nodes (1): ApplicationUser
+Nodes (2): Icons, UIConstants
 
-### Community 91 - "Bookstatistics"
+### Community 73 - "Community 73"
 Cohesion: 0.67
-Nodes (1): BookStatistics
+Nodes (1): OrderAggregate
 
-### Community 92 - "Paginationoptions"
+### Community 74 - "Community 74"
 Cohesion: 0.67
-Nodes (1): Validate()
+Nodes (1): WolverineETagMiddleware
 
-### Community 93 - "Localizationoptions"
+### Community 75 - "Community 75"
 Cohesion: 0.67
-Nodes (1): Validate()
+Nodes (1): ITenantContext
 
-### Community 94 - "Instrumentation"
+### Community 76 - "Community 76"
 Cohesion: 0.67
-Nodes (1): Instrumentation
+Nodes (1): PagedListExtensions
 
-### Community 95 - "Ratelimitoptions"
+### Community 77 - "Community 77"
 Cohesion: 0.67
-Nodes (1): RateLimitOptions
+Nodes (1): JsonConfigurationExtensions
 
-### Community 96 - "Currencyoptions"
+### Community 78 - "Community 78"
 Cohesion: 0.67
-Nodes (1): Validate()
+Nodes (1): IEmailService
 
-### Community 97 - "Src"
+### Community 79 - "Community 79"
 Cohesion: 0.67
-Nodes (1): TenantConstants
+Nodes (2): AllowAnonymousTenantAttribute, Attribute
 
-### Community 98 - "Accountcleanupoptions"
+### Community 80 - "Community 80"
 Cohesion: 0.67
-Nodes (1): AccountCleanupOptions
+Nodes (2): DiagnosticCategories, DiagnosticIds
 
-### Community 99 - "Src"
-Cohesion: 0.67
-Nodes (1): UcpProfileOptions
-
-### Community 100 - "Emailoptions"
-Cohesion: 0.67
-Nodes (1): EmailOptions
-
-### Community 101 - "Resourcenames"
-Cohesion: 0.67
-Nodes (1): ResourceNames
-
-### Community 102 - "Multitenancyconstants"
-Cohesion: 0.67
-Nodes (1): MultiTenancyConstants
-
-### Community 103 - "Ihaveetag"
-Cohesion: 0.67
-Nodes (1): IHaveETag
-
-### Community 104 - "Domaineventnotifications"
-Cohesion: 0.67
-Nodes (1): IDomainEventNotification
-
-### Community 105 - "Concept"
+### Community 81 - "Community 81"
 Cohesion: 0.67
 Nodes (3): Server GC Configuration, Tiered Compilation / Dynamic PGO, Performance Guide
 
-### Community 106 - "Concept"
+### Community 82 - "Community 82"
+Cohesion: 1.0
+Nodes (1): InvalidDateTimeInField
+
+### Community 83 - "Community 83"
+Cohesion: 1.0
+Nodes (1): InvalidGuidInField
+
+### Community 84 - "Community 84"
+Cohesion: 1.0
+Nodes (1): InvalidGuidInProperty
+
+### Community 85 - "Community 85"
+Cohesion: 1.0
+Nodes (1): AuthorUpdated
+
+### Community 86 - "Community 86"
+Cohesion: 1.0
+Nodes (1): BookAdded
+
+### Community 87 - "Community 87"
+Cohesion: 1.0
+Nodes (1): TestConstants
+
+### Community 88 - "Community 88"
+Cohesion: 1.0
+Nodes (1): UpdateBookRequest
+
+### Community 90 - "Community 90"
+Cohesion: 1.0
+Nodes (1): Tenant
+
+### Community 91 - "Community 91"
+Cohesion: 1.0
+Nodes (1): ApplicationUser
+
+### Community 92 - "Community 92"
+Cohesion: 1.0
+Nodes (1): BookStatistics
+
+### Community 95 - "Community 95"
+Cohesion: 1.0
+Nodes (1): Instrumentation
+
+### Community 96 - "Community 96"
+Cohesion: 1.0
+Nodes (1): RateLimitOptions
+
+### Community 98 - "Community 98"
+Cohesion: 1.0
+Nodes (1): TenantConstants
+
+### Community 99 - "Community 99"
+Cohesion: 1.0
+Nodes (1): AccountCleanupOptions
+
+### Community 100 - "Community 100"
+Cohesion: 1.0
+Nodes (1): UcpProfileOptions
+
+### Community 101 - "Community 101"
+Cohesion: 1.0
+Nodes (1): EmailOptions
+
+### Community 102 - "Community 102"
+Cohesion: 1.0
+Nodes (1): ResourceNames
+
+### Community 103 - "Community 103"
+Cohesion: 1.0
+Nodes (1): MultiTenancyConstants
+
+### Community 104 - "Community 104"
+Cohesion: 1.0
+Nodes (1): IHaveETag
+
+### Community 105 - "Community 105"
+Cohesion: 1.0
+Nodes (1): IDomainEventNotification
+
+### Community 106 - "Community 106"
 Cohesion: 1.0
 Nodes (2): PartialDate Value Object, BookStore.Shared README
 
-### Community 221 - "Contributing"
+### Community 164 - "Community 164"
 Cohesion: 1.0
 Nodes (1): Contributing Guide
 
-### Community 222 - "Getting"
+### Community 165 - "Community 165"
 Cohesion: 1.0
 Nodes (1): Getting Started Guide
 
-### Community 223 - "Improvements"
+### Community 166 - "Community 166"
 Cohesion: 1.0
 Nodes (1): Possible Improvements
 
-### Community 224 - "Favicon"
+### Community 167 - "Community 167"
 Cohesion: 1.0
 Nodes (1): BookStore Favicon
 
-### Community 225 - "Hero"
+### Community 168 - "Community 168"
 Cohesion: 1.0
 Nodes (1): BookStore Hero Banner
 
 ## Knowledge Gaps
-- **42 isolated node(s):** `Fire all requests in parallel and return results in the same order.`, `Fetch all requests in parallel, bounded by a semaphore.`, `Contributing Guide`, `Getting Started Guide`, `Possible Improvements` (+37 more)
+- **134 isolated node(s):** `DebugRefit`, `Parallel API Orchestrator Calls multiple APIs concurrently using asyncio + aioht`, `Fire all requests in parallel and return results in the same order.`, `ApiRequest`, `Parallel API orchestrator using asyncio + aiohttp.  Usage:     python parallel_a` (+129 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **Thin community `Error Localization Service`** (16 nodes): `ErrorLocalizationService`, `.GetLocalizedMessage()`, `.IsTechnicalMessage()`, `ErrorLocalizationServiceTests`, `.GetLocalizedMessage_ReturnsConnectionError_WhenFetchOrNetwork()`, `.GetLocalizedMessage_ReturnsDefault_WhenTypeNotFound()`, `.GetLocalizedMessage_ReturnsDefaultError_WhenTechnicalMessageDetected()`, `.GetLocalizedMessage_ReturnsLocalizedCode_WhenCodeExists()`, `.GetLocalizedMessage_ReturnsMessage_WhenCodeAndTypeNotFoundButMessageIsSafe()`, `.GetLocalizedMessage_ReturnsTypeDefault_ForVariousTypes()`, `.GetLocalizedMessage_ReturnsTypeDefault_WhenCodeNotFoundButTypeExists()`, `.GetLocalizedMessage_StringOverload_ReturnsDefault_WhenNullOrEmpty()`, `ErrorLocalizationService.cs`, `ErrorLocalizationServiceTests.cs`, `ErrorLocalizationService.cs`, `ErrorLocalizationServiceTests.cs`
+- **Thin community `Community 27`** (15 nodes): `ConfigurationValidationTests`, `.LocalizationOptions_DefaultCultureEmpty_FailsValidation()`, `.LocalizationOptions_DefaultCultureInSupportedCulturesCaseInsensitive_PassesValidation()`, `.LocalizationOptions_DefaultCultureNotInSupportedCultures_FailsValidation()`, `.LocalizationOptions_SupportedCulturesEmpty_FailsValidation()`, `.LocalizationOptions_ValidConfiguration_PassesValidation()`, `.PaginationOptions_DefaultPageSizeGreaterThanMaxPageSize_FailsValidation()`, `.PaginationOptions_DefaultPageSizeNegative_FailsValidation()`, `.PaginationOptions_DefaultPageSizeTooLarge_FailsValidation()`, `.PaginationOptions_DefaultPageSizeZero_FailsValidation()`, `.PaginationOptions_MaxPageSizeNegative_FailsValidation()`, `.PaginationOptions_MaxPageSizeZero_FailsValidation()`, `.PaginationOptions_ValidConfiguration_PassesValidation()`, `.ValidateModel()`, `ConfigurationValidationTests.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Configuration Validation Tests`** (16 nodes): `ConfigurationValidationTests`, `.LocalizationOptions_DefaultCultureEmpty_FailsValidation()`, `.LocalizationOptions_DefaultCultureInSupportedCulturesCaseInsensitive_PassesValidation()`, `.LocalizationOptions_DefaultCultureNotInSupportedCultures_FailsValidation()`, `.LocalizationOptions_SupportedCulturesEmpty_FailsValidation()`, `.LocalizationOptions_ValidConfiguration_PassesValidation()`, `.PaginationOptions_DefaultPageSizeGreaterThanMaxPageSize_FailsValidation()`, `.PaginationOptions_DefaultPageSizeNegative_FailsValidation()`, `.PaginationOptions_DefaultPageSizeTooLarge_FailsValidation()`, `.PaginationOptions_DefaultPageSizeZero_FailsValidation()`, `.PaginationOptions_MaxPageSizeNegative_FailsValidation()`, `.PaginationOptions_MaxPageSizeZero_FailsValidation()`, `.PaginationOptions_ValidConfiguration_PassesValidation()`, `.ValidateModel()`, `ConfigurationValidationTests.cs`, `ConfigurationValidationTests.cs`
+- **Thin community `Community 28`** (15 nodes): `.IsPreRelease()`, `BookHelpersTests`, `.IsPreRelease_WithCurrentYearButFutureMonth_ReturnsTrue()`, `.IsPreRelease_WithCurrentYearButPastMonth_ReturnsFalse()`, `.IsPreRelease_WithFutureCompleteDate_ReturnsTrue()`, `.IsPreRelease_WithFutureYearMonth_ReturnsTrue()`, `.IsPreRelease_WithFutureYearOnly_ReturnsTrue()`, `.IsPreRelease_WithNullPublicationDate_ReturnsFalse()`, `.IsPreRelease_WithPastCompleteDate_ReturnsFalse()`, `.IsPreRelease_WithPastYearMonth_ReturnsFalse()`, `.IsPreRelease_WithPastYearOnly_ReturnsFalse()`, `.IsPreRelease_WithTodayDate_ReturnsFalse()`, `.IsPreRelease_WithTomorrowDate_ReturnsTrue()`, `.IsPreRelease_WithYesterdayDate_ReturnsFalse()`, `BookHelpersTests.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Identity Client Interface`** (13 nodes): `IIdentityClient`, `.AddPasswordAsync()`, `.ChangePasswordAsync()`, `.ConfirmEmailAsync()`, `.GetPasswordStatusAsync()`, `.LoginAsync()`, `.LogoutAsync()`, `.RefreshTokenAsync()`, `.RegisterAsync()`, `.RemovePasswordAsync()`, `.ResendVerificationAsync()`, `IIdentityClient.cs`, `IIdentityClient.cs`
+- **Thin community `Community 29`** (14 nodes): `ErrorLocalizationService`, `.GetLocalizedMessage()`, `.IsTechnicalMessage()`, `ErrorLocalizationServiceTests`, `.GetLocalizedMessage_ReturnsConnectionError_WhenFetchOrNetwork()`, `.GetLocalizedMessage_ReturnsDefault_WhenTypeNotFound()`, `.GetLocalizedMessage_ReturnsDefaultError_WhenTechnicalMessageDetected()`, `.GetLocalizedMessage_ReturnsLocalizedCode_WhenCodeExists()`, `.GetLocalizedMessage_ReturnsMessage_WhenCodeAndTypeNotFoundButMessageIsSafe()`, `.GetLocalizedMessage_ReturnsTypeDefault_ForVariousTypes()`, `.GetLocalizedMessage_ReturnsTypeDefault_WhenCodeNotFoundButTypeExists()`, `.GetLocalizedMessage_StringOverload_ReturnsDefault_WhenNullOrEmpty()`, `ErrorLocalizationService.cs`, `ErrorLocalizationServiceTests.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `UCP Profile Tests`** (10 nodes): `UcpProfileTests.cs`, `UcpProfileTests`, `.GetUcpProfile_ShouldContainCatalogCapability()`, `.GetUcpProfile_ShouldContainCheckoutCapability()`, `.GetUcpProfile_ShouldContainCheckoutRestService()`, `.GetUcpProfile_ShouldContainSimulatedPaymentHandler()`, `.GetUcpProfile_ShouldContainUcpVersion()`, `.GetUcpProfile_ShouldReturnJsonContentType()`, `.GetUcpProfile_ShouldReturnOk()`, `UcpProfileTests.cs`
+- **Thin community `Community 31`** (12 nodes): `IIdentityClient`, `.AddPasswordAsync()`, `.ChangePasswordAsync()`, `.ConfirmEmailAsync()`, `.GetPasswordStatusAsync()`, `.LoginAsync()`, `.LogoutAsync()`, `.RefreshTokenAsync()`, `.RegisterAsync()`, `.RemovePasswordAsync()`, `.ResendVerificationAsync()`, `IIdentityClient.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Marten Event Store Config`** (10 nodes): `MartenConfigurationExtensions`, `.AddMartenEventStore()`, `.ConfigureEventMetadata()`, `.ConfigureIndexes()`, `.ConfigureJsonSerialization()`, `.RegisterChangeListeners()`, `.RegisterEventTypes()`, `.RegisterProjections()`, `MartenConfigurationExtensions.cs`, `MartenConfigurationExtensions.cs`
+- **Thin community `Community 36`** (9 nodes): `UcpProfileTests.cs`, `UcpProfileTests`, `.GetUcpProfile_ShouldContainCatalogCapability()`, `.GetUcpProfile_ShouldContainCheckoutCapability()`, `.GetUcpProfile_ShouldContainCheckoutRestService()`, `.GetUcpProfile_ShouldContainSimulatedPaymentHandler()`, `.GetUcpProfile_ShouldContainUcpVersion()`, `.GetUcpProfile_ShouldReturnJsonContentType()`, `.GetUcpProfile_ShouldReturnOk()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Forwarded Headers Extensions`** (8 nodes): `ForwardedHeadersExtensions`, `.ConfigureSecureForwardedHeaders()`, `ForwardedHeadersExtensionsTests`, `.ConfigureSecureForwardedHeaders_ShouldApplySecureDefaults()`, `ForwardedHeadersExtensions.cs`, `ForwardedHeadersExtensionsTests.cs`, `ForwardedHeadersExtensions.cs`, `ForwardedHeadersExtensionsTests.cs`
+- **Thin community `Community 37`** (9 nodes): `MartenConfigurationExtensions`, `.AddMartenEventStore()`, `.ConfigureEventMetadata()`, `.ConfigureIndexes()`, `.ConfigureJsonSerialization()`, `.RegisterChangeListeners()`, `.RegisterEventTypes()`, `.RegisterProjections()`, `MartenConfigurationExtensions.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Authorization Policy Extensions`** (8 nodes): `AuthorizationPolicyExtensions`, `.AddSystemAdminPolicy()`, `AuthorizationPolicyExtensionsTests`, `.AddSystemAdminPolicy_ShouldRequireAdminRoleAndDefaultTenantClaim()`, `AuthorizationPolicyExtensions.cs`, `AuthorizationPolicyExtensionsTests.cs`, `AuthorizationPolicyExtensions.cs`, `AuthorizationPolicyExtensionsTests.cs`
+- **Thin community `Community 39`** (6 nodes): `ForwardedHeadersExtensions`, `.ConfigureSecureForwardedHeaders()`, `ForwardedHeadersExtensionsTests`, `.ConfigureSecureForwardedHeaders_ShouldApplySecureDefaults()`, `ForwardedHeadersExtensions.cs`, `ForwardedHeadersExtensionsTests.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Security Headers Tests`** (7 nodes): `SecurityHeadersTests`, `.ClassSetup()`, `.DevelopmentEnvironment_ShouldNotEmitHstsHeader()`, `.GetHeaderValue()`, `.GetRequest_ShouldIncludeBaselineSecurityHeaders()`, `SecurityHeadersTests.cs`, `SecurityHeadersTests.cs`
+- **Thin community `Community 40`** (6 nodes): `AuthorizationPolicyExtensions`, `.AddSystemAdminPolicy()`, `AuthorizationPolicyExtensionsTests`, `.AddSystemAdminPolicy_ShouldRequireAdminRoleAndDefaultTenantClaim()`, `AuthorizationPolicyExtensions.cs`, `AuthorizationPolicyExtensionsTests.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `ETag Validation Middleware`** (7 nodes): `ETagValidationMiddleware`, `.InvokeAsync()`, `.IsUpdateOrDeleteAction()`, `ETagValidationMiddlewareExtensions`, `.UseETagValidation()`, `ETagValidationMiddleware.cs`, `ETagValidationMiddleware.cs`
+- **Thin community `Community 41`** (6 nodes): `SecurityHeadersTests`, `.ClassSetup()`, `.DevelopmentEnvironment_ShouldNotEmitHstsHeader()`, `.GetHeaderValue()`, `.GetRequest_ShouldIncludeBaselineSecurityHeaders()`, `SecurityHeadersTests.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Tenant Security Middleware`** (7 nodes): `TenantSecurityMiddleware.cs`, `TenantSecurityMiddleware`, `.GetRfcSection()`, `.WriteProblemDetailsAsync()`, `TenantSecurityMiddlewareExtensions`, `.UseTenantSecurity()`, `TenantSecurityMiddleware.cs`
+- **Thin community `Community 42`** (6 nodes): `ETagValidationMiddleware`, `.InvokeAsync()`, `.IsUpdateOrDeleteAction()`, `ETagValidationMiddlewareExtensions`, `.UseETagValidation()`, `ETagValidationMiddleware.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Tenant Store Interface`** (6 nodes): `ITenantStore`, `.GetAllTenantsAsync()`, `.InvalidateCacheAsync()`, `.IsValidTenantAsync()`, `ITenantStore.cs`, `ITenantStore.cs`
+- **Thin community `Community 43`** (6 nodes): `TenantSecurityMiddleware.cs`, `TenantSecurityMiddleware`, `.GetRfcSection()`, `.WriteProblemDetailsAsync()`, `TenantSecurityMiddlewareExtensions`, `.UseTenantSecurity()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Cover Image Format Extensions`** (6 nodes): `CoverImageFormatExtensions`, `.FromContentType()`, `.ToContentType()`, `.ToExtension()`, `CoverImageFormatExtensions.cs`, `CoverImageFormatExtensions.cs`
+- **Thin community `Community 44`** (5 nodes): `ITenantStore`, `.GetAllTenantsAsync()`, `.InvalidateCacheAsync()`, `.IsValidTenantAsync()`, `ITenantStore.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `OpenAPI Documentation Tests`** (5 nodes): `ApiDocumentationTests`, `.GetOpenApiDocument_ShouldReturnOk()`, `.GetScalarUi_ShouldReturnOk()`, `ApiDocumentationTests.cs`, `ApiDocumentationTests.cs`
+- **Thin community `Community 45`** (5 nodes): `CoverImageFormatExtensions`, `.FromContentType()`, `.ToContentType()`, `.ToExtension()`, `CoverImageFormatExtensions.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Frontend Health Tests`** (5 nodes): `FrontendTests`, `.GetWebFrontendHealthCallbackReturnsOk()`, `.GetWebFrontendRoot_ShouldReturnOk()`, `FrontendTests.cs`, `FrontendTests.cs`
+- **Thin community `Community 46`** (4 nodes): `LocalizationHelperTests`, `.FallbackTestCases()`, `.GetLocalizedValue_ReturnsExpectedValue()`, `LocalizationHelperTests.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `System Client Interface`** (5 nodes): `ISystemClient`, `.GetProjectionStatusAsync()`, `.RebuildProjectionsAsync()`, `ISystemClient.cs`, `ISystemClient.cs`
+- **Thin community `Community 47`** (4 nodes): `ApiDocumentationTests`, `.GetOpenApiDocument_ShouldReturnOk()`, `.GetScalarUi_ShouldReturnOk()`, `ApiDocumentationTests.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Orders Client Interface`** (5 nodes): `IOrdersClient`, `.GetOrdersAsync()`, `.PlaceOrderAsync()`, `IOrdersClient.cs`, `IOrdersClient.cs`
+- **Thin community `Community 48`** (4 nodes): `FrontendTests`, `.GetWebFrontendHealthCallbackReturnsOk()`, `.GetWebFrontendRoot_ShouldReturnOk()`, `FrontendTests.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `SignalR Hub Filter`** (5 nodes): `IHubFilter`, `LoggingHubFilter`, `.InvokeMethodAsync()`, `LoggingHubFilter.cs`, `LoggingHubFilter.cs`
+- **Thin community `Community 49`** (4 nodes): `ISystemClient`, `.GetProjectionStatusAsync()`, `.RebuildProjectionsAsync()`, `ISystemClient.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Checkout Session Aggregate`** (5 nodes): `CheckoutSessionAggregate`, `.Apply()`, `CheckoutSessionStatus`, `CheckoutSessionAggregate.cs`, `CheckoutSessionAggregate.cs`
+- **Thin community `Community 50`** (4 nodes): `IOrdersClient`, `.GetOrdersAsync()`, `.PlaceOrderAsync()`, `IOrdersClient.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Order Summary Projection`** (5 nodes): `OrderSummaryProjection`, `.Apply()`, `.Create()`, `OrderSummaryProjection.cs`, `OrderSummaryProjection.cs`
+- **Thin community `Community 52`** (4 nodes): `IHubFilter`, `LoggingHubFilter`, `.InvokeMethodAsync()`, `LoggingHubFilter.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Author Projection`** (5 nodes): `AuthorProjection`, `.Apply()`, `.Create()`, `AuthorProjection.cs`, `AuthorProjection.cs`
+- **Thin community `Community 53`** (4 nodes): `CheckoutSessionAggregate`, `.Apply()`, `CheckoutSessionStatus`, `CheckoutSessionAggregate.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Category Projection`** (5 nodes): `CategoryProjection`, `.Apply()`, `.Create()`, `CategoryProjection.cs`, `CategoryProjection.cs`
+- **Thin community `Community 54`** (4 nodes): `OrderSummaryProjection`, `.Apply()`, `.Create()`, `OrderSummaryProjection.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Security Headers Middleware`** (5 nodes): `SecurityHeadersMiddleware`, `.InvokeAsync()`, `.SetHeaderIfMissing()`, `SecurityHeadersMiddleware.cs`, `SecurityHeadersMiddleware.cs`
+- **Thin community `Community 55`** (4 nodes): `AuthorProjection`, `.Apply()`, `.Create()`, `AuthorProjection.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Tenant Context`** (5 nodes): `ITenantContext`, `TenantContext.cs`, `TenantContext`, `.Initialize()`, `TenantContext.cs`
+- **Thin community `Community 56`** (4 nodes): `CategoryProjection`, `.Apply()`, `.Create()`, `CategoryProjection.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Wolverine Messaging Config`** (5 nodes): `WolverineConfigurationExtensions.cs`, `WolverineConfigurationExtensions.cs`, `WolverineConfigurationExtensions`, `.AddWolverineMessaging()`, `.RegisterHandlers()`
+- **Thin community `Community 57`** (4 nodes): `SecurityHeadersMiddleware`, `.InvokeAsync()`, `.SetHeaderIfMissing()`, `SecurityHeadersMiddleware.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Emailvalidator`** (5 nodes): `EmailValidator`, `.GetError()`, `.IsValid()`, `EmailValidator.cs`, `EmailValidator.cs`
+- **Thin community `Community 58`** (4 nodes): `ITenantContext`, `TenantContext.cs`, `TenantContext`, `.Initialize()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Invaliddatetimenow`** (4 nodes): `InvalidDateTimeNow`, `.CreateEvent()`, `InvalidDateTimeNow.cs`, `InvalidDateTimeNow.cs`
+- **Thin community `Community 59`** (4 nodes): `WolverineConfigurationExtensions.cs`, `WolverineConfigurationExtensions`, `.AddWolverineMessaging()`, `.RegisterHandlers()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Invaliddatetimeutcnow`** (4 nodes): `InvalidDateTimeUtcNow`, `.CreateEvent()`, `InvalidDateTimeUtcNow.cs`, `InvalidDateTimeUtcNow.cs`
+- **Thin community `Community 60`** (4 nodes): `EmailValidator`, `.GetError()`, `.IsValid()`, `EmailValidator.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Invalidguidinmethod`** (4 nodes): `InvalidGuidInMethod`, `.CreateEntity()`, `InvalidGuidInMethod.cs`, `InvalidGuidInMethod.cs`
+- **Thin community `Community 62`** (3 nodes): `InvalidDateTimeNow`, `.CreateEvent()`, `InvalidDateTimeNow.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Classevents`** (4 nodes): `AuthorUpdated`, `BookAdded`, `ClassEvents.cs`, `ClassEvents.cs`
+- **Thin community `Community 63`** (3 nodes): `InvalidDateTimeUtcNow`, `.CreateEvent()`, `InvalidDateTimeUtcNow.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Securityheadersmiddlewaretests`** (4 nodes): `SecurityHeadersMiddlewareTests`, `.HstsValue_ShouldIncludePreloadAndSubDomainsAndMaxAge()`, `SecurityHeadersMiddlewareTests.cs`, `SecurityHeadersMiddlewareTests.cs`
+- **Thin community `Community 64`** (3 nodes): `InvalidGuidInMethod`, `.CreateEntity()`, `InvalidGuidInMethod.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Handlertestbase`** (4 nodes): `HandlerTestBase`, `.GetLogger()`, `HandlerTestBase.cs`, `HandlerTestBase.cs`
+- **Thin community `Community 65`** (3 nodes): `AuthorUpdated`, `BookAdded`, `ClassEvents.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Infrastructuretests`** (4 nodes): `InfrastructureTests`, `.ResourceIsHealthy()`, `InfrastructureTests.cs`, `InfrastructureTests.cs`
+- **Thin community `Community 66`** (3 nodes): `SecurityHeadersMiddlewareTests`, `.HstsValue_ShouldIncludePreloadAndSubDomainsAndMaxAge()`, `SecurityHeadersMiddlewareTests.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Databasetests`** (4 nodes): `DatabaseTests`, `.CanConnectToDatabase()`, `DatabaseTests.cs`, `DatabaseTests.cs`
+- **Thin community `Community 67`** (3 nodes): `HandlerTestBase`, `.GetLogger()`, `HandlerTestBase.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Isalesclient`** (4 nodes): `ISalesClient`, `.GetSalesAsync()`, `ISalesClient.cs`, `ISalesClient.cs`
+- **Thin community `Community 68`** (3 nodes): `InfrastructureTests`, `.ResourceIsHealthy()`, `InfrastructureTests.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Cookie`** (4 nodes): `getCookie()`, `setCookie()`, `cookie-storage.js`, `cookie-storage.js`
+- **Thin community `Community 69`** (3 nodes): `DatabaseTests`, `.CanConnectToDatabase()`, `DatabaseTests.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Src`** (4 nodes): `UIConstants.cs`, `Icons`, `UIConstants`, `UIConstants.cs`
+- **Thin community `Community 70`** (3 nodes): `ISalesClient`, `.GetSalesAsync()`, `ISalesClient.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Orderaggregate`** (4 nodes): `OrderAggregate`, `.Apply()`, `OrderAggregate.cs`, `OrderAggregate.cs`
+- **Thin community `Community 72`** (3 nodes): `UIConstants.cs`, `Icons`, `UIConstants`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Src`** (4 nodes): `WolverineETagMiddleware.cs`, `WolverineETagMiddleware.cs`, `WolverineETagMiddleware`, `.Before()`
+- **Thin community `Community 73`** (3 nodes): `OrderAggregate`, `.Apply()`, `OrderAggregate.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Itenantcontext`** (4 nodes): `ITenantContext`, `.Initialize()`, `ITenantContext.cs`, `ITenantContext.cs`
+- **Thin community `Community 74`** (3 nodes): `WolverineETagMiddleware.cs`, `WolverineETagMiddleware`, `.Before()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Pagedlistextensions`** (4 nodes): `PagedListExtensions`, `.ToPagedListDto()`, `PagedListExtensions.cs`, `PagedListExtensions.cs`
+- **Thin community `Community 75`** (3 nodes): `ITenantContext`, `.Initialize()`, `ITenantContext.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Jsonconfigurationextensions`** (4 nodes): `JsonConfigurationExtensions`, `.AddJsonConfiguration()`, `JsonConfigurationExtensions.cs`, `JsonConfigurationExtensions.cs`
+- **Thin community `Community 76`** (3 nodes): `PagedListExtensions`, `.ToPagedListDto()`, `PagedListExtensions.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Iemailservice`** (4 nodes): `IEmailService`, `.SendAccountVerificationEmailAsync()`, `IEmailService.cs`, `IEmailService.cs`
+- **Thin community `Community 77`** (3 nodes): `JsonConfigurationExtensions`, `.AddJsonConfiguration()`, `JsonConfigurationExtensions.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Allowanonymoustenantattribute`** (4 nodes): `AllowAnonymousTenantAttribute`, `Attribute`, `AllowAnonymousTenantAttribute.cs`, `AllowAnonymousTenantAttribute.cs`
+- **Thin community `Community 78`** (3 nodes): `IEmailService`, `.SendAccountVerificationEmailAsync()`, `IEmailService.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Diagnosticids`** (4 nodes): `DiagnosticCategories`, `DiagnosticIds`, `DiagnosticIds.cs`, `DiagnosticIds.cs`
+- **Thin community `Community 79`** (3 nodes): `AllowAnonymousTenantAttribute`, `Attribute`, `AllowAnonymousTenantAttribute.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Invaliddatetimeinfield`** (3 nodes): `InvalidDateTimeInField`, `InvalidDateTimeInField.cs`, `InvalidDateTimeInField.cs`
+- **Thin community `Community 80`** (3 nodes): `DiagnosticCategories`, `DiagnosticIds`, `DiagnosticIds.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Invalidguidinfield`** (3 nodes): `InvalidGuidInField`, `InvalidGuidInField.cs`, `InvalidGuidInField.cs`
+- **Thin community `Community 82`** (2 nodes): `InvalidDateTimeInField`, `InvalidDateTimeInField.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Invalidguidinproperty`** (3 nodes): `InvalidGuidInProperty`, `InvalidGuidInProperty.cs`, `InvalidGuidInProperty.cs`
+- **Thin community `Community 83`** (2 nodes): `InvalidGuidInField`, `InvalidGuidInField.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Authorupdatedclass`** (3 nodes): `AuthorUpdated`, `AuthorUpdatedClass.cs`, `AuthorUpdatedClass.cs`
+- **Thin community `Community 84`** (2 nodes): `InvalidGuidInProperty`, `InvalidGuidInProperty.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Bookaddedclass`** (3 nodes): `BookAdded`, `BookAddedClass.cs`, `BookAddedClass.cs`
+- **Thin community `Community 85`** (2 nodes): `AuthorUpdated`, `AuthorUpdatedClass.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Testconstants`** (3 nodes): `TestConstants`, `TestConstants.cs`, `TestConstants.cs`
+- **Thin community `Community 86`** (2 nodes): `BookAdded`, `BookAddedClass.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Src`** (3 nodes): `UpdateBookRequestExtensions.cs`, `UpdateBookRequest`, `UpdateBookRequestExtensions.cs`
+- **Thin community `Community 87`** (2 nodes): `TestConstants`, `TestConstants.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Browser`** (3 nodes): `getBrowserInfo()`, `browser-info.js`, `browser-info.js`
+- **Thin community `Community 88`** (2 nodes): `UpdateBookRequestExtensions.cs`, `UpdateBookRequest`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Src`** (3 nodes): `Tenant.cs`, `Tenant`, `Tenant.cs`
+- **Thin community `Community 90`** (2 nodes): `Tenant.cs`, `Tenant`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Applicationuser`** (3 nodes): `ApplicationUser`, `ApplicationUser.cs`, `ApplicationUser.cs`
+- **Thin community `Community 91`** (2 nodes): `ApplicationUser`, `ApplicationUser.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Bookstatistics`** (3 nodes): `BookStatistics`, `BookStatistics.cs`, `BookStatistics.cs`
+- **Thin community `Community 92`** (2 nodes): `BookStatistics`, `BookStatistics.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Paginationoptions`** (3 nodes): `Validate()`, `PaginationOptions.cs`, `PaginationOptions.cs`
+- **Thin community `Community 95`** (2 nodes): `Instrumentation`, `Instrumentation.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Localizationoptions`** (3 nodes): `Validate()`, `LocalizationOptions.cs`, `LocalizationOptions.cs`
+- **Thin community `Community 96`** (2 nodes): `RateLimitOptions`, `RateLimitOptions.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Instrumentation`** (3 nodes): `Instrumentation`, `Instrumentation.cs`, `Instrumentation.cs`
+- **Thin community `Community 98`** (2 nodes): `TenantConstants.cs`, `TenantConstants`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Ratelimitoptions`** (3 nodes): `RateLimitOptions`, `RateLimitOptions.cs`, `RateLimitOptions.cs`
+- **Thin community `Community 99`** (2 nodes): `AccountCleanupOptions`, `AccountCleanupOptions.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Currencyoptions`** (3 nodes): `Validate()`, `CurrencyOptions.cs`, `CurrencyOptions.cs`
+- **Thin community `Community 100`** (2 nodes): `UcpProfileOptions.cs`, `UcpProfileOptions`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Src`** (3 nodes): `TenantConstants.cs`, `TenantConstants`, `TenantConstants.cs`
+- **Thin community `Community 101`** (2 nodes): `EmailOptions`, `EmailOptions.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Accountcleanupoptions`** (3 nodes): `AccountCleanupOptions`, `AccountCleanupOptions.cs`, `AccountCleanupOptions.cs`
+- **Thin community `Community 102`** (2 nodes): `ResourceNames`, `ResourceNames.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Src`** (3 nodes): `UcpProfileOptions.cs`, `UcpProfileOptions`, `UcpProfileOptions.cs`
+- **Thin community `Community 103`** (2 nodes): `MultiTenancyConstants`, `MultiTenancyConstants.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Emailoptions`** (3 nodes): `EmailOptions`, `EmailOptions.cs`, `EmailOptions.cs`
+- **Thin community `Community 104`** (2 nodes): `IHaveETag`, `IHaveETag.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Resourcenames`** (3 nodes): `ResourceNames`, `ResourceNames.cs`, `ResourceNames.cs`
+- **Thin community `Community 105`** (2 nodes): `IDomainEventNotification`, `DomainEventNotifications.cs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Multitenancyconstants`** (3 nodes): `MultiTenancyConstants`, `MultiTenancyConstants.cs`, `MultiTenancyConstants.cs`
+- **Thin community `Community 106`** (2 nodes): `PartialDate Value Object`, `BookStore.Shared README`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Ihaveetag`** (3 nodes): `IHaveETag`, `IHaveETag.cs`, `IHaveETag.cs`
+- **Thin community `Community 164`** (1 nodes): `Contributing Guide`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Domaineventnotifications`** (3 nodes): `IDomainEventNotification`, `DomainEventNotifications.cs`, `DomainEventNotifications.cs`
+- **Thin community `Community 165`** (1 nodes): `Getting Started Guide`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Concept`** (2 nodes): `PartialDate Value Object`, `BookStore.Shared README`
+- **Thin community `Community 166`** (1 nodes): `Possible Improvements`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Contributing`** (1 nodes): `Contributing Guide`
+- **Thin community `Community 167`** (1 nodes): `BookStore Favicon`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Getting`** (1 nodes): `Getting Started Guide`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Improvements`** (1 nodes): `Possible Improvements`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Favicon`** (1 nodes): `BookStore Favicon`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Hero`** (1 nodes): `BookStore Hero Banner`
+- **Thin community `Community 168`** (1 nodes): `BookStore Hero Banner`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `ToString()` connect `Shopping Cart Services` to `Admin API Endpoints`, `Account & Tenant Integration Tests`, `Book Concurrency & CRUD Tests`, `Author & Category CRUD Tests`, `Aggregate & Event Infrastructure`, `Roslyn Analyzer Rules`, `Identity Store Interfaces`, `Handler Unit Tests`, `Database & Middleware Extensions`, `Device Name Parsing`, `Auth Broadcast / JS Interop`, `BookStore Client Extensions`, `Database Seeder`, `Notification Service`, `Account Cleanup & Passkey`, `JSON Serialization Tests`, `Integration Test Setup Hooks`?**
-  _High betweenness centrality (0.244) - this node is a cross-community bridge._
-- **Why does `ok()` connect `Admin API Endpoints` to `Account & Tenant Integration Tests`, `Parallel API Calls`, `Identity Store Interfaces`, `Admin Author Endpoints`, `Notification Service`?**
-  _High betweenness centrality (0.050) - this node is a cross-community bridge._
-- **Why does `MartenUserStore` connect `Identity Store Interfaces` to `Admin API Endpoints`, `Account & Tenant Integration Tests`, `Book Concurrency & CRUD Tests`, `Account Cleanup & Passkey`?**
-  _High betweenness centrality (0.029) - this node is a cross-community bridge._
+- **Why does `ToString()` connect `Community 8` to `Community 0`, `Community 1`, `Community 2`, `Community 3`, `Community 4`, `Community 5`, `Community 6`, `Community 7`, `Community 9`, `Community 12`, `Community 13`, `Community 15`, `Community 18`, `Community 19`, `Community 23`, `Community 24`?**
+  _High betweenness centrality (0.241) - this node is a cross-community bridge._
+- **Why does `ok()` connect `Community 0` to `Community 1`, `Community 3`, `Community 35`, `Community 10`, `Community 18`?**
+  _High betweenness centrality (0.042) - this node is a cross-community bridge._
+- **Why does `MartenUserStore` connect `Community 3` to `Community 0`, `Community 1`, `Community 2`?**
+  _High betweenness centrality (0.030) - this node is a cross-community bridge._
 - **Are the 74 inferred relationships involving `ToString()` (e.g. with `.InitializeAsync_ShouldLoadFromLocalStorage()` and `.InitializeAsync_WithoutStoredCurrency_ShouldKeepGbpDefault()`) actually correct?**
   _`ToString()` has 74 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 50 inferred relationships involving `ok()` (e.g. with `.GetTenants()` and `.GetTenantInfo()`) actually correct?**
   _`ok()` has 50 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 50 inferred relationships involving `Validation()` (e.g. with `.GetLocalizedMessage_ReturnsTypeDefault_WhenCodeNotFoundButTypeExists()` and `.ToError()`) actually correct?**
   _`Validation()` has 50 INFERRED edges - model-reasoned connections that need verification._
-- **What connects `Fire all requests in parallel and return results in the same order.`, `Fetch all requests in parallel, bounded by a semaphore.`, `Contributing Guide` to the rest of the system?**
-  _42 weakly-connected nodes found - possible documentation gaps or missing edges._
+- **What connects `DebugRefit`, `Parallel API Orchestrator Calls multiple APIs concurrently using asyncio + aioht`, `Fire all requests in parallel and return results in the same order.` to the rest of the system?**
+  _134 weakly-connected nodes found - possible documentation gaps or missing edges._
