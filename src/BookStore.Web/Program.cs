@@ -44,10 +44,17 @@ builder.Services.AddCascadingAuthenticationState();
 // Add MudBlazor services
 builder.Services.AddMudServices();
 
-// Get API base URL from service discovery (Aspire)
-var apiServiceUrl = builder.Configuration[$"services:{BookStore.ServiceDefaults.ResourceNames.ApiService}:https:0"]
-                    ?? builder.Configuration[$"services:{BookStore.ServiceDefaults.ResourceNames.ApiService}:http:0"]
-                    ?? "http://localhost:5000";
+// Get API base URL from service discovery (Aspire).
+// In development, prefer HTTP to avoid SSL trust issues with self-signed dev certs.
+// In production, prefer HTTPS; cloud-native deployments (ACA, AKS) use a private VNet
+// for east-west traffic so plain HTTP is also acceptable there, but HTTPS is used when available.
+var apiServiceUrl = builder.Environment.IsDevelopment()
+    ? builder.Configuration[$"services:{BookStore.ServiceDefaults.ResourceNames.ApiService}:http:0"]
+        ?? builder.Configuration[$"services:{BookStore.ServiceDefaults.ResourceNames.ApiService}:https:0"]
+        ?? "http://localhost:5000"
+    : builder.Configuration[$"services:{BookStore.ServiceDefaults.ResourceNames.ApiService}:https:0"]
+        ?? builder.Configuration[$"services:{BookStore.ServiceDefaults.ResourceNames.ApiService}:http:0"]
+        ?? "http://localhost:5000";
 
 // Create resilience pipeline for API calls
 // This provides retry, circuit breaker, and timeout protection for all API requests
