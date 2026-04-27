@@ -81,6 +81,9 @@ public static class EndpointMappingExtensions
 
         // UCP Checkout sessions — anonymous (AI agents), outside versioned API group
         app.MapCheckoutSessionEndpoints();
+
+        // UCP Catalog endpoints — anonymous (AI agents), outside versioned API group
+        app.MapUcpCatalogEndpoints();
     }
 
     static void MapAdminEndpoints(WebApplication app, Asp.Versioning.Builder.ApiVersionSet apiVersionSet)
