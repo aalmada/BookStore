@@ -120,4 +120,26 @@ public class UcpProfileTests
         var paymentHandlers = profile.GetProperty("payment_handlers");
         _ = await Assert.That(paymentHandlers.TryGetProperty("dev.bookstore.payment.simulated", out _)).IsTrue();
     }
+
+    [Test]
+    public async Task GetUcpProfile_ShouldContainCheckoutMcpService()
+    {
+        var notificationService = GlobalHooks.NotificationService!;
+        _ = await notificationService.WaitForResourceHealthyAsync("apiservice", CancellationToken.None)
+            .WaitAsync(TestConstants.DefaultTimeout);
+
+        var app = GlobalHooks.App!;
+        var client = app.CreateHttpClient("apiservice");
+
+        var profile = await client.GetFromJsonAsync<System.Text.Json.JsonElement>("/.well-known/ucp");
+
+        var services = profile.GetProperty("services");
+        _ = await Assert.That(services.TryGetProperty("dev.ucp.shopping.checkout", out var checkoutServices)).IsTrue();
+
+        var hasMcp = checkoutServices.EnumerateArray().Any(s =>
+            s.TryGetProperty("transport", out var transport)
+            && transport.GetString() == "mcp");
+
+        _ = await Assert.That(hasMcp).IsTrue();
+    }
 }

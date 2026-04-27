@@ -37,6 +37,12 @@ public sealed class UcpProfileService(IOptions<UcpProfileOptions> options, IOpti
                     id = "checkout_rest",
                     transport = "rest",
                     rest = new { endpoint = $"{baseUrl}/api/ucp" }
+                },
+                new
+                {
+                    id = "checkout_mcp",
+                    transport = "mcp",
+                    mcp = new { endpoint = $"{baseUrl}/api/ucp/mcp" }
                 }
             ],
             ["dev.ucp.shopping.catalog"] =
@@ -46,6 +52,12 @@ public sealed class UcpProfileService(IOptions<UcpProfileOptions> options, IOpti
                     id = "catalog_rest",
                     transport = "rest",
                     rest = new { endpoint = $"{baseUrl}/api/ucp" }
+                },
+                new
+                {
+                    id = "catalog_mcp",
+                    transport = "mcp",
+                    mcp = new { endpoint = $"{baseUrl}/api/ucp/mcp" }
                 }
             ]
         };

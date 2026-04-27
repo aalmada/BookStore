@@ -102,6 +102,17 @@ public static class ApplicationServicesExtensions
             .ValidateOnStart();
         _ = services.AddSingleton<Infrastructure.UCP.UcpProfileService>();
         _ = services.AddSingleton<Infrastructure.UCP.UcpResponseSigner>();
+        _ = services.AddHttpClient("ucp-mcp")
+            .ConfigureHttpClient((sp, client) =>
+            {
+                var profileOptions = sp.GetRequiredService<IOptions<Infrastructure.UCP.UcpProfileOptions>>().Value;
+                if (!string.IsNullOrWhiteSpace(profileOptions.ServiceBaseUrl))
+                {
+                    client.BaseAddress = new Uri(profileOptions.ServiceBaseUrl.TrimEnd('/'));
+                }
+
+                _ = client.DefaultRequestHeaders.TryAddWithoutValidation("UCP-Agent", "profile=\"https://bookstore.example/.well-known/ucp\"");
+            });
 
         // Register Marten Projection Commit Listener in DI
         _ = services.AddSingleton<Infrastructure.ProjectionCommitListener>();

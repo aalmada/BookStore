@@ -14,6 +14,7 @@ using BookStore.Shared.Models;
 using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Options;
+using ModelContextProtocol.Server;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -45,6 +46,9 @@ builder.Services.AddScoped<ITenantStore>(sp =>
 
 builder.Services.AddMartenEventStore(builder.Configuration);
 builder.Services.AddWolverineMessaging();
+_ = builder.Services.AddMcpServer()
+    .WithHttpTransport(options => options.Stateless = true)
+    .WithTools<UcpMcpTools>();
 
 // Add CORS using validated allowed origins shared with passkey origin validation.
 builder.Services.AddCors();
@@ -152,5 +156,6 @@ app.MapPasskeyEndpoints();
 
 // Map all API endpoints
 app.MapApiEndpoints();
+app.MapMcp("/api/ucp/mcp");
 
 app.Run();
