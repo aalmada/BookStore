@@ -3,6 +3,7 @@ using BookStore.ApiService.Commands;
 using BookStore.ApiService.Events;
 using BookStore.ApiService.Infrastructure;
 using BookStore.ApiService.Infrastructure.Extensions;
+using BookStore.ApiService.Infrastructure.UCP;
 using BookStore.ApiService.Models.Ucp;
 using BookStore.Shared.Models;
 using Marten;
@@ -213,8 +214,13 @@ public static class CheckoutSessionHandlers
 
     internal static CheckoutSessionResponse MapToResponse(
         CheckoutSessionAggregate aggregate,
-        List<UcpMessage>? extraMessages = null)
-        => BuildResponse(
+        List<UcpMessage>? extraMessages = null,
+        UcpFulfillmentResponse? fulfillmentResponse = null)
+    {
+        // Build fulfillment response from aggregate state if not explicitly provided
+        fulfillmentResponse ??= BuildFulfillmentResponse(aggregate.Fulfillment, aggregate.Currency);
+
+        return BuildResponse(
             aggregate.Id,
             aggregate.Status,
             aggregate.Currency,
@@ -222,7 +228,10 @@ public static class CheckoutSessionHandlers
             aggregate.Buyer,
             aggregate.OrderId,
             aggregate.ExpiresAt,
-            extraMessages);
+            extraMessages,
+            aggregate.Fulfillment,
+            fulfillmentResponse);
+    }
 
     internal static CheckoutSessionResponse BuildResponse(
         Guid sessionId,
@@ -232,7 +241,9 @@ public static class CheckoutSessionHandlers
         UcpBuyer? buyer,
         Guid? orderId,
         DateTimeOffset expiresAt,
-        List<UcpMessage>? messages = null)
+        List<UcpMessage>? messages = null,
+        FulfillmentData? fulfillmentData = null,
+        UcpFulfillmentResponse? fulfillmentResponse = null)
     {
         var responseLineItems = lineItems.Select(li =>
         {
@@ -245,7 +256,16 @@ public static class CheckoutSessionHandlers
         }).ToList();
 
         var subtotal = lineItems.Sum(li => li.UnitPriceCents * li.Quantity);
-        List<UcpTotal> totals = [new UcpTotal("subtotal", subtotal), new UcpTotal("total", subtotal)];
+        var shippingCents = fulfillmentData?.ShippingCostCents ?? 0;
+        var total = subtotal + shippingCents;
+
+        List<UcpTotal> totals = [new UcpTotal("subtotal", subtotal)];
+        if (shippingCents > 0)
+        {
+            totals.Add(new UcpTotal("fulfillment", shippingCents, "Shipping"));
+        }
+
+        totals.Add(new UcpTotal("total", total));
 
         UcpOrder? order = null;
         if (orderId.HasValue)
@@ -267,7 +287,40 @@ public static class CheckoutSessionHandlers
             ContinueUrl: null,
             expiresAt.ToString("O"),
             buyer,
-            order);
+            order,
+            fulfillmentResponse);
+    }
+
+    internal static UcpFulfillmentResponse? BuildFulfillmentResponse(FulfillmentData? data, string currency)
+    {
+        if (data is null)
+        {
+            return null;
+        }
+
+        List<UcpFulfillmentGroupResponse> groups;
+        if (data.SelectedOptionId is not null)
+        {
+            groups = [new("pkg_1", Options: null, SelectedOptionId: data.SelectedOptionId)];
+        }
+        else
+        {
+            var options = UcpFulfillmentService.ShippingOptions
+                .Select(o => new UcpFulfillmentOptionResponse(o.Id, o.Title, o.PriceCents, currency))
+                .ToList();
+            groups = [new("pkg_1", options, SelectedOptionId: null)];
+        }
+
+        var dest = new UcpFulfillmentDestinationResponse(
+            data.DestinationId,
+            data.ShippingAddress.StreetAddress,
+            data.ShippingAddress.AddressLocality,
+            data.ShippingAddress.AddressRegion,
+            data.ShippingAddress.PostalCode,
+            data.ShippingAddress.AddressCountry);
+
+        return new UcpFulfillmentResponse(
+            [new(data.MethodId, "shipping", [dest], data.DestinationId, groups)]);
     }
 
     internal static string BuildOrderLabel(Guid orderId)

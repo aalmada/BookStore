@@ -17,7 +17,8 @@ public record CheckoutSessionCreated(
 public record CheckoutSessionUpdated(
     Guid SessionId,
     List<CheckoutLineItemData> LineItems,
-    UcpBuyer? Buyer);
+    UcpBuyer? Buyer,
+    FulfillmentData? Fulfillment = null);
 
 public record CheckoutSessionCompleted(
     Guid SessionId,
@@ -39,3 +40,10 @@ public record CheckoutLineItemData(
     string Title,
     int Quantity,
     long UnitPriceCents);
+
+public record FulfillmentData(
+    string MethodId,
+    string DestinationId,
+    UcpAddress ShippingAddress,
+    string? SelectedOptionId,
+    long ShippingCostCents);

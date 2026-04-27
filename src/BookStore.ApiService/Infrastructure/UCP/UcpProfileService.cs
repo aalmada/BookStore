@@ -20,6 +20,10 @@ public sealed class UcpProfileService(IOptions<UcpProfileOptions> options)
             ["dev.ucp.shopping.catalog"] =
             [
                 new { version = UcpVersion, extends = Array.Empty<object>() }
+            ],
+            ["dev.ucp.shopping.fulfillment"] =
+            [
+                new { version = UcpVersion, extends = new[] { new { name = "dev.ucp.shopping.checkout" } } }
             ]
         };
 

@@ -3,6 +3,7 @@ using BookStore.ApiService.Events;
 using BookStore.ApiService.Handlers.CheckoutSession;
 using BookStore.ApiService.Infrastructure;
 using BookStore.ApiService.Infrastructure.Extensions;
+using BookStore.ApiService.Infrastructure.UCP;
 using BookStore.ApiService.Models.Ucp;
 using BookStore.ApiService.Projections;
 using BookStore.Shared;
@@ -208,11 +209,69 @@ public static class CheckoutSessionEndpoints
         }
 
         var buyer = request.Buyer;
-        var newStatus = buyer?.Email is not null
+
+        // ------------------------------------------------------------------
+        // Fulfillment extension processing
+        // ------------------------------------------------------------------
+        FulfillmentData? fulfillmentData = null;
+        UcpFulfillmentResponse? fulfillmentResponse = null;
+
+        if (request.Fulfillment?.Methods is { Count: > 0 } methods)
+        {
+            var method = methods[0];
+            var destination = method.Destinations?.FirstOrDefault();
+            var group = method.Groups?.FirstOrDefault();
+            var selectedOptionId = group?.SelectedOptionId;
+
+            var methodId = method.Id ?? "ship_1";
+            var destId = destination?.Id ?? "dest_1";
+
+            long shippingCostCents = 0;
+            List<UcpFulfillmentGroupResponse> groups;
+
+            if (selectedOptionId is not null)
+            {
+                var option = UcpFulfillmentService.FindOption(selectedOptionId);
+                shippingCostCents = option?.PriceCents ?? 0;
+                groups = [new("pkg_1", Options: null, SelectedOptionId: selectedOptionId)];
+            }
+            else
+            {
+                var options = UcpFulfillmentService.ShippingOptions
+                    .Select(o => new UcpFulfillmentOptionResponse(o.Id, o.Title, o.PriceCents, aggregate.Currency))
+                    .ToList();
+                groups = [new("pkg_1", options, SelectedOptionId: null)];
+            }
+
+            var destResponse = new UcpFulfillmentDestinationResponse(
+                destId,
+                destination?.StreetAddress,
+                destination?.AddressLocality,
+                destination?.AddressRegion,
+                destination?.PostalCode,
+                destination?.AddressCountry);
+
+            fulfillmentResponse = new UcpFulfillmentResponse(
+                [new(methodId, "shipping", [destResponse], destId, groups)]);
+
+            if (destination is not null)
+            {
+                var shippingAddress = new UcpAddress(
+                    destination.StreetAddress ?? string.Empty,
+                    destination.AddressLocality ?? string.Empty,
+                    destination.AddressRegion ?? string.Empty,
+                    destination.PostalCode ?? string.Empty,
+                    destination.AddressCountry ?? string.Empty);
+                fulfillmentData = new FulfillmentData(methodId, destId, shippingAddress, selectedOptionId, shippingCostCents);
+            }
+        }
+
+        var hasFulfillmentOption = fulfillmentData is null || fulfillmentData.SelectedOptionId is not null;
+        var newStatus = buyer?.Email is not null && hasFulfillmentOption
             ? CheckoutSessionStatus.ReadyForComplete
             : CheckoutSessionStatus.Incomplete;
 
-        var updated = new CheckoutSessionUpdated(id, lineItems, buyer);
+        var updated = new CheckoutSessionUpdated(id, lineItems, buyer, fulfillmentData);
         _ = session.Events.Append(id, updated);
         await session.SaveChangesAsync(cancellationToken);
 
@@ -223,7 +282,9 @@ public static class CheckoutSessionEndpoints
             lineItems,
             buyer,
             orderId: null,
-            aggregate.ExpiresAt));
+            aggregate.ExpiresAt,
+            fulfillmentData: fulfillmentData,
+            fulfillmentResponse: fulfillmentResponse));
     }
 
     static async Task<IResult> CompleteCheckout(
@@ -277,7 +338,23 @@ public static class CheckoutSessionEndpoints
         var orderId = Guid.CreateVersion7();
         var now = DateTimeOffset.UtcNow;
         var customerEmail = aggregate.Buyer?.Email ?? string.Empty;
-        var totalCents = aggregate.LineItems.Sum(li => li.UnitPriceCents * li.Quantity);
+        var itemsCents = aggregate.LineItems.Sum(li => li.UnitPriceCents * li.Quantity);
+        var shippingCents = aggregate.Fulfillment?.ShippingCostCents ?? 0;
+        var totalCents = itemsCents + shippingCents;
+
+        var deliveryAddress = aggregate.Fulfillment is not null
+            ? new DeliveryAddressData(
+                $"{aggregate.Buyer?.FirstName} {aggregate.Buyer?.LastName}".Trim(),
+                aggregate.Fulfillment.ShippingAddress.StreetAddress,
+                aggregate.Fulfillment.ShippingAddress.AddressLocality,
+                aggregate.Fulfillment.ShippingAddress.PostalCode,
+                aggregate.Fulfillment.ShippingAddress.AddressCountry)
+            : new DeliveryAddressData(
+                $"{aggregate.Buyer?.FirstName} {aggregate.Buyer?.LastName}".Trim(),
+                string.Empty,
+                string.Empty,
+                string.Empty,
+                string.Empty);
 
         var orderPlaced = new OrderPlaced(
             orderId,
@@ -289,12 +366,7 @@ public static class CheckoutSessionEndpoints
                 li.Title,
                 li.Quantity,
                 li.UnitPriceCents / 100m))],
-            new DeliveryAddressData(
-                $"{aggregate.Buyer?.FirstName} {aggregate.Buyer?.LastName}".Trim(),
-                string.Empty,
-                string.Empty,
-                string.Empty,
-                string.Empty),
+            deliveryAddress,
             new PaymentInfoData("UCP", "0000", 12, 99),
             totalCents / 100m,
             now);
@@ -313,7 +385,8 @@ public static class CheckoutSessionEndpoints
             aggregate.LineItems,
             aggregate.Buyer,
             orderId,
-            aggregate.ExpiresAt));
+            aggregate.ExpiresAt,
+            fulfillmentData: aggregate.Fulfillment));
     }
 
     static async Task<IResult> CancelCheckout(

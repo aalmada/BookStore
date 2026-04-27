@@ -14,6 +14,7 @@ public class CheckoutSessionAggregate
     public DateTimeOffset ExpiresAt { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
     public Guid? OrderId { get; private set; }
+    public FulfillmentData? Fulfillment { get; private set; }
     public bool IsCompleted => Status == CheckoutSessionStatus.Completed;
     public bool IsCancelled => Status == CheckoutSessionStatus.Cancelled;
     public bool IsTerminal => IsCompleted || IsCancelled;
@@ -34,7 +35,9 @@ public class CheckoutSessionAggregate
     {
         LineItems = @event.LineItems;
         Buyer = @event.Buyer;
-        Status = @event.Buyer?.Email is not null
+        Fulfillment = @event.Fulfillment;
+        var hasFulfillmentOption = @event.Fulfillment is null || @event.Fulfillment.SelectedOptionId is not null;
+        Status = Buyer?.Email is not null && hasFulfillmentOption
             ? CheckoutSessionStatus.ReadyForComplete
             : CheckoutSessionStatus.Incomplete;
     }
