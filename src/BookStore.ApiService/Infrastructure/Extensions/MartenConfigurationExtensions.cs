@@ -182,6 +182,12 @@ public static class MartenConfigurationExtensions
         _ = options.Events.AddEventType<Events.OrderPlaced>();
         _ = options.Events.AddEventType<Events.PaymentSimulated>();
 
+        // Checkout session events
+        _ = options.Events.AddEventType<Events.CheckoutSessionCreated>();
+        _ = options.Events.AddEventType<Events.CheckoutSessionUpdated>();
+        _ = options.Events.AddEventType<Events.CheckoutSessionCompleted>();
+        _ = options.Events.AddEventType<Events.CheckoutSessionCancelled>();
+
         // User events
         _ = options.Events.AddEventType<BookStore.Shared.Messages.Events.UserProfileCreated>();
         _ = options.Events.AddEventType<BookStore.Shared.Messages.Events.BookAddedToFavorites>();

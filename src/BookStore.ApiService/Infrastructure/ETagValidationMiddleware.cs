@@ -22,11 +22,12 @@ public class ETagValidationMiddleware
         var method = context.Request.Method;
         var path = context.Request.Path;
 
-        // Explicitly exclude high-concurrency/idempotent endpoints from ETag validation
-        // This covers RateBook (POST) and Add/RemoveFavorites (POST/DELETE)
+        // Explicitly exclude endpoints that do not use ETag optimistic concurrency.
+        // This covers RateBook (POST), Add/RemoveFavorites (POST/DELETE), cart, and UCP checkout sessions.
         if (path.Value!.EndsWith("/rating", StringComparison.OrdinalIgnoreCase) ||
             path.Value!.EndsWith("/favorites", StringComparison.OrdinalIgnoreCase) ||
-            path.StartsWithSegments("/api/cart"))
+            path.StartsWithSegments("/api/cart") ||
+            path.StartsWithSegments("/api/ucp/checkout-sessions"))
         {
             await _next(context);
             return;

@@ -160,4 +160,16 @@ public static class ErrorCodes
         public const string InvalidCredential = "ERR_PASSKEY_INVALID_CREDENTIAL";
         public const string CounterMismatch = "ERR_PASSKEY_COUNTER_MISMATCH";
     }
+
+    // UCP Checkout Codes
+    public static class Checkout
+    {
+        public const string EmptyLineItems = "ERR_CHECKOUT_EMPTY_LINE_ITEMS";
+        public const string InvalidQuantity = "ERR_CHECKOUT_INVALID_QUANTITY";
+        public const string BookNotFound = "ERR_CHECKOUT_BOOK_NOT_FOUND";
+        public const string SessionNotFound = "ERR_CHECKOUT_SESSION_NOT_FOUND";
+        public const string SessionTerminal = "ERR_CHECKOUT_SESSION_TERMINAL";
+        public const string SessionNotReady = "ERR_CHECKOUT_SESSION_NOT_READY";
+        public const string MissingAgentHeader = "ERR_CHECKOUT_MISSING_AGENT_HEADER";
+    }
 }

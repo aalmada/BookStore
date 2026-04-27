@@ -78,6 +78,9 @@ public static class EndpointMappingExtensions
 
         // Order endpoints are mapped directly to preserve endpoint-level anonymous tenant metadata.
         app.MapOrderEndpoints();
+
+        // UCP Checkout sessions — anonymous (AI agents), outside versioned API group
+        app.MapCheckoutSessionEndpoints();
     }
 
     static void MapAdminEndpoints(WebApplication app, Asp.Versioning.Builder.ApiVersionSet apiVersionSet)
