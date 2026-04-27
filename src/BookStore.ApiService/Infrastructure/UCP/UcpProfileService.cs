@@ -2,13 +2,14 @@ using Microsoft.Extensions.Options;
 
 namespace BookStore.ApiService.Infrastructure.UCP;
 
-public sealed class UcpProfileService(IOptions<UcpProfileOptions> options)
+public sealed class UcpProfileService(IOptions<UcpProfileOptions> options, IOptions<UcpKeyOptions> keyOptions)
 {
     const string UcpVersion = "2026-04-08";
 
     public object BuildProfile()
     {
         var opts = options.Value;
+        var keys = keyOptions.Value;
         var baseUrl = opts.ServiceBaseUrl.TrimEnd('/');
 
         var capabilities = new Dictionary<string, object[]>
@@ -70,15 +71,28 @@ public sealed class UcpProfileService(IOptions<UcpProfileOptions> options)
             ["payment_handlers"] = paymentHandlers
         };
 
-        if (!string.IsNullOrEmpty(opts.SigningPublicKeyBase64))
+        if (keys.RequireSignatures)
+        {
+            profile["authentication"] = new object[]
+            {
+                new
+                {
+                    type = "http_message_signatures",
+                    algorithms = new[] { "Ed25519" },
+                    key_id = keys.SigningKeyId
+                }
+            };
+        }
+
+        if (!string.IsNullOrEmpty(keys.SigningPublicKeyBase64))
         {
             profile["keys"] = new object[]
             {
                 new
                 {
-                    id = opts.SigningKeyId,
+                    id = keys.SigningKeyId,
                     algorithm = "Ed25519",
-                    public_key = opts.SigningPublicKeyBase64
+                    public_key = keys.SigningPublicKeyBase64
                 }
             };
         }

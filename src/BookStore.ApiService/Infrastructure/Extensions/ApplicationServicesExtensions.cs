@@ -96,7 +96,12 @@ public static class ApplicationServicesExtensions
             .BindConfiguration(Infrastructure.UCP.UcpProfileOptions.SectionName)
             .ValidateDataAnnotations()
             .ValidateOnStart();
+        _ = services.AddOptions<Infrastructure.UCP.UcpKeyOptions>()
+            .BindConfiguration(Infrastructure.UCP.UcpKeyOptions.SectionName)
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
         _ = services.AddSingleton<Infrastructure.UCP.UcpProfileService>();
+        _ = services.AddSingleton<Infrastructure.UCP.UcpResponseSigner>();
 
         // Register Marten Projection Commit Listener in DI
         _ = services.AddSingleton<Infrastructure.ProjectionCommitListener>();

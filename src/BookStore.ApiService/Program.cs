@@ -6,6 +6,7 @@ using BookStore.ApiService.Infrastructure.Extensions;
 using BookStore.ApiService.Infrastructure.Identity;
 using BookStore.ApiService.Infrastructure.Logging;
 using BookStore.ApiService.Infrastructure.Tenant;
+using BookStore.ApiService.Infrastructure.UCP;
 
 using BookStore.Shared.Infrastructure;
 using BookStore.Shared.Models;
@@ -123,6 +124,11 @@ app.UseMartenConcurrencyException();
 
 // Add ETag Validation Middleware
 app.UseETagValidation();
+
+// UCP HTTP Message Signatures are only relevant for UCP routes.
+app.UseWhen(
+    context => context.Request.Path.StartsWithSegments("/api/ucp"),
+    appBuilder => appBuilder.UseMiddleware<UcpSignatureMiddleware>());
 
 // Map OpenAPI endpoint and configure Scalar UI
 app.MapOpenApi().WithMetadata(new AllowAnonymousTenantAttribute());
