@@ -263,7 +263,11 @@ app.UseRequestLocalization(localizationOptions);
 // Add Log Enrichment Middleware
 app.UseMiddleware<LogEnrichmentMiddleware>();
 
-app.UseHttpsRedirection();
+app.MapDefaultEndpoints();
+
+app.UseWhen(
+    ctx => !ctx.Request.Path.StartsWithSegments("/health") && !ctx.Request.Path.StartsWithSegments("/alive"),
+    branch => branch.UseHttpsRedirection());
 
 app.UseAntiforgery();
 
@@ -273,8 +277,6 @@ app.MapStaticAssets();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
-
-app.MapDefaultEndpoints();
 
 app.Run();
 

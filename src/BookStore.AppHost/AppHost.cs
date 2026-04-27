@@ -23,7 +23,7 @@ var apiService = builder.AddProject<Projects.BookStore_ApiService>(ResourceNames
     .WithReference(cache)
     .WaitFor(cache)
     .WaitFor(postgres)
-    .WithHttpHealthCheck(ResourceNames.HealthCheckEndpoint)
+    .WithHttpHealthCheck(ResourceNames.HealthCheckEndpoint, endpointName: "http")
     .WithExternalHttpEndpoints()
     .WithUrlForEndpoint("http", url =>
     {
@@ -57,7 +57,7 @@ if (!string.IsNullOrEmpty(emailDeliveryMethod))
 
 builder.AddProject<Projects.BookStore_Web>(ResourceNames.WebFrontend)
     .WithExternalHttpEndpoints()
-    .WithHttpHealthCheck(ResourceNames.HealthCheckEndpoint)
+    .WithHttpHealthCheck(ResourceNames.HealthCheckEndpoint, endpointName: "http")
     .WithReference(apiService)
     .WaitFor(apiService);
 
