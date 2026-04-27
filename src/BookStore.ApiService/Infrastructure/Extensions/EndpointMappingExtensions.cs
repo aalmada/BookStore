@@ -19,6 +19,9 @@ public static class EndpointMappingExtensions
         _ = app.MapGet("/", () => "Book Store API is running. Visit /api-reference for API documentation.")
             .ExcludeFromDescription();
 
+        // UCP profile discovery (/.well-known/ucp) — anonymous, no tenant required
+        _ = app.MapUcpProfileEndpoints();
+
         // Create API version set for v1
         var apiVersionSet = app.NewApiVersionSet()
             .HasApiVersion(new Asp.Versioning.ApiVersion(1))

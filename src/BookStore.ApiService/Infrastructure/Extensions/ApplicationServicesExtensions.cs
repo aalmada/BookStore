@@ -91,6 +91,13 @@ public static class ApplicationServicesExtensions
         // Add HybridCache for L1 (in-memory) + L2 (Redis) caching
         _ = services.AddHybridCache();
 
+        // Configure UCP profile options
+        _ = services.AddOptions<Infrastructure.UCP.UcpProfileOptions>()
+            .BindConfiguration(Infrastructure.UCP.UcpProfileOptions.SectionName)
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+        _ = services.AddSingleton<Infrastructure.UCP.UcpProfileService>();
+
         // Register Marten Projection Commit Listener in DI
         _ = services.AddSingleton<Infrastructure.ProjectionCommitListener>();
 
